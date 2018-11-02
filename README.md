@@ -14,7 +14,11 @@ We extrongly recommend using Anaconda Distribution, because....
 
 ### Dependencies
 
-...
+- Numpy;
+- Scipy;
+- Matplotlib;
+- Sounddevice;
+- PyFilterbank.
 
 ### Installation
 
