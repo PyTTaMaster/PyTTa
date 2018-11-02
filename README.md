@@ -1,37 +1,35 @@
-## Welcome to GitHub Pages
+## PyTTa - Python in Technical Acoustics
 
-You can use the [editor on GitHub](https://github.com/mtslazarin/PyTTa/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+The project began as an effort to create audio, acoustics and vibrational data acquiring and analysis toolbox to a free cost level, high end results, combining the passion for programming with the expertise in acoustics and vibration of the Acoustics Engineers from the Federal University of Santa Maria.
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+We are students, teachers, engineers, passionates and inquiring people, on the first steps of a journey throughout the Python path to bring Acoustics to the Open Seas, Open Sources and Open World!
 
-### Markdown
+### Documentation
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+...
 
-```markdown
-Syntax highlighted code block
+### Usage
 
-# Header 1
-## Header 2
-### Header 3
+We extrongly recommend using Anaconda Distribution, because....
 
-- Bulleted
-- List
+### Dependencies
 
-1. Numbered
-2. List
+...
 
-**Bold** and _Italic_ and `Code` text
+### Installation
 
-[Link](url) and ![Image](src)
-```
+...
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+### Contributing and Credits
 
-### Jekyll Themes
+...
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/mtslazarin/PyTTa/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+### Contact
 
-### Support or Contact
+Contact us at pytta@eac.ufsm.br
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+## More information
+[Main Website](https://sites.google.com/eac.ufsm.br/pytta/)
+[Acoustical Engineering UFSM Website](http://www.eac.ufsm.br)
+[UFSM Website](https://www.ufsm.br)
+[Download Spyder (with Anaconda)](https://www.anaconda.com/download/)
