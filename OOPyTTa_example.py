@@ -1,38 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Object Oriented Python to Technical Acoustics example file
+
 Created on Fri Aug 31 11:56:54 2018
+Last modified on Sun Oct 28 09:56:32 2018
 
-@author: mtslazarin
+@author: Matheus Lazarin Albert, João Vitor Gutkoski Paes
+
+This file shows a few ways to use the PyTTa package and it''s modules
+Consider running this file section by section, without the runfile() method
+
 """
+#%%
+import pytta # importing Object Oriented Python in Technical Acoustics
 
-import OOPyTTa as pytta # importing Object Oriented Python in Technical Acoustics
-import sounddevice as sd
+#%% Default properties and device selecting (not to be run inside a script)
 
-#%% frfmeasure class arguments
+## To run this example file using runfile(), consider commenting this section.
+#pytta.properties.default # show all the defaul properties and its values
+#pytta.properties.list_devices() # list available audio in/out devices and identify the default ones
+#
+## change the device and sampling rate values within the "default" dict
+#pytta.properties.set_default(device = [1,2], samplingRate=51200) 
 
-#sd.query_devices()
-device = 'built in' # [in device number,out device number] or 'device name' from sounddevices.query_devices()
-inch = [1] # [input 1 channel number, input 2 channel number...]
-outch = [1,2] # [output 1 channel number, output 2 channel number]
-Fs = 44100 # [Hz] Sample rate
-Finf = 20 # [Hz] sweep inferior frequency limit
-Fsup = 20000 # [Hz] sweep inferior frequency limit
-fftdeg = 16 # 2^(FFT degree) [samples] (related to  x(t) signal length)
-stopmargin = 1 # [s] record some silence after sweep
-comment='Setup teste de Medição' # comment about the measurement setup
+#%% generate excitation signal
+x1 = pytta.generate.sweep() # with default settings
+x2 = pytta.generate.sweep(50,16000) # chosing bandwidth
+x3 = pytta.generate.sweep(fftDeg = 16,
+                          startmargin=0.1,
+                          stopmargin=0.9) # chosing some parameters, without ordering
+x4 = pytta.generate.sweep(100,10000,48000,17,0.5,0.5) # choosing all parameters, ordered input
 
-#%% creating the excitation signal
-
-x = pytta.generate(44100,20,20000,16,1)
 #%% creating the frfmeasure object
-
-m = pytta.frfmeasure(device,inch,outch,Fs,Finf,Fsup,comment,x)
+x = x1 # define signalObj for the measurement example
+recTime = pytta.generate.measurement('rec','time',10)
+recDeg = pytta.generate.measurement('rec','samples',17)
+m1 = pytta.generate.measurement('frf',x) #initializing with selected signalobj
+m2 = pytta.generate.measurement('frf') #initializing with default settings, empty excitation
+m2.excitation = x #declaring excitation origin, or
+# m2.excitation.t = x.t[:] # declaring excitation value
+#m3 = pytta.FRFMeasure(x,
+#                      device = 'audiobox',
+#                      outch = [3,4],
+#                      inch = [1,2] ) # initializing with different properties
 
 #%% running the measurement
-
-m1 = m.run()
+m = m1 # define measurement object for run example
+y = m.run()
 
 #%% plot stuff
-
-m1.plot_freq()
+y.plot_freq()
+y.plot_time()
