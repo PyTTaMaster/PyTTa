@@ -1,2 +1,0 @@
-17_10_18
-Removida a gera‹o do sweep da classe frfmeasure e criada a classe generate
