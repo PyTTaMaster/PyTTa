@@ -29,7 +29,11 @@ We extrongly recommend using Anaconda Distribution, because....
 Contact us at pytta@eac.ufsm.br
 
 ## More information
+
 [Main Website](https://sites.google.com/eac.ufsm.br/pytta/)
+
 [Acoustical Engineering UFSM Website](http://www.eac.ufsm.br)
+
 [UFSM Website](https://www.ufsm.br)
+
 [Download Spyder (with Anaconda)](https://www.anaconda.com/download/)
