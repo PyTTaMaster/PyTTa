@@ -1,5 +1,0 @@
-PyTTa
-======
-
-.. automodule:: pytta
-	:members:	
