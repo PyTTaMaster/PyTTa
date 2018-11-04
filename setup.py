@@ -38,8 +38,7 @@ setuptools.setup(
 	install_requires = ['numpy',
 			   'scipy',
 			   'matplotlib',
-			   'sounddevice',
-			   'pyfilterbank'],
+			   'sounddevice'],
 	classifiers=[
     		# How mature is this project? Common values are
 		#   3 - Alpha
