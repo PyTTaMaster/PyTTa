@@ -6,10 +6,10 @@
                     Setup
   
 @Autores:
-- Jo„o Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
+- Jo√£o Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
 
-@⁄ltima modificaÁ„o: 27/10/18
+@√öltima modifica√ß√£o: 27/10/18
 
 """
 
@@ -24,7 +24,7 @@ setuptools.setup(
 	version = '0.0.0a1', # ALPHA version release
 	author = ['Marcos Reis',
 	    	'Matheus Lazarin',
-		'Jo„o Vitor Paes'],
+		'Jo√£o Vitor Paes'],
 	author_email = ['marcos.reis@eac.ufsm.br',
 			'matheus.lazarin@eac.ufsm.br',
 			'joao.paes@eac.ufsm.br'],
@@ -33,13 +33,12 @@ setuptools.setup(
 #	long_description_content_type = 'text/markdown',
 	url = 'http://github.com/pytta',
 	packages = setuptools.find_packages(),
-	zip_safe': False,
+	zip_safe =  False,
 	license = 'LGPL',
 	install_requires = ['numpy',
 			   'scipy',
 			   'matplotlib',
-			   'sounddevice',
-			   'pyfilterbank'],
+			   'sounddevice'],
 	classifiers=[
     		# How mature is this project? Common values are
 		#   3 - Alpha
@@ -52,16 +51,16 @@ setuptools.setup(
     		'Topic :: Software Development :: Build Tools',
 
     		# Pick your license as you wish (should match "license" above)
-     		'License :: OSI Approved :: MIT License',
+     		'License :: OSI Approved :: LGPL License',
 
     		# Specify the Python versions you support here. In particular, ensure
     		# that you indicate whether you support Python 2, Python 3 or both.
     		'Programming Language :: Python :: 3.4',
     		'Programming Language :: Python :: 3.5',
     		'Programming Language :: Python :: 3.6',
-	    	'Programming Language :: Python :: 3.7'],
+	    	'Programming Language :: Python :: 3.7']
 
-#    'package_data': {  # apenas para arquivos com outras extensıes (.c, .h, .exe, etc)
+#    'package_data': {  # apenas para arquivos com outras extens√µes (.c, .h, .exe, etc)
 #        'pytta': [
 #            'sosfilt.c',
 #            'sosfilt64.dll',
