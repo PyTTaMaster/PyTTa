@@ -1,10 +1,10 @@
-.. automodule:: pytta
+.. py:module:: pytta
 	
-	.. automodule:: pytta.classes
+	.. py:module:: pytta.classes
 		:members:
 
-	.. automodule:: pytta.generate
+	.. py:module:: pytta.generate
 		:members:
 
-	.. automodule:: pytta.properties
+	.. py:module:: pytta.properties
 		:members:
