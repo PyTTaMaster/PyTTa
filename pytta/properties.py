@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
-                     PyTTa
-    Object Oriented Python in Technical Acoustics
-
-                    Properties
+Properties
+===========
   
 @Autores:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br

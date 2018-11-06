@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
-                     PyTTa
-    Object Oriented Python in Technical Acoustics
-
-                    Generate
+Generate
+=========
   
 @Autores:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 
 @Última modificação: 27/10/18
+
 
 """
 
