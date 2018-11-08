@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Properties
 ===========
@@ -40,17 +40,16 @@ PyTTa Default Properties:
     
 """
 import sounddevice as sd
+import numpy as np
 
 default = {'samplingRate': 44100,
            'fftDegree': 18,
            'timeLength': 10,
            'freqMin': 20,
-           'winFreqMin':20,
            'freqMax': 20000,
-           'winFreqMax': 20000,
            'device': sd.default.device,
-           'inch': [1],
-           'outch': [1],
+           'inch': np.array([1, 2]),
+           'outch': np.array([1, 2]),
            'stopMargin': 0.7,
            'startMargin': 0.3,
            'comment': 'No comments.'}
@@ -58,29 +57,23 @@ default = {'samplingRate': 44100,
 
 def set_default(**kargs):
     """
-    set_default()
-    
-        Change the values of the "default" dictionary
-        >>> pytta.properties.set_default(property1 = value1,
-        >>>                              property2 = value2,
-        >>>                              propertyN = valueN)
-        
-    """
+	 Change the values of the "default" dictionary
+	 
+	 >>> pytta.properties.set_default(property1 = value1,
+	 >>>                              property2 = value2,
+	 >>>                              propertyN = valueN)
+	 
+	 
+	 """
     global default
     for name, value in kargs.items():
-        if default[name] != value:
-            default[name] = value
+        if all(default[name]) != value:
+            if name == 'device':
+                sd.default.device = value
+                default[name] = sd.default.device
+            elif name=='inch' or name=='outch':
+                default[name] = np.array(value)
+            else:
+                default[name] = value
     return default
 
-def list_devices():
-    """
-    list_devices()
-    
-        Shortcut to sounddevice.query_devices(). Made to exclude the need of
-        importing Sounddevice directly just to find out which audio devices can
-        be used.
-        >>> pytta.list_devices()
-        
-    """
-    return sd.query_devices()
-            

@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Generate
 =========
@@ -9,11 +9,10 @@ Generate
 
 @Última modificação: 27/10/18
 
-
 """
 
 #%%
-import pytta
+from pytta.classes import signalObj, RecMeasure, FRFMeasure, PlayRecMeasure
 from pytta.properties import default
 from scipy import signal
 import numpy as np
@@ -62,7 +61,7 @@ def sweep(Finf = default['freqMin'],
                           sweept,\
                           np.zeros( int(Nstop) ) ) ) # add initial and ending sileces
     if xt.size != N: xt = xt[0:int(N)] # adjust length
-    x = pytta.signalObj(xt,'time',Fs) # transforms into a pytta signalObj
+    x = signalObj(xt,'time',Fs) # transforms into a pytta signalObj
     x.Flim = Flim # pass on the frequency limits considering the fade in and fade out
     return x
 
@@ -71,7 +70,7 @@ def __do_sweep_windowing(in_signal,
                         Flim, Finf, Fsup,
                         win):
     """
-    Generates a fade in and fade out that are minimum at the chirp start and end,
+    Applies a fade in and fade out that are minimum at the chirp start and end,
     and maximum between the time intervals corresponding to Finf and Fsup.
     
     """
@@ -86,8 +85,72 @@ def __do_sweep_windowing(in_signal,
     win = np.concatenate((wins[0:a1], np.ones(int(len(fsweep)-a1-a2+1)), winf[a2:-1]))
     new_signal = win*in_signal
     return new_signal
+ 
+ 
+ 
+def noise(kind = 'white',
+			 Fs = default['samplingRate'],
+          fftDeg = default['fftDegree'],
+          startmargin = default['startMargin'],
+          stopmargin = default['stopMargin'],
+          windowing = 'hann'):
+	"""
+	Generates a noise of kind White, Pink or Blue, with a silence at the
+	begining and ending of the signal, plus a fade in to avoid abrupt speaker
+	excursioning. All noises have normalized amplitude.
+	
+		White noise is generated with a numpy.randn;
+	
+		Pink noise is still in progress;
+	
+		Blue noise is still in progress;
+	
+		Flat noise is generated as a frequency constant magnitude plus a 
+		numpy.randn complex phase, then ifft;
+	
+	"""
+	
+	Nstart = int(startmargin*Fs) # [samples] Starting silence number of samples
+	Nstop = int(stopmargin*Fs) # [samples] Ending silence number of samples
+	Nmargin = Nstart + Nstop # [samples] total silence number of samples
+	N = 2**fftDeg # [samples] full signal number of samples
+	Nnoise = int(N - Nmargin) # [samples] Actual noise number of samples
+	if kind.upper() in ['WHITE','FLAT']:
+		noiseSignal = np.random.randn(Nnoise)
+#	elif kind.upper() == 'PINK':
+#		noiseSignal = np.randn(Nnoise)
+#		noiseSignal = noiseSignal/max(abs(noiseSignal))
+#		noiseSignal = _do_pink_filtering(noiseSignal)
+#	elif kind.upper() == 'BLUE':
+#		noiseSignal = np.randn(Nnoise)
+#		noiseSignal = noiseSignal/max(abs(noiseSignal))
+#		noiseSignal = _do_blue_filtering(noiseSignal)
+
+	noiseSignal = _do_noise_windowing(noiseSignal,Nnoise,windowing)
+	noiseSignal = noiseSignal/max(abs(noiseSignal))
+	signal = np.concatenate((np.zeros(Nstart),noiseSignal,np.zeros(Nstop)))
+	signal = signalObj(signal,'time',Fs)
+	return signal
+
+def _do_noise_windowing(in_signal,
+                        Nnoise,
+                        win):
+	a = int((5/100)*(Nnoise))
+	wins = signal.hann(2*a)
+	win = np.concatenate((wins[0:a], np.ones(int(Nnoise-a))))
+	new_signal = win*in_signal
+	return new_signal	
 
 
+def impulse(Fs = default['samplingRate'],
+				fftDeg = default['fftDegree']):
+	N = 2**fftDeg
+	impulseSignal = (N/Fs)*np.ones(N) + 1j*np.random.randn(N)
+	impulseSignal = np.real(np.fft.ifft(impulseSignal))
+	impulseSignal = impulseSignal/max(impulseSignal)
+	signal = signalObj(impulseSignal,'time',Fs)
+	return signal
+	
 def measurement(kind = 'playrec',*args,
                 Fs = default['samplingRate'],
                 Finf = default['freqMin'],
@@ -110,7 +173,7 @@ def measurement(kind = 'playrec',*args,
 	"""
 	
 	if kind in ['rec','record','recording','r']:
-		recObj = pytta.RecMeasure(Fs=Fs,
+		recObj = RecMeasure(Fs=Fs,
                                   Finf=Finf,
                                   Fsup=Fsup,
                                   device=device,
@@ -134,7 +197,7 @@ def measurement(kind = 'playrec',*args,
 		else:
 			signalIn = sweep(Fs=Fs,Finf=Finf,Fsup=Fsup,**kwargs)
 			
-		prObj = pytta.PlayRecMeasure(signalIn,
+		prObj = PlayRecMeasure(signalIn,
                                      device=device,
                                      inch=inch,
                                      outch=outch,
@@ -148,10 +211,10 @@ def measurement(kind = 'playrec',*args,
 		else:
 			signalIn = sweep(Fs=Fs,Finf=Finf,Fsup=Fsup,**kwargs)
 			
-		frfms = pytta.FRFMeasure(excitation=signalIn,
+		frfObj = FRFMeasure(excitation=signalIn,
                                 device=device,
                                 inch=inch,
                                 outch=outch,
                                 **kwargs)
-		return frfms
-    
+		return frfObj
+
