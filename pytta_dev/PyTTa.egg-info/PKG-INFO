@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: PyTTa
+Version: 0.0.0b0
+Summary: Signal processing tools for acoustics and vibrations in python.
+Home-page: http://github.com/pytta
+Author: Marcos Reis, Matheus Lazarin, João Vitor Paes
+Author-email: joao.paes@eac.ufsm.br
+License: LGPL
+Description: UNKNOWN
+Platform: UNKNOWN
