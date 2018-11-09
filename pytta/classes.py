@@ -8,8 +8,6 @@ Classes
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
-@Última modificação: 27/10/18
-
 """
 #%% Importing modules
 from pytta.properties import default
