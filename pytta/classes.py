@@ -264,7 +264,9 @@ class RecMeasure(Measurement):
         self.recording = sd.rec(self.N,
                                 self.Fs,
                                 mapping = self.inch,
-                                blocking=True,latency='low')
+                                blocking=True,
+										  latency='low',
+										  dtype = 'float32')
         self.recording = np.squeeze(self.recording)
         self.recording = signalObj(self.recording,'time',self.Fs)
 #        maxOut = max(abs(self.recording.timeSignal[:,:]))
@@ -322,7 +324,8 @@ class PlayRecMeasure(Measurement):
                              output_mapping=self.outch,
                              device=self.device,
                              blocking=True,
-                             latency='low') # y_all(t) - out signal: x(t) conv h(t)
+                             latency='low',
+									  dtype = 'float32') # y_all(t) - out signal: x(t) conv h(t)
         self.recording = np.squeeze(self.recording) # turn column array into line array
         self.recording = signalObj(self.recording,'time',self.Fs)
 #        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
