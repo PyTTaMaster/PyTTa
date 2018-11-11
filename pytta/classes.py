@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Classes
@@ -41,7 +41,7 @@ class pyttaObj(object):
     
 
 class signalObj(pyttaObj):
-    """
+	"""
     Signal object class.
     
     Properties(self): 	   	(default),   	meaning  
@@ -63,105 +63,116 @@ class signalObj(pyttaObj):
         - plot_freq():  	generates the signal's spectre graphic;
     
     """
-    def __init__(self,arr_in=np.array([0]),domain=None,*args,**kwargs):
-        super().__init__(*args,**kwargs)
-        self.domain = domain
-        if self.domain == 'freq':
-            self.freqSignal = arr_in # [-] signal in frequency domain
-        elif self.domain == 'time':
-            self.timeSignal = arr_in # [-] signal in time domain
-        else:
-            self.timeSignal = arr_in
-             
-    @property # when t is called as object.t it returns the ndarray 
-    def timeSignal(self):
-        return self._timeSignal
-    @timeSignal.setter
-    def timeSignal(self,newt): # when t have new ndarray value, calculate other properties
-        self._timeSignal = newt
-        self.N = len(self.timeSignal) # [-] number of samples
-        self.timeLen = self.N/self.Fs # [s] signal time lenght
-        self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
-        self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
-        self._freqSignal = 2/self.N*np.fft.fft(self.timeSignal) # [-] signal in frequency domain
-        
-    @property
-    def freqSignal(self):
-        return self._freqSignal
-    @freqSignal.setter
-    def freqSignal(self,newjw):
-        self._freqSignal = newjw
-        self._timeSignal = np.real(np.fft.ifft(self.freqSignal))
-        self.N = len(self.timeSignal) # [-] number of samples
-        self.timeLen = self.N/self.Fs # [s] signal time lenght
-        self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
-        self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
-        
-    def __truediv__(self, other):
-        """
-        Frequency domain division method
-        """
-        resul = signalObj(Fs=self.Fs)
-        resul.freqSignal = self.freqSignal/other.freqSignal
-        return resul
+	def __init__(self,arr_in=np.array([0]),domain=None,*args,**kwargs):
+		super().__init__(*args,**kwargs)
+		self.domain = domain
+		if self.domain == 'freq':
+			self.freqSignal = arr_in # [-] signal in frequency domain
+		elif self.domain == 'time':
+			self.timeSignal = arr_in # [-] signal in time domain
+		else:
+			self.timeSignal = arr_in
+			
+	@property # when t is called as object.t it returns the ndarray
+	def timeSignal(self):
+		return self._timeSignal
+	@timeSignal.setter
+	def timeSignal(self,newt): # when t have new ndarray value, calculate other properties
+		self._timeSignal = newt
+		self.N = len(self.timeSignal) # [-] number of samples
+		self.timeLen = self.N/self.Fs # [s] signal time lenght
+		self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
+		self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
+		self._freqSignal = (2/self.N)*np.transpose( np.fft.fft( self.timeSignal.transpose() ) ) # [-] signal in frequency domain
+
+	@property
+	def freqSignal(self):
+		return self._freqSignal
+	@freqSignal.setter
+	def freqSignal(self,newjw):
+		self._freqSignal = newjw
+		self._timeSignal = np.transpose( np.real(np.fft.ifft(self.freqSignal.transpose())) )
+		self.N = len(self.timeSignal) # [-] number of samples
+		self.timeLen = self.N/self.Fs # [s] signal time lenght
+		self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
+		self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
+
+	def __truediv__(self, other):
+		"""
+		Frequency domain division method
+		"""
+		resul = signalObj(Fs=self.Fs)
+		resul.freqSignal = self.freqSignal/other.freqSignal
+		return resul
     
-    def __truemul__(self, other):
-        """
-        Frequency domain multiplication method
-        """
-        resul = signalObj(Fs=self.Fs)
-        resul.freqSignal = self.freqSignal*other.freqSignal
-        return resul
-    
-    def __trueadd__(self, other):
-        """
-        Time domain addition method
-        """
-        resul = signalObj(Fs=self.Fs)
-        resul.timeSignal = self.timeSignal+other.timeSignal
-        return resul
-    
-    def __truesub__(self, other):
-        """
-        Time domain subtraction method
-        """
-        resul = signalObj(Fs=self.Fs)
-        resul.timeSignal = self.timeSignal-other.timeSignal
-        return resul
+	def __truemul__(self, other):
+		"""
+		Frequency domain multiplication method
+		"""
+		resul = signalObj(Fs=self.Fs)
+		resul.freqSignal = self.freqSignal*other.freqSignal
+		return resul
+
+	def __trueadd__(self, other):
+		"""
+		Time domain addition method
+		"""
+		resul = signalObj(Fs=self.Fs)
+		resul.timeSignal = self.timeSignal+other.timeSignal
+		return resul
+
+	def __truesub__(self, other):
+		"""
+		Time domain subtraction method
+		"""
+		resul = signalObj(Fs=self.Fs)
+		resul.timeSignal = self.timeSignal-other.timeSignal
+		return resul
         
-    def play(self,outch=default['outch']):
-        """
-        Play method
-        """
-        sd.play(self.t,self.Fs,mapping=outch)
-        
+	def play(self,outch=None,latency='low'):
+		"""
+		Play method
+		"""
+		if outch == None:
+			try:
+				numChannels = np.shape(self.timeSignal)[1]
+			except IndexError:
+				numChannels = 1
+			if numChannels <=1:
+				outch = default['outch']
+			elif numChannels > 1:
+				outch = np.arange(1,numChannels+1)
+
+		sd.play(self.timeSignal,self.Fs,mapping=outch)
+			   
 #   def plot(self): # TODO
 #        ...
 
-    def plot_time(self):
-        """
-        Time domain plotting method
-        """
-        plot.figure(figsize=(10,5))
-        plot.plot(self.timeVector,self.timeSignal)
-        plot.axis([self.timeVector[0], self.timeVector[-1], 1.05*np.min(self.timeSignal), 1.05*np.max(self.timeSignal)])
-        plot.xlabel(r'$Time$ [s]')
-        plot.ylabel(r'$Amplitude$ [-]') 
-        
-        
-    def plot_freq(self):
-        """
-        Frequency domain plotting method
-        """
-        plot.figure(figsize=(10,5))
-#        dB_self = 20*np.log10(np.abs(self.freqSignal))
-#        plot.semilogx(self.freqVector,20*np.log10(np.abs(self.freqSignal)) )
-        Hjw_smooth = signal.savgol_filter(abs(self.freqSignal),31,3);
-        dB_smooth = 20*np.log10(np.abs(Hjw_smooth))
-        plot.semilogx(self.freqVector,dB_smooth)
-        plot.axis((self.Flim[0], self.Flim[1], 1.05*np.min(dB_smooth), 1.05*np.max(dB_smooth)))
-        plot.xlabel(r'$Frequency$ [Hz]')
-        plot.ylabel(r'$Magnitude$ [dBFS]')
+	def plot_time(self):
+		"""
+		Time domain plotting method
+		"""
+		plot.figure(figsize=(10,5))
+		plot.plot(self.timeVector,self.timeSignal)
+		plot.axis([self.timeVector[0] - 10/self.Fs, self.timeVector[-1] + 10/self.Fs, 1.05*np.min(self.timeSignal), 1.05*np.max(self.timeSignal)])
+		plot.xlabel(r'$Time$ [s]')
+		plot.ylabel(r'$Amplitude$ [-]')
+
+
+	def plot_freq(self):
+		"""
+		Frequency domain plotting method
+		"""
+		plot.figure(figsize=(10,5))
+		Hjw_smooth = signal.savgol_filter(abs(self.freqSignal.transpose()),31,3);
+		dB_smooth = 20*np.log10(np.abs(Hjw_smooth))
+		plot.semilogx(self.freqVector,dB_smooth.transpose())
+#		dB_self = 20*np.log10(np.abs(self.freqSignal))
+#		plot.semilogx(self.freqVector,dB_self )
+		plot.axis((15, 22050, 1.05*np.min(dB_smooth), 1.05*np.max(dB_smooth)))
+		plot.xlabel(r'$Frequency$ [Hz]')
+		plot.ylabel(r'$Magnitude$ [dBFS]')
+
 #        plot.legend()
         
 
@@ -253,11 +264,12 @@ class RecMeasure(Measurement):
         self.recording = sd.rec(self.N,
                                 self.Fs,
                                 mapping = self.inch,
-                                blocking=True)
+                                blocking=True,latency='low')
         self.recording = np.squeeze(self.recording)
         self.recording = signalObj(self.recording,'time',self.Fs)
-        print('max input level (recording): ', 20*np.log10(max(self.recording.t)), 'dBFs - ref.: 1 [-]')
-        return self.rec_vector
+#        maxOut = max(abs(self.recording.timeSignal[:,:]))
+#        print('max input level (recording): ', 20*np.log10(maxOut), 'dBFs - ref.: 1 [-]')
+        return self.recording
     
     
 class PlayRecMeasure(Measurement):
@@ -313,8 +325,8 @@ class PlayRecMeasure(Measurement):
                              latency='low') # y_all(t) - out signal: x(t) conv h(t)
         self.recording = np.squeeze(self.recording) # turn column array into line array
         self.recording = signalObj(self.recording,'time',self.Fs)
-        print('max output level (excitation): ', 20*np.log10(max(self.excitation.t)), 'dBFs - ref.: 1 [-]')
-        print('max input level (recording): ', 20*np.log10(max(self.recording.t)), 'dBFs - ref.: 1 [-]')
+#        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
+#        print('max input level (recording): ', 20*np.log10(max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
         return self.recording
    
      
