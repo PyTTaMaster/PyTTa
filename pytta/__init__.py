@@ -39,10 +39,11 @@ PyTTa:
 from .functions import read_wav, write_wav, merge, list_devices
 from . import generate
 from . import properties
+from . import room_acoustics
 from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 
 __version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = ['generate','properties','merge','read_wav','write_wav','list_devices',\
+__all__ = ['generate','properties','merge','read_wav','write_wav','list_devices', 'room_acoustics',\
            'RecMeasure','PlayRecMeasure','FRFMeasure','signalObj'] 
