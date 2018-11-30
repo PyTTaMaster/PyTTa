@@ -1,19 +1,17 @@
 ﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-                     PyTTa
-    Object Oriented Python in Technical Acoustics
+Object Oriented Python in Technical Acoustics
+==============================================
 
-                    __init__
-  
-@Autores:
-- João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-- Matheus Lazarin Alberto, mtslazarin@gmail.com
+Autores:
+	João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
+	Matheus Lazarin Alberto, mtslazarin@gmail.com
 
-@Última modificação: 29/10/18
+Última modificação: 29/10/18
 
 
-PyTTa
+PyTTa:
 
     This is a package developed to perform acoustic and vibration measurements
     and signal analysis. In order to provide such functionalities we require a
@@ -27,17 +25,24 @@ PyTTa
     - PyFilterbank (future release)
     
     We also recommend using the Anaconda Python distribution, it's not a
-    mandatory thing, but you should.
+    mandatory issue, but you should.
+	 
+	 To begin, try:
+		 
+		 >>> import pytta
+		 >>> pytta.properties.default
+		 >>> pytta.properties.list_devices()
 
 """
 
 #%% Importing .py files as submodules
+from .functions import read_wav, write_wav, merge, list_devices
 from . import generate
 from . import properties
 from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 
-__version__ = '0.0.0b' # package version
+__version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = ['generate','properties','RecMeasure',\
-           'PlayRecMeasure','FRFMeasure','signalObj'] 
+__all__ = ['generate','properties','merge','read_wav','write_wav','list_devices',\
+           'RecMeasure','PlayRecMeasure','FRFMeasure','signalObj'] 
