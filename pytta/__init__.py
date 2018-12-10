@@ -31,7 +31,7 @@ PyTTa:
 		 
 		 >>> import pytta
 		 >>> pytta.properties.default
-		 >>> pytta.properties.list_devices()
+		 >>> pytta.list_devices()
 
 """
 
