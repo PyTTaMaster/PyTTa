@@ -7,8 +7,6 @@ Properties
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
 
-@Última modificação: 27/10/18
-
 PyTTa Default Properties:
     
     As to provide an user friendly signal measurement package, a few default

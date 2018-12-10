@@ -8,8 +8,6 @@ Autores:
 	João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 	Matheus Lazarin Alberto, mtslazarin@gmail.com
 
-Última modificação: 29/10/18
-
 
 PyTTa:
 
@@ -27,12 +25,21 @@ PyTTa:
     We also recommend using the Anaconda Python distribution, it's not a
     mandatory issue, but you should.
 	 
-	 To begin, try:
+	To begin, try:
 		 
 		 >>> import pytta
 		 >>> pytta.properties.default
 		 >>> pytta.list_devices()
 
+PyTTa user intended classes:
+    
+    >>> pytta.signalObj()
+    >>> pytta.generate.sweep()
+    >>> pytta.generate.noise()
+    >>> pytta.generate.impulse()
+    >>> pytta.generate.measurement()
+
+For further information see the specific method documentation
 """
 
 #%% Importing .py files as submodules
