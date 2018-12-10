@@ -14,6 +14,7 @@ User intended classes:
     >>> pytta.generate.impulse()
     >>> pytta.generate.measurement()
 
+For further information see the specific method documentation
 """
 
 #%%

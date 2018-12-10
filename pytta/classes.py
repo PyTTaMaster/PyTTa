@@ -12,6 +12,7 @@ User intended classes:
     
     >>> pytta.signalObj()
 
+For further information see the specific method documentation
 """
 #%% Importing modules
 from pytta.properties import default
