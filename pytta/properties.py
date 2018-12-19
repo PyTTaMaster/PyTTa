@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+pytt# -*- coding: utf-8 -*-
 """
 Properties
 ===========
@@ -55,12 +55,17 @@ default = {'samplingRate': 44100,
 
 def set_default(**kargs):
     """
-	 Change the values of the "default" dictionary
+	Change the values of the "default" dictionary
 	 
-	 >>> pytta.properties.set_default(property1 = value1,
-	 >>>                              property2 = value2,
-	 >>>                              propertyN = valueN)
-	 
+	>>> pytta.properties.set_default(property1 = value1,
+	>>>                              property2 = value2,
+	>>>                              propertyN = valueN)
+     
+    The default values can be set differently using both declaring method, or
+    the set_default() function
+    
+    >>> pytta.properties.default['propertyName'] = propertyValue
+    >>> pytta.properties.set_default(propertyName = propertyValue)
 	 
 	 """
     global default
