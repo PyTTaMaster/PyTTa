@@ -34,7 +34,7 @@ PyTTa Default Properties:
     recommend changing it's value to the desired audio in/out device, as it
     can be identified using list_devices() method
     
-    >>> pytta.properties.list_devices()
+    >>> pytta.list_devices()
     
 """
 import sounddevice as sd
