@@ -7,8 +7,6 @@ Properties
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
 
-@Última modificação: 27/10/18
-
 PyTTa Default Properties:
     
     As to provide an user friendly signal measurement package, a few default
@@ -36,7 +34,7 @@ PyTTa Default Properties:
     recommend changing it's value to the desired audio in/out device, as it
     can be identified using list_devices() method
     
-    >>> pytta.properties.list_devices()
+    >>> pytta.list_devices()
     
 """
 import sounddevice as sd
@@ -48,8 +46,8 @@ default = {'samplingRate': 44100,
            'freqMin': 20,
            'freqMax': 20000,
            'device': sd.default.device,
-           'inch': np.array([1, 2]),
-           'outch': np.array([1, 2]),
+           'inch': np.array([1]),
+           'outch': np.array([1]),
            'stopMargin': 0.7,
            'startMargin': 0.3,
            'comment': 'No comments.'}
@@ -57,12 +55,17 @@ default = {'samplingRate': 44100,
 
 def set_default(**kargs):
     """
-	 Change the values of the "default" dictionary
+	Change the values of the "default" dictionary
 	 
-	 >>> pytta.properties.set_default(property1 = value1,
-	 >>>                              property2 = value2,
-	 >>>                              propertyN = valueN)
-	 
+	>>> pytta.properties.set_default(property1 = value1,
+	>>>                              property2 = value2,
+	>>>                              propertyN = valueN)
+     
+    The default values can be set differently using both declaring method, or
+    the set_default() function
+    
+    >>> pytta.properties.default['propertyName'] = propertyValue
+    >>> pytta.properties.set_default(propertyName = propertyValue)
 	 
 	 """
     global default
