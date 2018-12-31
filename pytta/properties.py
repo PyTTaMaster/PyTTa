@@ -70,7 +70,7 @@ def set_default(**kargs):
 	 """
     global default
     for name, value in kargs.items():
-        if all(default[name]) != value:
+        if default[name] != value:
             if name == 'device':
                 sd.default.device = value
                 default[name] = sd.default.device
