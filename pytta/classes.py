@@ -8,6 +8,11 @@ Classes
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
+User intended classes:
+    
+    >>> pytta.signalObj()
+
+For further information see the specific method documentation
 """
 #%% Importing modules
 from pytta.properties import default
