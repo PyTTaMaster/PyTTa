@@ -94,20 +94,15 @@ def noise(kind = 'white',
           startmargin = default['startMargin'],
           stopmargin = default['stopMargin'],
           windowing = 'hann'):
-	"""
-	Generates a noise of kind White, Pink or Blue, with a silence at the
+	"""Generates a noise of kind White, Pink or Blue, with a silence at the
 	begining and ending of the signal, plus a fade in to avoid abrupt speaker
 	excursioning. All noises have normalized amplitude.
 	
-		White noise is generated with a numpy.randn;
+		White noise is generated using numpy.randn between [[1];[-1]];
 	
 		Pink noise is still in progress;
 	
 		Blue noise is still in progress;
-	
-		Flat noise is generated as a frequency constant magnitude plus a 
-		numpy.randn complex phase, then ifft;
-	
 	"""
 	
 	Nstart = int(startmargin*Fs) # [samples] Starting silence number of samples
