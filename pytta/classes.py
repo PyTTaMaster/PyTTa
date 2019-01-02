@@ -31,8 +31,8 @@ class pyttaObj(object):
     """
     
     def __init__(self,Fs=1,
-                 Finf = 0,
-                 Fsup = 1,
+                 Finf = 17,
+                 Fsup = 22050,
                  comment=default['comment']
                  ):
         self.Fs = Fs
@@ -64,6 +64,11 @@ class signalObj(pyttaObj):
     
     """
 	def __init__(self,arr_in=np.array([0]),domain=None,*args,**kwargs):
+		if self.sizeCheck(arr_in)>2:
+			message = "No 'pyttaObj' is able handle arrays with more than 2 dimensions, '[:,:]', YET!."
+			raise AttributeError(message)
+		else:
+			pass
 		super().__init__(*args,**kwargs)
 		self.domain = domain
 		if self.domain == 'freq':
@@ -72,29 +77,33 @@ class signalObj(pyttaObj):
 			self.timeSignal = arr_in # [-] signal in time domain
 		else:
 			self.timeSignal = arr_in
-			
+    
 	@property # when t is called as object.t it returns the ndarray
 	def timeSignal(self):
 		return self._timeSignal
 	@timeSignal.setter
 	def timeSignal(self,newt): # when t have new ndarray value, calculate other properties
-		self._timeSignal = newt
+		self._timeSignal = np.array(newt)
 		self.N = len(self.timeSignal) # [-] number of samples
 		self.timeLen = self.N/self.Fs # [s] signal time lenght
-		self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
+		self.timeVector = np.linspace(0, self.timeLen-(1/self.Fs), self.N) # [s] time vector
+#		if len(self.timeVector) or len(self.timeSignal) != self.N:
+#			self.timeVector = self.timeVector[:self.N]
+#			self.timeSignal = self.timeSignal[:self.N] 
 		self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
 		self._freqSignal = (2/self.N)*np.transpose( np.fft.fft( self.timeSignal.transpose() ) ) # [-] signal in frequency domain
-
+        
 	@property
 	def freqSignal(self):
 		return self._freqSignal
 	@freqSignal.setter
 	def freqSignal(self,newjw):
-		self._freqSignal = newjw
+		self._freqSignal = np.array(newjw)
 		self._timeSignal = np.transpose( np.real(np.fft.ifft(self.freqSignal.transpose())) )
 		self.N = len(self.timeSignal) # [-] number of samples
 		self.timeLen = self.N/self.Fs # [s] signal time lenght
 		self.timeVector = np.arange(0, self.timeLen, 1/self.Fs) # [s] time vector
+#		self.timeVector = self.timeVector[0:len(self.timeSignal)]
 		self.freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)# [Hz] frequency vector
 
 	def __truediv__(self, other):
@@ -105,15 +114,15 @@ class signalObj(pyttaObj):
 		resul.freqSignal = self.freqSignal/other.freqSignal
 		return resul
     
-	def __truemul__(self, other):
-		"""
-		Frequency domain multiplication method
-		"""
-		resul = signalObj(Fs=self.Fs)
-		resul.freqSignal = self.freqSignal*other.freqSignal
-		return resul
+#	def __mul__(self, other):
+#		"""
+#		Frequency domain multiplication method
+#		"""
+#		resul = signalObj(Fs=self.Fs)
+#		resul.freqSignal = self.freqSignal*other.freqSignal
+#		return resul
 
-	def __trueadd__(self, other):
+	def __add__(self, other):
 		"""
 		Time domain addition method
 		"""
@@ -121,14 +130,26 @@ class signalObj(pyttaObj):
 		resul.timeSignal = self.timeSignal+other.timeSignal
 		return resul
 
-	def __truesub__(self, other):
-		"""
-		Time domain subtraction method
-		"""
-		resul = signalObj(Fs=self.Fs)
-		resul.timeSignal = self.timeSignal-other.timeSignal
-		return resul
-        
+#	def __sub__(self, other):
+#		"""
+#		Time domain subtraction method
+#		"""
+#		resul = signalObj(Fs=self.Fs)
+#		resul.timeSignal = self.timeSignal-other.timeSignal
+#		return resul
+	
+	def mean(self):
+		return signalObj(np.mean(self.timeSignal,1),"time",self.Fs)
+	
+#	def numChannels(self):
+#		sz = self.sizeCheck()
+#		return np.shape(self.timeSignal)
+		
+	def sizeCheck(self,inputArray = []):
+		if inputArray == []: inputArray = self.timeSignal
+		return np.size(np.shape(inputArray))
+
+
 	def play(self,outch=None,latency='low'):
 		"""
 		Play method
