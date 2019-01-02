@@ -36,7 +36,7 @@ PyTTa:
 """
 
 #%% Importing .py files as submodules
-from .functions import read_wav, write_wav, merge, list_devices
+from .functions import read_wav, write_wav, merge, list_devices, fftconvolve, super_convolve, resample
 from . import generate
 from . import properties
 from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
@@ -44,5 +44,5 @@ from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 __version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = ['generate','properties','merge','read_wav','write_wav','list_devices',\
-           'RecMeasure','PlayRecMeasure','FRFMeasure','signalObj'] 
+__all__ = ['generate','properties','merge','fftconvolve','read_wav','write_wav','list_devices',\
+           'super_convolve','resample','RecMeasure','PlayRecMeasure','FRFMeasure','signalObj'] 
