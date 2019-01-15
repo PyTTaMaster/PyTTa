@@ -19,16 +19,16 @@ For further information see the specific method documentation
 
 #%%
 from pytta.classes import signalObj, RecMeasure, FRFMeasure, PlayRecMeasure
-from pytta.properties import default
+from pytta.properties import Default
 from scipy import signal
 import numpy as np
 
-def sweep(Finf = default['freqMin'],
-          Fsup = default['freqMax'],
-          Fs = default['samplingRate'],
-          fftDeg = default['fftDegree'],
-          startmargin = default['startMargin'],
-          stopmargin = default['stopMargin'],
+def sweep(Finf = Default().freqLims['min'],
+          Fsup = Default().freqLims['max'],
+          Fs = Default().samplingRate,
+          fftDeg = Default().fftDegree,
+          startmargin = Default().margin['start'],
+          stopmargin = Default().margin['stop'],
           method = 'logarithmic',
           windowing = 'hann'):
     """
@@ -93,12 +93,11 @@ def __do_sweep_windowing(in_signal,
     return new_signal
  
  
- 
 def noise(kind = 'white',
-			 Fs = default['samplingRate'],
-          fftDeg = default['fftDegree'],
-          startmargin = default['startMargin'],
-          stopmargin = default['stopMargin'],
+			 Fs = Default().samplingRate,
+          fftDeg = Default().fftDegree,
+          startmargin = Default().margin['start'],
+          stopmargin = Default().margin['stop'],
           windowing = 'hann'):
 	"""Generates a noise of kind White, Pink or Blue, with a silence at the
 	begining and ending of the signal, plus a fade in to avoid abrupt speaker
@@ -143,22 +142,26 @@ def _do_noise_windowing(in_signal,
 	return new_signal	
 
 
-def impulse(Fs = default['samplingRate'],
-				fftDeg = default['fftDegree']):
+def impulse(Fs = Default().samplingRate,
+				fftDeg = Default().fftDegree):
 	N = 2**fftDeg
 	impulseSignal = (N/Fs)*np.ones(N) + 1j*np.random.randn(N)
 	impulseSignal = np.real(np.fft.ifft(impulseSignal))
 	impulseSignal = impulseSignal/max(impulseSignal)
 	signal = signalObj(impulseSignal,'time',Fs)
 	return signal
+
 	
-def measurement(kind = 'playrec',*args,
-                Fs = default['samplingRate'],
-                Finf = default['freqMin'],
-                Fsup = default['freqMax'],
-                device = default['device'],
-                inch = default['inch'],
-                outch = default['outch'],**kwargs):
+def measurement(kind = 'playrec',
+                *args,
+                Fs = Default().samplingRate,
+                Finf = Default().freqLims['min'],
+                Fsup = Default().freqLims['max'],
+                device = Default().device,
+                inch = Default().inputChannels,
+                outch = Default().outputChannels,
+                **kwargs,
+                ):
     
 	"""
 	Generates a measurement object of type Recording, Playback and Recording,
@@ -173,6 +176,7 @@ def measurement(kind = 'playrec',*args,
 	
 	"""
 	
+    
 	if kind in ['rec','record','recording','r']:
 		recObj = RecMeasure(Fs=Fs,
                                   Finf=Finf,
@@ -188,9 +192,10 @@ def measurement(kind = 'playrec',*args,
 				recObj.fftDeg = kwargs.get('fftDeg') or args[1]
 		else:
 			recObj.domain = 'samples'
-			recObj.fftDeg = default['fftDegree']
+			recObj.fftDeg = Default().fftDegree
 		return recObj
 	
+    
 	elif kind in ['playrec','playbackrecord','pr']:
 		if ('excitation' in kwargs) or args:
 			signalIn=kwargs.get('excitation') or args[0]
@@ -205,6 +210,7 @@ def measurement(kind = 'playrec',*args,
                                      **kwargs)
 		return prObj
 	
+    
 	elif kind in ['tf','frf','transferfunction','freqresponse']:
 		if ('excitation' in kwargs) or args:
 			signalIn=kwargs.get('excitation') or args[0]

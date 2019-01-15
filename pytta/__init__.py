@@ -48,8 +48,10 @@ from . import generate
 from . import properties
 from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 
+Default = properties.Default()
+
 __version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = ['generate','properties','merge','fftconvolve','read_wav','write_wav','list_devices',\
-           'super_convolve','resample','RecMeasure','PlayRecMeasure','FRFMeasure','signalObj'] 
+           'super_convolve','resample','RecMeasure','PlayRecMeasure','FRFMeasure','signalObj','Default'] 
