@@ -8,10 +8,24 @@ Classes
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
+This submodule is mainly the means to an end. PyTTa is made intended to be
+user friendly, the manipulation of the classes are documented here, but their
+instantiation should be used through the <generate> submodule:
+    
+    >>> pytta.generate.sweep()
+    >>> pytta.generate.noise()
+    >>> pytta.generate.measurement('playrec')
+    >>> pytta.generate.measurement('rec', domain = 'time', timeLen = 5)
+    
+This way, the default settings will be loaded into any object instantiated.
+
 User intended classes:
     
     >>> pytta.signalObj()
-
+    >>> pytta.RecMeasure()
+    >>> pytta.PlayRecMeasure()
+    >>> pytta.FRFMeasure()
+    
 For further information see the specific method documentation
 """
 #%% Importing modules

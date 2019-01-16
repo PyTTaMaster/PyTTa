@@ -28,10 +28,10 @@ PyTTa:
 	To begin, try:
 		 
 		 >>> import pytta
-		 >>> pytta.properties.default
+		 >>> pytta.Default()
 		 >>> pytta.list_devices()
 
-PyTTa user intended classes:
+PyTTa user intended classes and functions:
     
     >>> pytta.signalObj()
     >>> pytta.generate.sweep()

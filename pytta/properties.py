@@ -8,50 +8,62 @@ Properties
 
 
 PyTTa Default Properties:
+-------------------------
     
     As to provide an user friendly signal measurement package, a few default
     values where assigned to the main classes and functions.
     
-    These values where set using a dict called "default"
+    These values where set using a dict called "default", and are passed to all
+    PyTTa functions through the Default class object
     
-    >>> import pytta
-    >>> pytta.properties.default
+        >>> import pytta
+        >>> pytta.Default()
     
     The default values can be set differently using both declaring method, or
     the set_default() function
     
-    >>> pytta.properties.default['propertyName'] = propertyValue
-    >>> pytta.properties.set_default(propertyName = propertyValue)
+        >>> pytta.Default.propertyName = propertyValue
+        >>> pytta.Default.set_defaults(propertyName1 = propertyValue1, 
+        >>>                            ... ,
+        >>>                            propertyNameN = propertyValueN
+        >>>                            )
     
     The main difference is that using the set_default() function, a list of
     properties can be set at the same time
     
-    >>> pytta.properties.set_default(property1 = value1,
-    >>>                              property2 = value2,
-    >>>                              propertyN = valueN)
-    
-    The default device start as the one set as default at the user's OS. We
+    The default device start as the one set default at the user's OS. We
     recommend changing it's value to the desired audio in/out device, as it
     can be identified using list_devices() method
     
-    >>> pytta.list_devices()
+        >>> pytta.list_devices()
     
 """
 import sounddevice as sd
 #import numpy as np
+__default_device = sd.default.device 
+""" Used only to hold the default audio I/O device at pytta import time"""
 
 default = {'samplingRate': 44100,
            'fftDegree': 18,
            'timeLength': 10,
            'freqMin': 20,
            'freqMax': 20000,
-           'device': [0, 0],
+           'device': __default_device,
            'inChannel': 1,
            'outChannel': 1,
            'stopMargin': 0.7,
            'startMargin': 0.3,
            'comment': 'No comments.',
            }
+"""
+Changin default preferences:
+============================
+
+    If wanted, the user can set different "factory default" values by changing
+    the properties.default dictionary which is used to hold the values that
+    properties.Default.__init__() loads into the class object
+"""
+
 
 
 class Default(object):
