@@ -39,7 +39,7 @@ PyTTa Default Properties:
     
 """
 import sounddevice as sd
-#import numpy as np
+
 __default_device = sd.default.device 
 """ Used only to hold the default audio I/O device at pytta import time"""
 
@@ -55,14 +55,6 @@ default = {'samplingRate': 44100,
            'startMargin': 0.3,
            'comment': 'No comments.',
            }
-"""
-Changin default preferences:
-============================
-
-    If wanted, the user can set different "factory default" values by changing
-    the properties.default dictionary which is used to hold the values that
-    properties.Default.__init__() loads into the class object
-"""
 
 
 
@@ -87,7 +79,7 @@ class Default(object):
             Smallest signal frequency of interest;
         _freqMax:
             Greatest signal frequency of interest;
-        freqLims['min':'max']:
+        freqLims['min', 'max']:
             Frequencies of interest bandwidth limits;
         device:
             Devices used for input and output streaming of signals (Measurements only);
@@ -99,7 +91,7 @@ class Default(object):
             Amount of silence time at signal's beginning (Signals only);
         _stopMargin:
             Amount of silence time at signal's ending (Signals only);
-        margins['start','stop']:
+        margins['start', 'stop']:
             Beginning and ending's amount of time left for silence (Signals only);
         comments:
             Any commentary about the signal or measurement the user wants to add.
@@ -116,29 +108,40 @@ class Default(object):
             Attributes goes back to "factory default".
     
     """
-    _samplingRate = None
-    _fftDegree = None
-    _timeLength = None
-    _freqMin = None
-    _freqMax = None
-    _device = None
-    _inChannel = None
-    _outChannel = None
-    _stopMargin = None
-    _startMargin = None
-    _comment = None
+
+    _samplingRate = []
+    _fftDegree = []
+    _timeLength = []
+    _freqMin = []
+    _freqMax = []
+    _device = []
+    _inChannel = []
+    _outChannel = []
+    _stopMargin = []
+    _startMargin = []
+    _comment = []
                         
     def __init__(self):
+        """
+        Changin "factory" default preferences:
+        ======================================
+        
+            If wanted, the user can set different "factory default" values by changing
+            the properties.default dictionary which is used to hold the values that
+            the __init__() method loads into the class object at import time
+        """
+
         for name, value in default.items():
             vars(self)['_'+name] = value
-    
+
     def __setattr__(self,name,value):
         if name in dir(self) and name!= 'device':
-            object.__setattr__(self,'_'+name,value)
+            vars(self)['_'+name] = value
         elif name in ['device','devices']:
-            self.set_defaults(name,value)
+            self.set_defaults('device',value)
         else:
             raise AttributeError ('There is no default settings for '+repr(name))
+
 
     def __call__(self):
         for name, value in vars(self).items():
@@ -147,32 +150,35 @@ class Default(object):
             else: 
                 print(name[1:]+'\t =',value)
                 
-                
+
     def set_defaults(self,**namevalues):
         """
-    	Change the values of the "default" dictionary
+    	Change the values of the "Default" object's properties
     	 
-    	>>> pytta.properties.set_default(property1 = value1,
-    	>>>                              property2 = value2,
-    	>>>                              propertyN = valueN)
+    	>>> pytta.Default.set_defaults(property1 = value1,
+    	>>>                            property2 = value2,
+    	>>>                            propertyN = valueN)
          
         The default values can be set differently using both declaring method, or
-        the set_default() function
+        the set_defaults() function
         
-        >>> pytta.properties.default['propertyName'] = propertyValue
-        >>> pytta.properties.set_default(propertyName = propertyValue)
+        >>> pytta.Default.propertyName = propertyValue
+        >>> pytta.Default.set_defaults(propertyName = propertyValue)
     	 
     	"""
-         
-        for name, value in namevalues.items():
-            if vars(self)['_'+name] != value:
-                if name in ['device','devices']:
-                    sd.default.device = value
-                    vars(self)['_'+name] = sd.default.device
-                else:
-                    vars(self)['_'+name] = value
-#        return default
-                    
+        
+        for name, value in namevalues.items(): # iterate over the (propertyName = propertyValue) pairs
+            try:
+                if vars(self)['_'+name] != value: # Check if user value are different from the ones already set up
+                    if name in ['device','devices']: # Check if user is changin default audio IO device
+                        sd.default.device = value    # If True, changes the sounddevice default audio IO device
+                        vars(self)['_'+name] = sd.default.device # Then loads to PyTTa default device
+                    else:
+                        vars(self)['_'+name] = value # otherwise, just assign the new value to the desired property
+            except KeyError:
+                print('You\'ve probably mispelled something.\n' + 'Checkout the property names:\n')
+                self.__call__()
+    
     def reset(self):
         vars(self).clear()
         self.__init__()
@@ -191,6 +197,14 @@ class Default(object):
         return self._timeLength
     
     @property
+    def freqMin(self):
+        return self._freqMin
+    
+    @property
+    def freqMax(self):
+        return self._freqMax
+    
+    @property
     def freqLims(self):
         return {'min': self._freqMin, 'max': self._freqMax}
     
@@ -207,8 +221,16 @@ class Default(object):
         return self._outChannel
     
     @property
-    def margin(self):
-        return {'start': self._startMargin, 'stop':self._stopMargin}
+    def startMargin(self):
+        return self._startMargin
+    
+    @property
+    def stopMargin(self):
+        return self._stopMargin
+    
+    @property
+    def margins(self):
+        return {'start': self._startMargin, 'stop': self._stopMargin}
     
     @property
     def comment(self):

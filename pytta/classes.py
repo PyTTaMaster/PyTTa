@@ -26,10 +26,11 @@ User intended classes:
     >>> pytta.PlayRecMeasure()
     >>> pytta.FRFMeasure()
     
-For further information see the specific method documentation
+For further information see the specific class, or method, documentation
 """
 #%% Importing modules
-from pytta.properties import default
+#import pytta as pa
+from .properties import Default
 import numpy as np
 import matplotlib.pyplot as plot
 import scipy.signal as signal
@@ -52,11 +53,19 @@ class pyttaObj(object):
     def __init__(self,Fs=1,
                  Finf = 17,
                  Fsup = 22050,
-                 comment=default['comment']
+                 comment=Default().comment
                  ):
         self.Fs = Fs
-        self.Flim = np.array([Finf,Fsup])
+        self.Flim = [Finf, Fsup]
         self.comment = comment
+        
+    def __call__(self):
+        for name, value in vars(self).items():
+            if len(name)<=7:
+                print(name+'\t\t =',value)
+            else: 
+                print(name+'\t =',value)
+
     
 
 class signalObj(pyttaObj):
@@ -179,7 +188,7 @@ class signalObj(pyttaObj):
 			except IndexError:
 				numChannels = 1
 			if numChannels <=1:
-				outch = default['outch']
+				outch = Default().outChannel
 			elif numChannels > 1:
 				outch = np.arange(1,numChannels+1)
 
@@ -233,9 +242,13 @@ class Measurement(pyttaObj):
         - comment: 	 	 	(' '), 	 	 	 	some commentary about the signal;        
         
     """
-    def __init__(self, device=None,
+    def __init__(self,
+                 device=None,
                  inch=None,
-                 outch=None,*args,**kwargs):
+                 outch=None,
+                 *args,
+                 **kwargs
+                 ):
         super().__init__(*args,**kwargs)
         self.device = device # device number. For device list use sounddevice.query_devices()
         self.inch = inch # input channels
@@ -283,18 +296,18 @@ class RecMeasure(Measurement):
         return self._timeLen
     @timeLen.setter
     def timeLen(self,newT):
-        self._timeLen = round(newT,2)
+        self._timeLen = np.round(newT,2)
         self.N = self._timeLen*self.Fs
-        self._fftDeg = round(np.log2(self.N),2)
+        self._fftDeg = np.round(np.log2(self.N),2)
         
     @property
     def fftDeg(self):
         return self._fftDeg
     @fftDeg.setter
     def fftDeg(self,newDeg):
-        self._fftDeg = round(newDeg,2)
+        self._fftDeg = np.round(newDeg,2)
         self.N = 2**self._fftDeg
-        self._timeLen = round(self.N/self.Fs,2)
+        self._timeLen = np.round(self.N/self.Fs,2)
                 
     def run(self):
         """
@@ -305,8 +318,9 @@ class RecMeasure(Measurement):
                                 self.Fs,
                                 mapping = self.inch,
                                 blocking=True,
-										  latency='low',
-										  dtype = 'float32')
+                                latency='low',
+                                dtype = 'float32'
+                                )
         self.recording = np.squeeze(self.recording)
         self.recording = signalObj(self.recording,'time',self.Fs)
 #        maxOut = max(abs(self.recording.timeSignal[:,:]))
@@ -365,7 +379,8 @@ class PlayRecMeasure(Measurement):
                              device=self.device,
                              blocking=True,
                              latency='low',
-									  dtype = 'float32') # y_all(t) - out signal: x(t) conv h(t)
+                             dtype = 'float32'
+                             ) # y_all(t) - out signal: x(t) conv h(t)
         self.recording = np.squeeze(self.recording) # turn column array into line array
         self.recording = signalObj(self.recording,'time',self.Fs)
 #        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')

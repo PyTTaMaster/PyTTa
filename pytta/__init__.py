@@ -24,34 +24,58 @@ PyTTa:
     
     We also recommend using the Anaconda Python distribution, it's not a
     mandatory issue, but you should.
-	 
+    
+    
 	To begin, try:
 		 
 		 >>> import pytta
 		 >>> pytta.Default()
 		 >>> pytta.list_devices()
 
-PyTTa user intended classes and functions:
-    
-    >>> pytta.signalObj()
-    >>> pytta.generate.sweep()
-    >>> pytta.generate.noise()
-    >>> pytta.generate.impulse()
-    >>> pytta.generate.measurement()
+    You can find out everything available reading the submodules documentation:
+        
+        >>> pytta.classes
+        >>> pytta.generate
+        >>> pytta.functions
+        >>> pytta.properties
 
-For further information see the specific method documentation
+For further information, check the specific module, class, method or function documentation.    
 """
 
 #%% Importing .py files as submodules
-from .functions import read_wav, write_wav, merge, list_devices, fftconvolve, super_convolve, resample
-from . import generate
 from . import properties
-from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 
+# Instantiate the Default parameters to be loaded by other methods and function calls
 Default = properties.Default()
+
+from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
+from .functions import read_wav, write_wav, merge, list_devices, fftconvolve, finddelay, corrcoef, resample
+from . import generate
+
+#Default = properties.Default
 
 __version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = ['generate','properties','merge','fftconvolve','read_wav','write_wav','list_devices',\
-           'super_convolve','resample','RecMeasure','PlayRecMeasure','FRFMeasure','signalObj','Default'] 
+__all__ = [# Submodules
+           'generate',
+           
+           # Functions
+           'merge',
+           'fftconvolve',
+           'read_wav',
+           'write_wav',
+           'list_devices',
+           'finddelay',
+           'resample',
+           'corrcoef',
+           
+           # Classes
+           'RecMeasure',
+           'PlayRecMeasure',
+           'FRFMeasure',
+           'signalObj',
+           
+           # Objects
+           'Default',
+           ] 
