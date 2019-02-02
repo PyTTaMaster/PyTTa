@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Object Oriented Python in Technical Acoustics
@@ -29,7 +29,7 @@ PyTTa:
 	To begin, try:
 		 
 		 >>> import pytta
-		 >>> pytta.Default()
+		 >>> pytta.default()
 		 >>> pytta.list_devices()
 
     You can find out everything available reading the submodules documentation:
@@ -46,10 +46,10 @@ For further information, check the specific module, class, method or function do
 from . import properties
 
 # Instantiate the Default parameters to be loaded by other methods and function calls
-Default = properties.Default()
+default = properties.Default()
 
-from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
-from .functions import read_wav, write_wav, merge, list_devices, fftconvolve, finddelay, corrcoef, resample
+from .classes import SignalObj, RecMeasure, PlayRecMeasure, FRFMeasure
+from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample
 from . import generate
 
 #Default = properties.Default
@@ -62,20 +62,20 @@ __all__ = [# Submodules
            
            # Functions
            'merge',
-           'fftconvolve',
+           'fft_convolve',
            'read_wav',
            'write_wav',
            'list_devices',
-           'finddelay',
+           'find_delay',
            'resample',
-           'corrcoef',
+           'corr_coef',
            
            # Classes
            'RecMeasure',
            'PlayRecMeasure',
            'FRFMeasure',
-           'signalObj',
+           'SignalObj',
            
            # Objects
-           'Default',
+           'default',
            ] 
