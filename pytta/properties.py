@@ -213,11 +213,11 @@ class Default(object):
         return self._device
     
     @property
-    def inputChannels(self):
+    def inChannel(self):
         return self._inChannel
     
     @property
-    def outputChannels(self):
+    def outChannel(self):
         return self._outChannel
     
     @property
