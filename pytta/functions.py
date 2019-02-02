@@ -27,7 +27,7 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
-from .classes import signalObj
+from .classes import SignalObj
 
 def list_devices():
     """
@@ -43,19 +43,19 @@ def list_devices():
 
 def read_wav(fileName):
     """
-    Reads a wave file into a :class:signalObj   
+    Reads a wave file into a SignalObj   
     """
-    fs, data = wf.read(fileName)
-    signal = signalObj(data,'time',fs)
+    samplingRate, data = wf.read(fileName)
+    signal = SignalObj(data,'time',samplingRate)
     return signal
 
 def write_wav(fileName,signalIn):
     """
-    Writes a :class:signalObj into a single wave file
+    Writes a SignalObj into a single wave file
     """
-    Fs = signalIn.Fs
+    samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
-    return wf.write(fileName,Fs,data)
+    return wf.write(fileName,samplingRate,data)
 
 
 def merge(signal1,*signalObjects):
@@ -65,34 +65,34 @@ def merge(signal1,*signalObjects):
     as a column of the new object
     """
     mergedSignal = signal1.timeSignal
-    N = signal1.N
-    Fs = signal1.Fs
+    numSamples = signal1.numSamples
+    samplingRate = signal1.samplingRate
     k = 1
     for inObj in signalObjects:
         mergedSignal = np.append(mergedSignal[:],inObj.timeSignal[:])
         k += 1
     mergedSignal = np.array(mergedSignal)
-    mergedSignal.resize(k,N)
+    mergedSignal.resize(k,numSamples)
     mergedSignal = mergedSignal.transpose()
-    newSignal = signalObj(mergedSignal,'time',Fs)
+    newSignal = SignalObj(mergedSignal,'time',samplingRate)
     return newSignal
 
-def fftconvolve(signal1,signal2):
+def fft_convolve(signal1,signal2):
     """
     Uses scipy.signal.fftconvolve() to convolve two time domain signais.
     
-    >>>convolution = pytta.fftconvolve(signal1,signal2)
+    >>> convolution = pytta.fft_convolve(signal1,signal2)
     """
 #    Fs = signal1.Fs
     conv = ss.fftconvolve(signal1.timeSignal,signal2.timeSignal)
-    signal = signalObj(conv, 'time', signal1.Fs)
+    signal = SignalObj(conv, 'time', signal1.samplingRate)
     return signal
 
-def finddelay(signal1, signal2):
+def find_delay(signal1, signal2):
     """
-    Cross Corrlation alternative, more efficient fft based method to calculate time shift between two signals.
+    Cross Correlation alternative, more efficient fft based method to calculate time shift between two signals.
    
-    >>>shift = pytta.finddelay(signal1,signal2)
+    >>> shift = pytta.find_delay(signal1,signal2)
     """
     if signal1.N != signal2.N:
         return print('Signal1 and Signal2 must have the same length')
@@ -101,16 +101,14 @@ def finddelay(signal1, signal2):
         f2 = sfft.fft(np.flipud(signal2.timeSignal))
         cc = np.real(sfft.ifft(f1 * f2))
         ccs = sfft.fftshift(cc)
-        zero_index = int(signal1.N / 2) - 1
+        zero_index = int(signal1.numSamples / 2) - 1
         shift = zero_index - np.argmax(ccs)          
     return shift
 
-def corrcoef(signal1, signal2):
+def corr_coef(signal1, signal2):
     """
-    :func:corrcoef
-    
-        Finds the correlation coeficient between two :class:signalObjs using
-        the numpy.corrcoef() function.
+    Finds the correlation coeficient between two SignalObjs using
+    the numpy.corrcoef() function.
     """
     coef = np.corrcoef(signal1.timeSignal, signal2.timeSignal)
     return coef[0,1]
@@ -118,12 +116,10 @@ def corrcoef(signal1, signal2):
 
 def resample(signal,newSamplingRate):
     """
-    :func:resample
-        
-        Resample the :prop:timeSignal of the input :class:signalObj to the
+        Resample the timeSignal of the input SignalObj to the
         given sample rate using the scipy.signal.resample() function
     """
-    newSignalSize = np.int(signal.timeLen*newSamplingRate)
+    newSignalSize = np.int(signal.timeLength*newSamplingRate)
     resampled = ss.resample(signal.timeSignal[:], newSignalSize)
-    newSignal = signalObj(resampled,"time",newSamplingRate)
+    newSignal = SignalObj(resampled,"time",newSamplingRate)
     return newSignal
