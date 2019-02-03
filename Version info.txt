@@ -17,3 +17,25 @@ Classes s„o inicializadas vazias (signalobj,, rec,)
 	 gravaÁ„o multicanal OK - 
 	 reproduÁ„o multicanal OK -
 	 plot multicanal OK - 
+
+30/01/19 Reescrita do c√≥digo de properties.py para a cria√ß√£o de uma classe Default que carrega os par√¢metros padr√µes
+	 inicializa√ß√£o de um objeto default, da classe Default, respons√°vel por utilizar e atualizar os atributos nas
+	 fun√ß√µes dos demais submodulos
+
+31/01/19 Reescrita boa parte de generate.py para carregar os par√¢metros padr√£o a cada chamada de fun√ß√£o, fazendo com
+	 que par√¢metros atualizados sejam atribu√≠dos como argumento das fun√ß√µes de gera√ß√£o
+
+01/02/19 Adapta√ß√£o de todas as vari√°veis, propriedades, atributos, m√©todos, fun√ß√µes e classes para uma nomenclatura
+	 padronizada, ao que segue:
+		- ClassName;
+		- method_name;
+		- propertyName;
+		- function_name;
+		- variableName;
+		- modulename.
+
+02/02/19 PadronizaÁ„o de nomes realizada em todos os arquivos
+
+03/02/19 Ajuste final dos submodulos para comunicarem-se utilizando nova nomenclatura
+         InserÁ„o e adaptaÁ„o de documentaÁ„o em mÈtodos e funÁıes
+            "push" realizado nesta data
