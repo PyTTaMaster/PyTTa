@@ -49,35 +49,24 @@ class PyTTaObj(object):
         - comment:       (' '),         some commentary about the signal or measurement object
         
     """
-    
+
     def __init__(self,samplingRate=None,
                  fftDegree = None,
                  timeLength = None,
                  numSamples = None,
                  freqMin = None,
                  freqMax = None,
-                 comment=None
+                 comment = "No comments."
                  ):
         self._samplingRate = samplingRate
         self._fftDegree = fftDegree
         self._timeLength = timeLength
         self._numSamples = numSamples
-        self._freqMin, self.freqMax = freqMin, freqMax
+        self._freqMin, self._freqMax = freqMin, freqMax
         self._comment = comment
-        
-    def __call__(self):
-        for name, value in vars(self).items():
-            if len(name)<=8:
-                print(name[1:]+'\t\t =',value)
-            else: 
-                print(name[1:]+'\t =',value)
-                
-    def __setattr__(self,name,value):
-        if name in dir(self):
-            vars(self)['_'+name] = value
-        else:
-            raise AttributeError ('There is no default settings for '+repr(name))
 
+#%% PyTTaObj Properties
+                
     @property
     def samplingRate(self):
         return self._samplingRate
@@ -106,6 +95,15 @@ class PyTTaObj(object):
     def comment(self):
         return self._comment
 
+#%% PyTTaObj Methods
+
+    def __call__(self):
+        for name, value in vars(self).items():
+            if len(name)<=8:
+                print(name[1:]+'\t\t =',value)
+            else: 
+                print(name[1:]+'\t =',value)
+                
     
 
 class SignalObj(PyTTaObj):
@@ -146,7 +144,7 @@ class SignalObj(PyTTaObj):
         else:
             pass
         super().__init__(*args,**kwargs)
-        self.domain = domain
+        self._domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray # [-] signal in frequency domain
         elif self.domain == 'time':
@@ -155,6 +153,20 @@ class SignalObj(PyTTaObj):
             self.timeSignal = signalArray
             print('Taking the input as a time domain signal')
             self.domain = 'time'
+
+#%% Signal Properties
+           
+    @property
+    def domain(self):
+        return self._domain
+    
+    @property 
+    def timeVector(self):
+        return self._timeVector
+    
+    @property 
+    def freqVector(self):
+        return self._freqVector
             
     @property # when timeSignal is called returns the ndarray
     def timeSignal(self):
@@ -164,23 +176,27 @@ class SignalObj(PyTTaObj):
                                     # calculate other properties
         self._timeSignal = np.array(newSignal)
         self._numSamples = len(self.timeSignal) # [-] number of samples
+        self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         
-        self._timeLength = self.numSamples/self.samplingRate
+        self._timeLength = self.numSamples / self.samplingRate
         # [s] signal time lenght
         
-        self._timeVector = np.linspace(0, self.timeLength-(1/self.Fs), self.N) 
+        self._timeVector = np.linspace( 0, \
+                                      self.timeLength \
+                                          - (1/self.samplingRate), \
+                                      self.numSamples ) 
         # [s] time vector (x axis)
         
-        self._freqVector = np.linspace(0, (self.N-1)*self.Fs/self.N, self.N)
+        self._freqVector = np.linspace( 0, \
+                                      (self.numSamples - 1) \
+                                          * self.samplingRate \
+                                          / self.numSamples, \
+                                      self.numSamples )
         # [Hz] frequency vector (x axis)
         
-        self._freqSignal = (2/self.N)*np.transpose( \
-                                      np.fft.fft( \
-                                      self.timeSignal.transpose() 
-                                      ) 
-                                      )
+        self._freqSignal = np.transpose( np.fft.fft( \
+                                      self.timeSignal.transpose() ) )
         # [-] signal in frequency domain
-        
 
     @property
     def freqSignal(self): 
@@ -194,6 +210,7 @@ class SignalObj(PyTTaObj):
                                         self.freqSignal.transpose()
                                         ) ) )
         self._numSamples = len(self.timeSignal) # [-] number of samples
+        self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         
         self._timeLength = self.numSamples/self.samplingRate 
         # [s] signal time lenght
@@ -202,11 +219,13 @@ class SignalObj(PyTTaObj):
         # [s] time vector
         
         self._freqVector = np.linspace(0, (self.numSamples-1) \
-                                       *self.samplingRate \
-                                       /self.numSamples, \
+                                       * self.samplingRate \
+                                       / self.numSamples, \
                                        self.numSamples)
         # [Hz] frequency vector
+
         
+#%% Signal Methods
         
     def __truediv__(self, other):
         """
@@ -315,9 +334,9 @@ class SignalObj(PyTTaObj):
             numChannels = 1
         return numChannels
     
-    def size_check(self,inputArray = None):
-        if inputArray == None: inputArray = self.timeSignal
-        return np.size(np.shape(inputArray))
+    def size_check(self, inputArray = []):
+        if inputArray == []: inputArray = self.timeSignal[:]
+        return np.size( inputArray.shape )
 
 
     def play(self,outChannel=None,latency='low',**kwargs):
@@ -326,7 +345,7 @@ class SignalObj(PyTTaObj):
         """
         if outChannel == None:
             if self.num_channels() <=1:
-                outChannel = default.outputChannels
+                outChannel = default.outChannel
             elif self.num_channels() > 1:
                 outChannel = np.arange(1,self.num_channels()+1)
                 
@@ -339,11 +358,12 @@ class SignalObj(PyTTaObj):
         """
         Time domain plotting method
         """
-        plot.figure(figsize=(10,5))
-        plot.plot(self.timeVector,self.timeSignal)
-        plot.axis([self.timeVector[0] - 10/self.Fs, self.timeVector[-1] \
-                   + 10/self.Fs, 1.05*np.min(self.timeSignal), \
-                   1.05*np.max(self.timeSignal)])
+        plot.figure( figsize=(10,5) )
+        plot.plot( self.timeVector, self.timeSignal )
+        plot.axis( [ self.timeVector[0] - 10/self.samplingRate, \
+                    self.timeVector[-1] + 10/self.samplingRate, \
+                    1.05*np.min( self.timeSignal ), \
+                   1.05*np.max( self.timeSignal ) ] )
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Amplitude$ [-]')
         
@@ -351,16 +371,18 @@ class SignalObj(PyTTaObj):
         """
         Frequency domain plotting method
         """
-        plot.figure(figsize=(10,5))
+        plot.figure( figsize=(10,5) )
         if not smooth:
-            dBSignal = 20*np.log10(np.abs(self.freqSignal))
-            plot.semilogx(self.freqVector,dBSignal )
+            dBSignal = 20 * np.log10( np.abs( \
+                            (2 / self.numSamples ) * self.freqSignal ) )
+            plot.semilogx( self.freqVector, dBSignal )
         else:
-            signalSmooth = signal.savgol_filter(np.abs( \
-                                    self.freqSignal.transpose()),31,3);
-            dBSignal = 20*np.log10(np.abs(signalSmooth))
-            plot.semilogx(self.freqVector,dBSignal.transpose())
-        plot.axis((15, 22050, 1.05*np.min(dBSignal), 1.05*np.max(dBSignal)))
+            signalSmooth = signal.savgol_filter( np.abs( \
+                                    self.freqSignal.transpose() ), 31, 3 )
+            dBSignal = 20 * np.log10( np.abs( signalSmooth ) )
+            plot.semilogx( self.freqVector, dBSignal.transpose() )
+        plot.axis( ( 15, 22050, 
+                   np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
         plot.xlabel(r'$Frequency$ [Hz]')
         plot.ylabel(r'$Magnitude$ [dBFS]')
 
@@ -395,6 +417,8 @@ class Measurement(PyTTaObj):
         self._device = device # device number. For device list use sounddevice.query_devices()
         self._inChannel = inChannel # input channels
         self._outChannel = outChannel # output channels
+        
+#%% Measurement Properties
         
         @property
         def device(self):
@@ -440,31 +464,35 @@ class RecMeasure(Measurement):
         super().__init__(*args,**kwargs)
         self._domain = domain
         if self.domain == 'samples':
-            self.fftDegree = fftDegree
+            self._fftDegree = fftDegree
         elif self.domain == 'time':
-            self.timeLength = timeLength
+            self._timeLength = timeLength
         else:
             self._timeLength = None
             self._fftDegree = None
-    
+
+#%% Rec Properties
+            
     @property
     def timeLength(self):
         return self._timeLength
     @timeLength.setter
     def timeLength(self,newLength):
-        self._timeLength = np.round(newLength,2)
-        self.numSamples = self._timeLen*self.samplingRate
-        self._fftDegree = np.round(np.log2(self.numSamples),2)
+        self._timeLength = np.round( newLength, 2 )
+        self._numSamples = self.timeLength * self.samplingRate
+        self._fftDegree = np.round( np.log2( self.numSamples ), 2 )
         
     @property
     def fftDegree(self):
         return self._fftDegree
     @fftDegree.setter
     def fftDegree(self,newDegree):
-        self._fftDegree = np.round(newDegree,2)
-        self._numSamples = 2**self._fftDegree
-        self._timeLength = np.round(self.numSamples/self.samplingRate,2)
-                
+        self._fftDegree = np.round( newDegree, 2 )
+        self._numSamples = 2**self.fftDegree
+        self._timeLength = np.round( self.numSamples / self.samplingRate, 2 )
+
+#%% Rec Methods
+        
     def run(self):
         """
         Run method: starts recording during Tmax seconds
@@ -482,6 +510,7 @@ class RecMeasure(Measurement):
         maxOut = np.max(np.abs(self.recording.timeSignal[:,:]))
         print('max input level (recording): ', 20*np.log10(maxOut), 'dBFs - ref.: 1 [-]')
         return self.recording
+    
     
     
 class PlayRecMeasure(Measurement):
@@ -512,20 +541,15 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
+
+#%% PlayRec Methods
             
-    @property
-    def excitation(self):
-        return self._excitation        
-    @excitation.setter
-    def excitation(self,newSignalObj):
-        self._excitation = newSignalObj
-        
     def run(self):
         """
         Starts reproducing the excitation signal and recording at the same time
         Outputs a signalObj with the recording content
         """
-        self.recording = sd.playrec(self.excitation.timeSignal,
+        recording = sd.playrec(self.excitation.timeSignal,
                              samplerate=self.samplingRate, 
                              input_mapping=self.inChannel,
                              output_mapping=self.outChannel,
@@ -534,12 +558,21 @@ class PlayRecMeasure(Measurement):
                              latency='low',
                              dtype = 'float32'
                              ) # y_all(t) - out signal: x(t) conv h(t)
-        self.recording = np.squeeze(self.recording) # turn column array into line array
-        self.recording = SignalObj(self.recording,'time',self.samplingRate)
+        recording = np.squeeze( recording ) # turn column array into line array
+        self.recording = SignalObj(recording, 'time', self.samplingRate )
 #        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
 #        print('max input level (recording): ', 20*np.log10(max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
         return self.recording
-    
+
+#%% PlayRec Properties
+            
+    @property
+    def excitation(self):
+        return self._excitation        
+    @excitation.setter
+    def excitation(self,newSignalObj):
+        self._excitation = newSignalObj
+        
     @property
     def samplingRate(self):
         return self.excitation._samplingRate
@@ -563,6 +596,7 @@ class PlayRecMeasure(Measurement):
     @property
     def freqMax(self):
         return self.excitation._freqMax
+
 
      
 class FRFMeasure(PlayRecMeasure):
