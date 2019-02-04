@@ -215,7 +215,7 @@ class SignalObj(PyTTaObj):
         self._timeLength = self.numSamples/self.samplingRate 
         # [s] signal time lenght
         
-        self._timeVector = np.arange(0, self.timeLength, 1/self.Fs)
+        self._timeVector = np.arange(0, self.timeLength, 1/self.samplingRate)
         # [s] time vector
         
         self._freqVector = np.linspace(0, (self.numSamples-1) \
@@ -234,7 +234,7 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike")
 
-        result = SignalObj(Fs=self.Fs)
+        result = SignalObj(samplingRate=self.samplingRate)
         result._domain = 'freq'
         if self.size_check() > 1:
             if other.size_check() > 1:
@@ -267,7 +267,7 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike")
 
-        result = SignalObj(Fs=self.Fs)
+        result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
         if self.size_check() > 1:
             if other.size_check() > 1:
@@ -299,7 +299,7 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike")
 
-        result = SignalObj(Fs=self.Fs)
+        result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
         if self.size_check() > 1:
             if other.size_check() > 1:
@@ -325,7 +325,7 @@ class SignalObj(PyTTaObj):
     
 
     def mean(self):
-        return SignalObj(np.mean(self.timeSignal,1),"time",self.Fs)
+        return SignalObj(np.mean(self.timeSignal,1),"time",self.samplingRate)
     
     def num_channels(self):
         try:
