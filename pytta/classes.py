@@ -420,17 +420,17 @@ class Measurement(PyTTaObj):
         
 #%% Measurement Properties
         
-        @property
-        def device(self):
-            return self._device
-        
-        @property
-        def inChannel(self):
-            return self._inChannel
-        
-        @property
-        def outChannel(self):
-            return self._outChannel
+    @property
+    def device(self):
+        return self._device
+    
+    @property
+    def inChannel(self):
+        return self._inChannel
+    
+    @property
+    def outChannel(self):
+        return self._outChannel
         
         
         
