@@ -178,25 +178,26 @@ class SignalObj(PyTTaObj):
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         
-        self._timeLength = self.numSamples / self.samplingRate
         # [s] signal time lenght
+        self._timeLength = self.numSamples / self.samplingRate
         
+        # [s] time vector (x axis)
         self._timeVector = np.linspace( 0, \
                                       self.timeLength \
                                           - (1/self.samplingRate), \
                                       self.numSamples ) 
-        # [s] time vector (x axis)
         
+        # [Hz] frequency vector (x axis)
         self._freqVector = np.linspace( 0, \
                                       (self.numSamples - 1) \
                                           * self.samplingRate \
                                           / self.numSamples, \
                                       self.numSamples )
-        # [Hz] frequency vector (x axis)
         
+        # [-] signal in frequency domain
         self._freqSignal = np.transpose( np.fft.fft( \
                                       self.timeSignal.transpose() ) )
-        # [-] signal in frequency domain
+
 
     @property
     def freqSignal(self): 
@@ -212,17 +213,17 @@ class SignalObj(PyTTaObj):
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         
-        self._timeLength = self.numSamples/self.samplingRate 
         # [s] signal time lenght
+        self._timeLength = self.numSamples/self.samplingRate 
         
-        self._timeVector = np.arange(0, self.timeLength, 1/self.samplingRate)
         # [s] time vector
+        self._timeVector = np.arange(0, self.timeLength, 1/self.samplingRate)
         
+        # [Hz] frequency vector
         self._freqVector = np.linspace(0, (self.numSamples-1) \
                                        * self.samplingRate \
                                        / self.numSamples, \
                                        self.numSamples)
-        # [Hz] frequency vector
 
         
 #%% Signal Methods
@@ -325,7 +326,7 @@ class SignalObj(PyTTaObj):
     
 
     def mean(self):
-        return SignalObj(np.mean(self.timeSignal,1),"time",self.samplingRate)
+        return SignalObj(np.mean(self.timeSignal,1),'time',self.samplingRate)
     
     def num_channels(self):
         try:

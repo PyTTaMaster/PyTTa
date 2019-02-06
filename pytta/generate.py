@@ -151,7 +151,7 @@ def __do_sweep_windowing(inputSweep,
     windowEnd = signal.hann(2*freqMaxSample)
     
     # Uses first half of windowStart, last half of windowEnd, and a vector of 
-    # ones with the remaining length
+    # ones with the remaining length, in between the half windows
     fullWindow = np.concatenate((windowStart[0:freqMinSample], \
                           np.ones( int( len(freqSweep) \
                                        - freqMinSample \
@@ -200,11 +200,11 @@ def noise(kind = 'white',
     noiseSamples = int(numSamples - marginSamples) # [samples] Actual noise number of samples
     if kind.upper() in ['WHITE','FLAT']:
         noiseSignal = np.random.randn(noiseSamples)
-#	elif kind.upper() == 'PINK':                             TODO
+#	elif kind.upper() == 'PINK':                            # TODO
 #		noiseSignal = np.randn(Nnoise)
 #		noiseSignal = noiseSignal/max(abs(noiseSignal))
 #		noiseSignal = __do_pink_filtering(noiseSignal)
-#	elif kind.upper() == 'BLUE':                             TODO
+#	elif kind.upper() == 'BLUE':                            # TODO
 #		noiseSignal = np.randn(Nnoise)
 #		noiseSignal = noiseSignal/max(abs(noiseSignal))
 #		noiseSignal = __do_blue_filtering(noiseSignal)
@@ -266,12 +266,69 @@ def measurement(kind = 'playrec',
 	Transferfunction, with the proper initiation arguments, a sampling rate,
 	frequency limits, audio input and output devices and channels
 	
-	>>> msRec = pytta.generate.measurement('rec')
-	>>> msPlayRec = pytta.generate.measurement('playrec')
-	>>> msFRF = pytta.generate.measurement('frf')
+		>>> pytta.generate.measurement(kind,
+                                       [domain,
+                                       fftDegree,
+                                       timeLength,
+                                       excitation],
+                                       samplingRate,
+                                       freqMin,
+                                       freqMax,
+                                       device,
+                                       inChannel,
+                                       outChannel,
+                                       comment
+                                       )
+	
+    The parameters between brackets are different for each value of the (kind)
+    parameter.
+    
+	>>> msRec = pytta.generate.measurement(kind='rec')
+	>>> msPlayRec = pytta.generate.measurement(kind='playrec')
+	>>> msFRF = pytta.generate.measurement(kind='frf')
 	
 	The input arguments may be different for each measurement kind.
 	
+		Options for (kind='rec'):
+		-------------------------
+			
+			- domain: 'time' or 'samples', defines if the recording length will
+						be set by time length, or number of samples
+			- timeLength: [s] used only if (domain='time'), set the duration
+								of the recording, in seconds;
+			- fftDegree: represents a power of two value that defines the
+							number of samples to be recorded:
+							
+								>>> numSamples = 2**fftDegree
+							
+			- samplingRate: [Hz] sampling frequency of the recording;
+			- freqMin: [Hz] smallest frequency of interest;
+			- freqMax: [Hz] highest frequency of interest;
+			- device: audio I/O device to use for recording;
+			- inChannel: list of active channels to record;
+			- comment: any commentary about the recording.
+
+
+		Options for (kind='playrec'):
+		-------------------------
+			
+			- excitation: object of SignalObj class, used for the playback. 
+			- samplingRate: [Hz] sampling frequency of the recording;
+			- freqMin: [Hz] smallest frequency of interest;
+			- freqMax: [Hz] highest frequency of interest;
+			- device: audio I/O device to use for recording;
+			- inChannel: list of active channels to record;
+			- outChannel: list of active channels to send the playback signal,
+							for M channels it is mandatory for the
+							excitation signal to have M columns in the 
+							timeSignal parameter.
+			- comment: any commentary about the recording.
+
+
+		Options for (kind='frf'):
+		-------------------------
+
+			Same as for (kind='playrec')
     """
 #%% Default Parameters
     if freqMin is None: freqMin = default.freqMin

@@ -17,13 +17,13 @@ PyTTa Default Properties:
     PyTTa functions through the Default class object
     
         >>> import pytta
-        >>> pytta.Default()
+        >>> pytta.default()
     
     The default values can be set differently using both declaring method, or
     the set_default() function
     
-        >>> pytta.Default.propertyName = propertyValue
-        >>> pytta.Default.set_defaults(propertyName1 = propertyValue1, 
+        >>> pytta.default.propertyName = propertyValue
+        >>> pytta.default.set_defaults(propertyName1 = propertyValue1, 
         >>>                            ... ,
         >>>                            propertyNameN = propertyValueN
         >>>                            )
@@ -72,9 +72,9 @@ class Default(object):
         samplingRate:
             Sampling frequency of the signal;
         fftDegree:
-            Adjusts the total number of samples to a base 2 number (totalSamples = 2**fftDegree);
+            Adjusts the total number of samples to a base 2 number (numSamples = 2**fftDegree);
         timeLength:
-            Total time duration of the signal (totalSamples = samplingRate * timeLength);
+            Total time duration of the signal (numSamples = samplingRate * timeLength);
         _freqMin:
             Smallest signal frequency of interest;
         _freqMax:
@@ -170,7 +170,7 @@ class Default(object):
         for name, value in namevalues.items(): # iterate over the (propertyName = propertyValue) pairs
             try:
                 if vars(self)['_'+name] != value: # Check if user value are different from the ones already set up
-                    if name in ['device','devices']: # Check if user is changin default audio IO device
+                    if name in ['device','devices']: # Check if user is changing default audio IO device
                         sd.default.device = value    # If True, changes the sounddevice default audio IO device
                         vars(self)['_'+name] = sd.default.device # Then loads to PyTTa default device
                     else:

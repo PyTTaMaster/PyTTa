@@ -79,7 +79,7 @@ def merge(signal1,*signalObjects):
 
 def fft_convolve(signal1,signal2):
     """
-    Uses scipy.signal.fftconvolve() to convolve two time domain signais.
+    Uses scipy.signal.fftconvolve() to convolve two time domain signals.
     
     >>> convolution = pytta.fft_convolve(signal1,signal2)
     """
@@ -97,12 +97,12 @@ def find_delay(signal1, signal2):
     if signal1.N != signal2.N:
         return print('Signal1 and Signal2 must have the same length')
     else:
-        f1 = signal1.freqSignal
-        f2 = sfft.fft(np.flipud(signal2.timeSignal))
-        cc = np.real(sfft.ifft(f1 * f2))
-        ccs = sfft.fftshift(cc)
-        zero_index = int(signal1.numSamples / 2) - 1
-        shift = zero_index - np.argmax(ccs)          
+        freqSignal1 = signal1.freqSignal
+        freqSignal2 = sfft.fft( np.flipud( signal2.timeSignal ) )
+        convoluted = np.real( sfft.ifft( freqSignal1 * freqSignal2 ) )
+        convShifted = sfft.fftshift( convoluted )
+        zeroIndex = int(signal1.numSamples / 2) - 1
+        shift = zeroIndex - np.argmax(convShifted)          
     return shift
 
 def corr_coef(signal1, signal2):
