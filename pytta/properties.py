@@ -138,7 +138,7 @@ class Default(object):
         if name in dir(self) and name!= 'device':
             vars(self)['_'+name] = value
         elif name in ['device','devices']:
-            self.set_defaults('device',value)
+            self.set_defaults(device = value)
         else:
             raise AttributeError ('There is no default settings for '+repr(name))
 
