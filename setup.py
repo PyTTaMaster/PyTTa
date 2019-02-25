@@ -21,7 +21,7 @@ settings = {
     'zip_safe': False,
     'author_email': 'joao.paes@eac.ufsm.br',
     'license': 'LGPL',
-    'install_requires': ['numpy','scipy','sounddevice','pyfilterbank'],
+    'requires': ['numpy','scipy','sounddevice','pyfilterbank'],
 #    'package_data': {
 #        'pytta': [
 #            'sosfilt.c',
