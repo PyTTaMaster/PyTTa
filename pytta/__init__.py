@@ -1,19 +1,15 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-                     PyTTa
-    Object Oriented Python in Technical Acoustics
+Object Oriented Python in Technical Acoustics
+==============================================
 
-                    __init__
-  
-@Autores:
-- João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-- Matheus Lazarin Alberto, mtslazarin@gmail.com
-
-@Última modificação: 29/10/18
+Autores:
+	João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
+	Matheus Lazarin Alberto, mtslazarin@gmail.com
 
 
-PyTTa
+PyTTa:
 
     This is a package developed to perform acoustic and vibration measurements
     and signal analysis. In order to provide such functionalities we require a
@@ -27,17 +23,59 @@ PyTTa
     - PyFilterbank (future release)
     
     We also recommend using the Anaconda Python distribution, it's not a
-    mandatory thing, but you should.
+    mandatory issue, but you should.
+    
+    
+	To begin, try:
+		 
+		 >>> import pytta
+		 >>> pytta.default()
+		 >>> pytta.list_devices()
 
+    You can find out everything available reading the submodules documentation:
+        
+        >>> pytta.classes
+        >>> pytta.generate
+        >>> pytta.functions
+        >>> pytta.properties
+
+For further information, check the specific module, class, method or function documentation.    
 """
 
 #%% Importing .py files as submodules
-from . import generate
 from . import properties
-from .classes import signalObj, RecMeasure, PlayRecMeasure, FRFMeasure
 
-__version__ = '0.0.0b' # package version
+# Instantiate the Default parameters to be loaded by other methods and function calls
+default = properties.Default()
+
+from .classes import SignalObj, RecMeasure, PlayRecMeasure, FRFMeasure
+from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample
+from . import generate
+
+#Default = properties.Default
+
+__version__ = '0.0.0a2' # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = ['generate','properties','RecMeasure',\
-           'PlayRecMeasure','FRFMeasure','signalObj'] 
+__all__ = [# Submodules
+           'generate',
+           
+           # Functions
+           'merge',
+           'fft_convolve',
+           'read_wav',
+           'write_wav',
+           'list_devices',
+           'find_delay',
+           'resample',
+           'corr_coef',
+           
+           # Classes
+           'RecMeasure',
+           'PlayRecMeasure',
+           'FRFMeasure',
+           'SignalObj',
+           
+           # Objects
+           'default',
+           ] 

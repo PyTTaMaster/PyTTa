@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Generate
 =========
@@ -7,23 +7,42 @@ Generate
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 
-@Última modificação: 27/10/18
+    This submodule provides the tools for instantiating the measurement and
+    signal objects to be used. We strongly recommend the use of this submodule
+    instead of directly instantiating classes, except when necessary.
+    
+    The signal generating functions already have set up a few good practices
+    on signal generation and reproduction through audio IO interfaces, like
+    silences at beginning and ending of the signal, as well as fade ins and fade
+    out to asvoid abrupt audio currents from flowing and causing undesired peaks
+    at start/ending of reproduction.
+    
+    On the measurement side, it tries to set up the environment by already giving
+    excitation signals, or 
 
-
+    User intended functions:
+        
+        >>> pytta.generate.sweep()
+        >>> pytta.generate.noise()
+        >>> pytta.generate.impulse()
+        >>> pytta.generate.measurement()
+    
+    For further information see the specific function documentation
 """
 
 #%%
-import pytta
-from pytta.properties import default
+from .classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
+from pytta import default
 from scipy import signal
 import numpy as np
 
-def sweep(Finf = default['freqMin'],
-          Fsup = default['freqMax'],
-          Fs = default['samplingRate'],
-          fftDeg = default['fftDegree'],
-          startmargin = default['startMargin'],
-          stopmargin = default['stopMargin'],
+
+def sweep(freqMin = None,
+          freqMax = None,
+          samplingRate = None,
+          fftDegree = None,
+          startMargin = None,
+          stopMargin = None,
           method = 'logarithmic',
           windowing = 'hann'):
     """
@@ -45,113 +64,342 @@ def sweep(Finf = default['freqMin'],
    is respected.
 
     """
-    Flim = np.array([Finf/(2**(1/6)), min(Fsup*(2**(1/6)),Fs/2)]); # frequency limits [Hz]
-    Ts = 1/Fs # [s] sampling period
-    Nstop = stopmargin*Fs # [samples] initial silence number of samples
-    Nstart = startmargin*Fs # [samples] ending silence number of samples
-    Nmargin = Nstart + Nstop # [samples] total silence number of samples
-    N = 2**fftDeg # [samples] full signal number of samples
-    Nsweep = N - Nmargin +1 # [samples] actual sweep number of samples
-    Tsweep = Nsweep/Fs # [s] sweep's time length
-    tsweep = np.arange(0,Tsweep,Ts) # [s] sweep time vector
-    if tsweep.size > Nsweep: tsweep = tsweep[0:int(Nsweep)] # adjust length
-    sweept = 0.8*signal.chirp(tsweep, Flim[0], Tsweep, Flim[1],\
-                              'logarithmic', phi=-90) # sweep, time domain
-    sweept = __do_sweep_windowing(sweept,tsweep,Flim,Finf,Fsup,windowing) # fade in and fade out
-    xt = np.concatenate( (np.zeros( int(Nstart) ),\
-                          sweept,\
-                          np.zeros( int(Nstop) ) ) ) # add initial and ending sileces
-    if xt.size != N: xt = xt[0:int(N)] # adjust length
-    x = pytta.signalObj(xt,'time',Fs) # transforms into a pytta signalObj
-    x.Flim = Flim # pass on the frequency limits considering the fade in and fade out
-    return x
+    if freqMin is None: freqMin = default.freqMin
+    if freqMax is None: freqMax = default.freqMax
+    if samplingRate is None: samplingRate = default.samplingRate
+    if fftDegree is None: fftDegree = default.fftDegree
+    if startMargin is None: startMargin = default.startMargin
+    if stopMargin is None: stopMargin = default.stopMargin
+    
+    freqLimits = np.array( [ freqMin / ( 2**(1/6) ), \
+                           min( freqMax*( 2**(1/6) ), \
+                                   samplingRate/2 )
+                           ] ) # frequency limits [Hz]
+    samplingTime = 1/samplingRate # [s] sampling period
+    
+    stopSamples = stopMargin*samplingRate 
+    # [samples] initial silence number of samples
+    
+    startSamples = startMargin*samplingRate
+    # [samples] ending silence number of samples
+    
+    marginSamples = startSamples + stopSamples
+    # [samples] total silence number of samples
+    
+    numSamples = 2**fftDegree # [samples] full signal number of samples
+    
+    sweepSamples = numSamples - marginSamples +1
+    # [samples] actual sweep number of samples
+    
+    sweepTime = sweepSamples/samplingRate # [s] sweep's time length
+    timeVecSweep = np.arange(0, sweepTime, samplingTime) # [s] sweep time vector
+    if timeVecSweep.size > sweepSamples:
+        timeVecSweep = timeVecSweep[0:int(sweepSamples)] # adjust length
+    sweep = 0.8*signal.chirp(timeVecSweep, \
+                             freqLimits[0],\
+                             sweepTime, \
+                             freqLimits[1],\
+                              'logarithmic', \
+                              phi=-90) # sweep, time domain
+    sweep = __do_sweep_windowing(sweep, \
+                                 timeVecSweep, \
+                                 freqLimits, \
+                                 freqMin, \
+                                 freqMax, \
+                                 windowing) # fade in and fade out
+    timeSignal = np.concatenate( ( np.zeros( \
+                                   int(startSamples) ), \
+                                   sweep, \
+                                   np.zeros( \
+                                   int(stopSamples) 
+                                   ) ) ) # add initial and ending sileces
+    if timeSignal.size != numSamples:
+        timeSignal = timeSignal[0:int(numSamples)] # adjust length
+    
+    sweepSignal = SignalObj(timeSignal,'time',samplingRate) 
+    # transforms into a pytta signalObj
+    
+    sweepSignal._freqMin, sweepSignal._freqMax \
+            = freqLimits[0], freqLimits[1] 
+    # pass on the frequency limits considering the fade in and fade out
+    return sweepSignal
 
-def __do_sweep_windowing(in_signal,
-                        tsweep,
-                        Flim, Finf, Fsup,
-                        win):
+def __do_sweep_windowing(inputSweep,
+                        timeVecSweep,
+                        freqLimits,
+                        freqMin,
+                        freqMax,
+                        window):
     """
-    Generates a fade in and fade out that are minimum at the chirp start and end,
+    Applies a fade in and fade out that are minimum at the chirp start and end,
     and maximum between the time intervals corresponding to Finf and Fsup.
     
     """
     
-    fsweep = Flim[0]*((Flim[1]/Flim[0])**(1/max(tsweep)))**tsweep # frequencias em função do tempo: freq(t)
-    a1 = np.where(fsweep<=Finf)
-    a2 = np.where(fsweep<=Fsup)
-    a1 = a1[-1][-1]
-    a2 = len(fsweep) - a2[-1][-1]
-    wins = signal.hann(2*a1)
-    winf = signal.hann(2*a2)
-    win = np.concatenate((wins[0:a1], np.ones(int(len(fsweep)-a1-a2+1)), winf[a2:-1]))
-    new_signal = win*in_signal
-    return new_signal
+    freqSweep = freqLimits[0]*( ( freqLimits[1] \
+                          / freqLimits[0] ) \
+                        **( 1/max(timeVecSweep) ) ) \
+                        **timeVecSweep # frequencies at time instants: freq(t)
+    freqMinSample = np.where(freqSweep<=freqMin) # exact sample where the chirp
+                                              # reaches freqMin [Hz]
+    freqMinSample = freqMinSample[-1][-1]
 
-
-def measurement(kind = 'playrec',*args,
-                Fs = default['samplingRate'],
-                Finf = default['freqMin'],
-                Fsup = default['freqMax'],
-                device = default['device'],
-                inch = default['inch'],
-                outch = default['outch'],**kwargs):
+    freqMaxSample = np.where(freqSweep<=freqMax) # exact sample where the chirp
+                                                # reaches freqMax [Hz]
+    freqMaxSample = len(freqSweep) - freqMaxSample[-1][-1]
+    windowStart = signal.hann(2*freqMinSample)
+    windowEnd = signal.hann(2*freqMaxSample)
     
-	"""
+    # Uses first half of windowStart, last half of windowEnd, and a vector of 
+    # ones with the remaining length, in between the half windows
+    fullWindow = np.concatenate((windowStart[0:freqMinSample], \
+                          np.ones( int( len(freqSweep) \
+                                       - freqMinSample \
+                                       - freqMaxSample \
+                                       + 1) ), \
+                          windowEnd[freqMaxSample:-1] ) )
+    newSweep = fullWindow * inputSweep
+    return newSweep
+ 
+    
+ 
+def noise(kind = 'white',
+          samplingRate = None,
+          fftDegree = None,
+          startMargin = None,
+          stopMargin = None,
+          windowing = 'hann'
+          ):
+    """Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a silence at the
+	begining and ending of the signal, plus a fade in to avoid abrupt speaker
+	excursioning. All noises have normalized amplitude.
+	
+		White noise is generated using numpy.randn between [[1];[-1]];
+	
+		Pink noise is still in progress;
+
+        Blue noise is still in progress;
+    """
+    
+    if samplingRate is None: samplingRate = default.samplingRate
+    if fftDegree is None: fftDegree = default.fftDegree
+    if startMargin is None: startMargin = default.startMargin
+    if stopMargin is None: stopMargin = default.stopMargin
+
+
+    stopSamples = stopMargin*samplingRate 
+    # [samples] initial silence number of samples
+    
+    startSamples = startMargin*samplingRate
+    # [samples] ending silence number of samples
+    
+    marginSamples = startSamples + stopSamples
+    # [samples] total silence number of samples
+    
+    numSamples = 2**fftDegree # [samples] full signal number of samples
+    noiseSamples = int(numSamples - marginSamples) # [samples] Actual noise number of samples
+    if kind.upper() in ['WHITE','FLAT']:
+        noiseSignal = np.random.randn(noiseSamples)
+#	elif kind.upper() == 'PINK':                            # TODO
+#		noiseSignal = np.randn(Nnoise)
+#		noiseSignal = noiseSignal/max(abs(noiseSignal))
+#		noiseSignal = __do_pink_filtering(noiseSignal)
+#	elif kind.upper() == 'BLUE':                            # TODO
+#		noiseSignal = np.randn(Nnoise)
+#		noiseSignal = noiseSignal/max(abs(noiseSignal))
+#		noiseSignal = __do_blue_filtering(noiseSignal)
+
+    noiseSignal = __do_noise_windowing( noiseSignal, noiseSamples, windowing )
+    noiseSignal = noiseSignal / max( abs( noiseSignal ) )
+    fullSignal = np.concatenate( ( np.zeros( startSamples ), \
+                              noiseSignal, \
+                              np.zeros( stopSamples ) ) )
+    fullSignal = SignalObj( fullSignal, 'time', samplingRate )
+    return fullSignal
+
+def __do_noise_windowing(inputNoise,
+                        noiseSamples,
+                        window):
+	
+    fivePercentSample = int( (5/100) * (noiseSamples) ) # sample equivalent to
+                                    # the first five percent of noise duration
+    windowStart = signal.hann( 2 * fivePercentSample )
+    fullWindow = np.concatenate( ( windowStart[0:fivePercentSample], \
+                                  np.ones( int( noiseSamples \
+                                               - fivePercentSample ) ) ) )
+    newNoise = fullWindow * inputNoise
+    return newNoise	
+
+
+
+def impulse(samplingRate = None,
+			fftDegree = None):
+    """
+    Generates a normalized impulse signal at time zero,
+    with zeros to fill the time length
+    """
+    if samplingRate is None: samplingRate = default.samplingRate
+    if fftDegree is None: fftDegree = default.fftDegree
+    
+    numSamples = 2**fftDegree
+    impulseSignal = (numSamples / samplingRate) \
+                    * np.ones(numSamples) + 1j * np.random.randn(numSamples)
+    impulseSignal = np.real( np.fft.ifft( impulseSignal ) )
+    impulseSignal = impulseSignal / max( impulseSignal )
+    newImpulse = SignalObj( impulseSignal, 'time', samplingRate )
+    return newImpulse
+
+
+	
+def measurement(kind = 'playrec',
+                *args,
+                samplingRate = None,
+                freqMin = None,
+                freqMax = None,
+                device = None,
+                inChannel = None,
+                outChannel = None,
+                **kwargs,
+                ):
+    """
 	Generates a measurement object of type Recording, Playback and Recording,
 	Transferfunction, with the proper initiation arguments, a sampling rate,
 	frequency limits, audio input and output devices and channels
 	
-	>>> msRec = pytta.generate.measurement('rec')
-	>>> msPlayRec = pytta.generate.measurement('playrec')
-	>>> msFRF = pytta.generate.measurement('frf')
+		>>> pytta.generate.measurement(kind,
+                                       [domain,
+                                       fftDegree,
+                                       timeLength,
+                                       excitation],
+                                       samplingRate,
+                                       freqMin,
+                                       freqMax,
+                                       device,
+                                       inChannel,
+                                       outChannel,
+                                       comment
+                                       )
+	
+    The parameters between brackets are different for each value of the (kind)
+    parameter.
+    
+	>>> msRec = pytta.generate.measurement(kind='rec')
+	>>> msPlayRec = pytta.generate.measurement(kind='playrec')
+	>>> msFRF = pytta.generate.measurement(kind='frf')
 	
 	The input arguments may be different for each measurement kind.
 	
-	"""
-	
-	if kind in ['rec','record','recording','r']:
-		recObj = pytta.RecMeasure(Fs=Fs,
-                                  Finf=Finf,
-                                  Fsup=Fsup,
-                                  device=device,
-                                  inch=inch,**kwargs)
-		if ('domain' in kwargs) or args:
-			if kwargs.get('domain') == 'time' or args[0]=='time':
-				recObj.domain = 'time'
-				recObj.timeLen = kwargs.get('timeLen') or args[1]
-			elif kwargs.get('domain') == 'samples' or args[0]=='samples':
-				recObj.domain = 'samples'
-				recObj.fftDeg = kwargs.get('fftDeg') or args[1]
-		else:
-			recObj.domain = 'samples'
-			recObj.fftDeg = default['fftDegree']
-		return recObj
-	
-	elif kind in ['playrec','playbackrecord','pr']:
-		if ('excitation' in kwargs) or args:
-			signalIn=kwargs.get('excitation') or args[0]
-			kwargs.pop('excitation',None)
-		else:
-			signalIn = sweep(Fs=Fs,Finf=Finf,Fsup=Fsup,**kwargs)
+		Options for (kind='rec'):
+		-------------------------
 			
-		prObj = pytta.PlayRecMeasure(signalIn,
-                                     device=device,
-                                     inch=inch,
-                                     outch=outch,
-                                     **kwargs)
-		return prObj
-	
-	elif kind in ['tf','frf','transferfunction','freqresponse']:
-		if ('excitation' in kwargs) or args:
-			signalIn=kwargs.get('excitation') or args[0]
-			kwargs.pop('excitation',None)
-		else:
-			signalIn = sweep(Fs=Fs,Finf=Finf,Fsup=Fsup,**kwargs)
+			- domain: 'time' or 'samples', defines if the recording length will
+						be set by time length, or number of samples
+			- timeLength: [s] used only if (domain='time'), set the duration
+								of the recording, in seconds;
+			- fftDegree: represents a power of two value that defines the
+							number of samples to be recorded:
+							
+								>>> numSamples = 2**fftDegree
+							
+			- samplingRate: [Hz] sampling frequency of the recording;
+			- freqMin: [Hz] smallest frequency of interest;
+			- freqMax: [Hz] highest frequency of interest;
+			- device: audio I/O device to use for recording;
+			- inChannel: list of active channels to record;
+			- comment: any commentary about the recording.
+
+
+		Options for (kind='playrec'):
+		-------------------------
 			
-		frfms = pytta.FRFMeasure(excitation=signalIn,
-                                device=device,
-                                inch=inch,
-                                outch=outch,
-                                **kwargs)
-		return frfms
-    
+			- excitation: object of SignalObj class, used for the playback. 
+			- samplingRate: [Hz] sampling frequency of the recording;
+			- freqMin: [Hz] smallest frequency of interest;
+			- freqMax: [Hz] highest frequency of interest;
+			- device: audio I/O device to use for recording;
+			- inChannel: list of active channels to record;
+			- outChannel: list of active channels to send the playback signal,
+							for M channels it is mandatory for the
+							excitation signal to have M columns in the 
+							timeSignal parameter.
+			- comment: any commentary about the recording.
+
+
+		Options for (kind='frf'):
+		-------------------------
+
+			Same as for (kind='playrec')
+    """
+#%% Default Parameters
+    if freqMin is None: freqMin = default.freqMin
+    if freqMax is None: freqMax = default.freqMax
+    if samplingRate is None: samplingRate = default.samplingRate
+    if device is None: device = default.device
+    if inChannel is None: inChannel = default.inChannel
+    if outChannel is None: outChannel = default.outChannel
+
+#%% Kind REC
+    if kind in ['rec','record','recording','r']:
+        recordObj = RecMeasure(samplingRate = samplingRate,
+                            freqMin = freqMin,
+                            freqMax = freqMax,
+                            device = device,
+                            inChannel = inChannel,
+                            **kwargs,
+                            )
+        if ('domain' in kwargs) or args:
+            if kwargs.get('domain') == 'time' or args[0]=='time':
+                recordObj.domain = 'time'
+                try:
+                    recordObj.timeLength = kwargs.get('timeLength') or args[1]
+                except:
+                    recordObj.timeLength = default.timeLength
+            elif kwargs.get('domain') == 'samples' or args[0]=='samples':
+                recordObj.domain = 'samples'
+                try:
+                    recordObj.fftDegree = kwargs.get('fftDegree') or args[1]
+                except:
+                    recordObj.fftDegree = default.fftDegree
+        else:
+            recordObj.domain = 'samples'
+            recordObj.fftDegree = default.fftDegree
+        return recordObj
+	
+#%% Kind PLAYREC    
+    elif kind in ['playrec','playbackrecord','pr']:
+        if ('excitation' in kwargs) or args:
+            signalIn = kwargs.get('excitation') or args[0]
+            kwargs.pop('excitation', None)
+        else:
+            signalIn = sweep(samplingRate = samplingRate,
+                             freqMin = freqMin,
+                             freqMax = freqMax,
+                             **kwargs)
+			
+        playRecObj = PlayRecMeasure(excitation = signalIn,
+                               device = device,
+                               inChannel = inChannel,
+                               outChannel = outChannel,
+                               **kwargs
+                               )
+        return playRecObj
+	
+#%% Kind FRF    
+    elif kind in ['tf','frf','transferfunction','freqresponse']:
+        if ('excitation' in kwargs) or args:
+            signalIn = kwargs.get('excitation') or args[0]
+            kwargs.pop('excitation', None)
+        else:
+            signalIn = sweep(samplingRate = samplingRate,
+                             freqMin = freqMin,
+                             freqMax = freqMax,
+                             **kwargs)
+
+        frfObj = FRFMeasure(excitation = signalIn,
+                            device = device,
+                            inChannel = inChannel,
+                            outChannel = outChannel,
+                            **kwargs
+                            )
+        return frfObj
+

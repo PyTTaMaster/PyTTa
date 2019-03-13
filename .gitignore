@@ -1,3 +1,6 @@
+# All the python stuff
+*.pyc
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -113,3 +116,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+<<<<<<< HEAD
+=======
+
+# DS
+.DS_Store
+>>>>>>> 4d5b6b03a0c35332baebc375023e8d43a39c83dd
