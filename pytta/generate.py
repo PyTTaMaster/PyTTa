@@ -211,9 +211,9 @@ def noise(kind = 'white',
 
     noiseSignal = __do_noise_windowing( noiseSignal, noiseSamples, windowing )
     noiseSignal = noiseSignal / max( abs( noiseSignal ) )
-    fullSignal = np.concatenate( ( np.zeros( startSamples ), \
+    fullSignal = np.concatenate( ( np.zeros( int(startSamples) ), \
                               noiseSignal, \
-                              np.zeros( stopSamples ) ) )
+                              np.zeros( int(stopSamples) ) ) )
     fullSignal = SignalObj( fullSignal, 'time', samplingRate )
     return fullSignal
 
