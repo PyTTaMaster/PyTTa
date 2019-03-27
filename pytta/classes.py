@@ -50,7 +50,8 @@ class PyTTaObj(object):
         
     """
 
-    def __init__(self,samplingRate=None,
+    def __init__(self,domain=None,
+                 samplingRate=None,
                  fftDegree = None,
                  timeLength = None,
                  numSamples = None,
@@ -58,6 +59,7 @@ class PyTTaObj(object):
                  freqMax = None,
                  comment = "No comments."
                  ):
+        self._domain = domain
         self._samplingRate = samplingRate
         self._fftDegree = fftDegree
         self._timeLength = timeLength
@@ -66,7 +68,15 @@ class PyTTaObj(object):
         self._comment = comment
 
 #%% PyTTaObj Properties
+
+    @property
+    def domain(self):
+        return self._domain
                 
+    @domain.setter
+    def domain(self,newDomain):
+        self._domain = newDomain
+    
     @property
     def samplingRate(self):
         return self._samplingRate
@@ -156,9 +166,13 @@ class SignalObj(PyTTaObj):
 
 #%% Signal Properties
            
-    @property
-    def domain(self):
-        return self._domain
+#    @property
+#    def domain(self):
+#        return self._domain
+#    
+#    @domain.setter
+#    def domain(self,newDomain):
+#        self._domain = newDomain
     
     @property 
     def timeVector(self):
