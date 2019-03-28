@@ -347,15 +347,15 @@ def measurement(kind = 'playrec',
                             inChannel = inChannel,
                             **kwargs,
                             )
-        if ('domain' in kwargs) or args:
-            if kwargs.get('domain') == 'time' or args[0]=='time':
-                recordObj.domain = 'time'
+        if ('lengthDomain' in kwargs) or args:
+            if kwargs.get('lengthDomain') == 'time' or args[0]=='time':
+                recordObj.lengthDomain = 'time'
                 try:
                     recordObj.timeLength = kwargs.get('timeLength') or args[1]
                 except:
                     recordObj.timeLength = default.timeLength
-            elif kwargs.get('domain') == 'samples' or args[0]=='samples':
-                recordObj.domain = 'samples'
+            elif kwargs.get('lengthDomain') == 'samples' or args[0]=='samples':
+                recordObj.lengthDomain = 'samples'
                 try:
                     recordObj.fftDegree = kwargs.get('fftDegree') or args[1]
                 except:

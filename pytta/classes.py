@@ -417,7 +417,7 @@ class SignalObj(PyTTaObj):
         else:
             signalSmooth = signal.savgol_filter( np.abs( \
                                     self.freqSignal.transpose() ), 31, 3 )
-            dBSignal = 20 * np.log10( np.abs( signalSmooth ) )
+            dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) )
             plot.semilogx( self.freqVector, dBSignal.transpose() )
         plot.axis( ( 15, 22050, 
                    np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
@@ -435,7 +435,8 @@ class Measurement(PyTTaObj):
     Properties(self): 	 	(default), 	 	 	meaning
         - device: 	 	 	(system default),  	list of input and output devices;
         - inChannel:  	 	([1]), 	 	 	 	list of device's input channel used for recording;
-        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj
+        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj;
+        - calibratedChain:  (0),                1 if you want a calibrated measurement chain or 0 if you don't want.
 
     Properties(inherited): 	(default), 	 	 	meaning
         - samplingRate: 	 	(44100), 	 	 	measurement's sampling rate;
@@ -448,6 +449,7 @@ class Measurement(PyTTaObj):
                  device=None,
                  inChannel=None,
                  outChannel=None,
+                 calibratedChain=None,
                  *args,
                  **kwargs
                  ):
@@ -455,6 +457,9 @@ class Measurement(PyTTaObj):
         self._device = device # device number. For device list use sounddevice.query_devices()
         self._inChannel = inChannel # input channels
         self._outChannel = outChannel # output channels
+        self._calibratedChain = calibratedChain # optin for a calibrated chain
+        self.calibratedChannels = [] # list of calibrated channels
+        self.calibrationCF = [] # list of calibration correction factors
         
 #%% Measurement Properties
         
@@ -470,7 +475,44 @@ class Measurement(PyTTaObj):
     def outChannel(self):
         return self._outChannel
         
+    @property
+    def calibratedChain(self):
+        return self._calibratedChain
         
+#%% Measurement Methods
+        
+    def calibVoltage(self):
+        print('---------------------------')
+        print('For that proceeding you must provide a reference rms voltage signal!')
+        print('---------------------------')
+        self.calibVoltageRef = float(input('What will be the reference rms voltage? --> '))
+        
+        if np.size(self.inChannel) > 1:
+            for ch in self.inChannel:
+                print('\nCalibrating input channel ',ch,'.')
+                confirm = input('\nDo you want to proceed on this channel? [y/n] --> ')
+                if confirm == 'y':
+                    self.calibVoltageRec = sd.rec(3*self.samplingRate,
+                                    self.samplingRate,
+                                    mapping = ch,
+                                    blocking=True,
+                                    latency='low',
+                                    dtype = 'float32')
+                                   
+                    
+                    rms = (np.mean(self.calibVoltageRec**2))**(1/2)
+                    self.calibrationCF.append(self.calibVoltageRef/rms)
+                    self.calibratedChannels.append(ch)
+        else:
+            self.calibVoltageRec = sd.rec(3*self.samplingRate,
+                self.samplingRate,
+                mapping = self.inChannel,
+                blocking=True,
+                latency='low',
+                dtype = 'float32')
+            rms = (np.mean(self.calibVoltageRec**2))**(1/2)
+            self.calibrationCF.append(self.calibVoltageRef/rms)
+            self.calibratedChannels.append(self.inChannel)
         
 class RecMeasure(Measurement):
     """
@@ -485,6 +527,7 @@ class RecMeasure(Measurement):
         - device: 	 	 	(system default),  	list of input and output devices;
         - inChannel:	 	 	([1]), 	 	 	 	list of device's input channel used for recording;
         - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj
+        - calibratedChain:  (0),                1 if you want a calibrated measurement chain or 0 if you don't want.
         - samplingRate: 	 	(44100), 	 	 	recording's sampling rate;
         - freqMin: 	 	 	(20),               minimum frequency bandwidth limits;
         - freqMax: 	 	 	(20000),            maximum frequency bandwidth limits;
@@ -500,7 +543,7 @@ class RecMeasure(Measurement):
                  timeLength=None,
                  *args,**kwargs):
         super().__init__(*args,**kwargs)
-        self._domain = lengthDomain
+        self.lengthDomain = lengthDomain
         if self.lengthDomain == 'samples':
             self._fftDegree = fftDegree
         elif self.lengthDomain == 'time':
