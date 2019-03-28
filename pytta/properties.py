@@ -43,8 +43,8 @@ import sounddevice as sd
 __default_device = sd.default.device 
 """ Used only to hold the default audio I/O device at pytta import time"""
 
-default = {'domain': 'samples',
-           'samplingRate': 44100,
+default = {'samplingRate': 44100,
+           'lengthDomain': 'samples',
            'fftDegree': 18,
            'timeLength': 10,
            'freqMin': 20,
