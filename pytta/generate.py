@@ -267,7 +267,7 @@ def measurement(kind = 'playrec',
 	frequency limits, audio input and output devices and channels
 	
 		>>> pytta.generate.measurement(kind,
-                                       [domain,
+                                       [lengthDomain,
                                        fftDegree,
                                        timeLength,
                                        excitation],
@@ -292,7 +292,7 @@ def measurement(kind = 'playrec',
 		Options for (kind='rec'):
 		-------------------------
 			
-			- domain: 'time' or 'samples', defines if the recording length will
+			- lengthDomain: 'time' or 'samples', defines if the recording length will
 						be set by time length, or number of samples
 			- timeLength: [s] used only if (domain='time'), set the duration
 								of the recording, in seconds;
