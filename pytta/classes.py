@@ -15,7 +15,7 @@ instantiation should be used through the <generate> submodule:
     >>> pytta.generate.sweep()
     >>> pytta.generate.noise()
     >>> pytta.generate.measurement('playrec')
-    >>> pytta.generate.measurement('rec', domain = 'time', timeLen = 5)
+    >>> pytta.generate.measurement('rec', lengthDomain = 'time', timeLen = 5)
     
 This way, the default settings will be loaded into any object instantiated.
 
@@ -45,12 +45,15 @@ class PyTTaObj(object):
     
     Properties(self):    (default),     meaning
         - samplingRate:  (44100),       signal's sampling rate
-        - freqLimits:    ([20,20000]),  frequency bandwidth limits
+        - freqMin:	     (20),          minimum frequency bandwidth limit;
+        - freqMax:	     (20000),       maximum frequency bandwidth limit;
         - comment:       (' '),         some commentary about the signal or measurement object
         
     """
 
-    def __init__(self,samplingRate=None,
+    def __init__(self,
+                 samplingRate=None,
+                 lengthDomain=None,
                  fftDegree = None,
                  timeLength = None,
                  numSamples = None,
@@ -58,6 +61,8 @@ class PyTTaObj(object):
                  freqMax = None,
                  comment = "No comments."
                  ):
+
+        self._lengthDomain = lengthDomain
         self._samplingRate = samplingRate
         self._fftDegree = fftDegree
         self._timeLength = timeLength
@@ -66,34 +71,70 @@ class PyTTaObj(object):
         self._comment = comment
 
 #%% PyTTaObj Properties
-                
+
     @property
     def samplingRate(self):
         return self._samplingRate
+
+    @samplingRate.setter
+    def samplingRate(self,newSamplingRate):
+        self._samplingRate = newSamplingRate
+
+    @property
+    def lengthDomain(self):
+        return self._lengthDomain
+                
+    @lengthDomain.setter
+    def lengthDomain(self,newDomain):
+        self._lengthDomain = newDomain
 
     @property
     def fftDegree(self):
         return self._fftDegree
 
+    @fftDegree.setter
+    def fftDegree(self,newFftDegree):
+        self._fftDegree = newFftDegree
+
     @property
     def timeLength(self):
         return self._timeLength
+
+    @timeLength.setter
+    def timeLength(self,newTimeLength):
+        self._timeLength = newTimeLength
 
     @property
     def numSamples(self):
         return self._numSamples
 
+    @numSamples.setter
+    def numSamples(self,newNumSamples):
+        self._numSamples = newNumSamples
+
     @property
     def freqMin(self):
         return self._freqMin
+
+    @freqMin.setter
+    def freqMin(self,newFreqMin):
+        self._freqMin = newFreqMin
 
     @property
     def freqMax(self):
         return self._freqMax
 
+    @freqMax.setter
+    def freqMax(self,newFreqMax):
+        self._freqMax = newFreqMax
+
     @property
     def comment(self):
         return self._comment
+
+    @comment.setter
+    def comment(self,newComment):
+        self._comment = newComment
 
 #%% PyTTaObj Methods
 
@@ -111,7 +152,7 @@ class SignalObj(PyTTaObj):
     """
     Signal object class.
     
-    Properties(self): 	   	(default),   	meaning  
+    Properties(self): 	(default),   	meaning  
         - timeSignal:   	(ndarray),   	signal at time domain;
         - timeVector:   	(ndarray),   	time reference vector for timeSignal;
         - freqSignal:   	(ndarray),   	signal at frequency domain;
@@ -119,8 +160,8 @@ class SignalObj(PyTTaObj):
         - numSamples:	(samples),   	signal's number of samples;
         - timeLength:  	(seconds),   	signal's duration;
         
-    Properties(inherited):  (default),          meaning
-        - samplingRate:     (44100),            signal's sampling rate;
+    Properties(inherited):  (default),     meaning
+        - samplingRate:     (44100),       signal's sampling rate;
         - freqMin:	   (20),               minimum frequency bandwidth limit;
         - freqMax:	   (20000),            maximum frequency bandwidth limit;
         - comment: 	   ('No comments.')    some commentary about the signal;        
@@ -144,7 +185,7 @@ class SignalObj(PyTTaObj):
         else:
             pass
         super().__init__(*args,**kwargs)
-        self._domain = domain or args[1]
+        self.domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray # [-] signal in frequency domain
         elif self.domain == 'time':
@@ -155,10 +196,6 @@ class SignalObj(PyTTaObj):
             self.domain = 'time'
 
 #%% Signal Properties
-           
-    @property
-    def domain(self):
-        return self._domain
     
     @property 
     def timeVector(self):
@@ -440,9 +477,9 @@ class RecMeasure(Measurement):
     Signal Recording object
     
     Properties(self) 	 	 (default), 	 	meaning:
-		- domain:  	 	 	 ('samples'), 	Information about the recording length. May be 'time' or 'samples';
-		- fftDegree:	 	 	 (18),  	 	 	number of samples will be 2**fftDeg. Used if domain is set to 'samples';
-		- timeLength: 	 	 (10), 	 	  	time length of the recording. Used if domain is set to 'time';
+		- lengthDomain:  	 ('samples'), 	Information about the recording length. May be 'time' or 'samples';
+		- fftDegree:	 	 	 (18),  	 	 	number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
+		- timeLength: 	 	 (10), 	 	  	time length of the recording. Used if lengthDomain is set to 'time';
 
     Properties(inherited) 	(default), 	 	 	meaning:
         - device: 	 	 	(system default),  	list of input and output devices;
@@ -458,15 +495,15 @@ class RecMeasure(Measurement):
 		
 
     """
-    def __init__(self,domain=None,
+    def __init__(self,lengthDomain=None,
                  fftDegree=None,
                  timeLength=None,
                  *args,**kwargs):
         super().__init__(*args,**kwargs)
-        self._domain = domain
-        if self.domain == 'samples':
+        self._domain = lengthDomain
+        if self.lengthDomain == 'samples':
             self._fftDegree = fftDegree
-        elif self.domain == 'time':
+        elif self.lengthDomain == 'time':
             self._timeLength = timeLength
         else:
             self._timeLength = None
@@ -508,7 +545,7 @@ class RecMeasure(Measurement):
                                 )
         self.recording = np.squeeze(self.recording)
         self.recording = SignalObj(self.recording,'time',self.samplingRate)
-        maxOut = np.max(np.abs(self.recording.timeSignal[:,:]))
+        maxOut = np.max(np.abs(self.recording.timeSignal))
         print('max input level (recording): ', 20*np.log10(maxOut), 'dBFs - ref.: 1 [-]')
         return self.recording
     
@@ -523,8 +560,8 @@ class PlayRecMeasure(Measurement):
 		- samplingRate:      (44100), 	 	 	signal's sampling rate;
         - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
         - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
-        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if domain is set to 'samples';
-		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if domain is set to 'time';
+        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
+		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
 
     Properties(inherited): 	(default), 	 	 	meaning:
         - device: 	 	 	(system default),  	list of input and output devices;
@@ -561,8 +598,8 @@ class PlayRecMeasure(Measurement):
                              ) # y_all(t) - out signal: x(t) conv h(t)
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(recording, 'time', self.samplingRate )
-#        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
-#        print('max input level (recording): ', 20*np.log10(max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
+        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
+        print('max input level (recording): ', 20*np.log10(max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
         return self.recording
 
 #%% PlayRec Properties
@@ -609,8 +646,8 @@ class FRFMeasure(PlayRecMeasure):
 		- samplingRate:      (44100), 	 	 	signal's sampling rate;
         - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
         - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
-        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if domain is set to 'samples';
-		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if domain is set to 'time';
+        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
+		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
 
     Properties(inherited): 	(default), 	 	 	meaning:
         - device: 	 	 	(system default),  	list of input and output devices;

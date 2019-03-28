@@ -44,6 +44,7 @@ __default_device = sd.default.device
 """ Used only to hold the default audio I/O device at pytta import time"""
 
 default = {'samplingRate': 44100,
+           'lengthDomain': 'samples',
            'fftDegree': 18,
            'timeLength': 10,
            'freqMin': 20,
@@ -110,6 +111,7 @@ class Default(object):
     """
 
     _samplingRate = []
+    _lengthDomain = []
     _fftDegree = []
     _timeLength = []
     _freqMin = []
@@ -187,6 +189,10 @@ class Default(object):
     @property
     def samplingRate(self):
         return self._samplingRate
+
+    @property
+    def lengthDomain(self):
+        return self._lengthDomain
     
     @property
     def fftDegree(self):
