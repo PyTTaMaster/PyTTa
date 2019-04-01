@@ -116,7 +116,7 @@ def sweep(freqMin = None,
     if timeSignal.size != numSamples:
         timeSignal = timeSignal[0:int(numSamples)] # adjust length
     
-    sweepSignal = SignalObj(timeSignal,'time',samplingRate) 
+    sweepSignal = SignalObj(signalArray=timeSignal,domain='time',samplingRate=samplingRate) 
     # transforms into a pytta signalObj
     
     sweepSignal._freqMin, sweepSignal._freqMax \
@@ -214,7 +214,7 @@ def noise(kind = 'white',
     fullSignal = np.concatenate( ( np.zeros( int(startSamples) ), \
                               noiseSignal, \
                               np.zeros( int(stopSamples) ) ) )
-    fullSignal = SignalObj( fullSignal, 'time', samplingRate )
+    fullSignal = SignalObj(signalArray=fullSignal,domain='time',samplingRate=samplingRate)
     return fullSignal
 
 def __do_noise_windowing(inputNoise,
@@ -246,7 +246,7 @@ def impulse(samplingRate = None,
                     * np.ones(numSamples) + 1j * np.random.randn(numSamples)
     impulseSignal = np.real( np.fft.ifft( impulseSignal ) )
     impulseSignal = impulseSignal / max( impulseSignal )
-    newImpulse = SignalObj( impulseSignal, 'time', samplingRate )
+    newImpulse = SignalObj(signalArray=impulseSignal,domain='time',samplingRate=samplingRate )
     return newImpulse
 
 

@@ -50,8 +50,8 @@ default = {'samplingRate': 44100,
            'freqMin': 20,
            'freqMax': 20000,
            'device': __default_device,
-           'inChannel': 1,
-           'outChannel': 1,
+           'inChannel': [1],
+           'outChannel': [1],
            'stopMargin': 0.7,
            'startMargin': 0.3,
            'comment': 'No comments.',
@@ -72,6 +72,8 @@ class Default(object):
     
         samplingRate:
             Sampling frequency of the signal;
+        lengthDomain:
+            Information about the recording length. May be 'time' or 'samples';
         fftDegree:
             Adjusts the total number of samples to a base 2 number (numSamples = 2**fftDegree);
         timeLength:
