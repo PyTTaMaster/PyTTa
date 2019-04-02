@@ -438,8 +438,8 @@ class SignalObj(PyTTaObj):
         """
         plot.figure( figsize=(10,5) )
         if not smooth:
-            dBSignal = 20 * np.log10( np.abs( \
-                            (2 / self.numSamples ) * self.freqSignal ) / self.dBRef )
+            dBSignal = 20 * np.log10( (2/self.numSamples)*np.abs(self.freqSignal)\
+                                     /self.dBRef)
             plot.semilogx( self.freqVector, dBSignal )
         else:
             signalSmooth = signal.savgol_filter( np.abs( \
@@ -643,9 +643,13 @@ class RecMeasure(Measurement):
         self.recording = SignalObj(signalArray=self.recording,domain='time',samplingRate=self.samplingRate)        
         # Apply the calibration Correction Factor
         if self.calibratedChain == 1:
-            for chindex in range(self.recording.num_channels()):
-                self.recording.timeSignal[chindex,:] = self.vCalibrationCF[chindex]*self.recording.timeSignal[chindex,:]
-            self.recording.unit = 'V'
+            if self.recording.size_check() > 1:
+                for chindex in range(self.recording.num_channels()):
+                    self.recording.timeSignal[:,chindex] = self.vCalibrationCF[chindex]*self.recording.timeSignal[:,chindex]
+                self.recording.unit = 'V'
+            else:
+                self.recording.timeSignal[:] = self.vCalibrationCF*self.recording.timeSignal[:]
+                self.recording.unit = 'V'
         maxOut = np.max(np.abs(self.recording.timeSignal))
         print('max input level (recording): ',20*np.log10(maxOut/self.recording.dBRef),' ',self.recording.dBName,' - ref.: ',str(self.recording.dBRef),' [',self.recording.unit,']')
         return self.recording    
