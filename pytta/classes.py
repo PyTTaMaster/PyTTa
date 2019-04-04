@@ -234,12 +234,11 @@ class SignalObj(PyTTaObj):
         self._freqVector = np.linspace( 0, \
                                       (self.numSamples - 1) \
                                           * self.samplingRate \
-                                          / self.numSamples, \
-                                      self.numSamples )
+                                          /(2*self.numSamples), \
+                                      (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 )
         
         # [-] signal in frequency domain
-        self._freqSignal = np.transpose( np.fft.fft( \
-                                      self.timeSignal.transpose() ) )
+        self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None)
 
 
     @property
@@ -248,11 +247,7 @@ class SignalObj(PyTTaObj):
     @freqSignal.setter
     def freqSignal(self,newSignal):
         self._freqSignal = np.array(newSignal)
-        self._timeSignal = np.transpose( \
-                                        np.real( \
-                                        np.fft.ifft( \
-                                        self.freqSignal.transpose()
-                                        ) ) )
+        self._timeSignal =  np.fft.irfft(self.freqSignal,axis=0,norm=None)
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         
@@ -265,8 +260,8 @@ class SignalObj(PyTTaObj):
         # [Hz] frequency vector
         self._freqVector = np.linspace(0, (self.numSamples-1) \
                                        * self.samplingRate \
-                                       / self.numSamples, \
-                                       self.numSamples)
+                                       / (2*self.numSamples), \
+                                       (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 )
 
     @property
     def unit(self):
@@ -321,7 +316,7 @@ class SignalObj(PyTTaObj):
                                 /other.freqSignal[:,channel]
                                 
         else: result.freqSignal = self.freqSignal / other.freqSignal
-
+        
         return result
     
     
@@ -438,14 +433,14 @@ class SignalObj(PyTTaObj):
         """
         plot.figure( figsize=(10,5) )
         if not smooth:
-            dBSignal = 20 * np.log10( (2/self.numSamples)*np.abs(self.freqSignal)\
+            dBSignal = 20 * np.log10( (1/self.numSamples)*np.abs(self.freqSignal)\
                                      /self.dBRef)
             plot.semilogx( self.freqVector, dBSignal )
         else:
             signalSmooth = signal.savgol_filter( np.abs( \
-                                    self.freqSignal.transpose() ), 31, 3 )
+                                    self.freqSignal ), 31, 3 )
             dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
-            plot.semilogx( self.freqVector, dBSignal.transpose() )
+            plot.semilogx( self.freqVector, dBSignal )
         plot.axis( ( 15, 22050, 
                    np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
         plot.xlabel(r'$Frequency$ [Hz]')
