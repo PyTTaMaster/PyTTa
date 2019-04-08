@@ -252,13 +252,13 @@ def impulse(samplingRate = None,
 
 	
 def measurement(kind = 'playrec',
-                *args,
                 samplingRate = None,
                 freqMin = None,
                 freqMax = None,
                 device = None,
                 inChannel = None,
                 outChannel = None,
+                *args,
                 **kwargs,
                 ):
     """
@@ -348,16 +348,16 @@ def measurement(kind = 'playrec',
                             **kwargs,
                             )
         if ('lengthDomain' in kwargs) or args:
-            if kwargs.get('lengthDomain') == 'time' or args[0]=='time':
+            if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
                 try:
-                    recordObj.timeLength = kwargs.get('timeLength') or args[1]
+                    recordObj.timeLength = kwargs.get('timeLength')
                 except:
                     recordObj.timeLength = default.timeLength
-            elif kwargs.get('lengthDomain') == 'samples' or args[0]=='samples':
+            elif kwargs.get('lengthDomain') == 'samples':
                 recordObj.lengthDomain = 'samples'
                 try:
-                    recordObj.fftDegree = kwargs.get('fftDegree') or args[1]
+                    recordObj.fftDegree = kwargs.get('fftDegree')
                 except:
                     recordObj.fftDegree = default.fftDegree
         else:
