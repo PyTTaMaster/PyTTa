@@ -420,10 +420,10 @@ class SignalObj(PyTTaObj):
         """
         plot.figure( figsize=(10,5) )
         plot.plot( self.timeVector, self.timeSignal )
-        plot.axis( [ self.timeVector[0] - 10/self.samplingRate, \
+        plot.axis( ( self.timeVector[0] - 10/self.samplingRate, \
                     self.timeVector[-1] + 10/self.samplingRate, \
                     1.05*np.min( self.timeSignal ), \
-                   1.05*np.max( self.timeSignal ) ] )
+                   1.05*np.max( self.timeSignal ) ) )
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Amplitude$ ['+self.unit+']')
         
@@ -442,6 +442,9 @@ class SignalObj(PyTTaObj):
                 for chindex in range(self.num_channels()):
                     signalSmooth[:,chindex] = signal.savgol_filter( np.abs( \
                                         self.freqSignal[:,chindex]), 31, 3 )
+            else:
+                signalSmooth = signal.savgol_filter( np.abs( \
+                                        self.freqSignal), 31, 3 )
             dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
         plot.semilogx( self.freqVector, dBSignal )
         plot.axis( ( 15, 22050, 
