@@ -437,10 +437,13 @@ class SignalObj(PyTTaObj):
                                      /self.dBRef)
             plot.semilogx( self.freqVector, dBSignal )
         else:
-            signalSmooth = signal.savgol_filter( np.abs( \
-                                    self.freqSignal ), 31, 3 )
+            if self.num_channels() > 1:
+                signalSmooth= np.empty((len(self.freqSignal),int(self.num_channels())))
+                for chindex in range(self.num_channels()):
+                    signalSmooth[:,chindex] = signal.savgol_filter( np.abs( \
+                                        self.freqSignal[:,chindex]), 31, 3 )
             dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
-            plot.semilogx( self.freqVector, dBSignal )
+        plot.semilogx( self.freqVector, dBSignal )
         plot.axis( ( 15, 22050, 
                    np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
         plot.xlabel(r'$Frequency$ [Hz]')
