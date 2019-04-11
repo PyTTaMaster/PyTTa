@@ -32,6 +32,7 @@ For further information see the specific class, or method, documentation
 #import pytta as pa
 import numpy as np
 import matplotlib.pyplot as plot
+import matplotlib.lines as mlines
 import scipy.signal as signal
 import sounddevice as sd
 from pytta import default
@@ -161,8 +162,7 @@ class SignalObj(PyTTaObj):
         - numSamples:	(samples),   	signal's number of samples;
         - timeLength:  	(seconds),   	signal's duration;
         - unit:         (None),         signal's unit. May be 'V' or 'Pa';
-        - dBName:       ('dBFs'),       signal's decibel notation;
-        - dBRef:        (1),            signal's decibel reference value;
+        - channelName   (dict),         channels name dictionary;
         
     Properties(inherited):  (default),     meaning
         - samplingRate:     (44100),       signal's sampling rate;
@@ -181,6 +181,7 @@ class SignalObj(PyTTaObj):
                      signalArray=np.array([0]),
                      domain='time',
                      unit=None,
+                     channelName = {},
                      *args,
                      **kwargs):
         if self.size_check(signalArray)>2:
@@ -200,6 +201,15 @@ class SignalObj(PyTTaObj):
             print('Taking the input as a time domain signal')
             self.domain = 'time'
         self.unit = unit
+        self.channelName = channelName
+        if self.channelName == {}:
+            for chIndex in range(1,self.num_channels()+1):
+                self.channelName[chIndex] = 'Channel '+str(chIndex)
+        elif len(self.channelName) == self.num_channels():
+            self.channelName == channelName
+        else:
+            raise AttributeError('Incompatible number of channel names and channel number.')
+            
 
 #%% SignalObj Properties
     
@@ -283,7 +293,6 @@ class SignalObj(PyTTaObj):
             self.dBRef = 1
         else:
             raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
-
 
 #%% SignalObj Methods
         
@@ -385,7 +394,7 @@ class SignalObj(PyTTaObj):
     
 
     def mean(self):
-        return SignalObj(signalArray=np.mean(self.timeSignal,1),domain='time',samplingRate=self.samplingRate)
+        return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
     
     def num_channels(self):
         try:
@@ -419,7 +428,13 @@ class SignalObj(PyTTaObj):
         Time domain plotting method
         """
         plot.figure( figsize=(10,5) )
-        plot.plot( self.timeVector, self.timeSignal )
+        if self.num_channels() > 1:
+            for chIndex in range(self.num_channels()):
+                plot.plot( self.timeVector, self.timeSignal[:,chIndex],label=self.channelName[chIndex+1])            
+        else:
+            plot.plot( self.timeVector, self.timeSignal,label=self.channelName[1])            
+        plot.legend(loc='best')
+        plot.grid(color='gray', linestyle='-.', linewidth=0.4)
         plot.axis( ( self.timeVector[0] - 10/self.samplingRate, \
                     self.timeVector[-1] + 10/self.samplingRate, \
                     1.05*np.min( self.timeSignal ), \
@@ -435,17 +450,27 @@ class SignalObj(PyTTaObj):
         if not smooth:
             dBSignal = 20 * np.log10( (1/self.numSamples)*np.abs(self.freqSignal)\
                                      /self.dBRef)
-            plot.semilogx( self.freqVector, dBSignal )
+#            plot.semilogx( self.freqVector, dBSignal )
+            if self.num_channels() > 1:
+                for chIndex in range(0,self.num_channels()):
+                    dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
+                    plot.semilogx( self.freqVector,dBSignal,label=self.channelName[chIndex+1])
+            else:
+                dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( self.freqSignal) / self.dBRef )
+                plot.plot( self.freqVector, dBSignal ,label=self.channelName[1])            
         else:
             if self.num_channels() > 1:
                 signalSmooth= np.empty((len(self.freqSignal),int(self.num_channels())))
-                for chindex in range(self.num_channels()):
-                    signalSmooth[:,chindex] = signal.savgol_filter( np.abs( \
-                                        self.freqSignal[:,chindex]), 31, 3 )
+                for chIndex in range(self.num_channels()):
+                    signalSmooth[:,chIndex] = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
+                    dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth[:,chIndex] ) / self.dBRef )
+                    plot.plot( self.freqVector, dBSignal ,label=self.channelName[chIndex+1])
             else:
-                signalSmooth = signal.savgol_filter( np.abs( \
-                                        self.freqSignal), 31, 3 )
-            dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
+                signalSmooth = signal.savgol_filter( np.abs(self.freqSignal), 31, 3 )
+                dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
+                plot.plot( self.freqVector, dBSignal ,label=self.channelName[1])
+        plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
+        plot.legend(loc='best')
         plot.semilogx( self.freqVector, dBSignal )
         plot.axis( ( 15, 22050, 
                    np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
