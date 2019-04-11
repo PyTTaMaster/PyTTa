@@ -66,17 +66,18 @@ def merge(signal1,*signalObjects):
     signalObj and place the respective timeSignal of each
     as a column of the new object
     """
-    mergedSignal = signal1.timeSignal
-    numSamples = signal1.numSamples
+    mergedSignal = np.array([signal1.timeSignal]).T
+#    numSamples = signal1.numSamples
     samplingRate = signal1.samplingRate
     k = 1
     for inObj in signalObjects:
-        mergedSignal = np.append(mergedSignal[:],inObj.timeSignal[:])
+        mergedSignal = np.hstack((mergedSignal,np.array([inObj.timeSignal]).T))
         k += 1
-    mergedSignal = np.array(mergedSignal)
-    mergedSignal.resize(k,numSamples)
-    mergedSignal = mergedSignal.transpose()
-    newSignal = SignalObj(mergedSignal,'time',samplingRate)
+#    mergedSignal = np.array(mergedSignal)
+#    mergedSignal.resize(k,numSamples)
+#    mergedSignal = mergedSignal.transpose()
+    print('criando signalobj do merge')
+    newSignal = SignalObj(mergedSignal,domain='time',samplingRate=samplingRate)
     return newSignal
 
 def fft_convolve(signal1,signal2):

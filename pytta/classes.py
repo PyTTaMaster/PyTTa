@@ -181,7 +181,7 @@ class SignalObj(PyTTaObj):
                      signalArray=np.array([0]),
                      domain='time',
                      unit=None,
-                     channelName = {},
+                     channelName = None,
                      *args,
                      **kwargs):
         if self.size_check(signalArray)>2:
@@ -191,6 +191,7 @@ class SignalObj(PyTTaObj):
         else:
             pass
         super().__init__(*args,**kwargs)
+        # domain and initializate stuff
         self.domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray # [-] signal in frequency domain
@@ -201,8 +202,10 @@ class SignalObj(PyTTaObj):
             print('Taking the input as a time domain signal')
             self.domain = 'time'
         self.unit = unit
-        self.channelName = channelName
-        if self.channelName == {}:
+        # channelName stuff
+        print(channelName)
+        if channelName == None:
+            self.channelName = {}            
             for chIndex in range(1,self.num_channels()+1):
                 self.channelName[chIndex] = 'Channel '+str(chIndex)
         elif len(self.channelName) == self.num_channels():
