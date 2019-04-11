@@ -46,7 +46,9 @@ def read_wav(fileName):
     Reads a wave file into a SignalObj   
     """
     samplingRate, data = wf.read(fileName)
-    signal = SignalObj(data,'time',samplingRate)
+    if data.dtype == 'int16': data = data/(2**15)
+    if data.dtype == 'int32': data = data/(2**31)
+    signal = SignalObj(data,'time',samplingRate=samplingRate)
     return signal
 
 def write_wav(fileName,signalIn):
