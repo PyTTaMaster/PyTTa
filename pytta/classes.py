@@ -203,7 +203,6 @@ class SignalObj(PyTTaObj):
             self.domain = 'time'
         self.unit = unit
         # channelName stuff
-        print(channelName)
         if channelName == None:
             self.channelName = {}            
             for chIndex in range(1,self.num_channels()+1):

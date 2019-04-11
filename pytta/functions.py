@@ -67,16 +67,12 @@ def merge(signal1,*signalObjects):
     as a column of the new object
     """
     mergedSignal = np.array([signal1.timeSignal]).T
-#    numSamples = signal1.numSamples
+    numSamples = signal1.numSamples
     samplingRate = signal1.samplingRate
     k = 1
     for inObj in signalObjects:
         mergedSignal = np.hstack((mergedSignal,np.array([inObj.timeSignal]).T))
         k += 1
-#    mergedSignal = np.array(mergedSignal)
-#    mergedSignal.resize(k,numSamples)
-#    mergedSignal = mergedSignal.transpose()
-    print('criando signalobj do merge')
     newSignal = SignalObj(mergedSignal,domain='time',samplingRate=samplingRate)
     return newSignal
 
