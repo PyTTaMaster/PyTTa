@@ -66,14 +66,37 @@ def merge(signal1,*signalObjects):
     signalObj and place the respective timeSignal of each
     as a column of the new object
     """
-    mergedSignal = np.array([signal1.timeSignal]).T
-    numSamples = signal1.numSamples
-    samplingRate = signal1.samplingRate
-    k = 1
+    j=1;
+    comment = '\nMerge obj. 1: '+signal1.comment+';'
+    channelName = signal1.channelName
+    if signal1.num_channels() == 1:
+        timeSignal = np.array([signal1.timeSignal]).T
+    else:
+        timeSignal = signal1.timeSignal
     for inObj in signalObjects:
-        mergedSignal = np.hstack((mergedSignal,np.array([inObj.timeSignal]).T))
-        k += 1
-    newSignal = SignalObj(mergedSignal,domain='time',samplingRate=samplingRate)
+        if signal1.samplingRate != inObj.samplingRate:
+            message = '\
+            \n To merge signals they must have the same sampling rate!\
+            \n SignalObj 1 and '+str(j+1)+' have different sampling rates.'
+            raise AttributeError(message)
+        if signal1.numSamples != inObj.numSamples:
+            message ='\
+            \n To merge signals they must have the same length!\
+            \n SignalObj 1 and '+str(j+1)+' have different lengths.'
+            raise AttributeError(message)
+        if signal1.unit != inObj.unit:
+            message ='\
+            \n To merge signals they must have the same unit!\
+            \n SignalObj 1 and '+str(j+1)+' have different units.'
+            raise AttributeError(message)            
+        comment = comment + '\nMerge obj. '+str(j+1)+': '+signal1.comment+';'
+        channelName = channelName + inObj.channelName
+        if inObj.num_channels() == 1:
+            timeSignal = np.hstack(( timeSignal,np.array([inObj.timeSignal]).T ))
+        else:
+            timeSignal = np.hstack(( timeSignal,inObj.timeSignal ))
+        j += 1
+    newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName)
     return newSignal
 
 def fft_convolve(signal1,signal2):
