@@ -67,7 +67,7 @@ def merge(signal1,*signalObjects):
     as a column of the new object
     """
     j=1;
-    comment = '\nMerge obj. 1: '+signal1.comment+';'
+    comment = signal1.comment
     channelName = signal1.channelName
     if signal1.num_channels() == 1:
         timeSignal = np.array([signal1.timeSignal]).T
@@ -89,14 +89,14 @@ def merge(signal1,*signalObjects):
             \n To merge signals they must have the same unit!\
             \n SignalObj 1 and '+str(j+1)+' have different units.'
             raise AttributeError(message)            
-        comment = comment + '\nMerge obj. '+str(j+1)+': '+signal1.comment+';'
+        comment = comment + ' / ' + inObj.comment
         channelName = channelName + inObj.channelName
         if inObj.num_channels() == 1:
             timeSignal = np.hstack(( timeSignal,np.array([inObj.timeSignal]).T ))
         else:
             timeSignal = np.hstack(( timeSignal,inObj.timeSignal ))
         j += 1
-    newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName)
+    newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName,comment=comment)
     return newSignal
 
 def fft_convolve(signal1,signal2):
