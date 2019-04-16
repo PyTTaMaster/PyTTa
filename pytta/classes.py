@@ -549,17 +549,12 @@ class Measurement(PyTTaObj):
         else:
             try:    
                 oldChName = self.channelName            
-                print(str(oldChName))
                 oldInCh = self.inChannel
-                print(str(oldInCh))
                 self._inChannel = newInputChannel
                 self.channelName = None
-                print(self.channelName)
                 for i in oldInCh:
-                    chcont = 0
                     if i in self._inChannel:
-                        self.channelName[chcont] = oldChName[i-1]
-                        chcont = chcont+1
+                        self.channelName[self._inChannel.index(i)] = oldChName[oldInCh.index(i)]
             except AttributeError:
                 self._inChannel = newInputChannel
             
