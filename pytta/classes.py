@@ -488,7 +488,7 @@ class SignalObj(PyTTaObj):
         plot.ylabel(r'$Magnitude$ ['+self.dBName+' ref.: '+str(self.dBRef)+' '+self.unit+']')
 
 
-
+#%% Measurement class
 class Measurement(PyTTaObj):
     """
     Measurement object class created to define some properties and methods to
@@ -515,14 +515,16 @@ class Measurement(PyTTaObj):
                  inChannel=None,
                  outChannel=None,
                  calibratedChain=None,
+                 channelName=None,
                  *args,
                  **kwargs
                  ):
         super().__init__(*args,**kwargs)
-        self._device = device # device number. For device list use sounddevice.query_devices()
-        self._inChannel = inChannel # input channels
-        self._outChannel = outChannel # output channels
+        self.device = device # device number. For device list use sounddevice.query_devices()
+        self.inChannel = inChannel # input channels
+        self.outChannel = outChannel # output channels
         self.calibratedChain = 0 if calibratedChain == None else calibratedChain # optin for a calibrated chain
+        self.channelName = channelName
         self.vCalibratedCh = [] # list of calibrated channels
         self.vCalibrationCF = [] # list of calibration correction factors
         
@@ -531,6 +533,10 @@ class Measurement(PyTTaObj):
     @property
     def device(self):
         return self._device
+
+    @device.setter
+    def device(self,newDevice):
+        self._device = newDevice
     
     @property
     def inChannel(self):
@@ -541,7 +547,21 @@ class Measurement(PyTTaObj):
         if not isinstance(newInputChannel,list):
             raise AttributeError('inChannel must be a list; e.g. [1] .')
         else:
-            self._inChannel = newInputChannel
+            try:    
+                oldChName = self.channelName            
+                print(str(oldChName))
+                oldInCh = self.inChannel
+                print(str(oldInCh))
+                self._inChannel = newInputChannel
+                self.channelName = None
+                print(self.channelName)
+                for i in oldInCh:
+                    chcont = 0
+                    if i in self._inChannel:
+                        self.channelName[chcont] = oldChName[i-1]
+                        chcont = chcont+1
+            except AttributeError:
+                self._inChannel = newInputChannel
             
     @property
     def outChannel(self):
@@ -564,7 +584,22 @@ class Measurement(PyTTaObj):
             raise AttributeError('calibratedChain must be 1 for a calibrated measurement chain or 0 for a non calibrated.')
         else:
             self._calibratedChain = newoption
-        
+            
+    @property
+    def channelName(self):
+        return self._channelName
+    
+    @channelName.setter
+    def channelName(self,channelName):
+        if channelName == None:
+            self._channelName = []           
+            for chIndex in range(0,len(self.inChannel)):
+                self._channelName.append('Channel '+str(chIndex+1))
+        elif len(channelName) == len(self.inChannel):
+            self._channelName = []   
+            self._channelName = channelName
+        else:
+            raise AttributeError('Incompatible number of channel names and channel number.')
 #%% Measurement Methods
         
     def calibVoltage(self,referenceVoltage=None,channel=None):
@@ -686,6 +721,7 @@ class RecMeasure(Measurement):
             else:
                 self.recording.timeSignal[:] = self.vCalibrationCF*self.recording.timeSignal[:]
                 self.recording.unit = 'V'
+        self.recording.channelName = self.channelName
         maxOut = np.max(np.abs(self.recording.timeSignal))
         print('max input level (recording): ',20*np.log10(maxOut/self.recording.dBRef),' ',self.recording.dBName,' - ref.: ',str(self.recording.dBRef),' [',self.recording.unit,']')
         return self.recording    
