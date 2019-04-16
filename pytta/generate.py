@@ -88,8 +88,10 @@ def sweep(freqMin = None,
     
     numSamples = 2**fftDegree # [samples] full signal number of samples
     
-    sweepSamples = numSamples - marginSamples +1
-    # [samples] actual sweep number of samples
+    sweepSamples = numSamples - marginSamples +1 # [samples] actual sweep number of samples
+    
+    if sweepSamples < samplingRate/10:
+        raise Exception('Too small resultant sweep. For such big margins you must increase your fftDegree.')
     
     sweepTime = sweepSamples/samplingRate # [s] sweep's time length
     timeVecSweep = np.arange(0, sweepTime, samplingTime) # [s] sweep time vector

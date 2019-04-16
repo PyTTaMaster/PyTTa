@@ -181,7 +181,7 @@ class SignalObj(PyTTaObj):
                      signalArray=np.array([0]),
                      domain='time',
                      unit=None,
-                     channelName = None,
+                     channelName=None,
                      *args,
                      **kwargs):
         if self.size_check(signalArray)>2:
@@ -202,16 +202,7 @@ class SignalObj(PyTTaObj):
             print('Taking the input as a time domain signal')
             self.domain = 'time'
         self.unit = unit
-        # channelName stuff
-        if channelName == None:
-            self.channelName = []           
-            for chIndex in range(0,self.num_channels()):
-                self.channelName.append('Channel '+str(chIndex+1))
-        elif len(channelName) == self.num_channels():
-            self.channelName = []   
-            self.channelName = channelName
-        else:
-            raise AttributeError('Incompatible number of channel names and channel number.')
+        self.channelName = channelName
             
 
 #%% SignalObj Properties
@@ -297,6 +288,22 @@ class SignalObj(PyTTaObj):
         else:
             raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
 
+    @property
+    def channelName(self):
+        return self._channelName
+    
+    @channelName.setter
+    def channelName(self,channelName):
+        if channelName == None:
+            self._channelName = []           
+            for chIndex in range(0,self.num_channels()):
+                self._channelName.append('Channel '+str(chIndex+1))
+        elif len(channelName) == self.num_channels():
+            self._channelName = []   
+            self._channelName = channelName
+        else:
+            raise AttributeError('Incompatible number of channel names and channel number.')
+            
 #%% SignalObj Methods
         
     def __truediv__(self, other):
@@ -731,8 +738,8 @@ class PlayRecMeasure(Measurement):
                              ) # y_all(t) - out signal: x(t) conv h(t)
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
-        print('max output level (excitation): ', 20*np.log10(max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
-        print('max input level (recording): ', 20*np.log10(max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
+        print('max output level (excitation): ', 20*np.log10(np.max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
+        print('max input level (recording): ', 20*np.log10(np.max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
         return self.recording
 
 #%% PlayRec Properties
