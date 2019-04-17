@@ -750,7 +750,6 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
-
 #%% PlayRec Methods
             
     def run(self):
@@ -814,6 +813,7 @@ class FRFMeasure(PlayRecMeasure):
 
     Properties(self) 	 	 (default),         meaning:
 		- excitation:  	 	 (SignalObj), 	 	Signal information used to reproduce (playback);
+        - avarages:          (1)                number of measurement avarages for the final SignalObj
 		- samplingRate:      (44100), 	 	 	signal's sampling rate;
         - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
         - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;

@@ -379,11 +379,10 @@ def measurement(kind = 'playrec',
                              **kwargs)
 			
         playRecObj = PlayRecMeasure(excitation = signalIn,
-                               device = device,
-                               inChannel = inChannel,
-                               outChannel = outChannel,
-                               **kwargs
-                               )
+                                    device = device,
+                                    inChannel = inChannel,
+                                    outChannel = outChannel,
+                                    **kwargs)
         return playRecObj
 	
 #%% Kind FRF    
