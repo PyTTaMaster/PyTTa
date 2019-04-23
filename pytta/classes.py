@@ -178,7 +178,7 @@ class SignalObj(PyTTaObj):
     """
     
     def __init__(self,
-                     signalArray=np.array([0]),
+                     signalArray=np.array([0],ndmin=2).T,
                      domain='time',
                      unit=None,
                      channelName=None,
@@ -190,6 +190,8 @@ class SignalObj(PyTTaObj):
             raise AttributeError(message)
         else:
             pass
+        if self.size_check(signalArray) == 1:
+            signalArray = np.array(signalArray,ndmin=2).T
         super().__init__(*args,**kwargs)
         # domain and initializate stuff
         self.domain = domain or args[1]
@@ -221,6 +223,8 @@ class SignalObj(PyTTaObj):
     @timeSignal.setter
     def timeSignal(self,newSignal): # when timeSignal have new ndarray value,
                                     # calculate other properties
+        if self.size_check(newSignal) == 1:
+            newSignal = np.array(newSignal,ndmin=2).T
         self._timeSignal = np.array(newSignal)
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
@@ -250,6 +254,8 @@ class SignalObj(PyTTaObj):
         return self._freqSignal
     @freqSignal.setter
     def freqSignal(self,newSignal):
+        if self.size_check(newSignal) == 1:
+            newSignal = np.array(newSignal,ndmin=2).T
         self._freqSignal = np.array(newSignal)
         self._timeSignal =  np.fft.irfft(self.freqSignal,axis=0,norm=None)
         self._numSamples = len(self.timeSignal) # [-] number of samples
@@ -564,10 +570,10 @@ class Measurement(PyTTaObj):
 
     @outChannel.setter
     def outChannel(self,newOutputChannel):
-        if not isinstance(newOutputChannel,list):
-            raise AttributeError('outChannel must be a list; e.g. [1] .')
-        else:
-            self._outChannel = newOutputChannel
+#        if not isinstance(newOutputChannel,list): # BUG WHEN CREATE A REC MEASUREMENT WITHOUT OUTCHANNEL
+#            raise AttributeError('outChannel must be a list; e.g. [1] .')
+#        else:
+        self._outChannel = newOutputChannel
         
     @property
     def calibratedChain(self):

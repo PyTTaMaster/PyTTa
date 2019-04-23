@@ -69,10 +69,7 @@ def merge(signal1,*signalObjects):
     j=1;
     comment = signal1.comment
     channelName = signal1.channelName
-    if signal1.num_channels() == 1:
-        timeSignal = np.array([signal1.timeSignal]).T
-    else:
-        timeSignal = signal1.timeSignal
+    timeSignal = signal1.timeSignal
     for inObj in signalObjects:
         if signal1.samplingRate != inObj.samplingRate:
             message = '\
@@ -91,10 +88,7 @@ def merge(signal1,*signalObjects):
             raise AttributeError(message)            
         comment = comment + ' / ' + inObj.comment
         channelName = channelName + inObj.channelName
-        if inObj.num_channels() == 1:
-            timeSignal = np.hstack(( timeSignal,np.array([inObj.timeSignal]).T ))
-        else:
-            timeSignal = np.hstack(( timeSignal,inObj.timeSignal ))
+        timeSignal = np.hstack(( timeSignal, inObj.timeSignal ))
         j += 1
     newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName,comment=comment)
     return newSignal
