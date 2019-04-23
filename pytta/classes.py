@@ -36,6 +36,7 @@ import matplotlib.lines as mlines
 import scipy.signal as signal
 import sounddevice as sd
 from pytta import default
+import time
 
 
 class PyTTaObj(object):
@@ -723,6 +724,7 @@ class RecMeasure(Measurement):
                 self.recording.timeSignal[:] = self.vCalibrationCF*self.recording.timeSignal[:]
                 self.recording.unit = 'V'
         self.recording.channelName = self.channelName
+        self.recording.timeStamp = time.ctime(time.time())
         maxOut = np.max(np.abs(self.recording.timeSignal))
         print('max input level (recording): ',20*np.log10(maxOut/self.recording.dBRef),' ',self.recording.dBName,' - ref.: ',str(self.recording.dBRef),' [',self.recording.unit,']')
         return self.recording    
@@ -763,6 +765,7 @@ class PlayRecMeasure(Measurement):
         Starts reproducing the excitation signal and recording at the same time
         Outputs a signalObj with the recording content
         """
+        timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal,
                              samplerate=self.samplingRate, 
                              input_mapping=self.inChannel,
@@ -774,6 +777,7 @@ class PlayRecMeasure(Measurement):
                              ) # y_all(t) - out signal: x(t) conv h(t)
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
+        self.recording.timeStamp = timeStamp
         print('max output level (excitation): ', 20*np.log10(np.max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
         print('max input level (recording): ', 20*np.log10(np.max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
         return self.recording
@@ -847,4 +851,5 @@ class FRFMeasure(PlayRecMeasure):
         """
         self.recording = super().run()
         self.transferfunction = self.recording/self.excitation
+        self.transferfunction.timeStamp = self.recording.timeStamp
         return self.transferfunction
