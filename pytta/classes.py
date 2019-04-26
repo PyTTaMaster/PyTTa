@@ -459,7 +459,7 @@ class SignalObj(PyTTaObj):
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Amplitude$ ['+self.unit+']')
         
-    def plot_freq(self,smooth=True):
+    def plot_freq(self,smooth=False):
         """
         Frequency domain plotting method
         """
@@ -483,16 +483,19 @@ class SignalObj(PyTTaObj):
                     dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth[:,chIndex] ) / self.dBRef )
                     plot.plot( self.freqVector, dBSignal ,label=self.channelName[chIndex])
             else:
-                signalSmooth = signal.savgol_filter( np.abs(self.freqSignal), 31, 3 )
+                signalSmooth = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal)), 31, 3 )
                 dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
                 plot.plot( self.freqVector, dBSignal ,label=self.channelName[0])
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
         plot.legend(loc='best')
         plot.semilogx( self.freqVector, dBSignal )
-        plot.axis( ( 15, 22050, 
-                   np.min( dBSignal )/1.05, 1.05*np.max( dBSignal ) ) )
+        if np.max(dBSignal) > 0:
+            ylim = [1/1.05*np.min(dBSignal),1.05*np.max(dBSignal)]
+        else:
+            ylim = [1/1.05*np.min(dBSignal),1/1.05*np.max(dBSignal)]
+        plot.axis((self.freqMin,self.freqMax,ylim[0],ylim[1]))
         plot.xlabel(r'$Frequency$ [Hz]')
-        plot.ylabel(r'$Magnitude$ ['+self.dBName+' ref.: '+str(self.dBRef)+' '+self.unit+']')
+        plot.ylabel(r'$Magnitude$ ['+self.dBName+' ref.: '+str(self.dBRef)+'['+self.unit+']')
 
 
 #%% Measurement class
@@ -727,6 +730,7 @@ class RecMeasure(Measurement):
         self.recording.timeStamp = time.ctime(time.time())
         maxOut = np.max(np.abs(self.recording.timeSignal))
         print('max input level (recording): ',20*np.log10(maxOut/self.recording.dBRef),' ',self.recording.dBName,' - ref.: ',str(self.recording.dBRef),' [',self.recording.unit,']')
+        self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         return self.recording    
     
 #%% PlayRecMeasure class 
