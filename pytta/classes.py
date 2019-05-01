@@ -466,30 +466,30 @@ class SignalObj(PyTTaObj):
         """
         plot.figure( figsize=(10,5) )
         if not smooth:
-            dBSignal = 20 * np.log10( (1/self.numSamples)*np.abs(self.freqSignal)\
-                                     /self.dBRef)
+#            dBSignal = 20 * np.log10( (1/len(self.freqSignal))*np.abs(self.freqSignal)\
+#                                     /self.dBRef)
 #            plot.semilogx( self.freqVector, dBSignal )
             if self.num_channels() > 1:
                 for chIndex in range(0,self.num_channels()):
-                    dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
+                    dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
                     plot.semilogx( self.freqVector,dBSignal,label=self.channelName[chIndex])
             else:
-                dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( self.freqSignal) / self.dBRef )
-                plot.plot( self.freqVector, dBSignal ,label=self.channelName[0])            
+                dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( self.freqSignal) / self.dBRef )
+                plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])            
         else:
             if self.num_channels() > 1:
-                signalSmooth= np.empty((len(self.freqSignal),int(self.num_channels())))
+#                signalSmooth= np.empty((len(self.freqSignal),int(self.num_channels())))
                 for chIndex in range(self.num_channels()):
-                    signalSmooth[:,chIndex] = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
-                    dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth[:,chIndex] ) / self.dBRef )
-                    plot.plot( self.freqVector, dBSignal ,label=self.channelName[chIndex])
+                    signalSmooth = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
+                    dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( signalSmooth ) / self.dBRef )
+                    plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[chIndex])
             else:
                 signalSmooth = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal)), 31, 3 )
                 dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
-                plot.plot( self.freqVector, dBSignal ,label=self.channelName[0])
+                plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
         plot.legend(loc='best')
-        plot.semilogx( self.freqVector, dBSignal )
+#        plot.semilogx( self.freqVector, dBSignal )
         if np.max(dBSignal) > 0:
             ylim = [1/1.05*np.min(dBSignal),1.05*np.max(dBSignal)]
         else:
