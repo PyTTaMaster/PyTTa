@@ -743,6 +743,7 @@ class RecMeasure(Measurement):
                                 self.samplingRate,
                                 mapping = self.inChannel,
                                 blocking=True,
+                                device=self.device,
                                 latency='low',
                                 dtype = 'float32')
         self.recording = np.squeeze(self.recording)
