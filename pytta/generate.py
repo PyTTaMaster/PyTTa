@@ -30,12 +30,23 @@ Generate
     For further information see the specific function documentation
 """
 
-#%%
+#%% Import modules
 from .classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
 from pytta import default
 from scipy import signal
 import numpy as np
 
+
+def sin(Arms = 0.5,
+        freq = 1000,
+        timeLength = 1,
+        phase = 2*np.pi,
+        samplingRate = default.samplingRate):
+    t = np.linspace(0,timeLength - (1/samplingRate),samplingRate*timeLength)
+    sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
+    sinSigObj = SignalObj(sin,domain='time',samplingRate=samplingRate)
+    return sinSigObj
+    
 
 def sweep(freqMin = None,
           freqMax = None,

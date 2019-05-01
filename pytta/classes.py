@@ -206,6 +206,7 @@ class SignalObj(PyTTaObj):
             self.domain = 'time'
         self.unit = unit
         self.channelName = channelName
+        self.CF = {}
             
 
 #%% SignalObj Properties
@@ -497,6 +498,35 @@ class SignalObj(PyTTaObj):
         plot.xlabel(r'$Frequency$ [Hz]')
         plot.ylabel(r'$Magnitude$ ['+self.dBName+' ref.: '+str(self.dBRef)+'['+self.unit+']')
 
+    def calibVoltage(self,refSignalObj,referenceVoltage):
+        """
+        calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
+        
+            >>> SignalObj.calibVoltage(refSignalObj,referenceVoltage)
+        """
+
+        self.referenceVoltage = referenceVoltage
+        self.refSignal = refSignalObj
+        rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
+        self.CF['V'] = self.referenceVoltage/rms
+        if self.unit != 'Pa':
+            self.unit = 'V'
+        self.timeSignal = self.timeSignal*self.CF['V']
+        
+    def calibPressure(self,refSignalObj,referencePressure):
+        """
+        calibPressure method: use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor.
+        
+            >>> SignalObj.calibPressure(refSignalObj,referencePressure)
+        """
+
+        self.referencePressure = referencePressure
+        self.refSignal = refSignalObj
+        rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
+        self.CF['Pa'] = self.referencePressure/rms
+        self.unit = 'Pa'
+        self.timeSignal = self.timeSignal*self.CF['Pa']
+
 
 #%% Measurement class
 class Measurement(PyTTaObj):
@@ -740,7 +770,7 @@ class PlayRecMeasure(Measurement):
 
     Properties(self) 	 	 (default),         meaning:
 		- excitation:  	 	 (SignalObj), 	 	Signal information used to reproduce (playback);
-		- samplingRate:      (44100), 	 	 	signal's sampling rate;
+        - samplingRate:      (44100), 	 	 	signal's sampling rate;
         - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
         - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
         - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
@@ -828,11 +858,11 @@ class FRFMeasure(PlayRecMeasure):
     Properties(self) 	 	 (default),         meaning:
 		- excitation:  	 	 (SignalObj), 	 	Signal information used to reproduce (playback);
         - avarages:          (1)                number of measurement avarages for the final SignalObj
-		- samplingRate:      (44100), 	 	 	signal's sampling rate;
+        - samplingRate:      (44100), 	 	 	signal's sampling rate;
         - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
         - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
         - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
-		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
+        - timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
 
     Properties(inherited): 	(default), 	 	 	meaning:
         - device: 	 	 	(system default),  	list of input and output devices;
