@@ -302,15 +302,11 @@ def measurement(kind = 'playrec',
 	
 	The input arguments may be different for each measurement kind.
 	
-		Options for (kind='rec'):
-		-------------------------
+	Options for (kind='rec'):
 			
-			- lengthDomain: 'time' or 'samples', defines if the recording length will
-						be set by time length, or number of samples
-			- timeLength: [s] used only if (domain='time'), set the duration
-								of the recording, in seconds;
-			- fftDegree: represents a power of two value that defines the
-							number of samples to be recorded:
+			- lengthDomain: 'time' or 'samples', defines if the recording length will be set by time length, or number of samples
+			- timeLength: [s] used only if (domain='time'), set the duration of the recording, in seconds;
+			- fftDegree: represents a power of two value that defines the number of samples to be recorded:
 							
 								>>> numSamples = 2**fftDegree
 							
@@ -322,8 +318,7 @@ def measurement(kind = 'playrec',
 			- comment: any commentary about the recording.
 
 
-		Options for (kind='playrec'):
-		-------------------------
+    Options for (kind='playrec'):
 			
 			- excitation: object of SignalObj class, used for the playback. 
 			- samplingRate: [Hz] sampling frequency of the recording;
@@ -331,15 +326,10 @@ def measurement(kind = 'playrec',
 			- freqMax: [Hz] highest frequency of interest;
 			- device: audio I/O device to use for recording;
 			- inChannel: list of active channels to record;
-			- outChannel: list of active channels to send the playback signal,
-							for M channels it is mandatory for the
-							excitation signal to have M columns in the 
-							timeSignal parameter.
+			- outChannel: list of active channels to send the playback signal, for M channels it is mandatory for the excitation signal to have M columns in the timeSignal parameter.
 			- comment: any commentary about the recording.
 
-
-		Options for (kind='frf'):
-		-------------------------
+	Options for (kind='frf'):
 
 			Same as for (kind='playrec')
     """
