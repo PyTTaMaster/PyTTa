@@ -93,6 +93,11 @@ def merge(signal1,*signalObjects):
     newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName,comment=comment)
     return newSignal
 
+def split(signal):
+#    medDG = pytta.SignalObj(med.timeSignal[:,0],samplingRate=fs)
+#medDL = pytta.SignalObj(med.timeSignal[:,1],samplingRate=fs)
+    return 0
+
 def fft_convolve(signal1,signal2):
     """
     Uses scipy.signal.fftconvolve() to convolve two time domain signals.

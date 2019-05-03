@@ -69,7 +69,10 @@ class PyTTaObj(object):
         self._fftDegree = fftDegree
         self._timeLength = timeLength
         self._numSamples = numSamples
-        self._freqMin, self._freqMax = freqMin, freqMax
+        if freqMin == None or freqMax == None:
+            self._freqMin, self._freqMax = default.freqMin, default.freqMax
+        else:
+            self._freqMin, self._freqMax = freqMin, freqMax
         self._comment = comment
 
 #%% PyTTaObj Properties
@@ -222,6 +225,7 @@ class SignalObj(PyTTaObj):
     @property # when timeSignal is called returns the ndarray
     def timeSignal(self):
         return self._timeSignal
+    
     @timeSignal.setter
     def timeSignal(self,newSignal): # when timeSignal have new ndarray value,
                                     # calculate other properties
@@ -230,30 +234,17 @@ class SignalObj(PyTTaObj):
         self._timeSignal = np.array(newSignal)
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
-        
-        # [s] signal time lenght
-        self._timeLength = self.numSamples / self.samplingRate
-        
-        # [s] time vector (x axis)
-        self._timeVector = np.linspace( 0, \
-                                      self.timeLength \
-                                          - (1/self.samplingRate), \
-                                      self.numSamples ) 
-        
-        # [Hz] frequency vector (x axis)
-        self._freqVector = np.linspace( 0, \
-                                      (self.numSamples - 1) \
-                                          * self.samplingRate \
-                                          /(2*self.numSamples), \
-                                      (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 )
-        
-        # [-] signal in frequency domain
-        self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None)
-
+        self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
+        self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),
+                                      self.numSamples ) # [s] time vector (x axis)
+        self._freqVector = np.linspace(0,(self.numSamples - 1) * self.samplingRate / (2*self.numSamples),
+                                      (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
+        self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None) # [-] signal in frequency domain
 
     @property
     def freqSignal(self): 
         return self._freqSignal
+    
     @freqSignal.setter
     def freqSignal(self,newSignal):
         if self.size_check(newSignal) == 1:
@@ -262,18 +253,10 @@ class SignalObj(PyTTaObj):
         self._timeSignal =  np.fft.irfft(self.freqSignal,axis=0,norm=None)
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
-        
-        # [s] signal time lenght
-        self._timeLength = self.numSamples/self.samplingRate 
-        
-        # [s] time vector
-        self._timeVector = np.arange(0, self.timeLength, 1/self.samplingRate)
-        
-        # [Hz] frequency vector
-        self._freqVector = np.linspace(0, (self.numSamples-1) \
-                                       * self.samplingRate \
-                                       / (2*self.numSamples), \
-                                       (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 )
+        self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
+        self._timeVector = np.arange(0,self.timeLength, 1/self.samplingRate) # [s] time vector
+        self._freqVector = np.linspace(0,(self.numSamples-1) * self.samplingRate / (2*self.numSamples),
+                                       (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 ) # [Hz] frequency vector
 
     @property
     def unit(self):
@@ -289,6 +272,10 @@ class SignalObj(PyTTaObj):
             self._unit = newunit
             self.dBName = 'dB(z)'
             self.dBRef = 2e-5
+        elif newunit == 'W/m2':
+            self._unit = newunit
+            self.dBName = 'dB'
+            self.dBRef = 1e-12
         elif newunit == None:
             self._unit = ''
             self.dBName = 'dBFs'
@@ -320,7 +307,6 @@ class SignalObj(PyTTaObj):
         """
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike")
-
         result = SignalObj(samplingRate=self.samplingRate)
         result._domain = 'freq'
         if self.size_check() > 1:
@@ -329,21 +315,15 @@ class SignalObj(PyTTaObj):
                 for channelA in range(self.num_channels()):
                     for channelB in range(other.num_channels()):
                         result.freqSignal[:,i + channelB] = \
-                                self.freqSignal[:,channelA] \
-                                /other.freqSignal[:,channelB]
+                                self.freqSignal[:,channelA] / other.freqSignal[:,channelB]
                     i = channelB
             else:
                 for channel in range(self.num_channels()):
-                    result.freqSignal = self.freqSignal[:,channel] \
-                                        /other.freqSignal
-                                        
+                    result.freqSignal = self.freqSignal[:,channel] / other.freqSignal
         elif other.size_check() > 1:
             for channel in range(self.num_channels()):
-                result.freqSignal = self.freqSignal \
-                                /other.freqSignal[:,channel]
-                                
-        else: result.freqSignal = self.freqSignal / other.freqSignal
-        
+                result.freqSignal = self.freqSignal / other.freqSignal[:,channel]
+        else: result.freqSignal = self.freqSignal / other.freqSignal        
         return result
     
     
@@ -353,7 +333,6 @@ class SignalObj(PyTTaObj):
         """
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike")
-
         result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
         if self.size_check() > 1:
@@ -362,22 +341,16 @@ class SignalObj(PyTTaObj):
                 for channelA in range(self.num_channels()):
                     for channelB in range(other.timeSignal.shape):
                         result.timeSignal[:,i + channelB] = \
-                                self.timeSignal[:,channelA] \
-                                +other.timeSignal[:,channelB]
+                                self.timeSignal[:,channelA] + other.timeSignal[:,channelB]
                     i = channelB
             else:
                 for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] \
-                                        +other.timeSignal
-                                        
+                    result.freqSignal = self.timeSignal[:,channel] + other.timeSignal
         elif other.size_check() > 1:
             for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal \
-                                +other.timeSignal[:,channel]
-                                
+                result.timeSignal = self.timeSignal + other.timeSignal[:,channel]
         else: result.timeSignal = self.timeSignal + other.timeSignal
         return result
-
 
     def __sub__(self, other):
         """
@@ -393,20 +366,16 @@ class SignalObj(PyTTaObj):
                 i = 0
                 for channelA in range(self.num_channels()):
                     for channelB in range(other.num_channels):
-                        result.timeSignal[:,i + channelB] \
-                                =self.timeSignal[:,channelA] \
-                                -other.timeSignal[:,channelB]
+                        result.timeSignal[:,i + channelB] = \
+                        self.timeSignal[:,channelA] - other.timeSignal[:,channelB]
                     i = channelB
             else:
                 for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] \
-                                        -other.timeSignal
+                    result.freqSignal = self.timeSignal[:,channel] - other.timeSignal
                                         
         elif other.size_check() > 1:
             for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal \
-                                -other.timeSignal[:,channel]
-                                
+                result.timeSignal = self.timeSignal - other.timeSignal[:,channel]
         else: result.timeSignal = self.timeSignal - other.timeSignal
         return result
     
@@ -445,6 +414,7 @@ class SignalObj(PyTTaObj):
         """
         Time domain plotting method
         """
+        # DB
         plot.figure( figsize=(10,5) )
         if self.num_channels() > 1:
             for chIndex in range(self.num_channels()):
@@ -466,9 +436,6 @@ class SignalObj(PyTTaObj):
         """
         plot.figure( figsize=(10,5) )
         if not smooth:
-#            dBSignal = 20 * np.log10( (1/len(self.freqSignal))*np.abs(self.freqSignal)\
-#                                     /self.dBRef)
-#            plot.semilogx( self.freqVector, dBSignal )
             if self.num_channels() > 1:
                 for chIndex in range(0,self.num_channels()):
                     dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
@@ -478,7 +445,6 @@ class SignalObj(PyTTaObj):
                 plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])            
         else:
             if self.num_channels() > 1:
-#                signalSmooth= np.empty((len(self.freqSignal),int(self.num_channels())))
                 for chIndex in range(self.num_channels()):
                     signalSmooth = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
                     dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( signalSmooth ) / self.dBRef )
@@ -489,9 +455,8 @@ class SignalObj(PyTTaObj):
                 plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
         plot.legend(loc='best')
-#        plot.semilogx( self.freqVector, dBSignal )
         if np.max(dBSignal) > 0:
-            ylim = [1/1.05*np.min(dBSignal),1.05*np.max(dBSignal)]
+            ylim = [np.max(dBSignal)-80,1.12*np.max(dBSignal)]
         else:
             ylim = [1/1.05*np.min(dBSignal),1/1.05*np.max(dBSignal)]
         plot.axis((self.freqMin,self.freqMax,ylim[0],ylim[1]))
@@ -504,7 +469,6 @@ class SignalObj(PyTTaObj):
         
             >>> SignalObj.calibVoltage(refSignalObj,referenceVoltage)
         """
-
         self.referenceVoltage = referenceVoltage
         self.refSignal = refSignalObj
         rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
@@ -519,7 +483,6 @@ class SignalObj(PyTTaObj):
         
             >>> SignalObj.calibPressure(refSignalObj,referencePressure)
         """
-
         self.referencePressure = referencePressure
         self.refSignal = refSignalObj
         rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
@@ -635,6 +598,7 @@ class Measurement(PyTTaObj):
             self._channelName = channelName
         else:
             raise AttributeError('Incompatible number of channel names and channel number.')
+            
 #%% Measurement Methods
         
     def calibVoltage(self,referenceVoltage=None,channel=None):
@@ -704,6 +668,7 @@ class RecMeasure(Measurement):
     @property
     def timeLength(self):
         return self._timeLength
+    
     @timeLength.setter
     def timeLength(self,newLength):
         self._timeLength = np.round( newLength, 2 )
@@ -713,6 +678,7 @@ class RecMeasure(Measurement):
     @property
     def fftDegree(self):
         return self._fftDegree
+    
     @fftDegree.setter
     def fftDegree(self,newDegree):
         self._fftDegree = np.round( newDegree, 2 )
