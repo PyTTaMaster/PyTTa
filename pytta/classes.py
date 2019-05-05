@@ -45,11 +45,16 @@ class PyTTaObj(object):
     by any signal and processing classes. pyttaObj is a private class created
     just to shorten attributes declaration to each PyTTa class.
     
-    Properties(self):    (default),     meaning
-        - samplingRate:  (44100),       signal's sampling rate
-        - freqMin:	     (20),          minimum frequency bandwidth limit;
-        - freqMax:	     (20000),       maximum frequency bandwidth limit;
-        - comment:       (' '),         some commentary about the signal or measurement object
+    Properties(self): (default), (dtype), meaning;
+    
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's time length in seconds;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
     """
 
@@ -157,27 +162,34 @@ class SignalObj(PyTTaObj):
     """
     Signal object class.
     
-    Properties(self): 	(default),   	meaning  
-        - domain:       ('time'),       domain of the input array;
-        - timeSignal:   	(ndarray),   	signal at time domain;
-        - timeVector:   	(ndarray),   	time reference vector for timeSignal;
-        - freqSignal:   	(ndarray),   	signal at frequency domain;
-        - freqVector:   	(ndarray),   	frequency reference vector for freqSignal;
-        - numSamples:	(samples),   	signal's number of samples;
-        - timeLength:  	(seconds),   	signal's duration;
-        - unit:         (None),         signal's unit. May be 'V' or 'Pa';
-        - channelName   (dict),         channels name dictionary;
+    Properties(self): (default), (dtype), meaning;
+    
+        - domain: ('time'), (str) domain of the input array;
+        - timeSignal: (ndarray), (NumPy array), signal at time domain;
+        - timeVector: (ndarray), (NumPy array), time reference vector for timeSignal;
+        - freqSignal: (ndarray), (NumPy array), signal at frequency domain;
+        - freqVector: (ndarray), (NumPy array), frequency reference vector for freqSignal;
+        - unit: (None), (str), signal's unit. May be 'V' or 'Pa';
+        - channelName: (dict), (dict/str), channels name dict;
         
-    Properties(inherited):  (default),     meaning
-        - samplingRate:     (44100),       signal's sampling rate;
-        - freqMin:	        (20),          minimum frequency bandwidth limit;
-        - freqMax:	        (20000),       maximum frequency bandwidth limit;
-        - comment: 	        ('No comments.') some commentary about the signal;        
+    Properties(inherited): (default), (dtype), meaning;
+    
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's duration;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
-    Methods: 	 	 	meaning
-        - play():  	 	reproduce the timeSignal with default output device;
-        - plot_time():  	generates the signal's historic graphic;
-        - plot_freq():  	generates the signal's spectre graphic;
+    Methods: meaning;
+    
+        - play(): reproduce the timeSignal with default output device;
+        - plot_time(): generates the signal's historic graphic;
+        - plot_freq(): generates the signal's spectre graphic;
+        - calibVoltage(): voltage calibration from an input SignalObj;
+        - calibPressure(): pressure calibration from an input SignalObj;
     
     """
     
@@ -378,7 +390,6 @@ class SignalObj(PyTTaObj):
                 result.timeSignal = self.timeSignal - other.timeSignal[:,channel]
         else: result.timeSignal = self.timeSignal - other.timeSignal
         return result
-    
 
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
@@ -468,6 +479,7 @@ class SignalObj(PyTTaObj):
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
         
             >>> SignalObj.calibVoltage(refSignalObj,referenceVoltage)
+            
         """
         self.referenceVoltage = referenceVoltage
         self.refSignal = refSignalObj
@@ -482,6 +494,7 @@ class SignalObj(PyTTaObj):
         calibPressure method: use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor.
         
             >>> SignalObj.calibPressure(refSignalObj,referencePressure)
+            
         """
         self.referencePressure = referencePressure
         self.refSignal = refSignalObj
@@ -498,19 +511,25 @@ class Measurement(PyTTaObj):
     be used by the playback, recording and processing classes. It is a private
     class
     
-    Properties(self): 	 	(default), 	 	 	meaning
-        - device: 	 	 	(system default),  	list of input and output devices;
-        - inChannel:  	 	([1]), 	 	 	 	list of device's input channel used for recording;
-        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj;
-        - calibratedChain:  (0),                1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh:    ([])                list of voltage calibrated channels;
-        - vCalibrationCF:   ([0])               list of correction factors for the calibrated channels;
+    Properties(self): (default), (dtype), meaning;
+    
+        - device: (system default), (list/int), list of input and output devices;
+        - inChannel: ([1]), (list/int), list of device's input channel used for recording;
+        - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
+        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
+        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
+        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
 
-    Properties(inherited): 	(default), 	 	 	meaning
-        - samplingRate: 	 	(44100), 	 	 	measurement's sampling rate;
-        - freqMin: 	 	 	(20),               minimum frequency bandwidth limits;
-        - freqMax: 	 	 	(20000),            maximum frequency bandwidth limits;
-        - comment: 	 	 	('No comments')     some commentary about the measurement;        
+    Properties(inherited): 	(default), (dtype), meaning;
+
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's time length in seconds;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
     """
     def __init__(self,
@@ -629,25 +648,29 @@ class RecMeasure(Measurement):
     """
     Signal Recording object
     
-    Properties(self) 	 	 (default), 	 	meaning:
-		- lengthDomain:  	 ('samples'), 	Information about the recording length. May be 'time' or 'samples';
-		- fftDegree:	 	 	 (18),  	 	 	number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
-		- timeLength: 	 	 (10), 	 	  	time length of the recording. Used if lengthDomain is set to 'time';
+    Properties(self): (default), (dtype), meaning:
+        
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's time length in seconds;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
 
-    Properties(inherited) 	(default), 	 	 	meaning:
-        - device: 	 	 	(system default),  	list of input and output devices;
-        - inChannel:	 	 	([1]), 	 	 	 	list of device's input channel used for recording;
-        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj
-        - samplingRate: 	 	(44100), 	 	 	recording's sampling rate;
-        - calibratedChain:  (0),                1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh:    ([])                list of voltage calibrated channels;
-        - vCalibrationCF:   ([0])               list of correction factors for the calibrated channels;
-        - freqMin: 	 	 	(20),               minimum frequency bandwidth limits;
-        - freqMax: 	 	 	(20000),            maximum frequency bandwidth limits;
-        - comment: 	 	 	('No comments.')	 	some commentary about the measurement;        
+    Properties(inherited): (default), (dtype), meaning;
+    
+        - device: (system default), (list/int), list of input and output devices;
+        - inChannel: ([1]), (list/int), list of device's input channel used for recording;
+        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
+        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
+        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;      
 
-	Methods  	 	meaning:
-		- run(): 	starts recording using the inch and device information, during timeLen seconds;
+	Methods: meaning;
+    
+		- run(): starts recording using the inch and device information, during timeLen seconds;
+        
     """
     def __init__(self,lengthDomain=None,
                  fftDegree=None,
@@ -735,22 +758,29 @@ class PlayRecMeasure(Measurement):
     """
     Playback and Record object
 
-    Properties(self) 	 	 (default),         meaning:
-		- excitation:  	 	 (SignalObj), 	 	Signal information used to reproduce (playback);
-        - samplingRate:      (44100), 	 	 	signal's sampling rate;
-        - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
-        - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
-        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
-		- timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
+    Properties(self), (default), (dtype), meaning:
+        
+		- excitation: (SignalObj), (SignalObj), signal information used to reproduce (playback);
 
-    Properties(inherited): 	(default), 	 	 	meaning:
-        - device: 	 	 	(system default),  	list of input and output devices;
-        - inChannel:  	 	([1]), 	 	 	 	list of device's input channel used for recording;
-        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj
-        - comment: 	 	 	('No comments.'), 	some commentary about the measurement;
-
-	Methods 	  	 	meaning:
-		- run(): 	 	starts playing the excitation signal and recording during the excitation timeLen duration;
+    Properties(inherited): 	(default), (dtype), meaning;
+    
+        - device: (system default), (list/int), list of input and output devices;
+        - inChannel: ([1]), (list/int), list of device's input channel used for recording;
+        - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
+        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
+        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
+        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's time length in seconds;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
+        
+	Methods: meaning;
+		- run(): starts playing the excitation signal and recording during the excitation timeLen duration;
 
     """
     def __init__(self,excitation=None,*args,**kwargs):
@@ -821,24 +851,28 @@ class PlayRecMeasure(Measurement):
 class FRFMeasure(PlayRecMeasure):
     """
     Transferfunction object
-
-    Properties(self) 	 	 (default),         meaning:
-		- excitation:  	 	 (SignalObj), 	 	Signal information used to reproduce (playback);
-        - avarages:          (1)                number of measurement avarages for the final SignalObj
-        - samplingRate:      (44100), 	 	 	signal's sampling rate;
-        - freqMin: 	 	 	 (20),              minimum frequency bandwidth limits;
-        - freqMax: 	 	 	 (20000),           maximum frequency bandwidth limits;
-        - numSamples:    	 (len(timeSignal)), number of samples will be 2**fftDeg. Used if lengthDomain is set to 'samples';
-        - timeLen: 	 	 	 (numSamples/samplingRate),  time length of the recording. Used if lengthDomain is set to 'time';
-
-    Properties(inherited): 	(default), 	 	 	meaning:
-        - device: 	 	 	(system default),  	list of input and output devices;
-        - inChannel:  	 	([1]), 	 	 	 	list of device's input channel used for recording;
-        - outChannel: 	 	([1]), 	 	 	 	list of device's output channel used for playing/reproducing a signalObj
-        - comment: 	 	 	('No comments.'), 	some commentary about the measurement;		
-		
-	Methods 	  	 	meaning:
-		- run(): 	 	starts playing the excitation signal and recording during the excitation timeLen duration. At the end of recording calculates the transferfunction between recorded and reproduced signals;
+        
+    Properties(inherited): 	(default), (dtype), meaning;
+    
+        - excitation: (SignalObj), (SignalObj), signal information used to reproduce (playback);
+        - device: (system default), (list/int), list of input and output devices;
+        - inChannel: ([1]), (list/int), list of device's input channel used for recording;
+        - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
+        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
+        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
+        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
+        - samplingRate: (44100), (int), signal's sampling rate;
+        - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
+        - timeLength: (seconds), (float), signal's time length in seconds;
+        - fftDegree: (fftDegree), (float), 2**fftDegree signal's number of samples;
+        - numSamples: (samples), (int), signal's number of samples
+        - freqMin: (20), (int), minimum frequency bandwidth limit;
+        - freqMax: (20000), (int), maximum frequency bandwidth limit;
+        - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
+        
+	Methods: meaning;
+    
+		- run(): starts playing the excitation signal and recording during the excitation timeLen duration;
 
     """
     def __init__(self,*args,**kwargs):
