@@ -757,9 +757,9 @@ class RecMeasure(Measurement):
                 self.recording.unit = 'V'
         self.recording.channelName = self.channelName
         self.recording.timeStamp = time.ctime(time.time())
-        maxOut = np.max(np.abs(self.recording.timeSignal))
-        print('max input level (recording): ',20*np.log10(maxOut/self.recording.dBRef),' ',self.recording.dBName,' - ref.: ',str(self.recording.dBRef),' [',self.recording.unit,']')
         self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
+        self.recording.comment = 'SignalObj from a Rec measurement'
+        print_max_level(self.recording,kind='input')
         return self.recording    
     
 #%% PlayRecMeasure class 
@@ -818,10 +818,10 @@ class PlayRecMeasure(Measurement):
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
         self.recording.timeStamp = timeStamp
-        for chIndex in range(self.excitation.num_channels()):
-            print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+str(self.excitation.max_level()[chIndex])+' '+self.excitation.dBName+' - ref.: '+str(self.excitation.dBRef)+' ['+self.excitation.unit+']')
-        for chIndex in range(self.recording.num_channels()):
-            print('max input level (recording): on channel ['+str(chIndex+1)+']: '+str(self.recording.max_level()[chIndex])+' '+self.recording.dBName+' - ref.: '+str(self.recording.dBRef)+' ['+self.recording.unit+']')
+        self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
+        self.recording.comment = 'SignalObj from a PlayRec measurement'
+        print_max_level(self.excitation,kind='output')
+        print_max_level(self.recording,kind='input')
         return self.recording
 
 #%% PlayRec Properties
@@ -898,5 +898,19 @@ class FRFMeasure(PlayRecMeasure):
         self.recording = super().run()
         self.transferfunction = self.recording/self.excitation
         self.transferfunction.timeStamp = self.recording.timeStamp
+        self.transferfunction.freqMin, self.recording.freqMax = (super.freqMin,super.freqMax)
+        self.recording.comment = 'SignalObj from a FRF measurement'
         return self.transferfunction
-    
+
+#%% Sub functions
+def print_max_level(sigObj,kind):
+    if kind == 'output':
+        for chIndex in range(sigObj.num_channels()):
+            print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.dBName+' - ref.: '+str(sigObj.dBRef)+' ['+sigObj.unit+']')
+            if sigObj.max_level()[chIndex] >= 0:
+                print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
+    if kind == 'input':
+        for chIndex in range(sigObj.num_channels()):
+            print('max input level (recording) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.dBName+' - ref.: '+str(sigObj.dBRef)+' ['+sigObj.unit+']')
+            if sigObj.max_level()[chIndex] >= 0:
+                print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
