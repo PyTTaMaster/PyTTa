@@ -34,6 +34,7 @@ import numpy as np
 import matplotlib.pyplot as plot
 import matplotlib.lines as mlines
 import scipy.signal as signal
+import scipy.io as sio
 import sounddevice as sd
 from pytta import default
 import time
@@ -59,8 +60,8 @@ class PyTTaObj(object):
     """
 
     def __init__(self,
-                 samplingRate=None,
-                 lengthDomain=None,
+                 samplingRate = None,
+                 lengthDomain = None,
                  fftDegree = None,
                  timeLength = None,
                  numSamples = None,
@@ -183,13 +184,14 @@ class SignalObj(PyTTaObj):
         - freqMax: (20000), (int), maximum frequency bandwidth limit;
         - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
-    Methods: meaning;
+    Methods(args: meaning;
     
         - play(): reproduce the timeSignal with default output device;
         - plot_time(): generates the signal's historic graphic;
         - plot_freq(): generates the signal's spectre graphic;
-        - calibVoltage(): voltage calibration from an input SignalObj;
-        - calibPressure(): pressure calibration from an input SignalObj;
+        - calib_voltage(refSignalObj,refVrms,refFreq): voltage calibration from an input SignalObj;
+        - calib_pressure(refSignalObj,refPrms,refFreq): pressure calibration from an input SignalObj;
+        - save_mat(filename): save a SignalObj to a .mat file;
     
     """
     
@@ -253,16 +255,17 @@ class SignalObj(PyTTaObj):
                                       (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
         self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None) # [-] signal in frequency domain
 
-    @property
+    @property # when freqSignal is called returns the normalized ndarray
     def freqSignal(self): 
-        return self._freqSignal
+        normFreqSig = 1/len(self._freqSignal)*self._freqSignal
+        return normFreqSig
     
     @freqSignal.setter
     def freqSignal(self,newSignal):
         if self.size_check(newSignal) == 1:
             newSignal = np.array(newSignal,ndmin=2).T
         self._freqSignal = np.array(newSignal)
-        self._timeSignal =  np.fft.irfft(self.freqSignal,axis=0,norm=None)
+        self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
         self._numSamples = len(self.timeSignal) # [-] number of samples
         self._fftDegree = np.log2(self.numSamples) # [-] size parameter
         self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
@@ -458,20 +461,20 @@ class SignalObj(PyTTaObj):
         if not smooth:
             if self.num_channels() > 1:
                 for chIndex in range(0,self.num_channels()):
-                    dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
+                    dBSignal = 20 * np.log10( np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
                     plot.semilogx( self.freqVector,dBSignal,label=self.channelName[chIndex])
             else:
-                dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( self.freqSignal) / self.dBRef )
+                dBSignal = 20 * np.log10( np.abs( self.freqSignal) / self.dBRef )
                 plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])            
         else:
             if self.num_channels() > 1:
                 for chIndex in range(self.num_channels()):
                     signalSmooth = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
-                    dBSignal = 20 * np.log10( (1 / len(self.freqSignal) ) * np.abs( signalSmooth ) / self.dBRef )
+                    dBSignal = 20 * np.log10( np.abs( signalSmooth ) / self.dBRef )
                     plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[chIndex])
             else:
                 signalSmooth = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal)), 31, 3 )
-                dBSignal = 20 * np.log10( (2 / self.numSamples ) * np.abs( signalSmooth ) / self.dBRef )
+                dBSignal = 20 * np.log10( np.abs( signalSmooth ) / self.dBRef )
                 plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
         plot.legend(loc='best')
@@ -481,37 +484,57 @@ class SignalObj(PyTTaObj):
             ylim = [1/1.05*np.min(dBSignal),1/1.05*np.max(dBSignal)]
         plot.axis((self.freqMin,self.freqMax,ylim[0],ylim[1]))
         plot.xlabel(r'$Frequency$ [Hz]')
-        plot.ylabel(r'$Magnitude$ ['+self.dBName+' ref.: '+str(self.dBRef)+'['+self.unit+']')
+        plot.ylabel(r'$Magnitude$ '+self.dBName+' ref.: '+str(self.dBRef)+' ['+self.unit+']')
 
-    def calibVoltage(self,refSignalObj,referenceVoltage):
+    def calib_voltage(self,refSignalObj,refVrms=1,refFreq=1000):
         """
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
         
-            >>> SignalObj.calibVoltage(refSignalObj,referenceVoltage)
+            >>> SignalObj.calibVoltage(refSignalObj,refVrms,refFreq)
             
         """
-        self.referenceVoltage = referenceVoltage
+        self.refVrms = refVrms
         self.refSignal = refSignalObj
-        rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
-        self.CF['V'] = self.referenceVoltage/rms
+        Vrms = np.max(np.abs(self.freqSignal))
+        freqFound = np.round(self.freqVector[np.where(np.abs(self.freqSignal)==np.max(np.abs(self.freqSignal)))[0]])
+        if freqFound != refFreq:
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
+        self.CF['V'] = self.refVrms/Vrms
         if self.unit != 'Pa':
             self.unit = 'V'
+        self.unit = 'V'
         self.timeSignal = self.timeSignal*self.CF['V']
         
-    def calibPressure(self,refSignalObj,referencePressure):
+    def calib_pressure(self,refSignalObj,refPrms=1,refFreq=1000):
         """
         calibPressure method: use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor.
         
-            >>> SignalObj.calibPressure(refSignalObj,referencePressure)
+            >>> SignalObj.calibPressure(refSignalObj,revPrms,refFreq)
             
         """
-        self.referencePressure = referencePressure
+        self.refPrms = refPrms
         self.refSignal = refSignalObj
-        rms = (np.mean(refSignalObj.timeSignal[:,0]**2))**(1/2)
-        self.CF['Pa'] = self.referencePressure/rms
+        Prms = np.max(np.abs(self.freqSignal))
+        freqFound = np.round(self.freqVector[np.where(np.abs(self.freqSignal)==np.max(np.abs(self.freqSignal)))[0]])
+        if freqFound != refFreq:
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
+        self.CF['Pa'] = self.refPrms/Prms
         self.unit = 'Pa'
         self.timeSignal = self.timeSignal*self.CF['Pa']
 
+    def save_mat(self,filename=time.ctime(time.time())):
+        mySigObj = vars(self)
+        for key, value in mySigObj.items():
+            if value is None:
+                mySigObj[key] = 0
+            if isinstance(mySigObj[key],dict) and len(value) == 0:
+                mySigObj[key] = 0
+        mySigObjno_ = {}
+        for key, value in mySigObj.items():
+            if key.find('_') >= 0:
+                key = key.replace('_','')
+            mySigObjno_[key] = value
+        sio.savemat(filename,mySigObjno_,format='5')
 
 #%% Measurement class
 class Measurement(PyTTaObj):
