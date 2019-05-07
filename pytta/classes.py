@@ -401,6 +401,15 @@ class SignalObj(PyTTaObj):
             numChannels = 1
         return numChannels
     
+    def max_level(self):
+        maxlvl = []
+        for chIndex in range(self.num_channels()):
+            maxlvl.append(np.max(np.abs(self.timeSignal[:,chIndex])))
+        maxlvl = np.array(maxlvl)
+        maxlvl = 20*np.log10(maxlvl/self.dBRef)
+        return maxlvl
+            
+    
     def size_check(self, inputArray = []):
         if inputArray == []: inputArray = self.timeSignal[:]
         return np.size( inputArray.shape )
@@ -809,8 +818,10 @@ class PlayRecMeasure(Measurement):
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
         self.recording.timeStamp = timeStamp
-        print('max output level (excitation): ', 20*np.log10(np.max(self.excitation.timeSignal)), 'dBFs - ref.: 1 [-]')
-        print('max input level (recording): ', 20*np.log10(np.max(self.recording.timeSignal)), 'dBFs - ref.: 1 [-]')
+        for chIndex in range(self.excitation.num_channels()):
+            print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+str(self.excitation.max_level()[chIndex])+' '+self.excitation.dBName+' - ref.: '+str(self.excitation.dBRef)+' ['+self.excitation.unit+']')
+        for chIndex in range(self.recording.num_channels()):
+            print('max input level (recording): on channel ['+str(chIndex+1)+']: '+str(self.recording.max_level()[chIndex])+' '+self.recording.dBName+' - ref.: '+str(self.recording.dBRef)+' ['+self.recording.unit+']')
         return self.recording
 
 #%% PlayRec Properties
@@ -888,3 +899,4 @@ class FRFMeasure(PlayRecMeasure):
         self.transferfunction = self.recording/self.excitation
         self.transferfunction.timeStamp = self.recording.timeStamp
         return self.transferfunction
+    
