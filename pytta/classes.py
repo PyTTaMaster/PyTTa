@@ -155,9 +155,83 @@ class PyTTaObj(object):
                 print(name[1:]+'\t\t =',value)
             else: 
                 print(name[1:]+'\t =',value)
-                
-    
 
+class ChannelObj(object):
+    
+    
+    def __init__(self,
+                 name='',
+                 unit='',
+                 CF=1,
+                 calibCheck=False):
+        self.name = name
+        self.unit = unit
+        self.CF = CF
+        self.calibCheck = calibCheck
+
+#%% ChannelObj properties
+    @property
+    def name(self):
+        return self._name
+    
+    @name.setter
+    def name(self,newname):
+        if isinstance(newname,str):
+            self._name = newname
+        else:
+            raise TypeError('Channel name must be a string.')
+            
+    @property
+    def unit(self):
+        return self._unit
+    
+    @unit.setter
+    def unit(self,newunit):
+        if isinstance(newunit,str):
+            if newunit == 'V':
+                self._unit = newunit
+                self.dBName = 'dBu'
+                self.dBRef = 0.775
+            elif newunit == 'Pa':
+                self._unit = newunit
+                self.dBName = 'dB(z)'
+                self.dBRef = 2e-5
+            elif newunit == 'W/m2':
+                self._unit = newunit
+                self.dBName = 'dB'
+                self.dBRef = 1e-12
+            elif newunit == '':
+                self._unit = ''
+                self.dBName = 'dBFs'
+                self.dBRef = 1
+            else:
+                raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
+        else:
+            raise TypeError('Channel unit must be a string.')
+            
+    @property
+    def CF(self):
+        return self._CF
+    
+    @CF.setter
+    def CF(self,newCF):
+        if isinstance(newCF,float) or isinstance(newCF,int):
+            self._CF = newCF
+        else:
+            raise TypeError('Channel correction factor must be a number.')
+
+    @property
+    def calibCheck(self):
+        return self._calibCheck
+    
+    @calibCheck.setter
+    def calibCheck(self,newcalibCheck):
+        if isinstance(newcalibCheck,bool):
+            self._calibCheck = newcalibCheck
+        else:
+            raise TypeError('Channel calibration check must be True or False.')          
+            
+    
 class SignalObj(PyTTaObj):
 
     """
@@ -185,7 +259,9 @@ class SignalObj(PyTTaObj):
         - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
     Methods(args: meaning;
-    
+
+        - num_channels(): return the number of channels in the instace;
+        - max_level(): return the channel's max levels;
         - play(): reproduce the timeSignal with default output device;
         - plot_time(): generates the signal's historic graphic;
         - plot_freq(): generates the signal's spectre graphic;
@@ -196,22 +272,26 @@ class SignalObj(PyTTaObj):
     """
     
     def __init__(self,
-                     signalArray=np.array([0],ndmin=2).T,
+                     signalArray=np.array([],ndmin=2).T,
                      domain='time',
-                     unit=None,
-                     channelName=None,
                      *args,
                      **kwargs):
+        # Checking input array dimensions
         if self.size_check(signalArray)>2:
             message = "No 'pyttaObj' is able handle arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         else:
             pass
+        # Turning into column like array
         if self.size_check(signalArray) == 1:
             signalArray = np.array(signalArray,ndmin=2).T
+            
         super().__init__(*args,**kwargs)
-        # domain and initializate stuff
+        
+        self.channels = []
+        self._timeSignal = np.array([],ndmin=2) # Needed due to num_channels() check on SignalObj.timeSignal setter
+        self._freqSignal = np.array([],ndmin=2) # Needed due to num_channels() check on SignalObj.freqSignal setter
         self.domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray # [-] signal in frequency domain
@@ -221,11 +301,7 @@ class SignalObj(PyTTaObj):
             self.timeSignal = signalArray
             print('Taking the input as a time domain signal')
             self.domain = 'time'
-        self.unit = unit
-        self.channelName = channelName
-        self.CF = {}
-            
-
+        
 #%% SignalObj Properties
     
     @property 
@@ -241,19 +317,30 @@ class SignalObj(PyTTaObj):
         return self._timeSignal
     
     @timeSignal.setter
-    def timeSignal(self,newSignal): # when timeSignal have new ndarray value,
-                                    # calculate other properties
-        if self.size_check(newSignal) == 1:
-            newSignal = np.array(newSignal,ndmin=2).T
-        self._timeSignal = np.array(newSignal)
-        self._numSamples = len(self.timeSignal) # [-] number of samples
-        self._fftDegree = np.log2(self.numSamples) # [-] size parameter
-        self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
-        self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),
-                                      self.numSamples ) # [s] time vector (x axis)
-        self._freqVector = np.linspace(0,(self.numSamples - 1) * self.samplingRate / (2*self.numSamples),
-                                      (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
-        self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+    def timeSignal(self,newSignal): # when timeSignal have new ndarray value, calculate other properties
+        if isinstance(newSignal,np.ndarray):
+            
+            if self.size_check(newSignal) == 1:
+                newSignal = np.array(newSignal,ndmin=2).T
+
+            dCh = newSignal.shape[1] - self.num_channels()
+#            print(dCh)
+            if dCh > 0:
+                for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+1+self.num_channels())))
+            if dCh < 0:
+                for i in range(0,-dCh): self.channels.pop(-1)
+                
+            self._timeSignal = np.array(newSignal)
+            self._numSamples = len(self.timeSignal) # [-] number of samples
+            self._fftDegree = np.log2(self.numSamples) # [-] size parameter
+            self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
+            self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),
+                                          self.numSamples ) # [s] time vector (x axis)
+            self._freqVector = np.linspace(0,(self.numSamples - 1) * self.samplingRate / (2*self.numSamples),
+                                          (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
+            self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+        else:
+            raise TypeError('Input array must be a numpy ndarray')
 
     @property # when freqSignal is called returns the normalized ndarray
     def freqSignal(self): 
@@ -262,57 +349,43 @@ class SignalObj(PyTTaObj):
     
     @freqSignal.setter
     def freqSignal(self,newSignal):
-        if self.size_check(newSignal) == 1:
-            newSignal = np.array(newSignal,ndmin=2).T
-        self._freqSignal = np.array(newSignal)
-        self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
-        self._numSamples = len(self.timeSignal) # [-] number of samples
-        self._fftDegree = np.log2(self.numSamples) # [-] size parameter
-        self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
-        self._timeVector = np.arange(0,self.timeLength, 1/self.samplingRate) # [s] time vector
-        self._freqVector = np.linspace(0,(self.numSamples-1) * self.samplingRate / (2*self.numSamples),
-                                       (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 ) # [Hz] frequency vector
-
-    @property
-    def unit(self):
-        return self._unit
-    
-    @unit.setter
-    def unit(self,newunit):
-        if newunit == 'V':
-            self._unit = newunit
-            self.dBName = 'dBu'
-            self.dBRef = 0.775
-        elif newunit == 'Pa':
-            self._unit = newunit
-            self.dBName = 'dB(z)'
-            self.dBRef = 2e-5
-        elif newunit == 'W/m2':
-            self._unit = newunit
-            self.dBName = 'dB'
-            self.dBRef = 1e-12
-        elif newunit == None:
-            self._unit = ''
-            self.dBName = 'dBFs'
-            self.dBRef = 1
+        if isinstance(newSignal,np.ndarray):
+            
+            if self.size_check(newSignal) == 1:
+                newSignal = np.array(newSignal,ndmin=2).T
+            
+            dCh = newSignal.shape[1] - self.num_channels()
+            if dCh > 0:
+                for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+1+self.num_channels())))
+            if dCh < 0:
+                for i in range(0,-dCh): self.channels.pop(-1)
+            
+            self._freqSignal = np.array(newSignal)
+            self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
+            self._numSamples = len(self.timeSignal) # [-] number of samples
+            self._fftDegree = np.log2(self.numSamples) # [-] size parameter
+            self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
+            self._timeVector = np.arange(0,self.timeLength, 1/self.samplingRate) # [s] time vector
+            self._freqVector = np.linspace(0,(self.numSamples-1) * self.samplingRate / (2*self.numSamples),
+                                           (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 ) # [Hz] frequency vector
         else:
-            raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
+            raise TypeError('Input array must be a numpy ndarray')
+            
+#    @property
+#    def unit(self):
+#        return self._unit
+#    
+#    @unit.setter
+#    def unit(self,newunit):
+#        if isinstance(newunit,list):
+#            if len(newunit) == self.num_channels():
 
-    @property
-    def channelName(self):
-        return self._channelName
-    
-    @channelName.setter
-    def channelName(self,channelName):
-        if channelName == None:
-            self._channelName = []           
-            for chIndex in range(0,self.num_channels()):
-                self._channelName.append('Channel '+str(chIndex+1))
-        elif len(channelName) == self.num_channels():
-            self._channelName = []   
-            self._channelName = channelName
-        else:
-            raise AttributeError('Incompatible number of channel names and channel number.')
+#            else:
+#                raise TypeError('There are '+str(self.num_channels())+' channels.')
+#        else:
+#            raise TypeError('unit must be a list with strings inside. E.g. ["Pa","V","W/m2"]')
+#        self._unit=newunit
+#
             
 #%% SignalObj Methods
         
@@ -407,9 +480,8 @@ class SignalObj(PyTTaObj):
     def max_level(self):
         maxlvl = []
         for chIndex in range(self.num_channels()):
-            maxlvl.append(np.max(np.abs(self.timeSignal[:,chIndex])))
-        maxlvl = np.array(maxlvl)
-        maxlvl = 20*np.log10(maxlvl/self.dBRef)
+            maxAmplitude = np.max(np.abs(self.timeSignal[:,chIndex]))
+            maxlvl.append(20*np.log10(maxAmplitude/self.channels[chIndex].dBRef))
         return maxlvl
             
     
@@ -440,10 +512,13 @@ class SignalObj(PyTTaObj):
         # DB
         plot.figure( figsize=(10,5) )
         if self.num_channels() > 1:
-            for chIndex in range(self.num_channels()):
-                plot.plot( self.timeVector, self.timeSignal[:,chIndex],label=self.channelName[chIndex])            
+            for chIndex in range(0,self.num_channels()):
+                label = self.channels[chIndex].name+' ['+self.channels[chIndex].unit+']'
+                plot.plot( self.timeVector,self.timeSignal[:,chIndex],label=label)
         else:
-            plot.plot( self.timeVector, self.timeSignal,label=self.channelName[0])            
+            chIndex = 0
+            label = self.channels[chIndex].name+' ['+self.channels[chIndex].unit+']'
+            plot.plot( self.timeVector, self.timeSignal[:,chIndex],label=label)            
         plot.legend(loc='best')
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)
         plot.axis( ( self.timeVector[0] - 10/self.samplingRate, \
@@ -451,40 +526,42 @@ class SignalObj(PyTTaObj):
                     1.05*np.min( self.timeSignal ), \
                    1.05*np.max( self.timeSignal ) ) )
         plot.xlabel(r'$Time$ [s]')
-        plot.ylabel(r'$Amplitude$ ['+self.unit+']')
+        plot.ylabel(r'$Amplitude$')
         
     def plot_freq(self,smooth=False):
         """
         Frequency domain plotting method
         """
         plot.figure( figsize=(10,5) )
-        if not smooth:
-            if self.num_channels() > 1:
-                for chIndex in range(0,self.num_channels()):
-                    dBSignal = 20 * np.log10( np.abs( self.freqSignal[:,chIndex]) / self.dBRef )
-                    plot.semilogx( self.freqVector,dBSignal,label=self.channelName[chIndex])
-            else:
-                dBSignal = 20 * np.log10( np.abs( self.freqSignal) / self.dBRef )
-                plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])            
+        
+        if self.num_channels() > 1:
+            for chIndex in range(0,self.num_channels()):
+                if smooth: 
+                    Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+                else: 
+                    Signal = self.freqSignal[:,chIndex]
+                dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
+                label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
+                plot.semilogx( self.freqVector,dBSignal,label=label)
         else:
-            if self.num_channels() > 1:
-                for chIndex in range(self.num_channels()):
-                    signalSmooth = signal.savgol_filter( np.abs(self.freqSignal[:,chIndex]), 31, 3 )
-                    dBSignal = 20 * np.log10( np.abs( signalSmooth ) / self.dBRef )
-                    plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[chIndex])
-            else:
-                signalSmooth = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal)), 31, 3 )
-                dBSignal = 20 * np.log10( np.abs( signalSmooth ) / self.dBRef )
-                plot.semilogx( self.freqVector, dBSignal ,label=self.channelName[0])
+            chIndex = 0
+            if smooth: 
+                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+            else: 
+                Signal = self.freqSignal[:,chIndex]
+            dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
+            label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
+            plot.semilogx( self.freqVector, dBSignal ,label=label)            
+            
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
         plot.legend(loc='best')
         if np.max(dBSignal) > 0:
-            ylim = [np.max(dBSignal)-80,1.12*np.max(dBSignal)]
+            ylim = [1.05*np.min(dBSignal),1.12*np.max(dBSignal)]
         else:
-            ylim = [1/1.05*np.min(dBSignal),1/1.05*np.max(dBSignal)]
+            ylim = [np.min(dBSignal)-2,np.max(dBSignal)+2]
         plot.axis((self.freqMin,self.freqMax,ylim[0],ylim[1]))
         plot.xlabel(r'$Frequency$ [Hz]')
-        plot.ylabel(r'$Magnitude$ '+self.dBName+' ref.: '+str(self.dBRef)+' ['+self.unit+']')
+        plot.ylabel(r'$Magnitude$ in dB')
 
     def calib_voltage(self,refSignalObj,refVrms=1,refFreq=1000):
         """
@@ -778,7 +855,8 @@ class RecMeasure(Measurement):
             else:
                 self.recording.timeSignal[:] = self.vCalibrationCF*self.recording.timeSignal[:]
                 self.recording.unit = 'V'
-        self.recording.channelName = self.channelName
+        for chIndex in range(self.recording.num_channels()):
+            self.recording.channels[chIndex].name = self.channelName[chIndex]
         self.recording.timeStamp = time.ctime(time.time())
         self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a Rec measurement'
@@ -840,6 +918,8 @@ class PlayRecMeasure(Measurement):
                              ) # y_all(t) - out signal: x(t) conv h(t)
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
+        for chIndex in range(self.recording.num_channels()):
+            self.recording.channels[chIndex].name = self.channelName[chIndex]
         self.recording.timeStamp = timeStamp
         self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a PlayRec measurement'
@@ -929,11 +1009,11 @@ class FRFMeasure(PlayRecMeasure):
 def print_max_level(sigObj,kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
-            print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.dBName+' - ref.: '+str(sigObj.dBRef)+' ['+sigObj.unit+']')
+            print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.channels[chIndex].dBName+' - ref.: '+str(sigObj.channels[chIndex].dBRef)+' ['+sigObj.channels[chIndex].unit+']')
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
         for chIndex in range(sigObj.num_channels()):
-            print('max input level (recording) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.dBName+' - ref.: '+str(sigObj.dBRef)+' ['+sigObj.unit+']')
+            print('max input level (recording) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.channels[chIndex].dBName+' - ref.: '+str(sigObj.channels[chIndex].dBRef)+' ['+sigObj.channels[chIndex].unit+']')
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
