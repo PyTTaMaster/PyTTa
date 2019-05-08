@@ -221,7 +221,7 @@ class ChannelObj(object):
                 self._unit = newunit
                 self.dBName = 'dB(z)'
                 self.dBRef = 2e-5
-            elif newunit == 'W/m2':
+            elif newunit == 'W/m^2':
                 self._unit = newunit
                 self.dBName = 'dB'
                 self.dBRef = 1e-12
@@ -409,85 +409,6 @@ class SignalObj(PyTTaObj):
 #
             
 ##%% SignalObj Methods
-    def __truediv__(self, other):
-        """
-        Frequency domain division method
-        """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(samplingRate=self.samplingRate)
-        result._domain = 'freq'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                if other.size_check() != self.size_check():
-                    raise ValueError("Both signal-like objects must have the same number of channels.")
-                for channel in range(other.num_channels()):
-                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal[:,channel]
-            else:
-                for channel in range(other.num_channels()):
-                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal
-        else: result.freqSignal = self._freqSignal / other._freqSignal
-        return result
-    
-    
-    def __add__(self, other):
-        """
-        Time domain addition method
-        """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                i = 0
-                for channelA in range(self.num_channels()):
-                    for channelB in range(other.timeSignal.shape):
-                        result.timeSignal[:,i + channelB] = \
-                                self.timeSignal[:,channelA] + other.timeSignal[:,channelB]
-                    i = channelB
-            else:
-                for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] + other.timeSignal
-        elif other.size_check() > 1:
-            for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal + other.timeSignal[:,channel]
-        else: result.timeSignal = self.timeSignal + other.timeSignal
-        return result
-
-    def __sub__(self, other):
-        """
-        Time domain subtraction method
-        """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
-
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                i = 0
-                for channelA in range(self.num_channels()):
-                    for channelB in range(other.num_channels):
-                        result.timeSignal[:,i + channelB] = \
-                        self.timeSignal[:,channelA] - other.timeSignal[:,channelB]
-                    i = channelB
-            else:
-                for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] - other.timeSignal
-                                        
-        elif other.size_check() > 1:
-            for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal - other.timeSignal[:,channel]
-        else: result.timeSignal = self.timeSignal - other.timeSignal
-        return result
-
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
     
@@ -523,30 +444,6 @@ class SignalObj(PyTTaObj):
         sd.play(self.timeSignal,self.samplingRate,mapping=outChannel,**kwargs)
         return
     
-    def calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=512 ):
-        if timeData is None:
-            timeData = self.timeSignal
-            if self.size_check() > 1:
-                timeData = timeData[:,0]
-        window = eval('signal.windows.'+winType)(winSize)
-        nextIdx = int(winSize*overlap)
-        rng = int( timeData.shape[0]/winSize/overlap - 1 )
-        _spectrogram = np.zeros(( winSize//2 + 1, rng ))
-        for N in range(rng):
-            try:
-                strIdx = N*nextIdx
-                endIdx = winSize + N*nextIdx
-                sliceAudio = (8/np.sqrt(3))*window*timeData[ strIdx : endIdx ]
-                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
-            except IndexError:
-                sliceAudio = timeData[ -winSize: ]
-                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
-        return _spectrogram
-
     def plot_time(self):
         """
         Time domain plotting method
@@ -702,6 +599,98 @@ class SignalObj(PyTTaObj):
                 return thing
         sio.savemat(filename,toDict(mySigObj),format='5')
 
+    def __truediv__(self, other):
+        """
+        Frequency domain division method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result._domain = 'freq'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal
+        else: result.freqSignal = self._freqSignal / other._freqSignal
+        return result
+    
+    
+    def __add__(self, other):
+        """
+        Time domain addition method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result.domain = 'time'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] + other._timeSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] + other._timeSignal
+        else: result.timeSignal = self._timeSignal + other._timeSignal
+        return result
+
+    def __sub__(self, other):
+        """
+        Time domain subtraction method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result.domain = 'time'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] - other._timeSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] - other._timeSignal
+        else: result.timeSignal = self._timeSignal - other._timeSignal
+        return result
+
+    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=512 ):
+        if timeData is None:
+            timeData = self.timeSignal
+            if self.size_check() > 1:
+                timeData = timeData[:,0]
+        window = eval('signal.windows.'+winType)(winSize)
+        nextIdx = int(winSize*overlap)
+        rng = int( timeData.shape[0]/winSize/overlap - 1 )
+        _spectrogram = np.zeros(( winSize//2 + 1, rng ))
+        for N in range(rng):
+            try:
+                strIdx = N*nextIdx
+                endIdx = winSize + N*nextIdx
+                sliceAudio = (8/np.sqrt(3))*window*timeData[ strIdx : endIdx ]
+                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
+                _spectrogram[: , N] = sliceMag
+            except IndexError:
+                sliceAudio = timeData[ -winSize: ]
+                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
+                _spectrogram[: , N] = sliceMag
+        return _spectrogram
+
+
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
     def __init__(self, excitationSignal, recordedSignal,
@@ -758,82 +747,86 @@ class ImpulsiveResponse(PyTTaObj):
             
         elif method == 'H1':
             if winSize is None: winSize = inputSignal.samplingRate//2
-            if overlap is None: overlap = 1/2
-            result = SignalObj(samplingRate=inputSignal.samplingRate, domain='freq')
-            if outputSignal.size_check() > 1:
-                if inputSignal.size_check() > 1:
-                    if inputSignal.num_channels() == outputSignal.num_channels():
+            if overlap is None: overlap = 0.5
+            result = SignalObj(np.zeros((winSize//2 + 1, outputSignal.freqSignal.shape[1])),
+                               domain='freq',samplingRate=inputSignal.samplingRate)
+            if outputSignal.num_channels() > 1:
+                if inputSignal.num_channels() > 1:
+                    if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
                     for channel in range(outputSignal.num_channels()):
-                        XYXX = self._calc_csd_tf(inputSignal.timeData[:,channel],
-                                                outputSignal.timeData[:,channel],
+                        XYXX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
+                                                outputSignal.timeSignal[:,channel],
                                                 inputSignal.samplingRate,
-                                                winSize, int(winSize*overlap))
-                        result.timeSignal[:,channel] = XYXX
+                                                winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XYXX
                 else:
                     for channel in range(outputSignal.num_channels()):
-                        XYXX = self._calc_csd_tf(inputSignal.timeData,
-                                                outputSignal.timeData[:,channel],
+                        XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+                                                outputSignal.timeSignal[:,channel],
                                                 inputSignal.samplingRate,
-                                                winSize, int(winSize*overlap))
-                        result.timeSignal[:,channel] = XYXX
+                                                winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XYXX
             else:
-                XYXX = self._calc_csd_tf(inputSignal.timeData,
-                                        outputSignal.timeData,
+                XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+                                        outputSignal.timeSignal,
                                         inputSignal.samplingRate,
-                                        winSize, int(winSize*overlap))
-                result.timeSignal[:,channel] = XYXX
+                                        winSize, winSize*overlap)
+                result.freqSignal = XYXX
         
         elif method == 'H2':
             if winSize is None: winSize = inputSignal.samplingRate//2
-            if overlap is None: overlap = 1/2
-            result = SignalObj(samplingRate=inputSignal.samplingRate, domain='freq')
-            if outputSignal.size_check() > 1:
-                if inputSignal.size_check() > 1:
-                    if inputSignal.num_channels() == outputSignal.num_channels():
+            if overlap is None: overlap = 0.5
+            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result.domain='freq'
+            if outputSignal.num_channels() > 1:
+                if inputSignal.num_channels() > 1:
+                    if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
                     for channel in range(outputSignal.num_channels()):
-                        YXYY = self._calc_csd_tf(outputSignal.timeData[:,channel],
-                                                 inputSignal.timeData[:,channel],
+                        YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                                 inputSignal.timeSignal[:,channel],
                                                  inputSignal.samplingRate,
-                                                 winSize, int(winSize*overlap))
-                        result.timeSignal[:,channel] = 1/YXYY
+                                                 winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = 1/YXYY
                 else:
-                    YXYY = self._calc_csd_tf(outputSignal.timeData[:,channel],
-                                             inputSignal.timeData,
+                    YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                             inputSignal.timeSignal,
                                              inputSignal.samplingRate,
-                                             winSize, int(winSize*overlap))
-                    result.timeSignal[:,channel] = 1/YXYY
+                                             winSize, winSize*overlap)
+                    result.freqSignal[:,channel] = 1/YXYY
             else:
-                YXYY = self._calc_csd_tf(outputSignal.timeData,
-                                         inputSignal.timeData,
+                YXYY = self._calc_csd_tf(outputSignal.timeSignal,
+                                         inputSignal.timeSignal,
                                          inputSignal.samplingRate,
-                                         winSize, int(winSize*overlap))
-                result.timeSignal = 1/YXYY
+                                         winSize, winSize*overlap)
+                result.freqSignal = 1/YXYY
         elif method == 'Ht':
             if winSize is None: winSize = inputSignal.samplingRate//2
             if overlap is None: overlap = 1/2
             result = SignalObj(samplingRate=inputSignal.samplingRate, domain='freq')
             if outputSignal.size_check() > 1:
                 if inputSignal.size_check() > 1:
-                    if inputSignal.num_channels() == outputSignal.num_channels():
+                    if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
                 else:
                     pass
             else:
                 pass
             pass
-        
         return result    # end of function get_transferfunction() 
+
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate,
                      numberOfSamples, overlapSamples):
+        
         f, S11 = signal.csd(sig1, sig1, samplingRate,
                             nperseg = numberOfSamples, 
-                            noverlap = overlapSamples)
+                            noverlap = overlapSamples, axis=0)
+        
         f, S12 = signal.csd(sig1, sig2, samplingRate,
                             nperseg = numberOfSamples,
-                            noverlap = overlapSamples)
+                            noverlap = overlapSamples, axis=0)
         return S12/S11
 
     def _coord_points_per_channel(self):
