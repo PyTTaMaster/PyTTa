@@ -32,12 +32,12 @@ For further information see the specific class, or method, documentation
 #import pytta as pa
 import numpy as np
 import matplotlib.pyplot as plot
-import matplotlib.lines as mlines
 import scipy.signal as signal
 import scipy.io as sio
 import sounddevice as sd
 from pytta import default
 import time
+import copy as cp
 
 
 class PyTTaObj(object):
@@ -258,7 +258,7 @@ class SignalObj(PyTTaObj):
         - freqMax: (20000), (int), maximum frequency bandwidth limit;
         - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
         
-    Methods(args: meaning;
+    Methods(args): meaning;
 
         - num_channels(): return the number of channels in the instace;
         - max_level(): return the channel's max levels;
@@ -290,8 +290,7 @@ class SignalObj(PyTTaObj):
         super().__init__(*args,**kwargs)
         
         self.channels = []
-        self._timeSignal = np.array([],ndmin=2) # Needed due to num_channels() check on SignalObj.timeSignal setter
-        self._freqSignal = np.array([],ndmin=2) # Needed due to num_channels() check on SignalObj.freqSignal setter
+
         self.domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray # [-] signal in frequency domain
@@ -299,8 +298,11 @@ class SignalObj(PyTTaObj):
             self.timeSignal = signalArray # [-] signal in time domain
         else:
             self.timeSignal = signalArray
-            print('Taking the input as a time domain signal')
             self.domain = 'time'
+            print('Taking the input as a time domain signal')
+        
+        self._do_conform_channels()
+
         
 #%% SignalObj Properties
     
@@ -318,29 +320,20 @@ class SignalObj(PyTTaObj):
     
     @timeSignal.setter
     def timeSignal(self,newSignal): # when timeSignal have new ndarray value, calculate other properties
-        if isinstance(newSignal,np.ndarray):
-            
+        if isinstance(newSignal,np.ndarray):            
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal,ndmin=2).T
-
-            dCh = newSignal.shape[1] - self.num_channels()
-#            print(dCh)
-            if dCh > 0:
-                for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+1+self.num_channels())))
-            if dCh < 0:
-                for i in range(0,-dCh): self.channels.pop(-1)
-                
+                newSignal = np.array(newSignal,ndmin=2).T   
             self._timeSignal = np.array(newSignal)
-            self._numSamples = len(self.timeSignal) # [-] number of samples
-            self._fftDegree = np.log2(self.numSamples) # [-] size parameter
+            self._freqSignal = np.fft.rfft(self._timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+            self._numSamples = len(self._timeSignal) # [-] number of samples
+            self._fftDegree = np.log2(self._numSamples) # [-] size parameter
             self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
-            self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),
-                                          self.numSamples ) # [s] time vector (x axis)
+            self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),self.numSamples ) # [s] time vector (x axis)
             self._freqVector = np.linspace(0,(self.numSamples - 1) * self.samplingRate / (2*self.numSamples),
                                           (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
-            self._freqSignal = np.fft.rfft(self.timeSignal,axis=0,norm=None) # [-] signal in frequency domain
-        else:
-            raise TypeError('Input array must be a numpy ndarray')
+            self._do_conform_channels()
+        else: raise TypeError('Input array must be a numpy ndarray')
+        return
 
     @property # when freqSignal is called returns the normalized ndarray
     def freqSignal(self): 
@@ -349,17 +342,9 @@ class SignalObj(PyTTaObj):
     
     @freqSignal.setter
     def freqSignal(self,newSignal):
-        if isinstance(newSignal,np.ndarray):
-            
+        if isinstance(newSignal,np.ndarray):            
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal,ndmin=2).T
-            
-            dCh = newSignal.shape[1] - self.num_channels()
-            if dCh > 0:
-                for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+1+self.num_channels())))
-            if dCh < 0:
-                for i in range(0,-dCh): self.channels.pop(-1)
-            
             self._freqSignal = np.array(newSignal)
             self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
             self._numSamples = len(self.timeSignal) # [-] number of samples
@@ -368,25 +353,10 @@ class SignalObj(PyTTaObj):
             self._timeVector = np.arange(0,self.timeLength, 1/self.samplingRate) # [s] time vector
             self._freqVector = np.linspace(0,(self.numSamples-1) * self.samplingRate / (2*self.numSamples),
                                            (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 ) # [Hz] frequency vector
-        else:
-            raise TypeError('Input array must be a numpy ndarray')
-            
-#    @property
-#    def unit(self):
-#        return self._unit
-#    
-#    @unit.setter
-#    def unit(self,newunit):
-#        if isinstance(newunit,list):
-#            if len(newunit) == self.num_channels():
-
-#            else:
-#                raise TypeError('There are '+str(self.num_channels())+' channels.')
-#        else:
-#            raise TypeError('unit must be a list with strings inside. E.g. ["Pa","V","W/m2"]')
-#        self._unit=newunit
-#
-            
+            self._do_conform_channels()
+        else: raise TypeError('Input array must be a numpy ndarray')
+        return
+                    
 #%% SignalObj Methods
         
     def __truediv__(self, other):
@@ -466,6 +436,13 @@ class SignalObj(PyTTaObj):
                 result.timeSignal = self.timeSignal - other.timeSignal[:,channel]
         else: result.timeSignal = self.timeSignal - other.timeSignal
         return result
+    
+    def _do_conform_channels(self):
+        dCh = self.num_channels() - len(self.channels)
+        if dCh > 0:
+            for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
+        if dCh < 0:
+            for i in range(0,-dCh): self.channels.pop(-1)
 
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
@@ -563,100 +540,73 @@ class SignalObj(PyTTaObj):
         plot.xlabel(r'$Frequency$ [Hz]')
         plot.ylabel(r'$Magnitude$ in dB')
 
-    def calib_voltage(self,refSignalObj,refVrms=1,refFreq=1000):
+    def calib_voltage(self,chIndex,refSignalObj,refVrms=1,refFreq=1000):
         """
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
         
-            >>> SignalObj.calibVoltage(refSignalObj,refVrms,refFreq)
+            >>> SignalObj.calibVoltage(chIndex,refSignalObj,refVrms,refFreq)
+            
+        argument: (default), (dtype), meaning;
+            
+            - chIndex: (), (int), channel index for calibration. Starts in 0;
+            - refSignalObj: (), (SignalObj), SignalObj with the calibration recorded signal;
+            - refVrms: (1.00), (float), the reference voltage provided by the voltage calibrator;
+            - refFreq: (1000), (int), the reference sine frequency provided by the voltage calibrator;
             
         """
-        self.refVrms = refVrms
-        self.refSignal = refSignalObj
-        Vrms = np.max(np.abs(self.freqSignal))
-        freqFound = np.round(self.freqVector[np.where(np.abs(self.freqSignal)==np.max(np.abs(self.freqSignal)))[0]])
-        if freqFound != refFreq:
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
-        self.CF['V'] = self.refVrms/Vrms
-        if self.unit != 'Pa':
-            self.unit = 'V'
-        self.unit = 'V'
-        self.timeSignal = self.timeSignal*self.CF['V']
+        if chIndex in range(self.num_channels()):
+            Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            print(Vrms)
+            freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
+            if freqFound != refFreq:
+                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
+            self.channels[chIndex].CF = refVrms/Vrms
+            print(self.channels[chIndex].CF)
+            self.channels[chIndex].unit = 'V'
+            print(self.freqSignal)
+            newtimeSignal = cp.deepcopy(self.timeSignal)
+            newtimeSignal[:,chIndex] = self.timeSignal[:,chIndex]*self.channels[chIndex].CF
+            self.timeSignal = newtimeSignal
+            print(self.freqSignal)
+            self.channels[chIndex].calibCheck = True
+        else: raise IndexError('chIndex greater than channels number')
+        return
         
-    def calib_pressure(self,refSignalObj,refPrms=1,refFreq=1000):
+    def calib_pressure(self,chIndex,refSignalObj,refPrms=1.00,refFreq=1000):
         """
         calibPressure method: use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor.
         
-            >>> SignalObj.calibPressure(refSignalObj,revPrms,refFreq)
+            >>> SignalObj.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
+            
+        argument: (default), (dtype), meaning;
+            
+            - chIndex: (), (int), channel index for calibration. Starts in 0;
+            - refSignalObj: (), (SignalObj), SignalObj with the calibration recorded signal;
+            - refPrms: (1.00), (float), the reference pressure provided by the acoustic calibrator;
+            - refFreq: (1000), (int), the reference sine frequency provided by the acoustic calibrator;
             
         """
-        self.refPrms = refPrms
-        self.refSignal = refSignalObj
-        Prms = np.max(np.abs(self.freqSignal))
-        freqFound = np.round(self.freqVector[np.where(np.abs(self.freqSignal)==np.max(np.abs(self.freqSignal)))[0]])
-        if freqFound != refFreq:
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
-        self.CF['Pa'] = self.refPrms/Prms
-        self.unit = 'Pa'
-        self.timeSignal = self.timeSignal*self.CF['Pa']
+        if chIndex in range(self.num_channels()):
+            Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            print(Prms)
+            freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
+            if freqFound != refFreq:
+                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
+            self.channels[chIndex].CF = refPrms/Prms
+            print(self.channels[chIndex].CF)
+            self.channels[chIndex].unit = 'Pa'
+            print(self.freqSignal)
+            newtimeSignal = cp.deepcopy(self.timeSignal)
+            newtimeSignal[:,chIndex] = self.timeSignal[:,chIndex]*self.channels[chIndex].CF
+            self.timeSignal = newtimeSignal
+            print(self.freqSignal)
+            self.channels[chIndex].calibCheck = True
+        else: raise IndexError('chIndex greater than channels number')
+        return
 
     def save_mat(self,filename=time.ctime(time.time())):
-        mySigObj = vars(self)
-        
-        def toDict(thing):
-            
-            # From SignalObj to dict
-            if isinstance(thing,SignalObj):
-                mySigObj = vars(thing)
-                dictime = {}
-                for key, value in mySigObj.items():
-                    # Recursive stuff for values
-                    dictime[key] = toDict(value)
-                # Recursive stuff for keys
-                return toDict(dictime)
-            
-            # From ChannelObj to dict
-            elif isinstance(thing,ChannelObj):
-                myChObj = vars(thing)
-                dictime = {}
-                for key, value in myChObj.items():
-                    dictime[key] = toDict(value)
-                return toDict(dictime)
-            
-           # From a bad dict to a good dict
-            elif isinstance(thing,dict):
-                dictime = {}
-                for key, value in thing.items():
-                    # Removing spaces from dict keys
-                    if key.find(' ') >= 0:
-                        key = key.replace(' ','')
-                    # Removing underscores from dict keys
-                    if key.find('_') >= 0:
-                        key = key.replace('_','')
-                    # Removing empty dicts from values
-                    if isinstance(value,dict) and len(value) == 0:
-                        dictime[key] = 0
-                    # Removing None from values
-                    if value is None:
-                        dictime[key] = 0
-                    # Recursive stuff
-                    dictime[key] = toDict(value)
-                return dictime
-            
-            elif isinstance(thing,list):
-                dictime = {}
-                j = 0
-                for item in thing:
-                    dictime['T'+str(j)] = toDict(item)
-                    j=j+1
-                return dictime
-           
-            elif thing is None:
-                return 0
-           
-            else:
-                return thing
-            
-        sio.savemat(filename,toDict(mySigObj),format='5')
+        mySigObj = vars(self)            
+        sio.savemat(filename,_to_dict(mySigObj),format='5')
 
 #%% Measurement class
 class Measurement(PyTTaObj):
@@ -905,7 +855,7 @@ class RecMeasure(Measurement):
         self.recording.timeStamp = time.ctime(time.time())
         self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a Rec measurement'
-        print_max_level(self.recording,kind='input')
+        _print_max_level(self.recording,kind='input')
         return self.recording    
     
 #%% PlayRecMeasure class 
@@ -968,8 +918,8 @@ class PlayRecMeasure(Measurement):
         self.recording.timeStamp = timeStamp
         self.recording.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a PlayRec measurement'
-        print_max_level(self.excitation,kind='output')
-        print_max_level(self.recording,kind='input')
+        _print_max_level(self.excitation,kind='output')
+        _print_max_level(self.recording,kind='input')
         return self.recording
 
 #%% PlayRec Properties
@@ -1051,7 +1001,7 @@ class FRFMeasure(PlayRecMeasure):
         return self.transferfunction
 
 #%% Sub functions
-def print_max_level(sigObj,kind):
+def _print_max_level(sigObj,kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
             print('max output level (excitation) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.channels[chIndex].dBName+' - ref.: '+str(sigObj.channels[chIndex].dBRef)+' ['+sigObj.channels[chIndex].unit+']')
@@ -1062,3 +1012,59 @@ def print_max_level(sigObj,kind):
             print('max input level (recording) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.channels[chIndex].dBName+' - ref.: '+str(sigObj.channels[chIndex].dBRef)+' ['+sigObj.channels[chIndex].unit+']')
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
+
+def _to_dict(thing):
+    
+    # From SignalObj to dict
+    if isinstance(thing,SignalObj):
+        mySigObj = vars(thing)
+        dictime = {}
+        for key, value in mySigObj.items():
+            # Recursive stuff for values
+            dictime[key] = _to_dict(value)
+        # Recursive stuff for resultant dict
+        return _to_dict(dictime)
+    
+    # From ChannelObj to dict
+    elif isinstance(thing,ChannelObj):
+        myChObj = vars(thing)
+        dictime = {}
+        for key, value in myChObj.items():
+            dictime[key] = _to_dict(value)
+        # Recursive stuff for resultant dict
+        return _to_dict(dictime)
+    
+   # From a bad dict to a good dict
+    elif isinstance(thing,dict):
+        dictime = {}
+        for key, value in thing.items():
+            # Removing spaces from dict keys
+            if key.find(' ') >= 0:
+                key = key.replace(' ','')
+            # Removing underscores from dict keys
+            if key.find('_') >= 0:
+                key = key.replace('_','')
+            # Removing empty dicts from values
+            if isinstance(value,dict) and len(value) == 0:
+                dictime[key] = 0
+            # Removing None from values
+            if value is None:
+                dictime[key] = 0
+            # Recursive stuff
+            dictime[key] = _to_dict(value)
+        return dictime
+    
+    # Turning lists into dicts with 'T + listIndex' keys
+    elif isinstance(thing,list):
+        dictime = {}
+        j = 0
+        for item in thing:
+            dictime['T'+str(j)] = _to_dict(item)
+            j=j+1
+        return dictime
+   
+    elif thing is None:
+        return 0
+   
+    else:
+        return thing

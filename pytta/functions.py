@@ -27,7 +27,7 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
-from .classes import SignalObj
+from . import SignalObj
 
 def list_devices():
     """
