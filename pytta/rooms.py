@@ -6,11 +6,9 @@ Created on Tue Oct 30 15:27:44 2018
 """
 
 
-import pytta
 from pytta.properties import default
 import numpy as np
-from pyfilterbank import FractionalOctaveFilterbank 
-#from scipy.io import wavfile
+from pyfilterbank import FractionalOctaveFilterbank
 from scipy import stats
 import matplotlib.pyplot as plt
 

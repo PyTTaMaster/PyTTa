@@ -309,10 +309,9 @@ class SignalObj(PyTTaObj):
             for chIndex in range(0,self.num_channels()):
                 self._channelName.append('Channel '+str(chIndex+1))
         elif len(channelName) == self.num_channels():
-            self._channelName = []   
-            self._channelName = channelName
+            self._channelName = channelName[:]
         else:
-            raise AttributeError('Incompatible number of channel names and channel number.')
+            raise AttributeError('Incompatible number of channel names and number of channels.')
             
 #%% SignalObj Methods
         
@@ -534,7 +533,7 @@ class SignalObj(PyTTaObj):
             if key.find('_') >= 0:
                 key = key.replace('_','')
             mySigObjno_[key] = value
-        sio.savemat(filename,mySigObjno_,format='5')
+        sio.savemat(filename, mySigObjno_, format='5', oned_as='column')
 
 #%% Measurement class
 class Measurement(PyTTaObj):
