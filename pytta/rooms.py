@@ -2,15 +2,16 @@
 """
 Created on Tue Oct 30 15:27:44 2018
 
-@author: Marvos
+@author: Marvos, Chum4k3r
 """
 
-
 from pytta.properties import default
+from pytta.classes import pyttaObj
 import numpy as np
 from pyfilterbank import FractionalOctaveFilterbank
 from scipy import stats
 import matplotlib.pyplot as plt
+
 
 def T20(h,
         Fs = default['samplingRate'],       
@@ -21,7 +22,11 @@ def T20(h,
     
             raw_signal = h.timeSignal[:]
             raw_signal = np.array(raw_signal)
-            octfilter = FractionalOctaveFilterbank(sample_rate=44100, order=4, nth_oct=3.0, norm_freq=1000, start_band=-19, end_band=13, edge_correction_percent=0.01, filterfun='py')
+            octfilter = FractionalOctaveFilterbank(sample_rate=44100, order=4,
+                                                   nth_oct=3.0, norm_freq=1000,
+                                                   start_band=-19, end_band=13,
+                                                   edge_correction_percent=0.01,
+                                                   filterfun='py')
     
             hfilt = octfilter.filter(raw_signal)
             filtered_signal = hfilt[0]
@@ -176,6 +181,7 @@ def EDT(h,
                 EDT_result = [EDT, f_3rd]
         
             return EDT_result
+        
 def plot_EDT(EDT_result):
     """
     Frequency domain plotting method
