@@ -503,7 +503,16 @@ class SignalObj(PyTTaObj):
         plot.xlabel(r'$Frequency$ [Hz]')
         plot.ylabel(r'$Magnitude$ in dB')
         return
-
+    
+    def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5):
+        _spectrogram, _specTime, _specFreq = self._calc_spectrogram(self.timeSignal[:,0], overlap, window, winSize)
+        plot.pcolormesh(_specTime.T, _specFreq.T, _spectrogram, 
+                        cmap=plot.jet(), vmin=-120)
+        plot.xlabel(r'$Time$ [s]')
+        plot.ylabel(r'$Frequency$ [Hz]')
+        plot.colorbar()
+        return
+        
     def calib_voltage(self,refSignalObj,refVrms=1,refFreq=1000):
         """
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
@@ -666,30 +675,31 @@ class SignalObj(PyTTaObj):
         else: result.timeSignal = self._timeSignal - other._timeSignal
         return result
 
-    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=512 ):
+    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=1024 ):
         if timeData is None:
             timeData = self.timeSignal
-            if self.size_check() > 1:
+            if self.num_channels() > 1:
                 timeData = timeData[:,0]
         window = eval('signal.windows.'+winType)(winSize)
         nextIdx = int(winSize*overlap)
         rng = int( timeData.shape[0]/winSize/overlap - 1 )
         _spectrogram = np.zeros(( winSize//2 + 1, rng ))
+        _specFreq = np.linspace(0, self.samplingRate//2, winSize//2 +1)
+        _specTime = np.linspace(0, self.timeVector[-1], rng)
         for N in range(rng):
             try:
                 strIdx = N*nextIdx
                 endIdx = winSize + N*nextIdx
-                sliceAudio = (8/np.sqrt(3))*window*timeData[ strIdx : endIdx ]
+                sliceAudio = window*timeData[ strIdx : endIdx ]
                 sliceFFT = np.fft.rfft(sliceAudio, axis=0)
                 sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
+                _spectrogram[: , N] = 20*np.log10(sliceMag)
             except IndexError:
                 sliceAudio = timeData[ -winSize: ]
                 sliceFFT = np.fft.rfft(sliceAudio, axis=0)
                 sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
-        return _spectrogram
-
+                _spectrogram[: , N] = 20*np.log10(sliceMag)
+        return _spectrogram, _specTime, _specFreq
 
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
