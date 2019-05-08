@@ -601,17 +601,62 @@ class SignalObj(PyTTaObj):
 
     def save_mat(self,filename=time.ctime(time.time())):
         mySigObj = vars(self)
-        for key, value in mySigObj.items():
-            if value is None:
-                mySigObj[key] = 0
-            if isinstance(mySigObj[key],dict) and len(value) == 0:
-                mySigObj[key] = 0
-        mySigObjno_ = {}
-        for key, value in mySigObj.items():
-            if key.find('_') >= 0:
-                key = key.replace('_','')
-            mySigObjno_[key] = value
-        sio.savemat(filename,mySigObjno_,format='5')
+        
+        def toDict(thing):
+            
+            # From SignalObj to dict
+            if isinstance(thing,SignalObj):
+                mySigObj = vars(thing)
+                dictime = {}
+                for key, value in mySigObj.items():
+                    # Recursive stuff for values
+                    dictime[key] = toDict(value)
+                # Recursive stuff for keys
+                return toDict(dictime)
+            
+            # From ChannelObj to dict
+            elif isinstance(thing,ChannelObj):
+                myChObj = vars(thing)
+                dictime = {}
+                for key, value in myChObj.items():
+                    dictime[key] = toDict(value)
+                return toDict(dictime)
+            
+           # From a bad dict to a good dict
+            elif isinstance(thing,dict):
+                dictime = {}
+                for key, value in thing.items():
+                    # Removing spaces from dict keys
+                    if key.find(' ') >= 0:
+                        key = key.replace(' ','')
+                    # Removing underscores from dict keys
+                    if key.find('_') >= 0:
+                        key = key.replace('_','')
+                    # Removing empty dicts from values
+                    if isinstance(value,dict) and len(value) == 0:
+                        dictime[key] = 0
+                    # Removing None from values
+                    if value is None:
+                        dictime[key] = 0
+                    # Recursive stuff
+                    dictime[key] = toDict(value)
+                return dictime
+            
+            elif isinstance(thing,list):
+                dictime = {}
+                j = 0
+                for item in thing:
+                    dictime['T'+str(j)] = toDict(item)
+                    j=j+1
+                return dictime
+           
+            elif thing is None:
+                return 0
+           
+            else:
+                return thing
+            
+        sio.savemat(filename,toDict(mySigObj),format='5')
 
 #%% Measurement class
 class Measurement(PyTTaObj):
