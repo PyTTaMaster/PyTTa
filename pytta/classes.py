@@ -33,7 +33,7 @@ For further information see the specific class, or method, documentation
 #import pytta as pa
 import numpy as np
 import matplotlib.pyplot as plot
-import matplotlib.lines as mlines
+#import matplotlib.lines as mlines
 import scipy.signal as signal
 import scipy.io as sio
 import sounddevice as sd
@@ -1021,16 +1021,16 @@ class ImpulsiveResponse(PyTTaObj):
         return result    # end of function get_transferfunction() 
 
 
-    def _calc_csd_tf(self, sig1, sig2, samplingRate,
+    def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
         
-        f, S11 = signal.csd(sig1, sig1, samplingRate,
-                            nperseg = numberOfSamples, 
-                            noverlap = overlapSamples, axis=0)
+        f, S11 = signal.csd(sig1, sig1, samplingRate, window=windowName,
+                            nperseg = numberOfSamples, noverlap = overlapSamples,
+                            axis=0)
         
-        f, S12 = signal.csd(sig1, sig2, samplingRate,
-                            nperseg = numberOfSamples,
-                            noverlap = overlapSamples, axis=0)
+        f, S12 = signal.csd(sig1, sig2, samplingRate, window=windowName,
+                            nperseg = numberOfSamples, noverlap = overlapSamples,
+                            axis=0)
         return S12, S11
 
     def _coord_points_per_channel(self):
