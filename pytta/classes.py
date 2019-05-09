@@ -230,7 +230,7 @@ class ChannelObj(object):
                 self.dBName = 'dBFs'
                 self.dBRef = 1
             else:
-                raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
+                raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \'V\', \'W/m^2\'  or \'\'.')
         else:
             raise TypeError('Channel unit must be a string.')
             
@@ -303,7 +303,7 @@ class SignalObj(PyTTaObj):
                      **kwargs):
         # Checking input array dimensions
         if self.size_check(signalArray)>2:
-            message = "No 'pyttaObj' is able handle arrays with more \
+            message = "No 'pyttaObj' is able handle to arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
@@ -414,7 +414,7 @@ class SignalObj(PyTTaObj):
     
     def num_channels(self):
         try:
-            numChannels = np.shape(self.timeSignal)[1]
+            numChannels = self.timeSignal.shape[1]
         except IndexError:
             numChannels = 1
         return numChannels
@@ -846,6 +846,7 @@ class ImpulsiveResponse(PyTTaObj):
                                                    winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
+        self._coord_points_per_channel()
         return
 
 ##%% Properties
@@ -995,7 +996,18 @@ class ImpulsiveResponse(PyTTaObj):
         return S12, S11
 
     def _coord_points_per_channel(self):
-        pass # TODO
+        if len(self.coordinates['points']) == 0:
+            for idx in range(self.IR.num_channels()):
+                self.coordinates['points'].append([0., 0., 0.,])
+        elif len(self.coordinates['points']) != self.IR.num_channels():
+            while len(self.coordinates['points']) != self.IR.num_channels():
+                if len(self.coordinates['points']) < self.IR.num_channels():
+                    self.coordinates['points'].append([0., 0., 0.,])
+                elif len(self.coordinates['points']) < self.IR.num_channels():
+                    self.coordinates['points'].pop(-1)
+        elif len(self.coordinates['points']) == self.IR.num_channels():
+            pass
+        return
     
     
 ##%% Measurement class
