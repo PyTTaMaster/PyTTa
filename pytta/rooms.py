@@ -6,13 +6,12 @@ Created on Tue Oct 30 15:27:44 2018
 """
 
 from pytta.properties import default
-from pytta.classes import pyttaObj
 import numpy as np
 from pyfilterbank import FractionalOctaveFilterbank
 from scipy import stats
 import matplotlib.pyplot as plt
 
-
+##%% Legacy code
 def T20(h,
         Fs = default['samplingRate'],       
         init = -5,
