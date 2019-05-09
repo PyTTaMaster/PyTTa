@@ -1017,6 +1017,7 @@ class ImpulsiveResponse(PyTTaObj):
             else:
                 pass
             pass
+        result.channels = outputSignal.channels[:]
         return result    # end of function get_transferfunction() 
 
 
