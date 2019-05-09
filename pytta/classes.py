@@ -741,10 +741,10 @@ class ImpulsiveResponse(PyTTaObj):
                 A dict that contains the following keys:
                     
                     * points (list):
-                        A list handled by the get_channel_point() and 
-                        set_channel_point() object methods. Must be organized
-                        as [ [x1, y1, z1], [x2, y2, z2], ...] with x y and z
-                        standing for the distance from the reference point;
+                        A list handled by the get_channels_points(ch) and 
+                        set_channels_points(ch, pt) object methods. Must be
+                        organized as [ [x1, y1, z1], [x2, y2, z2], ...] with x,
+                        y and z standing for the distance from the reference point;
                 
                     * reference (str):
                         A short description of a place that is considered the
@@ -894,6 +894,43 @@ class ImpulsiveResponse(PyTTaObj):
     def methodInfo(self):
         return self._methodInfo
 
+##%% Public methods
+    def set_channels_points(self, channels, points):
+        if isinstance(channels, list):
+            if len(channels) != len(points):
+                raise IndexError("Each value on channels list must have a corresponding\
+                                 [x, y, z] on points list.")
+            else:
+                for idx in range(len(channels)):
+                    self.coordinates['points'][idx] = points[idx]
+            
+        elif isinstance(channels, int):
+            try:
+                self.coordinates['points'][channels-1] = points
+            except IndexError:
+                print('The channel value goes beyond the number of channels,\
+                      the point was appended to the points list.')
+                self.coordinates['points'].append(points)
+        else:
+            raise TypeError("channels parameter must be either a int or list of int")
+        return
+    
+    def get_channels_points(self, channels):
+        if isinstance(channels, list):
+            outlist = []
+            for idx in channels:
+                outlist.append(self.coordinates['points'][idx-1])
+            return outlist
+        elif isinstance(channels, int):
+            try:
+                return self.coordinates['points'][channels-1]
+            except IndexError:
+                print('Index out of bounds, returning last channel\'s point')
+                return self.coordinates['points'][-1]
+        else:
+            raise TypeError("channels parameter must be either a int or list of int")
+            return
+        
 ##%% Private methods
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                              winType=None, winSize=None, overlap=None):
