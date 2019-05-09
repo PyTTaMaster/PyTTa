@@ -1,4 +1,4 @@
-usr/bin/env python3
+#usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Classes
@@ -727,9 +727,8 @@ class ImpulsiveResponse(PyTTaObj):
         The parameter passed down to the function are the same that initialize
         the class, and are explained as follows:
             
-            Creation parameters
-            --------------------
-            
+        Creation parameters:
+        --------------------    
             * excitation (SignalObj):
                 The signal-like object used as excitation signal on the
                 measurement-like object;
@@ -807,9 +806,8 @@ class ImpulsiveResponse(PyTTaObj):
         
         The class's attribute are described next:
 
-            Attributes
-            -----------
-        
+        Attributes:
+        -----------
             * excitation | inputSignal:
                 Both names are valid, returns the excitation signal given as 
                 parameter at the object instantiation;
