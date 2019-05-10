@@ -28,7 +28,7 @@ User intended classes:
     
 For further information see the specific class, or method, documentation
 """
-#%% Importing modules
+##%% Importing modules
 #import pytta as pa
 import numpy as np
 import matplotlib.pyplot as plot
@@ -81,7 +81,7 @@ class PyTTaObj(object):
             self._freqMin, self._freqMax = freqMin, freqMax
         self._comment = comment
 
-#%% PyTTaObj Properties
+##%% PyTTaObj Properties
 
     @property
     def samplingRate(self):
@@ -147,7 +147,7 @@ class PyTTaObj(object):
     def comment(self,newComment):
         self._comment = newComment
 
-#%% PyTTaObj Methods
+##%% PyTTaObj Methods
 
     def __call__(self):
         for name, value in vars(self).items():
@@ -169,7 +169,7 @@ class ChannelObj(object):
         self.CF = CF
         self.calibCheck = calibCheck
 
-#%% ChannelObj properties
+##%% ChannelObj properties
     @property
     def name(self):
         return self._name
@@ -304,7 +304,7 @@ class SignalObj(PyTTaObj):
         self._do_conform_channels()
 
         
-#%% SignalObj Properties
+##%% SignalObj Properties
     
     @property 
     def timeVector(self):
@@ -357,18 +357,18 @@ class SignalObj(PyTTaObj):
         else: raise TypeError('Input array must be a numpy ndarray')
         return
                     
-#%% SignalObj Methods
+##%% SignalObj Methods
         
     def __truediv__(self, other):
         """
         Frequency domain division method
         """
         if type(other) != type(self):
+            print(type(other),type(self))
             raise TypeError("A SignalObj can only operate with other alike")
         result = SignalObj(samplingRate=self.samplingRate)
-        result._domain = 'freq'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
+        if self.num_channels > 1:
+            if other.num_channels() > 1:
                 i = 0
                 for channelA in range(self.num_channels()):
                     for channelB in range(other.num_channels()):
@@ -608,7 +608,7 @@ class SignalObj(PyTTaObj):
         mySigObj = vars(self)            
         sio.savemat(filename,_to_dict(mySigObj),format='5')
 
-#%% Measurement class
+##%% Measurement class
 class Measurement(PyTTaObj):
     """
     Measurement object class created to define some properties and methods to
@@ -620,9 +620,6 @@ class Measurement(PyTTaObj):
         - device: (system default), (list/int), list of input and output devices;
         - inChannel: ([1]), (list/int), list of device's input channel used for recording;
         - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
-        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
-        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
 
     Properties(inherited): 	(default), (dtype), meaning;
 
@@ -640,7 +637,6 @@ class Measurement(PyTTaObj):
                  device=None,
                  inChannel=None,
                  outChannel=None,
-                 calibratedChain=None,
                  channelName=None,
                  *args,
                  **kwargs
@@ -649,12 +645,9 @@ class Measurement(PyTTaObj):
         self.device = device # device number. For device list use sounddevice.query_devices()
         self.inChannel = inChannel # input channels
         self.outChannel = outChannel # output channels
-        self.calibratedChain = 0 if calibratedChain == None else calibratedChain # optin for a calibrated chain
         self.channelName = channelName
-        self.vCalibratedCh = [] # list of calibrated channels
-        self.vCalibrationCF = [] # list of calibration correction factors
         
-#%% Measurement Properties
+##%% Measurement Properties
         
     @property
     def device(self):
@@ -690,21 +683,7 @@ class Measurement(PyTTaObj):
 
     @outChannel.setter
     def outChannel(self,newOutputChannel):
-#        if not isinstance(newOutputChannel,list): # BUG WHEN CREATE A REC MEASUREMENT WITHOUT OUTCHANNEL
-#            raise AttributeError('outChannel must be a list; e.g. [1] .')
-#        else:
         self._outChannel = newOutputChannel
-        
-    @property
-    def calibratedChain(self):
-        return self._calibratedChain
-    
-    @calibratedChain.setter
-    def calibratedChain(self,newoption):
-        if newoption not in range(2):
-            raise AttributeError('calibratedChain must be 1 for a calibrated measurement chain or 0 for a non calibrated.')
-        else:
-            self._calibratedChain = newoption
             
     @property
     def channelName(self):
@@ -722,32 +701,8 @@ class Measurement(PyTTaObj):
         else:
             raise AttributeError('Incompatible number of channel names and channel number.')
             
-#%% Measurement Methods
-        
-    def calibVoltage(self,referenceVoltage=None,channel=None):
-        """
-        calibVoltage method: acquire the informed calibration voltage signal and calculates the Correction Factor to the specified channel.
-        
-            >>> pytta.PlayRecMeasure.calibVoltage(referenceVoltage,channel)
-        """
-        if self.calibratedChain != 1: self.calibratedChain = 1
-        if channel not in self.inChannel:
-            raise AttributeError(str(channel) + ' is not a valid input channel for this measurement. Maybe you need to add it in inChannel property.')
-        else:
-            pass
-        self.referenceVoltage = referenceVoltage
-        vCalibrationRec = sd.rec(3*self.samplingRate,
-                                            self.samplingRate,
-                                            mapping = channel,
-                                            blocking=True,
-                                            latency='low',
-                                            dtype = 'float32')
-        rms = (np.mean(vCalibrationRec**2))**(1/2)
-        CF = self.referenceVoltage/rms
-        self.vCalibrationCF.append(CF)
-        self.vCalibratedCh.append(channel)
 
-#%% RecMeasure class        
+##%% RecMeasure class        
 class RecMeasure(Measurement):
     """
     Signal Recording object
@@ -762,9 +717,6 @@ class RecMeasure(Measurement):
     
         - device: (system default), (list/int), list of input and output devices;
         - inChannel: ([1]), (list/int), list of device's input channel used for recording;
-        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
-        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
         - samplingRate: (44100), (int), signal's sampling rate;
         - numSamples: (samples), (int), signal's number of samples
         - freqMin: (20), (int), minimum frequency bandwidth limit;
@@ -790,7 +742,7 @@ class RecMeasure(Measurement):
             self._timeLength = None
             self._fftDegree = None
 
-#%% Rec Properties
+##%% Rec Properties
             
     @property
     def timeLength(self):
@@ -812,25 +764,13 @@ class RecMeasure(Measurement):
         self._numSamples = 2**self.fftDegree
         self._timeLength = np.round( self.numSamples / self.samplingRate, 2 )
 
-#%% Rec Methods
+##%% Rec Methods
         
     def run(self):
         """
         Run method: starts recording during Tmax seconds
         Outputs a signalObj with the recording content
         """
-        # Checking if all channels are cailabrated if calibratedChain is setted to 1
-        if self.calibratedChain == 1:
-            calibratedCheck = []
-            notCalibratedCh = []            
-            for chindex in range(0,len(self.inChannel)):
-                if self.inChannel[chindex] not in self.vCalibratedCh:
-                    calibratedCheck.append(0)
-                    notCalibratedCh.append(self.inChannel[chindex])
-                else:
-                    calibratedCheck.append(1)                    
-            if 0 in calibratedCheck:
-                raise AttributeError('calibratedChain is set to 1. You must calibrated the following remain channels: ' + str(notCalibratedCh))                
         # Record
         self.recording = sd.rec(self.numSamples,
                                 self.samplingRate,
@@ -841,15 +781,6 @@ class RecMeasure(Measurement):
                                 dtype = 'float32')
         self.recording = np.squeeze(self.recording)
         self.recording = SignalObj(signalArray=self.recording,domain='time',samplingRate=self.samplingRate)        
-        # Apply the calibration Correction Factor
-        if self.calibratedChain == 1:
-            if self.recording.size_check() > 1:
-                for chindex in range(self.recording.num_channels()):
-                    self.recording.timeSignal[:,chindex] = self.vCalibrationCF[chindex]*self.recording.timeSignal[:,chindex]
-                self.recording.unit = 'V'
-            else:
-                self.recording.timeSignal[:] = self.vCalibrationCF*self.recording.timeSignal[:]
-                self.recording.unit = 'V'
         for chIndex in range(self.recording.num_channels()):
             self.recording.channels[chIndex].name = self.channelName[chIndex]
         self.recording.timeStamp = time.ctime(time.time())
@@ -858,7 +789,7 @@ class RecMeasure(Measurement):
         _print_max_level(self.recording,kind='input')
         return self.recording    
     
-#%% PlayRecMeasure class 
+##%% PlayRecMeasure class 
 class PlayRecMeasure(Measurement):
     """
     Playback and Record object
@@ -872,9 +803,6 @@ class PlayRecMeasure(Measurement):
         - device: (system default), (list/int), list of input and output devices;
         - inChannel: ([1]), (list/int), list of device's input channel used for recording;
         - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
-        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
-        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
         - samplingRate: (44100), (int), signal's sampling rate;
         - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
         - timeLength: (seconds), (float), signal's time length in seconds;
@@ -894,7 +822,7 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
-#%% PlayRec Methods
+##%% PlayRec Methods
             
     def run(self):
         """
@@ -909,7 +837,7 @@ class PlayRecMeasure(Measurement):
                              device=self.device,
                              blocking=True,
                              latency='low',
-                             dtype = 'float32'
+                             dtype = 'float64'
                              ) # y_all(t) - out signal: x(t) conv h(t)
         recording = np.squeeze( recording ) # turn column array into line array
         self.recording = SignalObj(signalArray=recording,domain='time',samplingRate=self.samplingRate )
@@ -922,7 +850,7 @@ class PlayRecMeasure(Measurement):
         _print_max_level(self.recording,kind='input')
         return self.recording
 
-#%% PlayRec Properties
+##%% PlayRec Properties
             
     @property
     def excitation(self):
@@ -956,7 +884,7 @@ class PlayRecMeasure(Measurement):
         return self.excitation._freqMax
 
 
-#%% FRFMeasure class     
+##%% FRFMeasure class     
 class FRFMeasure(PlayRecMeasure):
     """
     Transferfunction object
@@ -967,9 +895,6 @@ class FRFMeasure(PlayRecMeasure):
         - device: (system default), (list/int), list of input and output devices;
         - inChannel: ([1]), (list/int), list of device's input channel used for recording;
         - outChannel: ([1]), (list/int), list of device's output channel used for playing/reproducing a signalObj;
-        - calibratedChain: (0), (int), 1 if you want a calibrated measurement chain or 0 if you don't want;
-        - vCalibratedCh: ([]), (list/int), list of voltage calibrated channels;
-        - vCalibrationCF: ([0]), (list/float), list of correction factors for the voltage calibrated channels;
         - samplingRate: (44100), (int), signal's sampling rate;
         - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
         - timeLength: (seconds), (float), signal's time length in seconds;
@@ -996,11 +921,11 @@ class FRFMeasure(PlayRecMeasure):
         self.recording = super().run()
         self.transferfunction = self.recording/self.excitation
         self.transferfunction.timeStamp = self.recording.timeStamp
-        self.transferfunction.freqMin, self.recording.freqMax = (super.freqMin,super.freqMax)
+        self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a FRF measurement'
         return self.transferfunction
 
-#%% Sub functions
+##%% Sub functions
 def _print_max_level(sigObj,kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
