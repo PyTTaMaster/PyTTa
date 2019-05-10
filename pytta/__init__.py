@@ -48,11 +48,9 @@ from . import properties
 # Instantiate the Default parameters to be loaded by other methods and function calls
 default = properties.Default()
 
-from .classes import SignalObj, RecMeasure, PlayRecMeasure, FRFMeasure
+from .classes import SignalObj, ImpulsiveResponse, RecMeasure, PlayRecMeasure, FRFMeasure
 from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample
 from . import generate
-
-#Default = properties.Default
 
 __version__ = '0.0.0a2' # package version
 
@@ -72,6 +70,7 @@ __all__ = [# Submodules
            
            # Classes
            'RecMeasure',
+           'ImpulsiveResponse',
            'PlayRecMeasure',
            'FRFMeasure',
            'SignalObj',

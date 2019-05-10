@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Classes
@@ -230,7 +230,7 @@ class ChannelObj(object):
                 self.dBName = 'dBFs'
                 self.dBRef = 1
             else:
-                raise TypeError(newunit+' unit not accepted. May be Pa, V or None.')
+                raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \'V\', \'W/m^2\'  or \'\'.')
         else:
             raise TypeError('Channel unit must be a string.')
             
@@ -303,7 +303,7 @@ class SignalObj(PyTTaObj):
                      **kwargs):
         # Checking input array dimensions
         if self.size_check(signalArray)>2:
-            message = "No 'pyttaObj' is able handle arrays with more \
+            message = "No 'pyttaObj' is able handle to arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
@@ -384,7 +384,7 @@ class SignalObj(PyTTaObj):
     
     def num_channels(self):
         try:
-            numChannels = np.shape(self.timeSignal)[1]
+            numChannels = self.timeSignal.shape[1]
         except IndexError:
             numChannels = 1
         return numChannels
@@ -474,6 +474,15 @@ class SignalObj(PyTTaObj):
         plot.ylabel(r'$Magnitude$ in dB')
         return
 
+    def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5):
+        _spectrogram, _specTime, _specFreq = self._calc_spectrogram(self.timeSignal[:,0], overlap, window, winSize)
+        plot.pcolormesh(_specTime.T, _specFreq.T, _spectrogram, 
+                        cmap=plot.jet(), vmin=-120)
+        plot.xlabel(r'$Time$ [s]')
+        plot.ylabel(r'$Frequency$ [Hz]')
+        plot.colorbar()
+        return
+        
     def calib_voltage(self,chIndex,refSignalObj,refVrms=1,refFreq=1000):
         """
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
@@ -610,64 +619,216 @@ class SignalObj(PyTTaObj):
         else: result.timeSignal = self._timeSignal - other._timeSignal
         return result
 
-    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=512 ):
+    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=1024 ):
         if timeData is None:
             timeData = self.timeSignal
-            if self.size_check() > 1:
+            if self.num_channels() > 1:
                 timeData = timeData[:,0]
         window = eval('signal.windows.'+winType)(winSize)
         nextIdx = int(winSize*overlap)
         rng = int( timeData.shape[0]/winSize/overlap - 1 )
         _spectrogram = np.zeros(( winSize//2 + 1, rng ))
+        _specFreq = np.linspace(0, self.samplingRate//2, winSize//2 +1)
+        _specTime = np.linspace(0, self.timeVector[-1], rng)
         for N in range(rng):
             try:
                 strIdx = N*nextIdx
                 endIdx = winSize + N*nextIdx
-                sliceAudio = (8/np.sqrt(3))*window*timeData[ strIdx : endIdx ]
+                sliceAudio = window*timeData[ strIdx : endIdx ]
                 sliceFFT = np.fft.rfft(sliceAudio, axis=0)
                 sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
+                _spectrogram[: , N] = 20*np.log10(sliceMag)
             except IndexError:
                 sliceAudio = timeData[ -winSize: ]
                 sliceFFT = np.fft.rfft(sliceAudio, axis=0)
                 sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
-                _spectrogram[: , N] = sliceMag
-        return _spectrogram
-
+                _spectrogram[: , N] = 20*np.log10(sliceMag)
+        return _spectrogram, _specTime, _specFreq
 
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
+    """
+    ImpulsiveResponse
+    =================
+    
+        This class is a container of SignalObj, intended to provide a system's
+        impulsive response along with the excitation signal and the recorded 
+        signal used to compute the response.
+        
+        The access to this class is (TODO) provided by the function:
+        
+            >>> pytta.get_IR( excitation (SignalOjb), recording (SignalOjb),
+                              coordinates (dict), method (str),
+                              winType (str | tuple), winSize (int), overlap (float) )
+            
+        And as an output of the FRFMeasure.run() method (TODO):
+            
+            >>> myMeas = pytta.generate.measurement('frf')
+            >>> myIR = myMeas.run()
+            >>> type(myIR)
+            classes.ImpulsiveResponse
+        
+        The parameter passed down to the function are the same that initialize
+        the class, and are explained as follows:
+            
+        Creation parameters:
+        --------------------    
+            * excitation (SignalObj):
+                The signal-like object used as excitation signal on the
+                measurement-like object;
+            
+            * recording (SignalObj):
+                the recorded signal-like object, obtained directly from the
+                audio interface used on the measurement-like object;
+            
+            * coordinates (dict):
+                A dict that contains the following keys:
+                    
+                    * points (list):
+                        A list handled by the get_channels_points(ch) and 
+                        set_channels_points(ch, pt) object methods. Must be
+                        organized as [ [x1, y1, z1], [x2, y2, z2], ...] with x,
+                        y and z standing for the distance from the reference point;
+                
+                    * reference (str):
+                        A short description of a place that is considered the
+                        system origin, e.g. 'south-east-floor corner';
+                
+                    * unit (str):
+                        The unit in which the points values are taken, e.g. 'm';
+            
+            * method (str):
+                The way that the impulsive response should be computed, accepts
+                "linear", "H1", "H2" and "Ht" as values:
+                    
+                    * "linear":
+                        Computes using the spectral division of the signals;
+                
+                    * "H1":
+                        Uses power spectral density Ser divided by See, with
+                        "e" standing for "excitation" and "r" for "recording;
+                
+                    * "H2":
+                        uses power spectral density Srr divided by Sre, with
+                        "e" standing for "excitation" and "r" for "recording;
+                
+                    * "Ht":
+                        uses the formula: TODO;
+            
+            * winType (str | tuple) (optional):
+                The name of the window used by the scipy.signal.csd function
+                to compute the power spectral density, (only for method="H1",
+                method="H2" and method="Ht"). The possible values are:
+
+                    >>> boxcar, triang, blackman, hamming, hann, bartlett,
+                        flattop, parzen, bohman, blackmanharris, nuttall,
+                        barthann, kaiser (needs beta), gaussian (needs standard
+                        deviation), general_gaussian (needs power, width),
+                        slepian (needs width), dpss (needs normalized half-
+                        bandwidth), chebwin (needs attenuation), exponential
+                        (needs decay scale), tukey (needs taper fraction).
+
+                If the window requires no parameters, then window can be a string.
+                
+                If the window requires parameters, then window must be a tuple
+                with the first argument the string name of the window, and the
+                next arguments the needed parameters.
+                
+                    source:
+                        https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.csd.html
+            
+            * winSize (int) (optional):
+                The size of the window used by the scipy.signal.csd function
+                to compute the power spectral density, (only for method="H1",
+                method="H2" and method="Ht");
+                                        
+            * overlap (float) (optional):
+                the overlap ratio of the window used by the scipy.signal.csd
+                function to compute the power spectral density, (only for
+                method ="H1", method="H2" and method="Ht").
+                                          
+        
+        The class's attribute are described next:
+
+        Attributes:
+        -----------
+            * excitation | inputSignal:
+                Both names are valid, returns the excitation signal given as 
+                parameter at the object instantiation;
+                                        
+            * recording | outputSignal:
+                Both names are valid, returns the recording signal given as
+                parameter at the object instantiation;
+            
+            * irSignal | IR | tfSignal | TF | systemSignal:
+                All names are valid, returns the computed impulsive response
+                signal-like object;
+                
+            * coordinates:
+                Returns the coordinates parameter passed at the object instan-
+                tiation. It's "points" values may be updated;
+            
+            * methodInfo:
+                Returns a dict with the "method", "winType", "winSize" and
+                "overlap" parameters.
+                
+            
+    """
     def __init__(self, excitationSignal, recordedSignal,
                  coordinates={'points':[], 'reference':'south-west-floor corner', 'unit':'m'},
-                 method='linear', winSize=None, overlap=None, *args, **kwargs):
+                 method='linear', winType=None, winSize=None, overlap=None,
+                 *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._inputSignal = excitationSignal
-        self._outputSignal = recordedSignal
+        self._excitation = excitationSignal
+        self._recording = recordedSignal
         self._coordinates = coordinates
-        self._methodInfo = {'method':method, 'winSize':winSize, 'overlap':overlap}
-        self._irSignal = self._get_transferfunction(excitationSignal,
+        self._methodInfo = {'method':method, 'winType':winType,
+                            'winSize':winSize, 'overlap':overlap}
+        self._systemSignal = self._calculate_tf_ir(excitationSignal,
                                                    recordedSignal,
                                                    method=method,
+                                                   winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
+        self._coord_points_per_channel()
         return
 
 ##%% Properties
     @property
+    def excitation(self):
+        return self._excitation
+
+    @property
     def inputSignal(self):
-        return self._inputSignal
+        return self._excitation
+
+    @property
+    def recording(self):
+        return self._recording
 
     @property
     def outputSignal(self):
-        return self._outputSignal
+        return self._recording
 
     @property
     def irSignal(self):
-        return self._irSignal
+        return self._systemSignal
     
     @property
     def tfSignal(self):
-        return self._irSignal
+        return self._systemSignal
+
+    @property
+    def IR(self):
+        return self._systemSignal
+    
+    @property
+    def TF(self):
+        return self._systemSignal
+
+    @property
+    def systemSignal(self):
+        return self._systemSignal
 
     @property
     def coordinates(self):
@@ -677,9 +838,46 @@ class ImpulsiveResponse(PyTTaObj):
     def methodInfo(self):
         return self._methodInfo
 
+##%% Public methods
+    def set_channels_points(self, channels, points):
+        if isinstance(channels, list):
+            if len(channels) != len(points):
+                raise IndexError("Each value on channels list must have a corresponding\
+                                 [x, y, z] on points list.")
+            else:
+                for idx in range(len(channels)):
+                    self.coordinates['points'][idx] = points[idx]
+            
+        elif isinstance(channels, int):
+            try:
+                self.coordinates['points'][channels-1] = points
+            except IndexError:
+                print('The channel value goes beyond the number of channels,\
+                      the point was appended to the points list.')
+                self.coordinates['points'].append(points)
+        else:
+            raise TypeError("channels parameter must be either a int or list of int")
+        return
+    
+    def get_channels_points(self, channels):
+        if isinstance(channels, list):
+            outlist = []
+            for idx in channels:
+                outlist.append(self.coordinates['points'][idx-1])
+            return outlist
+        elif isinstance(channels, int):
+            try:
+                return self.coordinates['points'][channels-1]
+            except IndexError:
+                print('Index out of bounds, returning last channel\'s point')
+                return self.coordinates['points'][-1]
+        else:
+            raise TypeError("channels parameter must be either a int or list of int")
+            return
+        
 ##%% Private methods
-    def _get_transferfunction(self, inputSignal, outputSignal, method='linear',
-                             winSize=None, overlap=None):
+    def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
+                             winType=None, winSize=None, overlap=None):
         
         if type(inputSignal) != type(outputSignal):
             raise TypeError("Only signal-like objects can become and Impulsive Response.")
@@ -690,6 +888,7 @@ class ImpulsiveResponse(PyTTaObj):
             result = outputSignal / inputSignal
             
         elif method == 'H1':
+            if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
             if overlap is None: overlap = 0.5
             result = SignalObj(np.zeros((winSize//2 + 1, outputSignal.freqSignal.shape[1])),
@@ -698,27 +897,31 @@ class ImpulsiveResponse(PyTTaObj):
                 if inputSignal.num_channels() > 1:
                     if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
+                    
                     for channel in range(outputSignal.num_channels()):
-                        XYXX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
+                        XY, XX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
                                                 outputSignal.timeSignal[:,channel],
                                                 inputSignal.samplingRate,
-                                                winSize, winSize*overlap)
-                        result.freqSignal[:,channel] = XYXX
+                                                winType, winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XY/XX
                 else:
+                    
                     for channel in range(outputSignal.num_channels()):
-                        XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+                        XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
                                                 outputSignal.timeSignal[:,channel],
                                                 inputSignal.samplingRate,
-                                                winSize, winSize*overlap)
-                        result.freqSignal[:,channel] = XYXX
+                                                winType, winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XY/XX
             else:
-                XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+
+                XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
                                         outputSignal.timeSignal,
                                         inputSignal.samplingRate,
-                                        winSize, winSize*overlap)
-                result.freqSignal = XYXX
+                                        winType, winSize, winSize*overlap)
+                result.freqSignal = XY, XX
         
         elif method == 'H2':
+            if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
             if overlap is None: overlap = 0.5
             result = SignalObj(samplingRate=inputSignal.samplingRate)
@@ -728,23 +931,23 @@ class ImpulsiveResponse(PyTTaObj):
                     if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
                     for channel in range(outputSignal.num_channels()):
-                        YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                        YX, YY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
                                                  inputSignal.timeSignal[:,channel],
                                                  inputSignal.samplingRate,
-                                                 winSize, winSize*overlap)
-                        result.freqSignal[:,channel] = 1/YXYY
+                                                 winType, winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = YY/YX
                 else:
-                    YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                    YX, YY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
                                              inputSignal.timeSignal,
                                              inputSignal.samplingRate,
-                                             winSize, winSize*overlap)
-                    result.freqSignal[:,channel] = 1/YXYY
+                                             winType, winSize, winSize*overlap)
+                    result.freqSignal[:,channel] = YY/YX
             else:
-                YXYY = self._calc_csd_tf(outputSignal.timeSignal,
+                YX, YY = self._calc_csd_tf(outputSignal.timeSignal,
                                          inputSignal.timeSignal,
                                          inputSignal.samplingRate,
-                                         winSize, winSize*overlap)
-                result.freqSignal = 1/YXYY
+                                         winType, winSize, winSize*overlap)
+                result.freqSignal = YY/YX
         elif method == 'Ht':
             if winSize is None: winSize = inputSignal.samplingRate//2
             if overlap is None: overlap = 1/2
@@ -758,23 +961,35 @@ class ImpulsiveResponse(PyTTaObj):
             else:
                 pass
             pass
+        result.channels = outputSignal.channels[:]
         return result    # end of function get_transferfunction() 
 
 
-    def _calc_csd_tf(self, sig1, sig2, samplingRate,
+    def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
         
-        f, S11 = signal.csd(sig1, sig1, samplingRate,
-                            nperseg = numberOfSamples, 
-                            noverlap = overlapSamples, axis=0)
+        f, S11 = signal.csd(sig1, sig1, samplingRate, window=windowName,
+                            nperseg = numberOfSamples, noverlap = overlapSamples,
+                            axis=0)
         
-        f, S12 = signal.csd(sig1, sig2, samplingRate,
-                            nperseg = numberOfSamples,
-                            noverlap = overlapSamples, axis=0)
-        return S12/S11
+        f, S12 = signal.csd(sig1, sig2, samplingRate, window=windowName,
+                            nperseg = numberOfSamples, noverlap = overlapSamples,
+                            axis=0)
+        return S12, S11
 
     def _coord_points_per_channel(self):
-        pass # TODO
+        if len(self.coordinates['points']) == 0:
+            for idx in range(self.IR.num_channels()):
+                self.coordinates['points'].append([0., 0., 0.,])
+        elif len(self.coordinates['points']) != self.IR.num_channels():
+            while len(self.coordinates['points']) != self.IR.num_channels():
+                if len(self.coordinates['points']) < self.IR.num_channels():
+                    self.coordinates['points'].append([0., 0., 0.,])
+                elif len(self.coordinates['points']) < self.IR.num_channels():
+                    self.coordinates['points'].pop(-1)
+        elif len(self.coordinates['points']) == self.IR.num_channels():
+            pass
+        return
     
 ##%% Measurement class
 class Measurement(PyTTaObj):
