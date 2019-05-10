@@ -421,7 +421,7 @@ class SignalObj(PyTTaObj):
         # DB
         plot.figure( figsize=(10,5) )
         if self.num_channels() > 1:
-            for chIndex in range(0,self.num_channels()):
+            for chIndex in range(self.num_channels()):
                 label = self.channels[chIndex].name+' ['+self.channels[chIndex].unit+']'
                 plot.plot( self.timeVector,self.timeSignal[:,chIndex],label=label)
         else:
@@ -551,6 +551,14 @@ class SignalObj(PyTTaObj):
             for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
         if dCh < 0:
             for i in range(0,-dCh): self.channels.pop(-1)
+            
+    def _do_rename_channels(self):
+        for chIndex in range(self.num_channels()):
+            print(chIndex)
+            newname = 'Channel '+str(chIndex+1)
+            print(newname)
+            self.channels[chIndex].name = newname
+            print(self.channels[chIndex].name)
             
     def __truediv__(self, other):
         """
