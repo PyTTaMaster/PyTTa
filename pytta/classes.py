@@ -560,18 +560,18 @@ class SignalObj(PyTTaObj):
             raise TypeError("A SignalObj can only operate with other alike.")
         if other.samplingRate != self.samplingRate:
             raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(samplingRate=self.samplingRate)
-        result._domain = 'freq'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                if other.size_check() != self.size_check():
+        result = SignalObj(np.zeros(self.timeSignal.shape),samplingRate=self.samplingRate)                
+        if self.num_channels() > 1:
+            if other.num_channels() > 1:
+                if other.num_channels() != self.num_channels():
                     raise ValueError("Both signal-like objects must have the same number of channels.")
                 for channel in range(other.num_channels()):
-                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal[:,channel]
+                    result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,channel]
             else:
                 for channel in range(other.num_channels()):
-                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal
-        else: result.freqSignal = self._freqSignal / other._freqSignal
+                    result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal
+        else: result.freqSignal = self.freqSignal / other.freqSignal
+        
         return result
     
     
