@@ -28,6 +28,7 @@ User intended classes:
     
 For further information see the specific class, or method, documentation
 """
+
 ##%% Importing modules
 #import pytta as pa
 import numpy as np
@@ -80,9 +81,9 @@ class PyTTaObj(object):
         else:
             self._freqMin, self._freqMax = freqMin, freqMax
         self._comment = comment
+        return
 
 ##%% PyTTaObj Properties
-
     @property
     def samplingRate(self):
         return self._samplingRate
@@ -90,6 +91,7 @@ class PyTTaObj(object):
     @samplingRate.setter
     def samplingRate(self,newSamplingRate):
         self._samplingRate = newSamplingRate
+        return
 
     @property
     def lengthDomain(self):
@@ -98,6 +100,7 @@ class PyTTaObj(object):
     @lengthDomain.setter
     def lengthDomain(self,newDomain):
         self._lengthDomain = newDomain
+        return
 
     @property
     def fftDegree(self):
@@ -106,6 +109,7 @@ class PyTTaObj(object):
     @fftDegree.setter
     def fftDegree(self,newFftDegree):
         self._fftDegree = newFftDegree
+        return
 
     @property
     def timeLength(self):
@@ -114,6 +118,7 @@ class PyTTaObj(object):
     @timeLength.setter
     def timeLength(self,newTimeLength):
         self._timeLength = newTimeLength
+        return
 
     @property
     def numSamples(self):
@@ -122,6 +127,7 @@ class PyTTaObj(object):
     @numSamples.setter
     def numSamples(self,newNumSamples):
         self._numSamples = newNumSamples
+        return
 
     @property
     def freqMin(self):
@@ -130,6 +136,7 @@ class PyTTaObj(object):
     @freqMin.setter
     def freqMin(self,newFreqMin):
         self._freqMin = newFreqMin
+        return
 
     @property
     def freqMax(self):
@@ -138,6 +145,7 @@ class PyTTaObj(object):
     @freqMax.setter
     def freqMax(self,newFreqMax):
         self._freqMax = newFreqMax
+        return
 
     @property
     def comment(self):
@@ -146,15 +154,32 @@ class PyTTaObj(object):
     @comment.setter
     def comment(self,newComment):
         self._comment = newComment
+        return
 
 ##%% PyTTaObj Methods
-
     def __call__(self):
         for name, value in vars(self).items():
             if len(name)<=8:
                 print(name[1:]+'\t\t =',value)
             else: 
                 print(name[1:]+'\t =',value)
+        return
+    
+    def save_mat(self,filename=time.ctime(time.time())):
+        myObj = vars(self)
+        for key, value in myObj.items():
+            if value is None:
+                myObj[key] = 0
+            if isinstance(myObj[key],dict) and len(value) == 0:
+                myObj[key] = 0
+        myObjno_ = {}
+        for key, value in myObj.items():
+            if key.find('_') >= 0:
+                key = key.replace('_','')
+            myObjno_[key] = value
+        sio.savemat(filename, myObjno_, format='5', oned_as='column')
+        return
+
 
 class ChannelObj(object):
     
@@ -196,7 +221,7 @@ class ChannelObj(object):
                 self._unit = newunit
                 self.dBName = 'dB(z)'
                 self.dBRef = 2e-5
-            elif newunit == 'W/m2':
+            elif newunit == 'W/m^2':
                 self._unit = newunit
                 self.dBName = 'dB'
                 self.dBRef = 1e-12
@@ -281,10 +306,7 @@ class SignalObj(PyTTaObj):
             message = "No 'pyttaObj' is able handle arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
-        else:
-            pass
-        # Turning into column like array
-        if self.size_check(signalArray) == 1:
+        elif self.size_check(signalArray) == 1:
             signalArray = np.array(signalArray,ndmin=2).T
             
         super().__init__(*args,**kwargs)
@@ -305,7 +327,6 @@ class SignalObj(PyTTaObj):
 
         
 ##%% SignalObj Properties
-    
     @property 
     def timeVector(self):
         return self._timeVector
@@ -358,92 +379,6 @@ class SignalObj(PyTTaObj):
         return
                     
 ##%% SignalObj Methods
-        
-    def __truediv__(self, other):
-        """
-        Frequency domain division method
-        """
-        if type(other) != type(self):
-            print(type(other),type(self))
-            raise TypeError("A SignalObj can only operate with other alike")
-        result = SignalObj(samplingRate=self.samplingRate)
-        if self.num_channels > 1:
-            if other.num_channels() > 1:
-                i = 0
-                for channelA in range(self.num_channels()):
-                    for channelB in range(other.num_channels()):
-                        result.freqSignal[:,i + channelB] = \
-                                self.freqSignal[:,channelA] / other.freqSignal[:,channelB]
-                    i = channelB
-            else:
-                for channel in range(self.num_channels()):
-                    result.freqSignal = self.freqSignal[:,channel] / other.freqSignal
-        elif other.size_check() > 1:
-            for channel in range(self.num_channels()):
-                result.freqSignal = self.freqSignal / other.freqSignal[:,channel]
-        else: result.freqSignal = self.freqSignal / other.freqSignal        
-        return result
-    
-    
-    def __add__(self, other):
-        """
-        Time domain addition method
-        """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike")
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                i = 0
-                for channelA in range(self.num_channels()):
-                    for channelB in range(other.timeSignal.shape):
-                        result.timeSignal[:,i + channelB] = \
-                                self.timeSignal[:,channelA] + other.timeSignal[:,channelB]
-                    i = channelB
-            else:
-                for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] + other.timeSignal
-        elif other.size_check() > 1:
-            for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal + other.timeSignal[:,channel]
-        else: result.timeSignal = self.timeSignal + other.timeSignal
-        return result
-
-    def __sub__(self, other):
-        """
-        Time domain subtraction method
-        """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike")
-
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                i = 0
-                for channelA in range(self.num_channels()):
-                    for channelB in range(other.num_channels):
-                        result.timeSignal[:,i + channelB] = \
-                        self.timeSignal[:,channelA] - other.timeSignal[:,channelB]
-                    i = channelB
-            else:
-                for channel in range(self.num_channels()):
-                    result.freqSignal = self.timeSignal[:,channel] - other.timeSignal
-                                        
-        elif other.size_check() > 1:
-            for channel in range(self.num_channels()):
-                result.timeSignal = self.timeSignal - other.timeSignal[:,channel]
-        else: result.timeSignal = self.timeSignal - other.timeSignal
-        return result
-    
-    def _do_conform_channels(self):
-        dCh = self.num_channels() - len(self.channels)
-        if dCh > 0:
-            for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
-        if dCh < 0:
-            for i in range(0,-dCh): self.channels.pop(-1)
-
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
     
@@ -476,12 +411,9 @@ class SignalObj(PyTTaObj):
                 outChannel = default.outChannel
             elif self.num_channels() > 1:
                 outChannel = np.arange(1,self.num_channels()+1)
-                
         sd.play(self.timeSignal,self.samplingRate,mapping=outChannel,**kwargs)
-			   
-#   def plot(self): # TODO
-#        ...
-
+        return
+    
     def plot_time(self):
         """
         Time domain plotting method
@@ -504,7 +436,8 @@ class SignalObj(PyTTaObj):
                    1.05*np.max( self.timeSignal ) ) )
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Amplitude$')
-        
+        return
+    
     def plot_freq(self,smooth=False):
         """
         Frequency domain plotting method
@@ -539,6 +472,7 @@ class SignalObj(PyTTaObj):
         plot.axis((self.freqMin,self.freqMax,ylim[0],ylim[1]))
         plot.xlabel(r'$Frequency$ [Hz]')
         plot.ylabel(r'$Magnitude$ in dB')
+        return
 
     def calib_voltage(self,chIndex,refSignalObj,refVrms=1,refFreq=1000):
         """
@@ -561,13 +495,10 @@ class SignalObj(PyTTaObj):
             if freqFound != refFreq:
                 print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
             self.channels[chIndex].CF = refVrms/Vrms
-            print(self.channels[chIndex].CF)
             self.channels[chIndex].unit = 'V'
-            print(self.freqSignal)
             newtimeSignal = cp.deepcopy(self.timeSignal)
             newtimeSignal[:,chIndex] = self.timeSignal[:,chIndex]*self.channels[chIndex].CF
             self.timeSignal = newtimeSignal
-            print(self.freqSignal)
             self.channels[chIndex].calibCheck = True
         else: raise IndexError('chIndex greater than channels number')
         return
@@ -593,13 +524,10 @@ class SignalObj(PyTTaObj):
             if freqFound != refFreq:
                 print('\x1b[0;30;43mATENTTION! Found calibration frequency ('+'%.2f'%freqFound+' [Hz]) differs from refFreq ('+'%.2f'%refFreq+' [Hz])\x1b[0m')
             self.channels[chIndex].CF = refPrms/Prms
-            print(self.channels[chIndex].CF)
             self.channels[chIndex].unit = 'Pa'
-            print(self.freqSignal)
             newtimeSignal = cp.deepcopy(self.timeSignal)
             newtimeSignal[:,chIndex] = self.timeSignal[:,chIndex]*self.channels[chIndex].CF
             self.timeSignal = newtimeSignal
-            print(self.freqSignal)
             self.channels[chIndex].calibCheck = True
         else: raise IndexError('chIndex greater than channels number')
         return
@@ -607,7 +535,247 @@ class SignalObj(PyTTaObj):
     def save_mat(self,filename=time.ctime(time.time())):
         mySigObj = vars(self)            
         sio.savemat(filename,_to_dict(mySigObj),format='5')
+    
+    def _do_conform_channels(self):
+        dCh = self.num_channels() - len(self.channels)
+        if dCh > 0:
+            for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
+        if dCh < 0:
+            for i in range(0,-dCh): self.channels.pop(-1)
+            
+    def __truediv__(self, other):
+        """
+        Frequency domain division method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result._domain = 'freq'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.freqSignal = self._freqSignal[:,channel] / other._freqSignal
+        else: result.freqSignal = self._freqSignal / other._freqSignal
+        return result
+    
+    
+    def __add__(self, other):
+        """
+        Time domain addition method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result.domain = 'time'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] + other._timeSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] + other._timeSignal
+        else: result.timeSignal = self._timeSignal + other._timeSignal
+        return result
 
+    def __sub__(self, other):
+        """
+        Time domain subtraction method
+        """
+        if type(other) != type(self):
+            raise TypeError("A SignalObj can only operate with other alike.")
+        if other.samplingRate != self.samplingRate:
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(samplingRate=self.samplingRate)
+        result.domain = 'time'
+        if self.size_check() > 1:
+            if other.size_check() > 1:
+                if other.size_check() != self.size_check():
+                    raise ValueError("Both signal-like objects must have the same number of channels.")
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] - other._timeSignal[:,channel]
+            else:
+                for channel in range(other.num_channels()):
+                    result.timeSignal = self._timeSignal[:,channel] - other._timeSignal
+        else: result.timeSignal = self._timeSignal - other._timeSignal
+        return result
+
+    def _calc_spectrogram( self, timeData = None,  overlap=0.5, winType='hann', winSize=512 ):
+        if timeData is None:
+            timeData = self.timeSignal
+            if self.size_check() > 1:
+                timeData = timeData[:,0]
+        window = eval('signal.windows.'+winType)(winSize)
+        nextIdx = int(winSize*overlap)
+        rng = int( timeData.shape[0]/winSize/overlap - 1 )
+        _spectrogram = np.zeros(( winSize//2 + 1, rng ))
+        for N in range(rng):
+            try:
+                strIdx = N*nextIdx
+                endIdx = winSize + N*nextIdx
+                sliceAudio = (8/np.sqrt(3))*window*timeData[ strIdx : endIdx ]
+                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
+                _spectrogram[: , N] = sliceMag
+            except IndexError:
+                sliceAudio = timeData[ -winSize: ]
+                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+                sliceMag = np.absolute( sliceFFT )*(2/sliceFFT.size)
+                _spectrogram[: , N] = sliceMag
+        return _spectrogram
+
+
+##%% ImpulsiveResponse class
+class ImpulsiveResponse(PyTTaObj):
+    def __init__(self, excitationSignal, recordedSignal,
+                 coordinates={'points':[], 'reference':'south-west-floor corner', 'unit':'m'},
+                 method='linear', winSize=None, overlap=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._inputSignal = excitationSignal
+        self._outputSignal = recordedSignal
+        self._coordinates = coordinates
+        self._methodInfo = {'method':method, 'winSize':winSize, 'overlap':overlap}
+        self._irSignal = self._get_transferfunction(excitationSignal,
+                                                   recordedSignal,
+                                                   method=method,
+                                                   winSize=winSize,
+                                                   overlap=overlap)
+        return
+
+##%% Properties
+    @property
+    def inputSignal(self):
+        return self._inputSignal
+
+    @property
+    def outputSignal(self):
+        return self._outputSignal
+
+    @property
+    def irSignal(self):
+        return self._irSignal
+    
+    @property
+    def tfSignal(self):
+        return self._irSignal
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @property
+    def methodInfo(self):
+        return self._methodInfo
+
+##%% Private methods
+    def _get_transferfunction(self, inputSignal, outputSignal, method='linear',
+                             winSize=None, overlap=None):
+        
+        if type(inputSignal) != type(outputSignal):
+            raise TypeError("Only signal-like objects can become and Impulsive Response.")
+        elif inputSignal.samplingRate != outputSignal.samplingRate:
+            raise ValueError("Both signal-like objects must have the same sampling rate.")
+
+        if method == 'linear':
+            result = outputSignal / inputSignal
+            
+        elif method == 'H1':
+            if winSize is None: winSize = inputSignal.samplingRate//2
+            if overlap is None: overlap = 0.5
+            result = SignalObj(np.zeros((winSize//2 + 1, outputSignal.freqSignal.shape[1])),
+                               domain='freq',samplingRate=inputSignal.samplingRate)
+            if outputSignal.num_channels() > 1:
+                if inputSignal.num_channels() > 1:
+                    if inputSignal.num_channels() != outputSignal.num_channels():
+                        raise ValueError("Both signal-like objects must have the same number of channels.")
+                    for channel in range(outputSignal.num_channels()):
+                        XYXX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
+                                                outputSignal.timeSignal[:,channel],
+                                                inputSignal.samplingRate,
+                                                winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XYXX
+                else:
+                    for channel in range(outputSignal.num_channels()):
+                        XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+                                                outputSignal.timeSignal[:,channel],
+                                                inputSignal.samplingRate,
+                                                winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = XYXX
+            else:
+                XYXX = self._calc_csd_tf(inputSignal.timeSignal,
+                                        outputSignal.timeSignal,
+                                        inputSignal.samplingRate,
+                                        winSize, winSize*overlap)
+                result.freqSignal = XYXX
+        
+        elif method == 'H2':
+            if winSize is None: winSize = inputSignal.samplingRate//2
+            if overlap is None: overlap = 0.5
+            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result.domain='freq'
+            if outputSignal.num_channels() > 1:
+                if inputSignal.num_channels() > 1:
+                    if inputSignal.num_channels() != outputSignal.num_channels():
+                        raise ValueError("Both signal-like objects must have the same number of channels.")
+                    for channel in range(outputSignal.num_channels()):
+                        YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                                 inputSignal.timeSignal[:,channel],
+                                                 inputSignal.samplingRate,
+                                                 winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = 1/YXYY
+                else:
+                    YXYY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                             inputSignal.timeSignal,
+                                             inputSignal.samplingRate,
+                                             winSize, winSize*overlap)
+                    result.freqSignal[:,channel] = 1/YXYY
+            else:
+                YXYY = self._calc_csd_tf(outputSignal.timeSignal,
+                                         inputSignal.timeSignal,
+                                         inputSignal.samplingRate,
+                                         winSize, winSize*overlap)
+                result.freqSignal = 1/YXYY
+        elif method == 'Ht':
+            if winSize is None: winSize = inputSignal.samplingRate//2
+            if overlap is None: overlap = 1/2
+            result = SignalObj(samplingRate=inputSignal.samplingRate, domain='freq')
+            if outputSignal.size_check() > 1:
+                if inputSignal.size_check() > 1:
+                    if inputSignal.num_channels() != outputSignal.num_channels():
+                        raise ValueError("Both signal-like objects must have the same number of channels.")
+                else:
+                    pass
+            else:
+                pass
+            pass
+        return result    # end of function get_transferfunction() 
+
+
+    def _calc_csd_tf(self, sig1, sig2, samplingRate,
+                     numberOfSamples, overlapSamples):
+        
+        f, S11 = signal.csd(sig1, sig1, samplingRate,
+                            nperseg = numberOfSamples, 
+                            noverlap = overlapSamples, axis=0)
+        
+        f, S12 = signal.csd(sig1, sig2, samplingRate,
+                            nperseg = numberOfSamples,
+                            noverlap = overlapSamples, axis=0)
+        return S12/S11
+
+    def _coord_points_per_channel(self):
+        pass # TODO
+    
 ##%% Measurement class
 class Measurement(PyTTaObj):
     """
@@ -646,9 +814,10 @@ class Measurement(PyTTaObj):
         self.inChannel = inChannel # input channels
         self.outChannel = outChannel # output channels
         self.channelName = channelName
-        
+        return
+
 ##%% Measurement Properties
-        
+
     @property
     def device(self):
         return self._device
@@ -656,6 +825,7 @@ class Measurement(PyTTaObj):
     @device.setter
     def device(self,newDevice):
         self._device = newDevice
+        return
     
     @property
     def inChannel(self):
@@ -676,6 +846,7 @@ class Measurement(PyTTaObj):
                         self.channelName[self._inChannel.index(i)] = oldChName[oldInCh.index(i)]
             except AttributeError:
                 self._inChannel = newInputChannel
+        return
             
     @property
     def outChannel(self):
@@ -700,7 +871,7 @@ class Measurement(PyTTaObj):
             self._channelName = channelName
         else:
             raise AttributeError('Incompatible number of channel names and channel number.')
-            
+        return
 
 ##%% RecMeasure class        
 class RecMeasure(Measurement):
@@ -741,9 +912,9 @@ class RecMeasure(Measurement):
         else:
             self._timeLength = None
             self._fftDegree = None
+        return
 
 ##%% Rec Properties
-            
     @property
     def timeLength(self):
         return self._timeLength
@@ -753,6 +924,7 @@ class RecMeasure(Measurement):
         self._timeLength = np.round( newLength, 2 )
         self._numSamples = self.timeLength * self.samplingRate
         self._fftDegree = np.round( np.log2( self.numSamples ), 2 )
+        return
         
     @property
     def fftDegree(self):
@@ -763,9 +935,9 @@ class RecMeasure(Measurement):
         self._fftDegree = np.round( newDegree, 2 )
         self._numSamples = 2**self.fftDegree
         self._timeLength = np.round( self.numSamples / self.samplingRate, 2 )
+        return
 
 ##%% Rec Methods
-        
     def run(self):
         """
         Run method: starts recording during Tmax seconds
@@ -822,8 +994,9 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
+        return
+
 ##%% PlayRec Methods
-            
     def run(self):
         """
         Starts reproducing the excitation signal and recording at the same time
@@ -851,13 +1024,13 @@ class PlayRecMeasure(Measurement):
         return self.recording
 
 ##%% PlayRec Properties
-            
     @property
     def excitation(self):
         return self._excitation        
     @excitation.setter
     def excitation(self,newSignalObj):
         self._excitation = newSignalObj
+        return
         
     @property
     def samplingRate(self):
@@ -911,6 +1084,7 @@ class FRFMeasure(PlayRecMeasure):
     """
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
+        return
         
     def run(self):
         """
@@ -924,7 +1098,7 @@ class FRFMeasure(PlayRecMeasure):
         self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
         self.recording.comment = 'SignalObj from a FRF measurement'
         return self.transferfunction
-
+    
 ##%% Sub functions
 def _print_max_level(sigObj,kind):
     if kind == 'output':
@@ -937,6 +1111,7 @@ def _print_max_level(sigObj,kind):
             print('max input level (recording) on channel ['+str(chIndex+1)+']: '+'%.2f'%sigObj.max_level()[chIndex]+' '+sigObj.channels[chIndex].dBName+' - ref.: '+str(sigObj.channels[chIndex].dBRef)+' ['+sigObj.channels[chIndex].unit+']')
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
+        return
 
 def _to_dict(thing):
     
