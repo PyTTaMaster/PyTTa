@@ -891,6 +891,7 @@ class ImpulsiveResponse(PyTTaObj):
             raise ValueError("Both signal-like objects must have the same sampling rate.")
         if method == 'linear':
             result = outputSignal / inputSignal
+            
         elif method == 'H1':
             if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
@@ -919,7 +920,8 @@ class ImpulsiveResponse(PyTTaObj):
                                         outputSignal.timeSignal,
                                         inputSignal.samplingRate,
                                         winType, winSize, winSize*overlap)
-                result.freqSignal = XY, XX
+                result.freqSignal = XY/XX
+                
         elif method == 'H2':
             if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
@@ -948,6 +950,7 @@ class ImpulsiveResponse(PyTTaObj):
                                          inputSignal.samplingRate,
                                          winType, winSize, winSize*overlap)
                 result.freqSignal = YY/YX
+                
         elif method == 'Ht':
             if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
@@ -959,11 +962,41 @@ class ImpulsiveResponse(PyTTaObj):
                     if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
                     for channel in range(outputSignal.num_channels()):
-                        pass
+                        XY, XX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
+                                                outputSignal.timeSignal[:,channel],
+                                                inputSignal.samplingRate,
+                                                winType, winSize, winSize*overlap)
+                        YX, YY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                                 inputSignal.timeSignal[:,channel],
+                                                 inputSignal.samplingRate,
+                                                 winType, winSize, winSize*overlap)
+                        result.freqSignal[:,channel] = (YY - XX + np.sqrt( \
+                                                (XX-YY)**2 + 4*np.abs(XY)**2) \
+                                                ) / 2*YX
                 else:
-                    pass
+                    XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
+                                            outputSignal.timeSignal[:,channel],
+                                            inputSignal.samplingRate,
+                                            winType, winSize, winSize*overlap)
+                    YX, YY = self._calc_csd_tf(outputSignal.timeSignal[:,channel],
+                                             inputSignal.timeSignal,
+                                             inputSignal.samplingRate,
+                                             winType, winSize, winSize*overlap)
+                    result.freqSignal[:,channel] = (YY - XX + np.sqrt( \
+                                                (XX-YY)**2 + 4*np.abs(XY)**2) \
+                                                ) / 2*YX
             else:
-                pass
+                XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
+                                        outputSignal.timeSignal,
+                                        inputSignal.samplingRate,
+                                        winType, winSize, winSize*overlap)
+                YX, YY = self._calc_csd_tf(outputSignal.timeSignal,
+                                         inputSignal.timeSignal,
+                                         inputSignal.samplingRate,
+                                         winType, winSize, winSize*overlap)
+                result.freqSignal = (YY - XX + np.sqrt( \
+                                    (XX-YY)**2 + 4*np.abs(XY)**2) \
+                                    ) / 2*YX
         result.channels = outputSignal.channels[:]
         return result    # end of function get_transferfunction() 
 
