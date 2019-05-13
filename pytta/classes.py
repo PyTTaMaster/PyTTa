@@ -855,7 +855,6 @@ class ImpulsiveResponse(PyTTaObj):
             else:
                 for idx in range(len(channels)):
                     self.coordinates['points'][idx] = points[idx]
-            
         elif isinstance(channels, int):
             try:
                 self.coordinates['points'][channels-1] = points
@@ -864,7 +863,7 @@ class ImpulsiveResponse(PyTTaObj):
                       the point was appended to the points list.')
                 self.coordinates['points'].append(points)
         else:
-            raise TypeError("channels parameter must be either a int or list of int")
+            raise TypeError("channels parameter must be either an int or list of int")
         return
     
     def get_channels_points(self, channels):
@@ -880,21 +879,18 @@ class ImpulsiveResponse(PyTTaObj):
                 print('Index out of bounds, returning last channel\'s point')
                 return self.coordinates['points'][-1]
         else:
-            raise TypeError("channels parameter must be either a int or list of int")
+            raise TypeError("channels parameter must be either an int or list of int")
             return
         
 ##%% Private methods
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                              winType=None, winSize=None, overlap=None):
-        
         if type(inputSignal) != type(outputSignal):
             raise TypeError("Only signal-like objects can become and Impulsive Response.")
         elif inputSignal.samplingRate != outputSignal.samplingRate:
             raise ValueError("Both signal-like objects must have the same sampling rate.")
-
         if method == 'linear':
             result = outputSignal / inputSignal
-            
         elif method == 'H1':
             if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
@@ -905,7 +901,6 @@ class ImpulsiveResponse(PyTTaObj):
                 if inputSignal.num_channels() > 1:
                     if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
-                    
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(inputSignal.timeSignal[:,channel],
                                                 outputSignal.timeSignal[:,channel],
@@ -913,7 +908,6 @@ class ImpulsiveResponse(PyTTaObj):
                                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:,channel] = XY/XX
                 else:
-                    
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
                                                 outputSignal.timeSignal[:,channel],
@@ -921,13 +915,11 @@ class ImpulsiveResponse(PyTTaObj):
                                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:,channel] = XY/XX
             else:
-
                 XY, XX = self._calc_csd_tf(inputSignal.timeSignal,
                                         outputSignal.timeSignal,
                                         inputSignal.samplingRate,
                                         winType, winSize, winSize*overlap)
                 result.freqSignal = XY, XX
-        
         elif method == 'H2':
             if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
@@ -957,29 +949,29 @@ class ImpulsiveResponse(PyTTaObj):
                                          winType, winSize, winSize*overlap)
                 result.freqSignal = YY/YX
         elif method == 'Ht':
+            if winType is None: winType = 'hann'
             if winSize is None: winSize = inputSignal.samplingRate//2
-            if overlap is None: overlap = 1/2
-            result = SignalObj(samplingRate=inputSignal.samplingRate, domain='freq')
-            if outputSignal.size_check() > 1:
-                if inputSignal.size_check() > 1:
+            if overlap is None: overlap = 0.5
+            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result.domain='freq'
+            if outputSignal.num_channels() > 1:
+                if inputSignal.num_channels() > 1:
                     if inputSignal.num_channels() != outputSignal.num_channels():
                         raise ValueError("Both signal-like objects must have the same number of channels.")
+                    for channel in range(outputSignal.num_channels()):
+                        pass
                 else:
                     pass
             else:
                 pass
-            pass
         result.channels = outputSignal.channels[:]
         return result    # end of function get_transferfunction() 
 
-
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
-        
         f, S11 = signal.csd(sig1, sig1, samplingRate, window=windowName,
                             nperseg = numberOfSamples, noverlap = overlapSamples,
                             axis=0)
-        
         f, S12 = signal.csd(sig1, sig2, samplingRate, window=windowName,
                             nperseg = numberOfSamples, noverlap = overlapSamples,
                             axis=0)
