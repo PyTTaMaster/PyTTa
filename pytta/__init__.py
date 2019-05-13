@@ -42,7 +42,7 @@ PyTTa:
 For further information, check the specific module, class, method or function documentation.    
 """
 
-#%% Importing .py files as submodules
+##%% Importing .py files as submodules
 from . import properties
 
 # Instantiate the Default parameters to be loaded by other methods and function calls
@@ -52,7 +52,7 @@ from .classes import SignalObj, ImpulsiveResponse, RecMeasure, PlayRecMeasure, F
 from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample
 from . import generate
 
-__version__ = '0.0.0a2' # package version
+__version__ = '0.1.0' # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [# Submodules

@@ -27,7 +27,8 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
-from .classes import SignalObj
+from . import SignalObj
+import copy as cp
 
 def list_devices():
     """
@@ -67,9 +68,9 @@ def merge(signal1,*signalObjects):
     as a column of the new object
     """
     j=1;
-    comment = signal1.comment
-    channelName = signal1.channelName
-    timeSignal = signal1.timeSignal
+    comment = cp.deepcopy(signal1.comment)
+    channels = cp.deepcopy(signal1.channels)
+    timeSignal = cp.deepcopy(signal1.timeSignal)
     for inObj in signalObjects:
         if signal1.samplingRate != inObj.samplingRate:
             message = '\
@@ -81,16 +82,19 @@ def merge(signal1,*signalObjects):
             \n To merge signals they must have the same length!\
             \n SignalObj 1 and '+str(j+1)+' have different lengths.'
             raise AttributeError(message)
-        if signal1.unit != inObj.unit:
-            message ='\
-            \n To merge signals they must have the same unit!\
-            \n SignalObj 1 and '+str(j+1)+' have different units.'
-            raise AttributeError(message)            
+#        if signal1.unit != inObj.unit:
+#            message ='\
+#            \n To merge signals they must have the same unit!\
+#            \n SignalObj 1 and '+str(j+1)+' have different units.'
+#            raise AttributeError(message)            
         comment = comment + ' / ' + inObj.comment
-        channelName = channelName + inObj.channelName
+#        print(inObj.channels)
+        for ch in inObj.channels:
+            channels.append(ch)
         timeSignal = np.hstack(( timeSignal, inObj.timeSignal ))
         j += 1
-    newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,channelName=channelName,comment=comment)
+    newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,comment=comment)
+    newSignal.channels = channels
     return newSignal
 
 def split(signal):
