@@ -18,6 +18,7 @@ Functions
         >>> pytta.find_delay( signalObj1, signalObj2 )
         >>> pytta.corr_coef( signalObj1, signalObj2 )
         >>> pytta.resample( signalObj, newSamplingRate )
+        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN )
         
     For further information, check the function specific documentation.
 """
