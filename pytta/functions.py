@@ -148,3 +148,20 @@ def resample(signal,newSamplingRate):
     resampled = ss.resample(signal.timeSignal[:], newSignalSize)
     newSignal = SignalObj(resampled,"time",newSamplingRate)
     return newSignal
+
+def peak_time(signal):
+    """
+        Return the time at signal's amplitude peak.
+    """    
+    if not isinstance(signal,SignalObj):
+        raise TypeError('Signal must be an SignalObj.')    
+    peaks_time = []
+    for chindex in range(signal.num_channels()):
+        maxamp = max(np.abs(signal.timeSignal[:,chindex]))
+        maxindex = np.where(signal.timeSignal[:,chindex] == maxamp)[0]
+        maxtime = signal.timeVector[maxindex][0]
+        peaks_time.append(maxtime)     
+    if signal.num_channels() > 1:
+        return peaks_time
+    else:
+        return peaks_time[0]
