@@ -346,6 +346,7 @@ class SignalObj(PyTTaObj):
                 newSignal = np.array(newSignal,ndmin=2).T   
             self._timeSignal = np.array(newSignal)
             self._freqSignal = np.fft.rfft(self._timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+            self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             self._numSamples = len(self._timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self._numSamples) # [-] size parameter
             self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
@@ -358,8 +359,7 @@ class SignalObj(PyTTaObj):
 
     @property # when freqSignal is called returns the normalized ndarray
     def freqSignal(self): 
-        normFreqSig = 1/len(self._freqSignal)*self._freqSignal
-        return normFreqSig
+        return self._freqSignal
     
     @freqSignal.setter
     def freqSignal(self,newSignal):
@@ -367,7 +367,7 @@ class SignalObj(PyTTaObj):
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal,ndmin=2).T
             self._freqSignal = np.array(newSignal)
-            self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
+            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None)
             self._numSamples = len(self.timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self.numSamples) # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
