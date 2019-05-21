@@ -160,6 +160,8 @@ def peak_time(signal):
     for chindex in range(signal.num_channels()):
         maxamp = max(np.abs(signal.timeSignal[:,chindex]))
         maxindex = np.where(signal.timeSignal[:,chindex] == maxamp)[0]
+        if len(maxindex) == 0:
+            maxindex = np.where(signal.timeSignal[:,chindex] == -maxamp)[0]
         maxtime = signal.timeVector[maxindex][0]
         peaks_time.append(maxtime)     
     if signal.num_channels() > 1:

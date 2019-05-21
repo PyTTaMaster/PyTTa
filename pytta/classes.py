@@ -367,7 +367,8 @@ class SignalObj(PyTTaObj):
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal,ndmin=2).T
             self._freqSignal = np.array(newSignal)
-            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None)
+#            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None) # bug fix for frf stuff
+            self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
             self._numSamples = len(self.timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self.numSamples) # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
