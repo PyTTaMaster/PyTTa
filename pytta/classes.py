@@ -441,25 +441,26 @@ class SignalObj(PyTTaObj):
     
     def plot_freq(self,smooth=False):
         """
-        Frequency domain plotting method
+        Frequency domain dB plotting method
+        
         """
         plot.figure( figsize=(10,5) )
         
         if self.num_channels() > 1:
             for chIndex in range(0,self.num_channels()):
                 if smooth: 
-                    Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+                    Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
                 else: 
-                    Signal = self.freqSignal[:,chIndex]
+                    Signal = self.freqSignal[:,chIndex]/(2**(1/2))
                 dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
                 label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
                 plot.semilogx( self.freqVector,dBSignal,label=label)
         else:
             chIndex = 0
             if smooth: 
-                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
             else: 
-                Signal = self.freqSignal[:,chIndex]
+                Signal = self.freqSignal[:,chIndex]/(2**(1/2))
             dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
             label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
             plot.semilogx( self.freqVector, dBSignal ,label=label)            
@@ -499,7 +500,7 @@ class SignalObj(PyTTaObj):
             
         """
         if chIndex in range(self.num_channels()):
-            Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
             print(Vrms)
             freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
             if freqFound != refFreq:
@@ -528,7 +529,7 @@ class SignalObj(PyTTaObj):
             
         """
         if chIndex in range(self.num_channels()):
-            Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
             print(Prms)
             freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
             if freqFound != refFreq:
