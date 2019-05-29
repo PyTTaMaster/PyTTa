@@ -22,6 +22,7 @@ Generate
 
     User intended functions:
         
+        >>> pytta.generate.sin()
         >>> pytta.generate.sweep()
         >>> pytta.generate.noise()
         >>> pytta.generate.impulse()
