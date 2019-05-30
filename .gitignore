@@ -1,14 +1,13 @@
 # All the python stuff
 *.pyc
 *.cpython-*.pyc
-
+pytta/docs_fonte/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/*
 pytta/__pycache__/*
 *.py[cod]
 *$py.class
-
 
 # C extensions
 *.so
