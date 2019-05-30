@@ -1,26 +1,41 @@
 17_10_18 
-- Removida a gera‹o do sweep da classe frfmeasure e criada a classe generate
-25_10_18 - Criação do arquivo setup.py e separação em pasta_modulo "pytta" e pasta_mestre "data_OOPyTTa"
-26_10_18 - Separação da rotina principal em arquivos distintos para organizar submodulos, funções e classes
-27_10_18 - Organização das classes de medição em Measurement, RecMeasure, PlayRecMeasure e FRFMeasure
-	   Criada a classe pyttaObj para definir operações básicas e redefinições de sinal (talvez mudar para signalObj)
-	   Geração do sweep já vem janelado no tempo para limitar a banda de frequências do sinal
-	   Propriedades "default" e função para alterá-las funcionando corretamente
-	   Adicionada função "list_devices()"
-	   - TODO: Comentários, explicações e exemplos
+Removida a geração do sweep da classe frfmeasure e criada a classe generate
+25_10_18 Criação do arquivo setup.py e separação em pasta_modulo "pytta" e pasta_mestre "data_OOPyTTa"
+26_10_18 Separação da rotina principal em arquivos distintos para organizar submodulos, funções e classes
+27_10_18 Organização das classes de medição em Measurement, RecMeasure, PlayRecMeasure e FRFMeasure
+	 Criada a classe pyttaObj para definir operações básicas e redefinições de sinal (talvez mudar para signalObj)
+	 Geração do sweep já vem janelado no tempo para limitar a banda de frequências do sinal
+	 Propriedades "default" e função para alterá-las funcionando corretamente
+	 Adicionada função "list_devices()"
+	 TODO: Comentários, explicações e exemplos
+29_10_18 Classes internas adicionadas: pyttaObj, 
+Classes são inicializadas vazias (signalobj,, rec,)
 
-29_10_18 - Classes internas adicionadas: pyttaObj, 
-Measurement;
-	   Classes são inicializadas vazias: sinal = pytta.signalObj() retorna um signalObj com todos os atribuso vazios;
-	   Obtenção de sinais e medições com valores padrão através do pytta.generate.sweep() e pytta.generate.measurement(TIPO)
-		- TIPO: 'rec','playrec' ou 'frf'. Outros nomes variantes destes também são possíveis
-		  ex:'recording','transferfunction','playbackrecord'
-30_10_18 - Inserido argumento em setup.py para requisitar pacotes Numpy, Scipy, Matplotlib, Sounddevice e PyFilterbank
-	   A requisição do PyFilterbank já está inclusa para facilitar compatibilidade com próximos updates
-	   Escrita a documentação para o help do Spyder. Usa-se o comando ctrl/cmd + I na frente do objeto que se deseja avaliar:
-		- O texto "<ctrl/cmd + I>" será utilizado para indicar onde o cursor de digitação deve estar posicionado na hora de dar o comando
-		>>> pytta<ctrl/cmd + I> -> abre o help do módulo PyTTa
-		>>> pytta.generate.sweep<ctrl/cmd + I> -> abre o help da função sweep()
-		>>> pytta.properties<ctrl/cmd + I> -> abre o help do submodulo de propriedades
-		>>> pytta.signalObj<ctrl/cmd + I> -> abre o help do signalObj (similarmente para demais objetos, classes e funções)
-		- O cursor deve estar antes dos parênteses () no caso de funções e objetos e antes do . no caso de módulos e submódulos 
+06/11/18 Generate noise e generate impulse
+
+08/11/18 Criado módulo .functions que carrega pytta.merge, pytta.write_wav(), pytta.read_wav() e pytta.list_devices()
+	 gravação multicanal OK - 
+	 reprodução multicanal OK -
+	 plot multicanal OK - 
+
+30/01/19 Reescrita do cÃ³digo de properties.py para a criaÃ§Ã£o de uma classe Default que carrega os parÃ¢metros padrÃµes
+	 inicializaÃ§Ã£o de um objeto default, da classe Default, responsÃ¡vel por utilizar e atualizar os atributos nas
+	 funÃ§Ãµes dos demais submodulos
+
+31/01/19 Reescrita boa parte de generate.py para carregar os parÃ¢metros padrÃ£o a cada chamada de funÃ§Ã£o, fazendo com
+	 que parÃ¢metros atualizados sejam atribuÃ­dos como argumento das funÃ§Ãµes de geraÃ§Ã£o
+
+01/02/19 AdaptaÃ§Ã£o de todas as variÃ¡veis, propriedades, atributos, mÃ©todos, funÃ§Ãµes e classes para uma nomenclatura
+	 padronizada, ao que segue:
+		- ClassName;
+		- method_name;
+		- propertyName;
+		- function_name;
+		- variableName;
+		- modulename.
+
+02/02/19 Padronização de nomes realizada em todos os arquivos
+
+03/02/19 Ajuste final dos submodulos para comunicarem-se utilizando nova nomenclatura
+         Inserção e adaptação de documentação em métodos e funções
+            "push" realizado nesta data
