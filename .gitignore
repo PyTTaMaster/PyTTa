@@ -1,8 +1,11 @@
 # All the python stuff
 *.pyc
+*.cpython-*.pyc
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/*
+pytta/__pycache__/*
 *.py[cod]
 *$py.class
 
