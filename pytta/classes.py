@@ -1054,6 +1054,7 @@ class Measurement(PyTTaObj):
                  inChannel=None,
                  outChannel=None,
                  channelName=None,
+                 blocking = True,
                  *args,
                  **kwargs
                  ):
@@ -1062,6 +1063,7 @@ class Measurement(PyTTaObj):
         self.inChannel = inChannel # input channels
         self.outChannel = outChannel # output channels
         self.channelName = channelName
+        self.blocking = blocking
         return
 
 ##%% Measurement Properties
@@ -1195,7 +1197,7 @@ class RecMeasure(Measurement):
         self.recording = sd.rec(self.numSamples,
                                 self.samplingRate,
                                 mapping = self.inChannel,
-                                blocking=True,
+                                blocking=self.blocking,
                                 device=self.device,
                                 latency='low',
                                 dtype = 'float32')
@@ -1256,7 +1258,7 @@ class PlayRecMeasure(Measurement):
                              input_mapping=self.inChannel,
                              output_mapping=self.outChannel,
                              device=self.device,
-                             blocking=True,
+                             blocking=self.blocking,
                              latency='low',
                              dtype = 'float64'
                              ) # y_all(t) - out signal: x(t) conv h(t)
@@ -1330,8 +1332,17 @@ class FRFMeasure(PlayRecMeasure):
 		- run(): starts playing the excitation signal and recording during the excitation timeLen duration;
 
     """
-    def __init__(self,*args,**kwargs):
+    def __init__(self, coordinates={'points':[],
+                                    'reference':'south-west-floor corner',
+                                    'unit':'m'},
+                        method='linear', winType=None, winSize=None,
+                        overlap=None, *args, **kwargs ):
         super().__init__(*args,**kwargs)
+        self.coordinates = coordinates
+        self.method = method
+        self.winType = winType
+        self.winSize = winSize
+        self.overlap = overlap
         return
         
     def run(self):
@@ -1341,11 +1352,17 @@ class FRFMeasure(PlayRecMeasure):
         Outputs the transferfunction signalObj
         """
         self.recording = super().run()
-        self.transferfunction = self.recording/self.excitation
-        self.transferfunction.timeStamp = self.recording.timeStamp
-        self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
-        self.recording.comment = 'SignalObj from a FRF measurement'
-        return self.transferfunction
+        transferfunction = ImpulsiveResponse(self.excitation,
+                                                  self.recording,
+                                                  self.coordinates,
+                                                  self.method,
+                                                  self.winType,
+                                                  self.winSize,
+                                                  self.overlap)
+#        self.transferfunction.timeStamp = self.recording.timeStamp
+#        self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
+#        self.recording.comment = 'SignalObj from a FRF measurement'
+        return transferfunction
     
 ##%% Sub functions
 def _print_max_level(sigObj,kind):
@@ -1362,7 +1379,6 @@ def _print_max_level(sigObj,kind):
         return
 
 def _to_dict(thing):
-    
     # From SignalObj to dict
     if isinstance(thing,SignalObj):
         mySigObj = vars(thing)
