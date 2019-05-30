@@ -346,6 +346,7 @@ class SignalObj(PyTTaObj):
                 newSignal = np.array(newSignal,ndmin=2).T   
             self._timeSignal = np.array(newSignal)
             self._freqSignal = np.fft.rfft(self._timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+            self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             self._numSamples = len(self._timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self._numSamples) # [-] size parameter
             self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
@@ -358,8 +359,7 @@ class SignalObj(PyTTaObj):
 
     @property # when freqSignal is called returns the normalized ndarray
     def freqSignal(self): 
-        normFreqSig = 1/len(self._freqSignal)*self._freqSignal
-        return normFreqSig
+        return self._freqSignal
     
     @freqSignal.setter
     def freqSignal(self,newSignal):
@@ -367,6 +367,7 @@ class SignalObj(PyTTaObj):
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal,ndmin=2).T
             self._freqSignal = np.array(newSignal)
+#            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None) # bug fix for frf stuff
             self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
             self._numSamples = len(self.timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self.numSamples) # [-] size parameter
@@ -440,25 +441,26 @@ class SignalObj(PyTTaObj):
     
     def plot_freq(self,smooth=False):
         """
-        Frequency domain plotting method
+        Frequency domain dB plotting method
+        
         """
         plot.figure( figsize=(10,5) )
         
         if self.num_channels() > 1:
             for chIndex in range(0,self.num_channels()):
                 if smooth: 
-                    Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+                    Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
                 else: 
-                    Signal = self.freqSignal[:,chIndex]
+                    Signal = self.freqSignal[:,chIndex]/(2**(1/2))
                 dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
                 label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
                 plot.semilogx( self.freqVector,dBSignal,label=label)
         else:
             chIndex = 0
             if smooth: 
-                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])), 31, 3 ) 
+                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
             else: 
-                Signal = self.freqSignal[:,chIndex]
+                Signal = self.freqSignal[:,chIndex]/(2**(1/2))
             dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
             label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
             plot.semilogx( self.freqVector, dBSignal ,label=label)            
@@ -498,7 +500,7 @@ class SignalObj(PyTTaObj):
             
         """
         if chIndex in range(self.num_channels()):
-            Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
             print(Vrms)
             freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
             if freqFound != refFreq:
@@ -527,7 +529,7 @@ class SignalObj(PyTTaObj):
             
         """
         if chIndex in range(self.num_channels()):
-            Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))
+            Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
             print(Prms)
             freqFound = np.round(refSignalObj.freqVector[np.where(np.abs(refSignalObj.freqSignal)==np.max(np.abs(refSignalObj.freqSignal)))[0]])
             if freqFound != refFreq:

@@ -49,7 +49,7 @@ from . import properties
 default = properties.Default()
 
 from .classes import SignalObj, ImpulsiveResponse, RecMeasure, PlayRecMeasure, FRFMeasure
-from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample
+from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample, peak_time
 from . import generate
 
 __version__ = '0.1.0' # package version
@@ -67,6 +67,7 @@ __all__ = [# Submodules
            'find_delay',
            'resample',
            'corr_coef',
+           'peak_time',
            
            # Classes
            'RecMeasure',
