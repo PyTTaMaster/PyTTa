@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Object Oriented Python in Technical Acoustics
@@ -43,14 +42,14 @@ For further information, check the specific module, class, method or function do
 """
 
 ##%% Importing .py files as submodules
-from . import properties
+import properties
 
 # Instantiate the Default parameters to be loaded by other methods and function calls
 default = properties.Default()
 
-from .classes import SignalObj, ImpulsiveResponse, RecMeasure, PlayRecMeasure, FRFMeasure
-from .functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample, peak_time
-from . import generate
+from classes import SignalObj, ImpulsiveResponse, RecMeasure, PlayRecMeasure, FRFMeasure
+from functions import read_wav, write_wav, merge, list_devices, fft_convolve, find_delay, corr_coef, resample, peak_time
+import generate
 
 __version__ = '0.1.0' # package version
 

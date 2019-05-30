@@ -31,7 +31,7 @@ Generate
 """
 
 #%% Import modules
-from .classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
+from classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
 from pytta import default
 from scipy import signal
 import numpy as np
