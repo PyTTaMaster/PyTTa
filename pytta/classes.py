@@ -297,7 +297,7 @@ class SignalObj(PyTTaObj):
     """
     
     def __init__(self,
-                     signalArray=np.array([],ndmin=2).T,
+                     signalArray=np.array([0],ndmin=2).T,
                      domain='time',
                      *args,
                      **kwargs):
