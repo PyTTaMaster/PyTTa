@@ -42,7 +42,37 @@ def sin(Arms = 0.5,
         freq = 1000,
         timeLength = 1,
         phase = 2*np.pi,
-        samplingRate = default.samplingRate):
+        samplingRate = default.samplingRate,
+        fftDegree = None):
+    """
+    Generates a sine signal with the traditional parameters plus some PyTTa
+    options.
+    
+    Creation parameters:
+    --------------------    
+        * Arms (float) (optional):
+            The signal's RMS amplitude. 
+            
+            >>> Apeak = Arms*sqrt(2);
+        
+        * freq (float) (optional):
+            Nothing to say;
+        
+        * timeLength (float) (optional):
+            Sine timeLength in seconds;
+            
+        * fftDegree (int) (optional);
+            2**fftDegree signal's number of samples;
+            
+        * phase (float) (optional):
+            Sine phase in radians;
+            
+        * samplingRate (int) (optional):
+            Nothing to say;
+        
+    """
+    if fftDegree != None:
+        timeLength = 2**(fftDegree)/samplingRate
     t = np.linspace(0,timeLength - (1/samplingRate),samplingRate*timeLength)
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
     sinSigObj = SignalObj(sin,domain='time',samplingRate=samplingRate)
