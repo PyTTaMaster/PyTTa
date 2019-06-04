@@ -31,7 +31,7 @@ Generate
     For further information see the specific function documentation
 """
 
-#%% Import modules
+##%% Import modules
 from .classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
 from pytta import default
 from scipy import signal
@@ -69,7 +69,7 @@ def sin(Arms = 0.5,
             
         * samplingRate (int) (optional):
             Nothing to say;
-        
+            
     """
     if fftDegree != None:
         timeLength = 2**(fftDegree)/samplingRate
@@ -364,7 +364,7 @@ def measurement(kind = 'playrec',
 
 			Same as for (kind='playrec')
     """
-#%% Default Parameters
+##%% Default Parameters
     if freqMin is None: freqMin = default.freqMin
     if freqMax is None: freqMax = default.freqMax
     if samplingRate is None: samplingRate = default.samplingRate
@@ -372,7 +372,7 @@ def measurement(kind = 'playrec',
     if inChannel is None: inChannel = default.inChannel
     if outChannel is None: outChannel = default.outChannel
 
-#%% Kind REC
+##%% Kind REC
     if kind in ['rec','record','recording','r']:
         recordObj = RecMeasure(samplingRate = samplingRate,
                             freqMin = freqMin,
@@ -399,7 +399,7 @@ def measurement(kind = 'playrec',
             recordObj.fftDegree = default.fftDegree
         return recordObj
 	
-#%% Kind PLAYREC    
+##%% Kind PLAYREC    
     elif kind in ['playrec','playbackrecord','pr']:
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
@@ -417,7 +417,7 @@ def measurement(kind = 'playrec',
                                     **kwargs)
         return playRecObj
 	
-#%% Kind FRF    
+##%% Kind FRF    
     elif kind in ['tf','frf','transferfunction','freqresponse']:
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
@@ -435,4 +435,3 @@ def measurement(kind = 'playrec',
                             **kwargs
                             )
         return frfObj
-

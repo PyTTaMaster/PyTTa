@@ -661,10 +661,7 @@ class SignalObj(PyTTaObj):
 
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
-    """
-    ImpulsiveResponse
-    =================
-    
+    """    
         This class is a container of SignalObj, intended to provide a system's
         impulsive response along with the excitation signal and the recorded 
         signal used to compute the response.
@@ -687,6 +684,7 @@ class ImpulsiveResponse(PyTTaObj):
             
         Creation parameters:
         --------------------    
+        
             * excitation (SignalObj):
                 The signal-like object used as excitation signal on the
                 measurement-like object;
@@ -766,6 +764,7 @@ class ImpulsiveResponse(PyTTaObj):
 
         Attributes:
         -----------
+        
             * excitation | inputSignal:
                 Both names are valid, returns the excitation signal given as 
                 parameter at the object instantiation;
