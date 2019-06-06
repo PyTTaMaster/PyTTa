@@ -8,8 +8,66 @@ Created on Tue Oct 30 15:27:44 2018
 from pytta.properties import default
 import numpy as np
 from pyfilterbank import FractionalOctaveFilterbank
+import pyfilterbank.octbank as ofb
 from scipy import stats
 import matplotlib.pyplot as plt
+
+#                (dB_range: str = '20', irSObj, filtOrder: int=4, nthOct: int=3,
+#                  centerFreq: float=1000., edgeCorr: float=0.01,
+#                  firstBand: int= round(ofb.centerfreq_to_bandnum(20,1000,3)),
+#                  lastBand: int= round(ofb.centerfreq_to_bandnum(20000,1000,3))):
+
+def _():
+    pass
+
+def _get_signal_from_obj():
+    pass
+
+def __filtering():
+    # GET NUM CHANNELS e.g. 3
+    # GET NCH TIME SIGNALS  e.g. 3
+    # FILTER EVERYONE e.g. 3 x nBands = 3x31 = 93 FILTSIGNALS
+    pass
+
+def __cumulative():
+    # CUMULATIVE INTEGRATION OR SUM
+    pass
+
+def __decaying():
+    # INTERPOLATE LEVELS
+    pass
+
+def __ceter_t():
+    # CALCULATE
+    pass
+
+def __clarity():
+    # CALCULATE
+    pass
+
+def __definition():
+    # CALCULATE
+    pass
+
+def __speech_ti():
+    # CALCULATE
+    pass
+
+def __interaural_cc():
+    # CALCULATE
+    pass
+
+def __lateral_e():
+    # CALCULATE
+    pass
+
+def __support():
+    # CALCULATE
+    pass
+
+def __ensemble():
+    # CALCULATE
+    pass
 
 ##%% Legacy code
 def T20(h,

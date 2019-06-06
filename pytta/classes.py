@@ -1,9 +1,8 @@
-#usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Classes
-========
-  
+Classes:
+---------
+
 @Autores:
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -11,26 +10,25 @@ Classes
 This submodule is mainly the means to an end. PyTTa is made intended to be
 user friendly, the manipulation of the classes are documented here, but their
 instantiation should be used through the <generate> submodule:
-    
+
     >>> pytta.generate.sweep()
     >>> pytta.generate.noise()
     >>> pytta.generate.measurement('playrec')
     >>> pytta.generate.measurement('rec', lengthDomain = 'time', timeLen = 5)
-    
+
 This way, the default settings will be loaded into any object instantiated.
 
 User intended classes:
-    
+
     >>> pytta.SignalObj()
     >>> pytta.RecMeasure()
     >>> pytta.PlayRecMeasure()
     >>> pytta.FRFMeasure()
-    
+
 For further information see the specific class, or method, documentation
 """
 
-##%% Importing modules
-#import pytta as pa
+# Importing modules
 import numpy as np
 import matplotlib.pyplot as plot
 import scipy.signal as signal
@@ -43,12 +41,12 @@ import copy as cp
 
 class PyTTaObj(object):
     """
-    PyTTa object class to define some properties and methods to be used 
+    PyTTa object class to define some properties and methods to be used
     by any signal and processing classes. pyttaObj is a private class created
     just to shorten attributes declaration to each PyTTa class.
-    
+
     Properties(self): (default), (dtype), meaning;
-    
+
         - samplingRate: (44100), (int), signal's sampling rate;
         - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
         - timeLength: (seconds), (float), signal's time length in seconds;
