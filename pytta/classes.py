@@ -1410,7 +1410,7 @@ class RecMeasure(Measurement):
         return self.recording
 
 
-# PlayRecMeasure class 
+# PlayRecMeasure class
 class PlayRecMeasure(Measurement):
     """
     Playback and Record object
@@ -1615,6 +1615,14 @@ class FRFMeasure(PlayRecMeasure):
                                              self.overlap)
         transferfunction.timeStamp = recording.timeStamp
         return transferfunction
+
+
+# Streaming class
+class Streaming(PyTTaObj):
+    """
+    """
+    def __init__(self):
+        return
 
 
 # Sub functions
