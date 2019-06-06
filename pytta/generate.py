@@ -479,6 +479,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
+                                   IOcallback=callback,
                                    *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -489,6 +490,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
+                                   IOcallback=callback,
                                    *args, **kwargs)
         return Ostreaming
 
@@ -501,6 +503,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
+                                    IOcallback=callback,
                                     *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -514,6 +517,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
+                                    IOcallback=callback,
                                     *args, **kwargs)
         return IOstreaming
 

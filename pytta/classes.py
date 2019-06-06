@@ -268,58 +268,78 @@ class SignalObj(PyTTaObj):
     """
     Signal object class.
 
-    Properties(self): (default), (dtype), meaning;
+    Properties:
+    ------------
 
         * domain ('time'), (str):
             domain of the input array;
+
         * timeSignal (ndarray), (NumPy array):
             signal at time domain;
+
         * timeVector (ndarray), (NumPy array):
             time reference vector for timeSignal;
+
         * freqSignal (ndarray), (NumPy array):
             signal at frequency domain;
+
         * freqVector (ndarray), (NumPy array):
             frequency reference vector for freqSignal;
+
         * unit (None), (str):
             signal's unit. May be 'V' or 'Pa';
+
         * channelName (dict), (dict/str):
             channels name dict;
 
-    Properties inherited (default), (dtype), meaning;
-
         * samplingRate (44100), (int):
             signal's sampling rate;
+
         * lengthDomain ('time'), (str):
             input array's domain. May be 'time' or 'samples';
+
         * timeLength (seconds), (float):
             signal's duration;
+
         * fftDegree (fftDegree), (float):
             2**fftDegree signal's number of samples;
+
         * numSamples (samples), (int):
             signal's number of samples
+
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
+
         * freqMax (20000), (int):
             maximum frequency bandwidth limit;
+
         * comment ('No comments.'), (str):
             some commentary about the signal or measurement object;
 
-    Methods(args) meaning;
+    Methods:
+    ---------
 
         * num_channels():
             return the number of channels in the instace;
+
         * max_level():
             return the channel's max levels;
+
         * play():
             reproduce the timeSignal with default output device;
+
         * plot_time():
             generates the signal's historic graphic;
+
         * plot_freq():
             generates the signal's spectre graphic;
+
         * calib_voltage(refSignalObj,refVrms,refFreq):
             voltage calibration from an input SignalObj;
+
         * calib_pressure(refSignalObj,refPrms,refFreq):
             pressure calibration from an input SignalObj;
+
         * save_mat(filename):
             save a SignalObj to a .mat file;
     """
@@ -561,10 +581,13 @@ class SignalObj(PyTTaObj):
 
             * chIndex (), (int):
                 channel index for calibration. Starts in 0;
+
             * refSignalObj (), (SignalObj):
                 SignalObj with the calibration recorded signal;
+
             * refVrms (1.00), (float):
                 the reference voltage provided by the voltage calibrator;
+
             * refFreq (1000), (int):
                 the reference sine frequency provided by the voltage
                 calibrator;
@@ -606,10 +629,13 @@ class SignalObj(PyTTaObj):
 
             * chIndex (), (int):
                 channel index for calibration. Starts in 0;
+
             * refSignalObj (), (SignalObj):
                 SignalObj with the calibration recorded signal;
+
             * refPrms (1.00), (float):
                 the reference pressure provided by the acoustic calibrator;
+
             * refFreq (1000), (int):
                 the reference sine frequency provided by the acoustic
                 calibrator;
@@ -1196,8 +1222,10 @@ class Measurement(PyTTaObj):
 
         * device (system default), (list/int):
             list of input and output devices;
+
         * inChannel ([1]), (list/int):
             list of device's input channel used for recording;
+
         * outChannel ([1]), (list/int):
             list of device's output channel used for playing/reproducing\
             a signalObj;
@@ -1206,18 +1234,25 @@ class Measurement(PyTTaObj):
 
         * samplingRate (44100), (int):
             signal's sampling rate;
+
         * lengthDomain ('time'), (str):
             input array's domain. May be 'time' or 'samples';
+
         * timeLength (seconds), (float):
             signal's time length in seconds;
+
         * fftDegree (fftDegree), (float):
             2**fftDegree signal's number of samples;
+
         * numSamples (samples), (int):
             signal's number of samples
+
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
+
         * freqMax (20000), (int):
             maximum frequency bandwidth limit;
+
         * comment ('No comments.'), (str):
             some commentary about the signal or measurement object;
     """
@@ -1753,6 +1788,7 @@ class Streaming(PyTTaObj):
     def __init__(self,
                  device: List[int] = None,
                  integration: float = None,
+                 samplingRate: int = None,
                  inChannels: Optional[List[ChannelObj]] = None,
                  outChannels: Optional[List[ChannelObj]] = None,
                  duration: Optional[float] = None,
@@ -1778,24 +1814,18 @@ class Streaming(PyTTaObj):
             self._outData = None
             self.__outBuff = None
 
-        if integration is not None:
-            self._integration = integration
-        else:
-            self._integration = 0.125
-        self._blockSize = int(self.integration * self.samplingRate)
-
         if duration is not None:
             self._durationInSamples = int(duration*self.samplingRate)
         else:
             self._durationInSamples = None
 
-        if device is not None:
-            self._device = device
-        else:
-            self._device = default.device
-
         self._inChannels = inChannels[:]
         self._outChannels = outChannels[:]
+        self._samplingRate = samplingRate
+        self._integration = integration
+        self._blockSize = int(self.integration * self.samplingRate)
+        self._duration = duration
+        self._device = device
 
         if self.outChannels is not None and self.inChannels is not None:
             if IOcallback is None:
@@ -1808,6 +1838,7 @@ class Streaming(PyTTaObj):
                                      dtype='float32',
                                      latency='low',
                                      callback=IOcallback)
+
         elif self.outChannels is not None and self.inChannels is None:
             if IOcallback is None:
                 IOcallback = self.__Ocallback
@@ -1818,6 +1849,7 @@ class Streaming(PyTTaObj):
                                            dtype='float32',
                                            latency='low',
                                            callback=IOcallback)
+
         elif self.outChannels is None and self.inChannels is not None:
             if IOcallback is None:
                 IOcallback = self.__Icallback
@@ -1828,6 +1860,7 @@ class Streaming(PyTTaObj):
                                           dtype='float32',
                                           latency='low',
                                           callback=IOcallback)
+
         else:
             raise ValueError("At least one channel list, either inChannels\
                              or outChannels must be supplied.")
