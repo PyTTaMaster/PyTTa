@@ -32,8 +32,9 @@ Generate
 """
 
 ##%% Import modules
-from .classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
 from pytta import default
+from .classes import SignalObj, RecMeasure, FRFMeasure,\
+        PlayRecMeasure, Streaming
 from scipy import signal
 import numpy as np
 
@@ -204,9 +205,8 @@ def __do_sweep_windowing(inputSweep,
                           windowEnd[freqMaxSample:-1] ) )
     newSweep = fullWindow * inputSweep
     return newSweep
- 
-    
- 
+
+
 def noise(kind = 'white',
           samplingRate = None,
           fftDegree = None,
@@ -416,8 +416,8 @@ def measurement(kind = 'playrec',
                                     outChannel = outChannel,
                                     **kwargs)
         return playRecObj
-	
-##%% Kind FRF    
+
+# Kind FRF    
     elif kind in ['tf','frf','transferfunction','freqresponse']:
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
@@ -435,3 +435,88 @@ def measurement(kind = 'playrec',
                             **kwargs
                             )
         return frfObj
+
+
+def stream(IO='IO',
+           device=None,
+           integration=None,
+           samplingRate=None,
+           inChannels=None,
+           outChannels=None,
+           duration=None,
+           excitation=None,
+           callback=None,
+           *args, **kwargs):
+    """
+    """
+    if device is None:
+        device = default.device
+    if integration is None:
+        integration = default.integration
+    if inChannels is None:
+        inChannels = default.inChannel[:]
+    if isinstance(excitation, SignalObj):
+        excit = True
+        excitData = excitation.timeSignal[:]
+        samplingRate = excitation.samplingRate
+        duration = excitation.timeLenght
+        outChannels = excitation.channels[:]
+    else:
+        excit = False
+        if samplingRate is None:
+            samplingRate = default.samplingRate
+
+    if IO in ['I', 'in', 'input']:
+        Istreaming = Streaming(device=device, integration=integration,
+                               inChannels=inChannels, duration=duration,
+                               IOcallback=callback, samplingRate=samplingRate,
+                               *args, **kwargs)
+        return Istreaming
+
+    elif IO in ['O', 'out', 'output']:
+        if excit:
+            Ostreaming = Streaming(device=device, integration=integration,
+                                   outChannels=outChannels, duration=duration,
+                                   excitationData=excitData,
+                                   samplingRate=samplingRate,
+                                   *args, **kwargs)
+        else:
+            excitation = sweep(samplingRate=samplingRate)
+            outChannels = excitation.channels
+            duration = excitation.timeLength
+            excitData = excitation.timeSignal[:]
+            Ostreaming = Streaming(device=device, integration=integration,
+                                   outChannels=outChannels, duration=duration,
+                                   excitationData=excitData,
+                                   samplingRate=samplingRate,
+                                   *args, **kwargs)
+        return Ostreaming
+
+    elif IO in ['IO', 'in-out', 'input-output']:
+        if excit:
+            IOstreaming = Streaming(device=device,
+                                    integration=integration,
+                                    inChannels=inChannels,
+                                    outChannels=outChannels,
+                                    duration=duration,
+                                    excitationData=excitData,
+                                    samplingRate=samplingRate,
+                                    *args, **kwargs)
+        else:
+            excitation = sweep(samplingRate=samplingRate)
+            outChannels = excitation.channels[:]
+            duration = excitation.timeLength
+            excitData = excitation.timeSignal[:]
+            IOstreaming = Streaming(device=device,
+                                    integration=integration,
+                                    inChannels=inChannels,
+                                    outChannels=outChannels,
+                                    duration=duration,
+                                    excitationData=excitData,
+                                    samplingRate=samplingRate,
+                                    *args, **kwargs)
+        return IOstreaming
+
+    else:
+        raise ValueError("The IO parameter could not identify whether the\
+                         stream will be Input, Output or Input-Output type.")

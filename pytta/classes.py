@@ -35,6 +35,7 @@ import scipy.signal as signal
 import scipy.io as sio
 import sounddevice as sd
 from pytta import default
+from typing import Union, Optional, List
 import time
 import copy as cp
 
@@ -1620,9 +1621,326 @@ class FRFMeasure(PlayRecMeasure):
 # Streaming class
 class Streaming(PyTTaObj):
     """
+    Wrapper class for SoundDevice stream-like classes. This is intended for
+    applications where both measurement and analysis signal must be handled
+    at runtime and/or continuously.
+
+    Parameters:
+    ------------
+
+        * device:
+            Integer or list of integers, the ID number of the desired device to
+            reproduce and/or record audio data, as querried by list_devices()
+            function.
+
+        * integration:
+            The integration period for SPL monitoring, given in seconds.
+
+        * inChannels:
+            List of ChannelObj for measurement channels setup
+
+        * outChannels:
+            List of ChannelObj for reproduction channels setup. This parameter
+            is ignored if `excitation` is provided
+
+        * duration:
+            The amount of time that the stream will be active at each start()
+            call. This parameter is ignored if `excitation` is provided.
+
+        * excitation:
+            A SignalObj used to provide outData, outChannels and samplingRate
+            values.
+
+    Attributes:
+    ------------
+
+        All parameters are also attributes, along with the ones explained here.
+
+        * inData:
+            Recorded audio data (only if `inChannels` provided).
+
+        * outData:
+            Audio data used for reproduction (only if `outChannels` provided).
+
+        * active:
+            Wrapper for stream.active attribute
+
+        * stopped:
+            Wrapper for stream.stopped attribute
+
+        * closed:
+            Wrapper for stream.closed attribute
+
+        * stream:
+            The actual SoundDevice stream-like object. More information about
+            it at http://python-sounddevice.readthedocs.io/
+
+        * durationInSamples:
+            Number of recorded samples (only if `duration` provided)
+
+        At least one channels list must be provided for the object
+        initialization, either inChannels or outChannels.
+
+    Methods:
+    ---------
+
+        * start():
+            Wrapper call of stream.start() method
+
+        * stop():
+            Wrapper call of stream.stop() method
+
+        * close():
+            Wrapper call of stream.close() method
+
+        * get_inData_as_signal():
+            Returns the recorded data stored at `inData` as a SignalObj
+
+    Class method:
+    ---------------
+
+        * __timeout(obj):
+            Class caller for stopping the stream from within callback function
+
+    Callback functions:
+    --------------------
+
+        The user can pass it\'s own callback function, as long as it have the
+        same structure as the ones provided by the Streaming class itself,
+        with respect to the number of parameters and it\'s application.
+
+        * __Icallback(inData, frames, time, status):
+            Callback function used for input-only streams:
+
+                * inData:
+                    Numpy array with input audio with `frames` length.
+
+                * frames:
+                    Number of frames read at each callback call. Same as
+                    `blocksize`.
+
+                * time:
+                    Object-like with three timestamps:
+                        The first sample read;
+                        The last sample read;
+                        The callback call.
+
+                * status:
+                    PortAudio status flag used to identify if samples were lost
+                    due to last callback processing or delayed syscalls
+
+        * __Ocallback(outData, frames, time, status):
+            Callback function used for output-only streams:
+
+                * outData:
+                    An uninitialized Numpy array to be filled with `frames`
+                    samples at each call to the callback. This parameter must
+                    be full at the callback `return`, if user do not provide
+                    enough samples it is filled with zeros. The values must be
+                    passed to the parameter in a statement like this:
+
+                        >>> outData[:] = sentData[:]
+
+                    If no subscription is made to the outData parameter, the
+                    reproduction fails.
+            Other parameters are the same as the :method:`__Icallback`
+
+        * __IOcallback(inData, outData, frames, time, status):
+            Callback function used for input-output streams.
+            It\'s parameters are the same as the previous methods.
     """
-    def __init__(self):
+
+    def __init__(self,
+                 device: List[int] = None,
+                 integration: float = None,
+                 inChannels: Optional[List[ChannelObj]] = None,
+                 outChannels: Optional[List[ChannelObj]] = None,
+                 duration: Optional[float] = None,
+                 excitationData: Optional[np.ndarray] = None,
+                 IOcallback: Optional[callable] = None,
+                 *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        if inChannels is not None:
+            self._inData = np.zeros((1, len(inChannels)))
+        else:
+            self._inData = None
+
+        if outChannels is not None:
+            try:
+                self._outData = excitationData[:]
+                self.__outBuff = excitationData[:]
+            except TypeError:
+                raise TypeError("If outChannels is provided, an \
+                                excitationData must be entered as well.")
+        else:
+            self._outData = None
+            self.__outBuff = None
+
+        if integration is not None:
+            self._integration = integration
+        else:
+            self._integration = 0.125
+        self._blockSize = int(self.integration * self.samplingRate)
+
+        if duration is not None:
+            self._durationInSamples = int(duration*self.samplingRate)
+        else:
+            self._durationInSamples = None
+
+        if device is not None:
+            self._device = device
+        else:
+            self._device = default.device
+
+        self._inChannels = inChannels[:]
+        self._outChannels = outChannels[:]
+
+        if self.outChannels is not None and self.inChannels is not None:
+            if IOcallback is None:
+                IOcallback = self.__IOcallback
+            self._stream = sd.Stream(self.samplingRate,
+                                     self.blockSize,
+                                     self.device,
+                                     [len(self.inChannels),
+                                      len(outChannels)],
+                                     dtype='float32',
+                                     latency='low',
+                                     callback=IOcallback)
+        elif self.outChannels is not None and self.inChannels is None:
+            if IOcallback is None:
+                IOcallback = self.__Ocallback
+            self._stream = sd.OutputStream(self.samplingRate,
+                                           self.blockSize,
+                                           self.device,
+                                           len(self.outChannels),
+                                           dtype='float32',
+                                           latency='low',
+                                           callback=IOcallback)
+        elif self.outChannels is None and self.inChannels is not None:
+            if IOcallback is None:
+                IOcallback = self.__Icallback
+            self._stream = sd.InputStream(self.samplingRate,
+                                          self.blockSize,
+                                          self.device,
+                                          len(self.inChannels),
+                                          dtype='float32',
+                                          latency='low',
+                                          callback=IOcallback)
+        else:
+            raise ValueError("At least one channel list, either inChannels\
+                             or outChannels must be supplied.")
         return
+
+    def __Icallback(self, inData, frames, time, status):
+        self.inData = np.append(self.inData, inData, axis=0)
+        if self.durationInSamples is None:
+            pass
+        elif self.inData.shape[0] >= self.durationInSamples:
+            Streaming.__timeout(self)
+        return
+
+    def __Ocallback(self, outData, frames, time, status):
+        try:
+            outData[:, :] = self.__outBuff[:frames, :]
+            self.__outBuff = self.__outBuff[frames:, :]
+        except ValueError:
+            outData[:len(self.outData), :] = self.__outBuff[:, :]
+            outData.fill(0)
+            self.__outBuff = self._outData[:]
+            Streaming.__timeout(self)
+        return
+
+    def __IOcallback(self, inData, outData, frames, time, status):
+        self.inData = np.append(self.inData, inData, axis=0)
+        try:
+            outData[:, :] = self.__outBuff[:frames, :]
+            self.__outBuff = self.__outBuff[frames:, :]
+        except ValueError:
+            outData[:len(self.__outBuff), :] = self.__outBuff[:, :]
+            outData.fill(0)
+            self.__outBuff = self.outData[:]
+            Streaming.__timeout(self)
+        return
+
+    def get_inData_as_signal(self):
+        signal = SignalObj(self.inData, 'time', self.samplingRate)
+        signal.channels = self.outChannels[:]
+        return signal
+
+    def __timeout(obj):
+        obj.stream.stop()
+        return
+
+    def start(self):
+        self.stream.start()
+        return
+
+    def stop(self):
+        self.stream.stop()
+        return
+
+    def close(self):
+        self.stream.close()
+        return
+
+    @property
+    def stream(self):
+        return self._stream
+
+    @property
+    def active(self):
+        return self.stream.active
+
+    @property
+    def stopped(self):
+        return self.stream.stopped
+
+    @property
+    def closed(self):
+        return self.stream.closed
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def inChannels(self):
+        return self._inChannels
+
+    @property
+    def inData(self):
+        return self._inData
+
+    @inData.setter
+    def inData(self, data):
+        self._inData = data
+        return
+
+    @property
+    def outChannels(self):
+        return self._outChannels
+
+    @property
+    def outData(self):
+        return self._outData
+
+    @property
+    def integration(self):
+        return self._integration
+
+    @property
+    def blockSize(self):
+        return self._blockSize
+
+    @property
+    def duration(self):
+        return self._durationInSamples/self.samplingRate
+
+    @property
+    def durationInSamples(self):
+        return self._durationInSamples
 
 
 # Sub functions
