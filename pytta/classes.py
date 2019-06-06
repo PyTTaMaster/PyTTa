@@ -295,7 +295,7 @@ class SignalObj(PyTTaObj):
     """
     
     def __init__(self,
-                     signalArray=np.array([],ndmin=2).T,
+                     signalArray=np.array([0],ndmin=2).T,
                      domain='time',
                      *args,
                      **kwargs):
@@ -567,21 +567,25 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike.")
         if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
+            raise TypeError("Both SignalObj must have the same sampling rate.")              
         result = SignalObj(np.zeros(self.timeSignal.shape),samplingRate=self.samplingRate)                
+        result.channels = self.channels
         if self.num_channels() > 1:
             if other.num_channels() > 1:
                 if other.num_channels() != self.num_channels():
                     raise ValueError("Both signal-like objects must have the same number of channels.")
+                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
                 for channel in range(other.num_channels()):
                     result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,channel]
+                result.freqSignal = result_freqSignal
             else:
-                for channel in range(other.num_channels()):
-                    result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal
-        else: result.freqSignal = self.freqSignal / other.freqSignal
-        
-        return result
-    
+                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
+                for channel in range(self.num_channels()):
+                    result_freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,0]
+                result.freqSignal = result_freqSignal
+        else: 
+            result.freqSignal = self.freqSignal / other.freqSignal
+        return result    
     
     def __add__(self, other):
         """
@@ -655,10 +659,7 @@ class SignalObj(PyTTaObj):
 
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
-    """
-    ImpulsiveResponse
-    =================
-    
+    """    
         This class is a container of SignalObj, intended to provide a system's
         impulsive response along with the excitation signal and the recorded 
         signal used to compute the response.
@@ -681,6 +682,7 @@ class ImpulsiveResponse(PyTTaObj):
             
         Creation parameters:
         --------------------    
+        
             * excitation (SignalObj):
                 The signal-like object used as excitation signal on the
                 measurement-like object;
@@ -760,6 +762,7 @@ class ImpulsiveResponse(PyTTaObj):
 
         Attributes:
         -----------
+        
             * excitation | inputSignal:
                 Both names are valid, returns the excitation signal given as 
                 parameter at the object instantiation;
@@ -1123,7 +1126,7 @@ class Measurement(PyTTaObj):
             raise AttributeError('Incompatible number of channel names and channel number.')
         return
 
-##%% RecMeasure class        
+##%% RecMeasure class
 class RecMeasure(Measurement):
     """
     Signal Recording object
@@ -1344,26 +1347,26 @@ class FRFMeasure(PlayRecMeasure):
         self.winSize = winSize
         self.overlap = overlap
         return
-        
+
     def run(self):
         """
         Starts reproducing the excitation signal and recording at the same time
-        Divides the recorded signalObj by the excitation signalObj to generate a transferfunction
-        Outputs the transferfunction signalObj
+        Outputs the transferfunction ImpulsiveResponse
         """
         self.recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
-                                                  self.recording,
-                                                  self.coordinates,
-                                                  self.method,
-                                                  self.winType,
-                                                  self.winSize,
-                                                  self.overlap)
-#        self.transferfunction.timeStamp = self.recording.timeStamp
-#        self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
+                                             self.recording,
+                                             self.coordinates,
+                                             self.method,
+                                             self.winType,
+                                             self.winSize,
+                                             self.overlap)
+        transferfunction.timeStamp = self.recording.timeStamp
+#        self.transferfunction.freqMin, self.recording.freqMax \
+#                = (self.freqMin,self.freqMax)
 #        self.recording.comment = 'SignalObj from a FRF measurement'
         return transferfunction
-    
+
 ##%% Sub functions
 def _print_max_level(sigObj,kind):
     if kind == 'output':
