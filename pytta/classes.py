@@ -1740,14 +1740,14 @@ class Streaming(PyTTaObj):
     Callback functions:
     --------------------
 
-        The user can pass it\'s own callback function, as long as it have the
+        The user can pass his/her own callback function, as long as it have the
         same structure as the ones provided by the Streaming class itself,
-        with respect to the number of parameters and it\'s application.
+        with respect to the number of parameters and its application.
 
-        * __Icallback(inData, frames, time, status):
+        * __Icallback(Idata, frames, time, status):
             Callback function used for input-only streams:
 
-                * inData:
+                * Idata:
                     Numpy array with input audio with `frames` length.
 
                 * frames:
@@ -1764,23 +1764,23 @@ class Streaming(PyTTaObj):
                     PortAudio status flag used to identify if samples were lost
                     due to last callback processing or delayed syscalls
 
-        * __Ocallback(outData, frames, time, status):
+        * __Ocallback(Odata, frames, time, status):
             Callback function used for output-only streams:
 
-                * outData:
+                * Odata:
                     An uninitialized Numpy array to be filled with `frames`
                     samples at each call to the callback. This parameter must
                     be full at the callback `return`, if user do not provide
                     enough samples it is filled with zeros. The values must be
                     passed to the parameter in a statement like this:
 
-                        >>> outData[:] = sentData[:]
+                        >>> Odata[:] = outputData[:]
 
-                    If no subscription is made to the outData parameter, the
+                    If no subscription is made on the Odata parameter, the
                     reproduction fails.
             Other parameters are the same as the :method:`__Icallback`
 
-        * __IOcallback(inData, outData, frames, time, status):
+        * __IOcallback(Idata, Odata, frames, time, status):
             Callback function used for input-output streams.
             It\'s parameters are the same as the previous methods.
     """
@@ -1795,30 +1795,12 @@ class Streaming(PyTTaObj):
                  excitationData: Optional[np.ndarray] = None,
                  IOcallback: Optional[callable] = None,
                  *args, **kwargs):
-
         super().__init__(*args, **kwargs)
-
-        if inChannels is not None:
-            self._inData = np.zeros((1, len(inChannels)))
-        else:
-            self._inData = None
-
-        if outChannels is not None:
-            try:
-                self._outData = excitationData[:]
-                self.__outBuff = excitationData[:]
-            except TypeError:
-                raise TypeError("If outChannels is provided, an \
-                                excitationData must be entered as well.")
-        else:
-            self._outData = None
-            self.__outBuff = None
-
+        self.set_channels(inChannels, outChannels, excitationData)
         if duration is not None:
             self._durationInSamples = int(duration*samplingRate)
         else:
             self._durationInSamples = None
-
         self._inChannels = inChannels
         self._outChannels = outChannels
         self._samplingRate = samplingRate
@@ -1829,6 +1811,21 @@ class Streaming(PyTTaObj):
         self.__kount = 0
         self.IOcallback = IOcallback
         self._call_for_stream(IOcallback)
+        return
+
+    def set_channels(self, inputs, outputs, data):
+        if inputs is not None:
+            self._inData = np.zeros((1, len(inputs)))
+        else:
+            self._inData = None
+        if outputs is not None:
+            try:
+                self._outData = data[:]
+            except TypeError:
+                raise TypeError("If outChannels is provided, an \
+                                excitationData must be entered as well.")
+        else:
+            self._outData = None
         return
 
     def _call_for_stream(self, IOcallback=None):
@@ -1843,7 +1840,6 @@ class Streaming(PyTTaObj):
                                      dtype='float32',
                                      latency='low',
                                      callback=IOcallback)
-
         elif self.outChannels is not None and self.inChannels is None:
             if IOcallback is None:
                 IOcallback = self.__Ocallback
@@ -1854,7 +1850,6 @@ class Streaming(PyTTaObj):
                                            dtype='float32',
                                            latency='low',
                                            callback=IOcallback)
-
         elif self.outChannels is None and self.inChannels is not None:
             if IOcallback is None:
                 IOcallback = self.__Icallback
@@ -1865,20 +1860,17 @@ class Streaming(PyTTaObj):
                                           dtype='float32',
                                           latency='low',
                                           callback=IOcallback)
-
         else:
             raise ValueError("At least one channel list, either inChannels\
                              or outChannels must be supplied.")
         return
-
 
     def __Icallback(self, Idata, frames, time, status):
         self.inData = np.append(self.inData, Idata, axis=0)
         if self.durationInSamples is None:
             pass
         elif self.inData.shape[0] >= self.durationInSamples:
-            Streaming.__timeout(self)
-            self.inData = self.inData[1:, :]
+            self.__timeout()
         return
 
     def __Ocallback(self, Odata, frames, time, status):
@@ -1889,9 +1881,7 @@ class Streaming(PyTTaObj):
             olen = len(self.outData[self.kn:])
             Odata[:olen, :] = self.outData[self.kn:, :]
             Odata.fill(0)
-            self.stop()
-            self.__outBuff = np.zeros(self.outData.shape)
-            self.kn = 0
+            self.__timeout()
         return
 
     def __IOcallback(self, Idata, Odata, frames, time, status):
@@ -1899,23 +1889,27 @@ class Streaming(PyTTaObj):
         try:
             Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
             self.kn = self.kn + frames
-            print(self.kn)
         except ValueError:
             olen = len(self.outData[self.kn:self.kn+frames])
-            print(olen)
             Odata[:olen, :] = self.outData[self.kn:, :]
             Odata.fill(0)
-            Streaming.__timeout(self)
-            self.kn = 0
+            self.__timeout()
         return
 
     def get_inData_as_signal(self):
         signal = SignalObj(self.inData, 'time', self.samplingRate)
         return signal
 
-    def __timeout(obj):
-        obj.stop()
-        obj._call_for_stream(obj.IOcallback)
+    def __timeout(self):
+        self.stop()
+        self._call_for_stream(self.IOcallback)
+        self.kn = 0
+        if self.inData is not None:
+            self.inData = self.inData[1:, :]
+        return
+
+    def reset(self):
+        self.set_channels(self.inChannels, self.outChannels, self.outData)
         return
 
     def start(self):
