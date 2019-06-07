@@ -30,12 +30,12 @@ For further information see the specific class, or method, documentation
 
 # Importing modules
 import numpy as np
-import matplotlib.pyplot as plot
-import scipy.signal as signal
+import matplotlib.pyplot as plt
+import scipy.signal as ss
 import scipy.io as sio
 import sounddevice as sd
 from pytta import default
-from typing import Union, Optional, List
+from typing import Optional, List
 import time
 import copy as cp
 
@@ -488,38 +488,38 @@ class SignalObj(PyTTaObj):
         Time domain plotting method
         """
         # DB
-        plot.figure(figsize=(10, 5))
+        plt.figure(figsize=(10, 5))
         if self.num_channels() > 1:
             for chIndex in range(self.num_channels()):
                 label = self.channels[chIndex].name +\
                         ' [' + self.channels[chIndex].unit + ']'
-                plot.plot(self.timeVector,
+                plt.plot(self.timeVector,
                           self.timeSignal[:, chIndex], label=label)
         else:
             chIndex = 0
             label = self.channels[chIndex].name +\
                 ' [' + self.channels[chIndex].unit + ']'
-            plot.plot(self.timeVector,
+            plt.plot(self.timeVector,
                       self.timeSignal[:, chIndex], label=label)
-        plot.legend(loc='best')
-        plot.grid(color='gray', linestyle='-.', linewidth=0.4)
-        plot.axis((self.timeVector[0] - 10/self.samplingRate,
+        plt.legend(loc='best')
+        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
+        plt.axis((self.timeVector[0] - 10/self.samplingRate,
                    self.timeVector[-1] + 10/self.samplingRate,
                    1.05 * np.min(self.timeSignal),
                    1.05 * np.max(self.timeSignal)))
-        plot.xlabel(r'$Time$ [s]')
-        plot.ylabel(r'$Amplitude$')
+        plt.xlabel(r'$Time$ [s]')
+        plt.ylabel(r'$Amplitude$')
         return
 
     def plot_freq(self, smooth=False):
         """
         Frequency domain dB plotting method
         """
-        plot.figure(figsize=(10, 5))
+        plt.figure(figsize=(10, 5))
         if self.num_channels() > 1:
             for chIndex in range(0, self.num_channels()):
                 if smooth:
-                    Signal = signal.savgol_filter(np.squeeze(np.abs(
+                    Signal = ss.savgol_filter(np.squeeze(np.abs(
                              self.freqSignal[:, chIndex]) / (2**(1/2))),
                              31, 3)
                 else:
@@ -530,11 +530,11 @@ class SignalObj(PyTTaObj):
                     + ' [' + self.channels[chIndex].dBName + ' ref.: ' \
                     + str(self.channels[chIndex].dBRef) + ' ' \
                     + self.channels[chIndex].unit + ']'
-                plot.semilogx(self.freqVector, dBSignal, label=label)
+                plt.semilogx(self.freqVector, dBSignal, label=label)
         else:
             chIndex = 0
             if smooth:
-                Signal = signal.savgol_filter(np.squeeze(np.abs(
+                Signal = ss.savgol_filter(np.squeeze(np.abs(
                          self.freqSignal[:, chIndex]) / (2**(1/2))),
                          31, 3)
             else:
@@ -545,27 +545,27 @@ class SignalObj(PyTTaObj):
                 + self.channels[chIndex].dBName + ' ref.: '\
                 + str(self.channels[chIndex].dBRef) + ' '\
                 + self.channels[chIndex].unit + ']'
-            plot.semilogx(self.freqVector, dBSignal, label=label)
-        plot.grid(color='gray', linestyle='-.', linewidth=0.4)
-        plot.legend(loc='best')
+            plt.semilogx(self.freqVector, dBSignal, label=label)
+        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
+        plt.legend(loc='best')
         if np.max(dBSignal) > 0:
             ylim = [1.05*np.min(dBSignal), 1.12*np.max(dBSignal)]
         else:
             ylim = [np.min(dBSignal) - 2, np.max(dBSignal) + 2]
-        plot.axis((self.freqMin, self.freqMax, ylim[0], ylim[1]))
-        plot.xlabel(r'$Frequency$ [Hz]')
-        plot.ylabel(r'$Magnitude$ in dB')
+        plt.axis((self.freqMin, self.freqMax, ylim[0], ylim[1]))
+        plt.xlabel(r'$Frequency$ [Hz]')
+        plt.ylabel(r'$Magnitude$ in dB')
         return
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5):
         _spectrogram, _specTime, _specFreq\
             = self._calc_spectrogram(self.timeSignal[:, 0], overlap,
                                      window, winSize)
-        plot.pcolormesh(_specTime.T, _specFreq.T, _spectrogram,
-                        cmap=plot.jet(), vmin=-120)
-        plot.xlabel(r'$Time$ [s]')
-        plot.ylabel(r'$Frequency$ [Hz]')
-        plot.colorbar()
+        plt.pcolormesh(_specTime.T, _specFreq.T, _spectrogram,
+                        cmap=plt.jet(), vmin=-120)
+        plt.xlabel(r'$Time$ [s]')
+        plt.ylabel(r'$Frequency$ [Hz]')
+        plt.colorbar()
         return
 
     def calib_voltage(self, chIndex, refSignalObj, refVrms=1, refFreq=1000):
@@ -779,7 +779,7 @@ class SignalObj(PyTTaObj):
             timeData = self.timeSignal
             if self.num_channels() > 1:
                 timeData = timeData[:, 0]
-        window = eval('signal.windows.' + winType)(winSize)
+        window = eval('ss.windows.' + winType)(winSize)
         nextIdx = int(winSize*overlap)
         rng = int(timeData.shape[0]/winSize/overlap - 1)
         _spectrogram = np.zeros((winSize//2 + 1, rng))
@@ -1188,10 +1188,10 @@ class ImpulsiveResponse(PyTTaObj):
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
-        f, S11 = signal.csd(sig1, sig1, samplingRate, window=windowName,
+        f, S11 = ss.csd(sig1, sig1, samplingRate, window=windowName,
                             nperseg=numberOfSamples, noverlap=overlapSamples,
                             axis=0)
-        f, S12 = signal.csd(sig1, sig2, samplingRate, window=windowName,
+        f, S12 = ss.csd(sig1, sig2, samplingRate, window=windowName,
                             nperseg=numberOfSamples, noverlap=overlapSamples,
                             axis=0)
         return S12, S11
@@ -1815,18 +1815,23 @@ class Streaming(PyTTaObj):
             self.__outBuff = None
 
         if duration is not None:
-            self._durationInSamples = int(duration*self.samplingRate)
+            self._durationInSamples = int(duration*samplingRate)
         else:
             self._durationInSamples = None
 
-        self._inChannels = inChannels[:]
-        self._outChannels = outChannels[:]
+        self._inChannels = inChannels
+        self._outChannels = outChannels
         self._samplingRate = samplingRate
         self._integration = integration
         self._blockSize = int(self.integration * self.samplingRate)
         self._duration = duration
         self._device = device
+        self.__kount = 0
+        self.IOcallback = IOcallback
+        self._call_for_stream(IOcallback)
+        return
 
+    def _call_for_stream(self, IOcallback=None):
         if self.outChannels is not None and self.inChannels is not None:
             if IOcallback is None:
                 IOcallback = self.__IOcallback
@@ -1834,7 +1839,7 @@ class Streaming(PyTTaObj):
                                      self.blockSize,
                                      self.device,
                                      [len(self.inChannels),
-                                      len(outChannels)],
+                                      len(self.outChannels)],
                                      dtype='float32',
                                      latency='low',
                                      callback=IOcallback)
@@ -1866,44 +1871,51 @@ class Streaming(PyTTaObj):
                              or outChannels must be supplied.")
         return
 
-    def __Icallback(self, inData, frames, time, status):
-        self.inData = np.append(self.inData, inData, axis=0)
+
+    def __Icallback(self, Idata, frames, time, status):
+        self.inData = np.append(self.inData, Idata, axis=0)
         if self.durationInSamples is None:
             pass
         elif self.inData.shape[0] >= self.durationInSamples:
             Streaming.__timeout(self)
+            self.inData = self.inData[1:, :]
         return
 
-    def __Ocallback(self, outData, frames, time, status):
+    def __Ocallback(self, Odata, frames, time, status):
         try:
-            outData[:, :] = self.__outBuff[:frames, :]
-            self.__outBuff = self.__outBuff[frames:, :]
+            Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
+            self.kn = self.kn + frames
         except ValueError:
-            outData[:len(self.outData), :] = self.__outBuff[:, :]
-            outData.fill(0)
-            self.__outBuff = self._outData[:]
-            Streaming.__timeout(self)
+            olen = len(self.outData[self.kn:])
+            Odata[:olen, :] = self.outData[self.kn:, :]
+            Odata.fill(0)
+            self.stop()
+            self.__outBuff = np.zeros(self.outData.shape)
+            self.kn = 0
         return
 
-    def __IOcallback(self, inData, outData, frames, time, status):
-        self.inData = np.append(self.inData, inData, axis=0)
+    def __IOcallback(self, Idata, Odata, frames, time, status):
+        self.inData = np.append(self.inData[:, :], Idata, axis=0)
         try:
-            outData[:, :] = self.__outBuff[:frames, :]
-            self.__outBuff = self.__outBuff[frames:, :]
+            Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
+            self.kn = self.kn + frames
+            print(self.kn)
         except ValueError:
-            outData[:len(self.__outBuff), :] = self.__outBuff[:, :]
-            outData.fill(0)
-            self.__outBuff = self.outData[:]
+            olen = len(self.outData[self.kn:self.kn+frames])
+            print(olen)
+            Odata[:olen, :] = self.outData[self.kn:, :]
+            Odata.fill(0)
             Streaming.__timeout(self)
+            self.kn = 0
         return
 
     def get_inData_as_signal(self):
         signal = SignalObj(self.inData, 'time', self.samplingRate)
-        signal.channels = self.outChannels[:]
         return signal
 
     def __timeout(obj):
-        obj.stream.stop()
+        obj.stop()
+        obj._call_for_stream(obj.IOcallback)
         return
 
     def start(self):
@@ -1974,6 +1986,15 @@ class Streaming(PyTTaObj):
     @property
     def durationInSamples(self):
         return self._durationInSamples
+
+    @property
+    def kn(self):
+        return self.__kount
+
+    @kn.setter
+    def kn(self, nk):
+        self.__kount = nk
+        return
 
 
 # Sub functions
