@@ -182,8 +182,7 @@ class PyTTaObj(object):
 
 
 class ChannelObj(object):
-    
-    
+        
     def __init__(self,
                  name='',
                  unit='',
@@ -194,7 +193,13 @@ class ChannelObj(object):
         self.CF = CF
         self.calibCheck = calibCheck
 
+    def __truediv__(self,other):
+#        TODO
+        pass
+
 ##%% ChannelObj properties
+        
+        
     @property
     def name(self):
         return self._name
@@ -257,6 +262,34 @@ class ChannelObj(object):
             raise TypeError('Channel calibration check must be True or False.')          
             
     
+class ChannelsList():
+    
+    def __add__(self,other):
+        # TODO
+        # sum channels
+        return
+    
+    def __sub__(self,other):
+        # TODO
+        # 
+        return
+    
+    def __truediv__(self,otherList):
+        # TODO
+        return
+    
+    def __getitem__(self,index):
+        # TO DO
+        return
+    
+    def __mul__(self,otherList):
+        # TODO
+        return
+    
+    def __init__(self):
+# TODO
+        pass
+
 class SignalObj(PyTTaObj):
 
     """
@@ -587,6 +620,7 @@ class SignalObj(PyTTaObj):
                 result.freqSignal = result_freqSignal
         else: 
             result.freqSignal = self.freqSignal / other.freqSignal
+            resul.channels = self.channels / other.channels
         return result    
     
     def __add__(self, other):

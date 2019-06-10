@@ -61,7 +61,7 @@ def write_wav(fileName,signalIn):
     data = signalIn.timeSignal
     return wf.write(fileName,samplingRate,data)
 
-
+# Refacture for new SignalObj's channelsList
 def merge(signal1,*signalObjects):
     """
     Gather all of the input argument signalObjs into a single
