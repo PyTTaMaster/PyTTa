@@ -230,8 +230,12 @@ class ChannelObj(object):
             perform :attr:`unit` concatenation  # TODO unit conversion.
 
     """
-    def __init__(self, name='', unit='', CF=1, calibCheck=False):
-        self.name = name
+    def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False):
+        self.num = num
+        if name is None:
+            self.name = str(self.num)
+        else:
+            self.name = name
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
@@ -240,7 +244,7 @@ class ChannelObj(object):
         if not isinstance(other, ChannelObj):
             raise TypeError('Can\'t "multiply" by other \
                             type than a ChannelObj')
-        newCh = ChannelObj(name=self.name+'.'+other.name,
+        newCh = ChannelObj(self.num, name=self.name+'.'+other.name,
                            unit=self.unit+'.'+other.unit,
                            CF=self.CF*other.CF,
                            calibCheck=self.calibCheck if self.calibCheck
@@ -250,7 +254,7 @@ class ChannelObj(object):
     def __truediv__(self, other):
         if not isinstance(other, ChannelObj):
             raise TypeError('Can\'t "divide" by other type than a ChannelObj')
-        newCh = ChannelObj(name=self.name+'/'+other.name,
+        newCh = ChannelObj(self.num, name=self.name+'/'+other.name,
                            unit=self.unit+'/'+other.unit,
                            CF=self.CF/other.CF,
                            calibCheck=self.calibCheck if self.calibCheck
@@ -258,6 +262,19 @@ class ChannelObj(object):
         return newCh
 
 # ChannelObj properties
+    @property
+    def num(self):
+        return self._num
+
+    @num.setter
+    def num(self, ber):
+        if type(ber) is not int:
+            raise TypeError("Channel number must be an integer.")
+        elif ber < 1:
+            raise ValueError("Channel number must be greater than 1.")
+        else:
+            self._num = ber
+        return
 
     @property
     def name(self):
@@ -290,13 +307,13 @@ class ChannelObj(object):
                 self._unit = newunit
                 self.dBName = 'dB'
                 self.dBRef = 1e-12
-            elif newunit == '':
+            elif newunit == 'FS':
                 self._unit = ''
                 self.dBName = 'dBFs'
                 self.dBRef = 1
             else:
-                raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \
-                                \'V\', \'W/m^2\'  or \'\'.')
+                raise TypeError(newunit+' unit not accepted. Must be "Pa", \
+                                "V", "W/m^2"  or "FS".')
         else:
             raise TypeError('Channel unit must be a string.')
 
@@ -343,12 +360,25 @@ class ChannelsList(object):
         .. attribute:: _channels:
             :type:`list` holding each :class:`ChannelObj`
     """
-    def __init__(self, chN=0):
+    def __init__(self, chList=None):
         self._channels = []
-        if not isinstance(chN, int):
-            raise ValueError('Number of channels must be an int')
-        for index in range(chN):
-            self._channels.append(ChannelObj())
+        if chList is not None:
+            if type(chList) is list:
+                for memb in chList:
+                    if type(memb) is ChannelObj:
+                        self._channels.append(memb)
+                    else:
+                        self._channels.append(ChannelObj(memb))
+            elif type(chList) is int:
+                self._channels.append(ChannelObj(chList))
+            elif type(chList) is ChannelObj:
+                self._channels.append(chList)
+            else:
+                raise TypeError('List initializer must be either positive int,\
+                                ChannelObj, a list of positive int or\
+                                ChannelObj.')
+        else:
+            self._channels.append(ChannelObj(1))
         return
 
     def __len__(self):
@@ -389,10 +419,18 @@ class ChannelsList(object):
             newChList.append(self[index]/otherList[index])
         return newChList
 
+    def mapping(self):
+        out = []
+        for obj in self._channels:
+            out.append(obj.num)
+        return out
+
     def __dict(self):
         out = {}
         for ch in self._channels:
-            out[ch.name] = {'calib': [ch.CF, ch.calibCheck], 'unit': ch.unit}
+            out[ch.num] = {'calib': [ch.CF, ch.calibCheck],
+                           'unit': ch.unit,
+                           'name': ch.name}
         return out
 
     def append(self, newCh):
@@ -1388,10 +1426,10 @@ class Measurement(PyTTaObj):
         * device (system default), (list/int):
             list of input and output devices;
 
-        * inChannel ([1]), (list/int):
+        * inChannel ([1]), (ChannelsList | list[int]):
             list of device's input channel used for recording;
 
-        * outChannel ([1]), (list/int):
+        * outChannel ([1]), (ChannelsList | list[int]):
             list of device's output channel used for playing/reproducing\
             a signalObj;
 
@@ -1433,9 +1471,14 @@ class Measurement(PyTTaObj):
         super().__init__(*args, **kwargs)
         # device number. For device list use sounddevice.query_devices()
         self.device = device
-        self.inChannel = inChannel  # input channels
-        self.outChannel = outChannel  # output channels
-        self.channelName = channelName
+        if inChannel is None:
+            self.inChannel = ChannelsList()
+        else:
+            self.inChannel = inChannel  # input channels
+        if outChannel is None:
+            self.outChannel = ChannelsList()
+        else:
+            self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
 
@@ -1454,21 +1497,15 @@ class Measurement(PyTTaObj):
         return self._inChannel
 
     @inChannel.setter
-    def inChannel(self, newInputChannel):
-        if not isinstance(newInputChannel, list):
-            raise AttributeError('inChannel must be a list; e.g. [1] .')
+    def inChannel(self, newInCh):
+        if type(newInCh) is int:
+            self._inChannel = ChannelsList([newInCh])
+        elif type(newInCh) is list:
+            self._inChannel = ChannelsList(newInCh)
+        elif type(newInCh) is ChannelsList:
+            self._inChannel = newInCh[:]
         else:
-            try:
-                oldChName = self.channelName
-                oldInCh = self.inChannel
-                self._inChannel = newInputChannel
-                self.channelName = None
-                for i in oldInCh:
-                    if i in self._inChannel:
-                        self.channelName[self._inChannel.index(i)]\
-                            = oldChName[oldInCh.index(i)]
-            except AttributeError:
-                self._inChannel = newInputChannel
+            raise AttributeError('inChannel must be a list; e.g. [1] .')
         return
 
     @property
@@ -1476,26 +1513,34 @@ class Measurement(PyTTaObj):
         return self._outChannel
 
     @outChannel.setter
-    def outChannel(self, newOutputChannel):
-        self._outChannel = newOutputChannel
-
-    @property
-    def channelName(self):
-        return self._channelName
-
-    @channelName.setter
-    def channelName(self, channelName):
-        if channelName is None:
-            self._channelName = []
-            for chIndex in range(0, len(self.inChannel)):
-                self._channelName.append('Channel ' + str(chIndex + 1))
-        elif len(channelName) == len(self.inChannel):
-            self._channelName = []
-            self._channelName = channelName
+    def outChannel(self, newOutCh):
+        if type(newOutCh) is int:
+            self._outChannel = ChannelsList([newOutCh])
+        elif type(newOutCh) is list:
+            self._outChannel = ChannelsList(newOutCh)
+        elif type(newOutCh) is ChannelsList:
+            self._inChannel = newOutCh[:]
         else:
-            raise AttributeError('Incompatible number of channel names and\
-                                 channel number.')
+            raise AttributeError('inChannel must be a list; e.g. [1] .')
         return
+
+#    @property
+#    def channelName(self):
+#        return self._channelName
+#
+#    @channelName.setter
+#    def channelName(self, channelName):
+#        if channelName is None:
+#            self._channelName = []
+#            for chIndex in range(0, len(self.inChannel)):
+#                self._channelName.append('Channel ' + str(chIndex + 1))
+#        elif len(channelName) == len(self.inChannel):
+#            self._channelName = []
+#            self._channelName = channelName
+#        else:
+#            raise AttributeError('Incompatible number of channel names and\
+#                                 channel number.')
+#        return
 
 
 # RecMeasure class
@@ -1592,7 +1637,7 @@ class RecMeasure(Measurement):
         # Record
         recording = sd.rec(self.numSamples,
                            self.samplingRate,
-                           mapping=self.inChannel,
+                           mapping=self.inChannel.mapping(),
                            blocking=self.blocking,
                            device=self.device,
                            latency='low',
@@ -1601,14 +1646,13 @@ class RecMeasure(Measurement):
         recording = SignalObj(signalArray=recording,
                               domain='time',
                               samplingRate=self.samplingRate)
-        for chIndex in range(self.recording.num_channels()):
-            self.recording.channels[chIndex].name = self.channelName[chIndex]
-        self.recording.timeStamp = time.ctime(time.time())
-        self.recording.freqMin, self.recording.freqMax\
+        recording.channels = self.inChannel[:]
+        recording.timeStamp = time.ctime(time.time())
+        recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
-        self.recording.comment = 'SignalObj from a Rec measurement'
-        _print_max_level(self.recording, kind='input')
-        return self.recording
+        recording.comment = 'SignalObj from a Rec measurement'
+        _print_max_level(recording, kind='input')
+        return recording
 
 
 # PlayRecMeasure class
@@ -1679,8 +1723,8 @@ class PlayRecMeasure(Measurement):
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal,
                                samplerate=self.samplingRate,
-                               input_mapping=self.inChannel,
-                               output_mapping=self.outChannel,
+                               input_mapping=self.inChannel.mapping(),
+                               output_mapping=self.outChannel.mapping(),
                                device=self.device,
                                blocking=self.blocking,
                                latency='low',
@@ -1689,10 +1733,9 @@ class PlayRecMeasure(Measurement):
         recording = SignalObj(signalArray=recording,
                               domain='time',
                               samplingRate=self.samplingRate)
-        for chIndex in range(self.recording.num_channels()):
-            recording.channels[chIndex].name = self.channelName[chIndex]
+        recording.channels = self.inChannel[:]
         recording.timeStamp = timeStamp
-        recording.freqMin, self.recording.freqMax\
+        recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
         recording.comment = 'SignalObj from a PlayRec measurement'
         _print_max_level(self.excitation, kind='output')
@@ -1975,7 +2018,7 @@ class Streaming(PyTTaObj):
         self._device = device
         self.__kount = 0
         self.IOcallback = IOcallback
-        self._call_for_stream(IOcallback)
+        self._call_for_stream(self.IOcallback)
         return
 
     def set_channels(self, inputs, outputs, data):

@@ -369,8 +369,8 @@ def measurement(kind = 'playrec',
     if freqMax is None: freqMax = default.freqMax
     if samplingRate is None: samplingRate = default.samplingRate
     if device is None: device = default.device
-    if inChannel is None: inChannel = default.inChannel
-    if outChannel is None: outChannel = default.outChannel
+    if inChannel is None: inChannel = default.inChannel[:]
+    if outChannel is None: outChannel = default.outChannel[:]
 
 ##%% Kind REC
     if kind in ['rec','record','recording','r']:
@@ -401,7 +401,7 @@ def measurement(kind = 'playrec',
 	
 ##%% Kind PLAYREC    
     elif kind in ['playrec','playbackrecord','pr']:
-        if ('excitation' in kwargs) or args:
+        if ('excitation' in kwargs.keys()) or args:
             signalIn = kwargs.get('excitation') or args[0]
             kwargs.pop('excitation', None)
         else:
