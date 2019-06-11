@@ -70,10 +70,10 @@ instance/
 .scrapy
 
 # Sphinx documentation
-docs/_build/
-docs/build/
-docs_fonte/
-pytta-env/
+docs/_build/*
+docs/build/*
+docs_fonte/*
+pytta-env/*
 
 # PyBuilder
 target/
