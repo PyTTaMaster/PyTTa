@@ -28,17 +28,18 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
-from classes import SignalObj
+from .classes import SignalObj
 import copy as cp
+
 
 def list_devices():
     """
     Shortcut to sounddevice.query_devices(). Made to exclude the need of
     importing Sounddevice directly just to find out which audio devices can
     be used.
-		  
+
         >>> pytta.list_devices()
-        
+
     """
     return sd.query_devices()
 

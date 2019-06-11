@@ -199,6 +199,36 @@ class PyTTaObj(object):
 
 class ChannelObj(object):
     """
+    Base class for signal meta information about the IO channel it's been
+    acquired
+
+    Parameters and Attributes:
+    ----------------------------
+        Every parameter becomes the homonim attribute.
+
+        :param:name :
+            String with name or ID;
+
+        :param :`unit`:
+            String with International System units for the data, e.g. 'Pa',
+            'V', 'FS';
+
+        :param :``CF``:
+            Calibration factor, numerically convert normalized float32 values
+            to :param:``unit`` values;
+
+        :param:``calibCheck``:
+            bool, information about wether CF is applied (True),
+            or not (False -> default);
+
+    Special methods:
+    ------------------
+
+        :method:``__mul__``:
+            perform :param:``unit`` concatenation  # TODO unit conversion.
+
+        :method:``__truediv__``:
+            perform :param:``unit`` concatenation  # TODO unit conversion.
 
     """
     def __init__(self, name='', unit='', CF=1, calibCheck=False):
