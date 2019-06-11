@@ -173,7 +173,7 @@ class PyTTaObj(object):
                 print(name[1:] + '\t =', value)
         return
 
-    def __dict(self):
+    def _to_dict(self):
         out = {'samplingRate': self.samplingRate,
                'freqLims': [self.freqMin, self.freqMax],
                'fftDegree': self.fftDegree,
@@ -301,19 +301,20 @@ class ChannelObj(object):
                 self.dBRef = 0.775
             elif newunit == 'Pa':
                 self._unit = newunit
-                self.dBName = 'dB(z)'
+                self.dBName = 'dB'
                 self.dBRef = 2e-5
             elif newunit == 'W/m^2':
                 self._unit = newunit
                 self.dBName = 'dB'
                 self.dBRef = 1e-12
             elif newunit == 'FS':
-                self._unit = ''
+                self._unit = 'FS'
                 self.dBName = 'dBFs'
                 self.dBRef = 1
             else:
-                raise TypeError(newunit+' unit not accepted. Must be "Pa", \
-                                "V", "W/m^2"  or "FS".')
+                self._unit = newunit
+                self.dBName = 'dB' + 'newunit'
+                self.dBref = 1
         else:
             raise TypeError('Channel unit must be a string.')
 
@@ -425,7 +426,7 @@ class ChannelsList(object):
             out.append(obj.num)
         return out
 
-    def __dict(self):
+    def _to_dict(self):
         out = {}
         for ch in self._channels:
             out[ch.num] = {'calib': [ch.CF, ch.calibCheck],
@@ -562,7 +563,6 @@ class SignalObj(PyTTaObj):
         super().__init__(*args, **kwargs)
 
         self.channels = ChannelsList()
-
         self.domain = domain or args[1]
         if self.domain == 'freq':
             self.freqSignal = signalArray  # [-] signal in frequency domain
@@ -613,7 +613,7 @@ class SignalObj(PyTTaObj):
                                            (self.numSamples/2)+1
                                            if self.numSamples % 2 == 0
                                            else (self.numSamples+1)/2)
-            self.channels.conform_to(self)
+#            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -641,7 +641,7 @@ class SignalObj(PyTTaObj):
                                            (self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
                                            else (self.numSamples+1)/2)
-            self.channels.conform_to(self)
+#            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -670,12 +670,6 @@ class SignalObj(PyTTaObj):
         if inputArray == []:
             inputArray = self.timeSignal[:]
         return np.size(inputArray.shape)
-
-    def __dict(self):
-        out = super()._PyTTaObj__dict()
-        out['channels'] = self.channels._ChannelsList__dict()
-        out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
-        return out
 
     def play(self, outChannel=None, latency='low', **kwargs):
         """
@@ -871,7 +865,7 @@ class SignalObj(PyTTaObj):
         return
 
     def save(self, dirname=time.ctime(time.time())):
-        mySigObj = self.__dict()
+        mySigObj = self._to_dict()
         with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
             filename = 'timeSignal.mat'
             with open(filename, 'wb+'):
@@ -886,7 +880,13 @@ class SignalObj(PyTTaObj):
                 json.dump(mySigObj, f, indent=4)
             zdir.write(filename, compress_type=zipfile.ZIP_DEFLATED)
             os.remove(filename)
-        return
+        return dirname + '.pytta'
+
+    def _to_dict(self):
+        out = super()._to_dict()
+        out['channels'] = self.channels._to_dict()
+        out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
+        return out
 
     def __truediv__(self, other):
         """
@@ -1157,6 +1157,32 @@ class ImpulsiveResponse(PyTTaObj):
         self._coord_points_per_channel()
         return
 
+    def _to_dict(self):
+        out = {'methodInfo': self.methodInfo,
+               'coordinates': self.coordinates}
+        return out
+
+    def save(self, dirname=time.ctime(time.time())):
+        with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
+            excit = self.excitation.save('excitation')
+            zdir.write(excit)
+            os.remove(excit)
+            rec = self.recording.save('recording')
+            zdir.write(rec)
+            os.remove(rec)
+            sysht = self.systemSignal.save('response')
+            zdir.write(sysht)
+            os.remove(sysht)
+            out = self._to_dict()
+            out['SignalAddres'] = {'excitation': excit,
+                                   'recording': rec,
+                                   'system': sysht}
+            with open('ImpulsiveResponse.json', 'w') as f:
+                json.dump(out, f, indent=4)
+            zdir.write('ImpulsiveResponse.json')
+            os.remove('ImpulsiveResponse.json')
+        return dirname + '.pytta'
+
 # Properties
     @property
     def excitation(self):
@@ -1243,7 +1269,7 @@ class ImpulsiveResponse(PyTTaObj):
 # Private methods
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                          winType=None, winSize=None, overlap=None):
-        if type(inputSignal) != type(outputSignal):
+        if type(inputSignal) is not type(outputSignal):
             raise TypeError("Only signal-like objects can become an\
                             Impulsive Response.")
         elif inputSignal.samplingRate != outputSignal.samplingRate:
@@ -1386,7 +1412,7 @@ class ImpulsiveResponse(PyTTaObj):
                 result.freqSignal = (YY - XX
                                      + np.sqrt((XX-YY)**2
                                                + 4*np.abs(XY)**2)) / 2*YX
-        result.channels = outputSignal.channels[:]
+        result.channels = outputSignal.channels
         return result    # end of function get_transferfunction()
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
@@ -1481,6 +1507,12 @@ class Measurement(PyTTaObj):
             self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
+
+    def _to_dict(self):
+        out = {'device': self.device,
+               'inChannel': self.inChannel._to_dict(),
+               'outChannel': self.outChannel._to_dict()}
+        return out
 
 # Measurement Properties
     @property
@@ -1605,6 +1637,24 @@ class RecMeasure(Measurement):
             self._fftDegree = None
         return
 
+    def _to_dict(self):
+        sup = super()._to_dict()
+        if self.lengthDomain == 'samples':
+            length = self.fftDegree
+        else:
+            length = self.timeLength
+        sup['length'] = [self.lengthDomain, length]
+        return sup
+
+    def save(self, dirname=time.ctime(time.time())):
+        dic = self._to_dict()
+        name = dirname + '.pytta'
+        with zipfile.ZipFile(name, 'w') as zdir:
+            with open('RecMeasure.json', 'w') as f:
+                json.dump(dic, f, indent=4)
+            zdir.write('RecMeasure.json')
+        return name
+
 # Rec Properties
     @property
     def timeLength(self):
@@ -1646,7 +1696,7 @@ class RecMeasure(Measurement):
         recording = SignalObj(signalArray=recording,
                               domain='time',
                               samplingRate=self.samplingRate)
-        recording.channels = self.inChannel[:]
+        recording.channels = self.inChannel
         recording.timeStamp = time.ctime(time.time())
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
@@ -1733,7 +1783,8 @@ class PlayRecMeasure(Measurement):
         recording = SignalObj(signalArray=recording,
                               domain='time',
                               samplingRate=self.samplingRate)
-        recording.channels = self.inChannel[:]
+        recording.channels = self.inChannel
+        print(type(recording.channels))
         recording.timeStamp = timeStamp
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
@@ -1741,6 +1792,23 @@ class PlayRecMeasure(Measurement):
         _print_max_level(self.excitation, kind='output')
         _print_max_level(recording, kind='input')
         return recording
+
+    def _to_dict(self):
+        sup = super()._to_dict()
+        return sup
+
+    def save(self, dirname=time.ctime(time.time())):
+        dic = self._to_dict()
+        name = dirname + '.pytta'
+        with zipfile.ZipFile(name, 'w') as zdir:
+            excit = self.excitation.save('excitation')
+            zdir.write(excit)
+            os.remove(excit)
+            with open('PlayRecMeasure.json', 'w') as f:
+                json.dump(dic, f, indent=4)
+            zdir.write('PlayRecMeasure.json')
+            os.remove('PlayRecMeasure.json')
+        return name
 
 # PlayRec Properties
     @property

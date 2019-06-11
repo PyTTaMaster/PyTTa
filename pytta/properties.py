@@ -40,7 +40,7 @@ PyTTa Default Properties:
 """
 import sounddevice as sd
 
-__default_device = sd.default.device 
+__default_device = [sd.default.device[0], sd.default.device[1]]
 """ Used only to hold the default audio I/O device at pytta import time"""
 
 default = {'samplingRate': 44100,

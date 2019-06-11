@@ -372,15 +372,14 @@ def measurement(kind = 'playrec',
     if inChannel is None: inChannel = default.inChannel[:]
     if outChannel is None: outChannel = default.outChannel[:]
 
-##%% Kind REC
-    if kind in ['rec','record','recording','r']:
-        recordObj = RecMeasure(samplingRate = samplingRate,
-                            freqMin = freqMin,
-                            freqMax = freqMax,
-                            device = device,
-                            inChannel = inChannel,
-                            **kwargs,
-                            )
+# Kind REC
+    if kind in ['rec', 'record', 'recording', 'r']:
+        recordObj = RecMeasure(samplingRate=samplingRate,
+                               freqMin=freqMin,
+                               freqMax=freqMax,
+                               device=device,
+                               inChannel=inChannel,
+                               **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
