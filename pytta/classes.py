@@ -3,7 +3,7 @@
 """
 Classes
 ========
-  
+
 @Autores:
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -11,21 +11,21 @@ Classes
 This submodule is mainly the means to an end. PyTTa is made intended to be
 user friendly, the manipulation of the classes are documented here, but their
 instantiation should be used through the <generate> submodule:
-    
+
     >>> pytta.generate.sweep()
     >>> pytta.generate.noise()
     >>> pytta.generate.measurement('playrec')
     >>> pytta.generate.measurement('rec', lengthDomain = 'time', timeLen = 5)
-    
+
 This way, the default settings will be loaded into any object instantiated.
 
 User intended classes:
-    
+
     >>> pytta.SignalObj()
     >>> pytta.RecMeasure()
     >>> pytta.PlayRecMeasure()
     >>> pytta.FRFMeasure()
-    
+
 For further information see the specific class, or method, documentation
 """
 
@@ -46,9 +46,9 @@ class PyTTaObj(object):
     PyTTa object class to define some properties and methods to be used 
     by any signal and processing classes. pyttaObj is a private class created
     just to shorten attributes declaration to each PyTTa class.
-    
+
     Properties(self): (default), (dtype), meaning;
-    
+
         - samplingRate: (44100), (int), signal's sampling rate;
         - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
         - timeLength: (seconds), (float), signal's time length in seconds;
@@ -57,7 +57,7 @@ class PyTTaObj(object):
         - freqMin: (20), (int), minimum frequency bandwidth limit;
         - freqMax: (20000), (int), maximum frequency bandwidth limit;
         - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
-        
+
     """
 
     def __init__(self,
@@ -96,7 +96,7 @@ class PyTTaObj(object):
     @property
     def lengthDomain(self):
         return self._lengthDomain
-                
+
     @lengthDomain.setter
     def lengthDomain(self,newDomain):
         self._lengthDomain = newDomain
@@ -161,10 +161,10 @@ class PyTTaObj(object):
         for name, value in vars(self).items():
             if len(name)<=8:
                 print(name[1:]+'\t\t =',value)
-            else: 
+            else:
                 print(name[1:]+'\t =',value)
         return
-    
+
     def save_mat(self,filename=time.ctime(time.time())):
         myObj = vars(self)
         for key, value in myObj.items():
@@ -182,8 +182,8 @@ class PyTTaObj(object):
 
 
 class ChannelObj(object):
-    
-    
+    """
+    """
     def __init__(self,
                  name='',
                  unit='',
@@ -198,18 +198,18 @@ class ChannelObj(object):
     @property
     def name(self):
         return self._name
-    
+
     @name.setter
     def name(self,newname):
         if isinstance(newname,str):
             self._name = newname
         else:
             raise TypeError('Channel name must be a string.')
-            
+
     @property
     def unit(self):
         return self._unit
-    
+
     @unit.setter
     def unit(self,newunit):
         if isinstance(newunit,str):
@@ -233,11 +233,11 @@ class ChannelObj(object):
                 raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \'V\', \'W/m^2\'  or \'\'.')
         else:
             raise TypeError('Channel unit must be a string.')
-            
+
     @property
     def CF(self):
         return self._CF
-    
+
     @CF.setter
     def CF(self,newCF):
         if isinstance(newCF,float) or isinstance(newCF,int):
@@ -248,22 +248,22 @@ class ChannelObj(object):
     @property
     def calibCheck(self):
         return self._calibCheck
-    
+
     @calibCheck.setter
     def calibCheck(self,newcalibCheck):
         if isinstance(newcalibCheck,bool):
             self._calibCheck = newcalibCheck
         else:
-            raise TypeError('Channel calibration check must be True or False.')          
-            
-    
+            raise TypeError('Channel calibration check must be True or False.')
+
+
 class SignalObj(PyTTaObj):
 
     """
     Signal object class.
-    
+
     Properties(self): (default), (dtype), meaning;
-    
+
         - domain: ('time'), (str) domain of the input array;
         - timeSignal: (ndarray), (NumPy array), signal at time domain;
         - timeVector: (ndarray), (NumPy array), time reference vector for timeSignal;
@@ -271,9 +271,9 @@ class SignalObj(PyTTaObj):
         - freqVector: (ndarray), (NumPy array), frequency reference vector for freqSignal;
         - unit: (None), (str), signal's unit. May be 'V' or 'Pa';
         - channelName: (dict), (dict/str), channels name dict;
-        
+
     Properties(inherited): (default), (dtype), meaning;
-    
+
         - samplingRate: (44100), (int), signal's sampling rate;
         - lengthDomain: ('time'), (str), input array's domain. May be 'time' or 'samples';
         - timeLength: (seconds), (float), signal's duration;
@@ -282,7 +282,7 @@ class SignalObj(PyTTaObj):
         - freqMin: (20), (int), minimum frequency bandwidth limit;
         - freqMax: (20000), (int), maximum frequency bandwidth limit;
         - comment: ('No comments.'), (str), some commentary about the signal or measurement object;
-        
+
     Methods(args): meaning;
 
         - num_channels(): return the number of channels in the instace;
@@ -293,11 +293,11 @@ class SignalObj(PyTTaObj):
         - calib_voltage(refSignalObj,refVrms,refFreq): voltage calibration from an input SignalObj;
         - calib_pressure(refSignalObj,refPrms,refFreq): pressure calibration from an input SignalObj;
         - save_mat(filename): save a SignalObj to a .mat file;
-    
+
     """
-    
+
     def __init__(self,
-                     signalArray=np.array([],ndmin=2).T,
+                     signalArray=np.array([0],ndmin=2).T,
                      domain='time',
                      *args,
                      **kwargs):
@@ -308,9 +308,9 @@ class SignalObj(PyTTaObj):
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
             signalArray = np.array(signalArray,ndmin=2).T
-            
+
         super().__init__(*args,**kwargs)
-        
+
         self.channels = []
 
         self.domain = domain or args[1]
@@ -322,28 +322,27 @@ class SignalObj(PyTTaObj):
             self.timeSignal = signalArray
             self.domain = 'time'
             print('Taking the input as a time domain signal')
-        
+
         self._do_conform_channels()
 
-        
 ##%% SignalObj Properties
-    @property 
+    @property
     def timeVector(self):
         return self._timeVector
-    
-    @property 
+
+    @property
     def freqVector(self):
         return self._freqVector
-            
+
     @property # when timeSignal is called returns the ndarray
     def timeSignal(self):
         return self._timeSignal
-    
+
     @timeSignal.setter
     def timeSignal(self,newSignal): # when timeSignal have new ndarray value, calculate other properties
-        if isinstance(newSignal,np.ndarray):            
+        if isinstance(newSignal,np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal,ndmin=2).T   
+                newSignal = np.array(newSignal,ndmin=2).T
             self._timeSignal = np.array(newSignal)
             self._freqSignal = np.fft.rfft(self._timeSignal,axis=0,norm=None) # [-] signal in frequency domain
             self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
@@ -358,16 +357,15 @@ class SignalObj(PyTTaObj):
         return
 
     @property # when freqSignal is called returns the normalized ndarray
-    def freqSignal(self): 
+    def freqSignal(self):
         return self._freqSignal
-    
+
     @freqSignal.setter
     def freqSignal(self,newSignal):
-        if isinstance(newSignal,np.ndarray):            
+        if isinstance(newSignal,np.ndarray):
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal,ndmin=2).T
             self._freqSignal = np.array(newSignal)
-#            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None) # bug fix for frf stuff
             self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
             self._numSamples = len(self.timeSignal) # [-] number of samples
             self._fftDegree = np.log2(self.numSamples) # [-] size parameter
@@ -378,26 +376,26 @@ class SignalObj(PyTTaObj):
             self._do_conform_channels()
         else: raise TypeError('Input array must be a numpy ndarray')
         return
-                    
+
 ##%% SignalObj Methods
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
-    
+
     def num_channels(self):
         try:
             numChannels = self.timeSignal.shape[1]
         except IndexError:
             numChannels = 1
         return numChannels
-    
+
     def max_level(self):
         maxlvl = []
         for chIndex in range(self.num_channels()):
             maxAmplitude = np.max(np.abs(self.timeSignal[:,chIndex]))
             maxlvl.append(20*np.log10(maxAmplitude/self.channels[chIndex].dBRef))
         return maxlvl
-            
-    
+
+
     def size_check(self, inputArray = []):
         if inputArray == []: inputArray = self.timeSignal[:]
         return np.size( inputArray.shape )
@@ -414,7 +412,7 @@ class SignalObj(PyTTaObj):
                 outChannel = np.arange(1,self.num_channels()+1)
         sd.play(self.timeSignal,self.samplingRate,mapping=outChannel,**kwargs)
         return
-    
+
     def plot_time(self):
         """
         Time domain plotting method
@@ -428,7 +426,7 @@ class SignalObj(PyTTaObj):
         else:
             chIndex = 0
             label = self.channels[chIndex].name+' ['+self.channels[chIndex].unit+']'
-            plot.plot( self.timeVector, self.timeSignal[:,chIndex],label=label)            
+            plot.plot( self.timeVector, self.timeSignal[:,chIndex],label=label)
         plot.legend(loc='best')
         plot.grid(color='gray', linestyle='-.', linewidth=0.4)
         plot.axis( ( self.timeVector[0] - 10/self.samplingRate, \
@@ -438,34 +436,34 @@ class SignalObj(PyTTaObj):
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Amplitude$')
         return
-    
+
     def plot_freq(self,smooth=False):
         """
         Frequency domain dB plotting method
-        
+
         """
         plot.figure( figsize=(10,5) )
-        
+
         if self.num_channels() > 1:
             for chIndex in range(0,self.num_channels()):
-                if smooth: 
+                if smooth:
                     Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
-                else: 
+                else:
                     Signal = self.freqSignal[:,chIndex]/(2**(1/2))
                 dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
                 label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
                 plot.semilogx( self.freqVector,dBSignal,label=label)
         else:
             chIndex = 0
-            if smooth: 
-                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 ) 
-            else: 
+            if smooth:
+                Signal = signal.savgol_filter( np.squeeze(np.abs(self.freqSignal[:,chIndex])/(2**(1/2))), 31, 3 )
+            else:
                 Signal = self.freqSignal[:,chIndex]/(2**(1/2))
             dBSignal = 20 * np.log10( np.abs( Signal ) / self.channels[chIndex].dBRef )
             label = self.channels[chIndex].name+' ['+self.channels[chIndex].dBName+' ref.: '+str(self.channels[chIndex].dBRef)+' '+self.channels[chIndex].unit+']'
-            plot.semilogx( self.freqVector, dBSignal ,label=label)            
-            
-        plot.grid(color='gray', linestyle='-.', linewidth=0.4)        
+            plot.semilogx( self.freqVector, dBSignal ,label=label)
+
+        plot.grid(color='gray', linestyle='-.', linewidth=0.4)
         plot.legend(loc='best')
         if np.max(dBSignal) > 0:
             ylim = [1.05*np.min(dBSignal),1.12*np.max(dBSignal)]
@@ -478,26 +476,26 @@ class SignalObj(PyTTaObj):
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5):
         _spectrogram, _specTime, _specFreq = self._calc_spectrogram(self.timeSignal[:,0], overlap, window, winSize)
-        plot.pcolormesh(_specTime.T, _specFreq.T, _spectrogram, 
+        plot.pcolormesh(_specTime.T, _specFreq.T, _spectrogram,
                         cmap=plot.jet(), vmin=-120)
         plot.xlabel(r'$Time$ [s]')
         plot.ylabel(r'$Frequency$ [Hz]')
         plot.colorbar()
         return
-        
+
     def calib_voltage(self,chIndex,refSignalObj,refVrms=1,refFreq=1000):
         """
         calibVoltage method: use informed SignalObj with a calibration voltage signal, and the reference RMS voltage to calculate the Correction Factor.
-        
+
             >>> SignalObj.calibVoltage(chIndex,refSignalObj,refVrms,refFreq)
-            
+
         argument: (default), (dtype), meaning;
-            
+
             - chIndex: (), (int), channel index for calibration. Starts in 0;
             - refSignalObj: (), (SignalObj), SignalObj with the calibration recorded signal;
             - refVrms: (1.00), (float), the reference voltage provided by the voltage calibrator;
             - refFreq: (1000), (int), the reference sine frequency provided by the voltage calibrator;
-            
+
         """
         if chIndex in range(self.num_channels()):
             Vrms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
@@ -513,20 +511,20 @@ class SignalObj(PyTTaObj):
             self.channels[chIndex].calibCheck = True
         else: raise IndexError('chIndex greater than channels number')
         return
-        
+
     def calib_pressure(self,chIndex,refSignalObj,refPrms=1.00,refFreq=1000):
         """
         calibPressure method: use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor.
-        
+
             >>> SignalObj.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
-            
+
         argument: (default), (dtype), meaning;
-            
+
             - chIndex: (), (int), channel index for calibration. Starts in 0;
             - refSignalObj: (), (SignalObj), SignalObj with the calibration recorded signal;
             - refPrms: (1.00), (float), the reference pressure provided by the acoustic calibrator;
             - refFreq: (1000), (int), the reference sine frequency provided by the acoustic calibrator;
-            
+
         """
         if chIndex in range(self.num_channels()):
             Prms = np.max(np.abs(refSignalObj.freqSignal[:,0]))/(2**(1/2))
@@ -544,16 +542,16 @@ class SignalObj(PyTTaObj):
         return
 
     def save_mat(self,filename=time.ctime(time.time())):
-        mySigObj = vars(self)            
+        mySigObj = vars(self)
         sio.savemat(filename,_to_dict(mySigObj),format='5')
-    
+
     def _do_conform_channels(self):
         dCh = self.num_channels() - len(self.channels)
         if dCh > 0:
             for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
         if dCh < 0:
             for i in range(0,-dCh): self.channels.pop(-1)
-            
+
     def _do_rename_channels(self):
         for chIndex in range(self.num_channels()):
             print(chIndex)
@@ -561,7 +559,7 @@ class SignalObj(PyTTaObj):
             print(newname)
             self.channels[chIndex].name = newname
             print(self.channels[chIndex].name)
-            
+
     def __truediv__(self, other):
         """
         Frequency domain division method
@@ -569,22 +567,26 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike.")
         if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
+            raise TypeError("Both SignalObj must have the same sampling rate.")              
         result = SignalObj(np.zeros(self.timeSignal.shape),samplingRate=self.samplingRate)                
+        result.channels = self.channels
         if self.num_channels() > 1:
             if other.num_channels() > 1:
                 if other.num_channels() != self.num_channels():
                     raise ValueError("Both signal-like objects must have the same number of channels.")
+                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
                 for channel in range(other.num_channels()):
                     result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,channel]
+                result.freqSignal = result_freqSignal
             else:
-                for channel in range(other.num_channels()):
-                    result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal
-        else: result.freqSignal = self.freqSignal / other.freqSignal
-        
+                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
+                for channel in range(self.num_channels()):
+                    result_freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,0]
+                result.freqSignal = result_freqSignal
+        else:
+            result.freqSignal = self.freqSignal / other.freqSignal
         return result
-    
-    
+
     def __add__(self, other):
         """
         Time domain addition method
@@ -657,10 +659,7 @@ class SignalObj(PyTTaObj):
 
 ##%% ImpulsiveResponse class
 class ImpulsiveResponse(PyTTaObj):
-    """
-    ImpulsiveResponse
-    =================
-    
+    """    
         This class is a container of SignalObj, intended to provide a system's
         impulsive response along with the excitation signal and the recorded 
         signal used to compute the response.
@@ -683,6 +682,7 @@ class ImpulsiveResponse(PyTTaObj):
             
         Creation parameters:
         --------------------    
+        
             * excitation (SignalObj):
                 The signal-like object used as excitation signal on the
                 measurement-like object;
@@ -762,6 +762,7 @@ class ImpulsiveResponse(PyTTaObj):
 
         Attributes:
         -----------
+        
             * excitation | inputSignal:
                 Both names are valid, returns the excitation signal given as 
                 parameter at the object instantiation;
@@ -1353,18 +1354,16 @@ class FRFMeasure(PlayRecMeasure):
         Divides the recorded signalObj by the excitation signalObj to generate a transferfunction
         Outputs the transferfunction signalObj
         """
-        self.recording = super().run()
+        recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
-                                                  self.recording,
-                                                  self.coordinates,
-                                                  self.method,
-                                                  self.winType,
-                                                  self.winSize,
-                                                  self.overlap)
-#        self.transferfunction.timeStamp = self.recording.timeStamp
-#        self.transferfunction.freqMin, self.recording.freqMax = (self.freqMin,self.freqMax)
-#        self.recording.comment = 'SignalObj from a FRF measurement'
+                                             recording,
+                                             self.coordinates,
+                                             self.method,
+                                             self.winType,
+                                             self.winSize,
+                                             self.overlap)
         return transferfunction
+
     
 ##%% Sub functions
 def _print_max_level(sigObj,kind):
