@@ -22,6 +22,7 @@ Generate
 
     User intended functions:
         
+        >>> pytta.generate.sin()
         >>> pytta.generate.sweep()
         >>> pytta.generate.noise()
         >>> pytta.generate.impulse()
@@ -30,9 +31,10 @@ Generate
     For further information see the specific function documentation
 """
 
-#%% Import modules
-from classes import SignalObj, RecMeasure, FRFMeasure, PlayRecMeasure
+##%% Import modules
 from pytta import default
+from .classes import SignalObj, RecMeasure, FRFMeasure,\
+        PlayRecMeasure, Streaming
 from scipy import signal
 import numpy as np
 
@@ -41,7 +43,37 @@ def sin(Arms = 0.5,
         freq = 1000,
         timeLength = 1,
         phase = 2*np.pi,
-        samplingRate = default.samplingRate):
+        samplingRate = default.samplingRate,
+        fftDegree = None):
+    """
+    Generates a sine signal with the traditional parameters plus some PyTTa
+    options.
+    
+    Creation parameters:
+    --------------------    
+        * Arms (float) (optional):
+            The signal's RMS amplitude. 
+            
+            >>> Apeak = Arms*sqrt(2);
+        
+        * freq (float) (optional):
+            Nothing to say;
+        
+        * timeLength (float) (optional):
+            Sine timeLength in seconds;
+            
+        * fftDegree (int) (optional);
+            2**fftDegree signal's number of samples;
+            
+        * phase (float) (optional):
+            Sine phase in radians;
+            
+        * samplingRate (int) (optional):
+            Nothing to say;
+            
+    """
+    if fftDegree != None:
+        timeLength = 2**(fftDegree)/samplingRate
     t = np.linspace(0,timeLength - (1/samplingRate),samplingRate*timeLength)
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
     sinSigObj = SignalObj(sin,domain='time',samplingRate=samplingRate)
@@ -173,9 +205,8 @@ def __do_sweep_windowing(inputSweep,
                           windowEnd[freqMaxSample:-1] ) )
     newSweep = fullWindow * inputSweep
     return newSweep
- 
-    
- 
+
+
 def noise(kind = 'white',
           samplingRate = None,
           fftDegree = None,
@@ -333,7 +364,7 @@ def measurement(kind = 'playrec',
 
 			Same as for (kind='playrec')
     """
-#%% Default Parameters
+##%% Default Parameters
     if freqMin is None: freqMin = default.freqMin
     if freqMax is None: freqMax = default.freqMax
     if samplingRate is None: samplingRate = default.samplingRate
@@ -341,7 +372,7 @@ def measurement(kind = 'playrec',
     if inChannel is None: inChannel = default.inChannel
     if outChannel is None: outChannel = default.outChannel
 
-#%% Kind REC
+##%% Kind REC
     if kind in ['rec','record','recording','r']:
         recordObj = RecMeasure(samplingRate = samplingRate,
                             freqMin = freqMin,
@@ -368,7 +399,7 @@ def measurement(kind = 'playrec',
             recordObj.fftDegree = default.fftDegree
         return recordObj
 	
-#%% Kind PLAYREC    
+##%% Kind PLAYREC    
     elif kind in ['playrec','playbackrecord','pr']:
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
@@ -385,8 +416,8 @@ def measurement(kind = 'playrec',
                                     outChannel = outChannel,
                                     **kwargs)
         return playRecObj
-	
-#%% Kind FRF    
+
+# Kind FRF    
     elif kind in ['tf','frf','transferfunction','freqresponse']:
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
@@ -405,3 +436,91 @@ def measurement(kind = 'playrec',
                             )
         return frfObj
 
+
+def stream(IO='IO',
+           device=None,
+           integration=None,
+           samplingRate=None,
+           inChannels=None,
+           outChannels=None,
+           duration=None,
+           excitation=None,
+           callback=None,
+           *args, **kwargs):
+    """
+    """
+    if device is None:
+        device = default.device
+    if integration is None:
+        integration = default.integration
+    if inChannels is None:
+        inChannels = default.inChannel[:]
+    if isinstance(excitation, SignalObj):
+        excit = True
+        excitData = excitation.timeSignal[:]
+        samplingRate = excitation.samplingRate
+        duration = excitation.timeLength
+        outChannels = excitation.channels[:]
+    else:
+        excit = False
+        if samplingRate is None:
+            samplingRate = default.samplingRate
+
+    if IO in ['I', 'in', 'input']:
+        Istreaming = Streaming(device=device, integration=integration,
+                               inChannels=inChannels, duration=duration,
+                               IOcallback=callback, samplingRate=samplingRate,
+                               *args, **kwargs)
+        return Istreaming
+
+    elif IO in ['O', 'out', 'output']:
+        if excit:
+            Ostreaming = Streaming(device=device, integration=integration,
+                                   outChannels=outChannels, duration=duration,
+                                   excitationData=excitData,
+                                   samplingRate=samplingRate,
+                                   IOcallback=callback,
+                                   *args, **kwargs)
+        else:
+            excitation = sweep(samplingRate=samplingRate)
+            outChannels = excitation.channels
+            duration = excitation.timeLength
+            excitData = excitation.timeSignal[:]
+            Ostreaming = Streaming(device=device, integration=integration,
+                                   outChannels=outChannels, duration=duration,
+                                   excitationData=excitData,
+                                   samplingRate=samplingRate,
+                                   IOcallback=callback,
+                                   *args, **kwargs)
+        return Ostreaming
+
+    elif IO in ['IO', 'in-out', 'input-output']:
+        if excit:
+            IOstreaming = Streaming(device=device,
+                                    integration=integration,
+                                    inChannels=inChannels,
+                                    outChannels=outChannels,
+                                    duration=duration,
+                                    excitationData=excitData,
+                                    samplingRate=samplingRate,
+                                    IOcallback=callback,
+                                    *args, **kwargs)
+        else:
+            excitation = sweep(samplingRate=samplingRate)
+            outChannels = excitation.channels[:]
+            duration = excitation.timeLength
+            excitData = excitation.timeSignal[:]
+            IOstreaming = Streaming(device=device,
+                                    integration=integration,
+                                    inChannels=inChannels,
+                                    outChannels=outChannels,
+                                    duration=duration,
+                                    excitationData=excitData,
+                                    samplingRate=samplingRate,
+                                    IOcallback=callback,
+                                    *args, **kwargs)
+        return IOstreaming
+
+    else:
+        raise ValueError("The IO parameter could not identify whether the\
+                         stream will be Input, Output or Input-Output type.")
