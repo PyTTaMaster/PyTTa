@@ -164,7 +164,7 @@ def sweep(freqMin = None,
     sweepSignal = SignalObj(signalArray=timeSignal,domain='time',samplingRate=samplingRate) 
     # transforms into a pytta signalObj
     
-    sweepSignal._freqMin, sweepSignal._freqMax \
+    sweepSignal.freqMin, sweepSignal.freqMax \
             = freqLimits[0], freqLimits[1] 
     # pass on the frequency limits considering the fade in and fade out
     return sweepSignal

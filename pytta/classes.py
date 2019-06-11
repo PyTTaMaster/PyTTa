@@ -29,6 +29,9 @@ For further information see the specific class, or method, documentation
 """
 
 # Importing modules
+import os
+import json
+import zipfile
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as ss
@@ -140,7 +143,7 @@ class PyTTaObj(object):
 
     @freqMin.setter
     def freqMin(self, newFreqMin):
-        self._freqMin = newFreqMin
+        self._freqMin = round(newFreqMin, 2)
         return
 
     @property
@@ -149,7 +152,7 @@ class PyTTaObj(object):
 
     @freqMax.setter
     def freqMax(self, newFreqMax):
-        self._freqMax = newFreqMax
+        self._freqMax = round(newFreqMax, 2)
         return
 
     @property
@@ -169,6 +172,14 @@ class PyTTaObj(object):
             else:
                 print(name[1:] + '\t =', value)
         return
+
+    def __dict(self):
+        out = {'samplingRate': self.samplingRate,
+               'freqLims': [self.freqMin, self.freqMax],
+               'fftDegree': self.fftDegree,
+               'lengthDomain': self.lengthDomain,
+               'comment': self.comment}
+        return out
 
     def save_mat(self, filename=time.ctime(time.time())):
         myObj = vars(self)
@@ -562,6 +573,11 @@ class SignalObj(PyTTaObj):
             inputArray = self.timeSignal[:]
         return np.size(inputArray.shape)
 
+    def __dict(self):
+        out = super()._PyTTaObj__dict()
+        out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
+        return out
+
     def play(self, outChannel=None, latency='low', **kwargs):
         """
         Play method
@@ -755,9 +771,23 @@ class SignalObj(PyTTaObj):
             raise IndexError('chIndex greater than channels number')
         return
 
-    def save_mat(self, filename=time.ctime(time.time())):
-        mySigObj = vars(self)
-        sio.savemat(filename, _to_dict(mySigObj), format='5')
+    def save(self, dirname=time.ctime(time.time())):
+        mySigObj = self.__dict()
+        with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
+            filename = 'timeSignal.mat'
+            with open(filename, 'wb+'):
+                sio.savemat(filename, mySigObj['timeSignalAddress'],
+                            do_compression=True,
+                            format='5', oned_as='column')
+            zdir.write(filename, compress_type=zipfile.ZIP_DEFLATED)
+            os.remove(filename)
+            mySigObj['timeSignalAddress'] = filename
+            filename = 'SignalObj.json'
+            with open(filename, 'w') as f:
+                json.dump(mySigObj, f, indent=4)
+            zdir.write(filename, compress_type=zipfile.ZIP_DEFLATED)
+            os.remove(filename)
+        return
 
     def __truediv__(self, other):
         """
