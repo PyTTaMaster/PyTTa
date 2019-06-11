@@ -206,29 +206,28 @@ class ChannelObj(object):
     ----------------------------
         Every parameter becomes the homonim attribute.
 
-        :param:name :
+        .. attribute:: name:
             String with name or ID;
 
-        :param :`unit`:
+        .. attribute:: unit:
             String with International System units for the data, e.g. 'Pa',
             'V', 'FS';
 
-        :param :``CF``:
+        .. attribute:: CF:
             Calibration factor, numerically convert normalized float32 values
-            to :param:``unit`` values;
+            to :attr:`unit` values;
 
-        :param:``calibCheck``:
-            bool, information about wether CF is applied (True),
-            or not (False -> default);
+        .. attribute:: calibCheck:
+            :type:`bool`, information about wether :attr:`CF` is applied (True), or not (False -> default);
 
     Special methods:
     ------------------
 
-        :method:``__mul__``:
-            perform :param:``unit`` concatenation  # TODO unit conversion.
+        .. method:: __mul__:
+            perform :attr:`unit` concatenation  # TODO unit conversion.
 
-        :method:``__truediv__``:
-            perform :param:``unit`` concatenation  # TODO unit conversion.
+        .. method:: __truediv__:
+            perform :attr:`unit` concatenation  # TODO unit conversion.
 
     """
     def __init__(self, name='', unit='', CF=1, calibCheck=False):
@@ -326,8 +325,24 @@ class ChannelObj(object):
         return
 
 
-class ChannelsList(PyTTaObj):
+class ChannelsList(object):
+    """
+    .. class:: ChannelsList(self, chN=0):
 
+        Class to wrap a list of ChannelObj and handle multi-channel SignalObj operations.
+
+        :param int chN: Number of initialized ChannelObj inside the list;
+
+        .. attribute:: _channels: List holding each ChannelObj;
+
+        # TODO rest of it
+
+    Attributes:
+    ------------
+
+        .. attribute:: _channels:
+            :type:`list` holding each :class:`ChannelObj`
+    """
     def __init__(self, chN=0):
         self._channels = []
         if not isinstance(chN, int):
