@@ -1,9 +1,15 @@
 # All the python stuff
 *.pyc
+*.cpython-*.pyc
 
 # Byte-compiled / optimized / DLL files
+<<<<<<< HEAD
 __pycache__/
 pytta/__pycache__/
+=======
+__pycache__/*
+pytta/__pycache__/*
+>>>>>>> 0bc474b3f7a45465a55946af75c5750b3aac3c00
 *.py[cod]
 *$py.class
 
@@ -29,6 +35,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pytta-env/*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -71,9 +78,14 @@ instance/
 
 # Sphinx documentation
 docs/_build/*
+<<<<<<< HEAD
 docs/build/*
 docs_fonte/*
 pytta-env/*
+=======
+docs_fonte/*
+docs/build/*
+>>>>>>> 0bc474b3f7a45465a55946af75c5750b3aac3c00
 
 # PyBuilder
 target/
@@ -123,3 +135,7 @@ dmypy.json
 
 # DS
 .DS_Store
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0bc474b3f7a45465a55946af75c5750b3aac3c00

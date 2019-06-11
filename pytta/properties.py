@@ -47,6 +47,7 @@ default = {'samplingRate': 44100,
            'lengthDomain': 'samples',
            'fftDegree': 18,
            'timeLength': 10,
+           'integration': 0.125,
            'freqMin': 20,
            'freqMax': 20000,
            'device': __default_device,
@@ -116,6 +117,7 @@ class Default(object):
     _lengthDomain = []
     _fftDegree = []
     _timeLength = []
+    _integration = []
     _freqMin = []
     _freqMax = []
     _device = []
@@ -127,8 +129,8 @@ class Default(object):
                         
     def __init__(self):
         """
-        Changin "factory" default preferences:
-        ======================================
+        Changing "factory" default preferences:
+        ========================================
         
             If wanted, the user can set different "factory default" values by changing
             the properties.default dictionary which is used to hold the values that
@@ -203,7 +205,11 @@ class Default(object):
     @property
     def timeLength(self):
         return self._timeLength
-    
+
+    @property
+    def integration(self):
+        return self._integration
+
     @property
     def freqMin(self):
         return self._freqMin
