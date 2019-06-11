@@ -182,7 +182,7 @@ class PyTTaObj(object):
 
 
 class ChannelObj(object):
-        
+
     def __init__(self,
                  name='',
                  unit='',
@@ -193,31 +193,47 @@ class ChannelObj(object):
         self.CF = CF
         self.calibCheck = calibCheck
 
-    def __truediv__(self,other):
-#        TODO
-        pass
+    def __mul__(self, other):
+        if not isinstance(other, ChannelObj):
+            raise TypeError('Can\'t "multiply" by other \
+                            type than a ChannelObj')
+        newCh = ChannelObj(name=self.name+'.'+other.name,
+                           unit=self.unit+'.'+other.unit,
+                           CF=self.CF*other.CF,
+                           calibCheck=self.calibCheck if self.calibCheck
+                           else other.calibCheck)
+        return newCh
 
-##%% ChannelObj properties
-        
-        
+    def __truediv__(self, other):
+        if not isinstance(other, ChannelObj):
+            raise TypeError('Can\'t "divide" by other type than a ChannelObj')
+        newCh = ChannelObj(name=self.name+'/'+other.name,
+                           unit=self.unit+'/'+other.unit,
+                           CF=self.CF/other.CF,
+                           calibCheck=self.calibCheck if self.calibCheck
+                           else other.calibCheck)
+        return newCh
+
+# ChannelObj properties
+
     @property
     def name(self):
         return self._name
-    
+
     @name.setter
-    def name(self,newname):
-        if isinstance(newname,str):
+    def name(self, newname):
+        if isinstance(newname, str):
             self._name = newname
         else:
             raise TypeError('Channel name must be a string.')
-            
+
     @property
     def unit(self):
         return self._unit
-    
+
     @unit.setter
-    def unit(self,newunit):
-        if isinstance(newunit,str):
+    def unit(self, newunit):
+        if isinstance(newunit, str):
             if newunit == 'V':
                 self._unit = newunit
                 self.dBName = 'dBu'
@@ -235,17 +251,18 @@ class ChannelObj(object):
                 self.dBName = 'dBFs'
                 self.dBRef = 1
             else:
-                raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \'V\', \'W/m^2\'  or \'\'.')
+                raise TypeError(newunit+' unit not accepted. Must be \'Pa\', \
+                                \'V\', \'W/m^2\'  or \'\'.')
         else:
             raise TypeError('Channel unit must be a string.')
-            
+
     @property
     def CF(self):
         return self._CF
-    
+
     @CF.setter
-    def CF(self,newCF):
-        if isinstance(newCF,float) or isinstance(newCF,int):
+    def CF(self, newCF):
+        if isinstance(newCF, float) or isinstance(newCF, int):
             self._CF = newCF
         else:
             raise TypeError('Channel correction factor must be a number.')
@@ -253,42 +270,86 @@ class ChannelObj(object):
     @property
     def calibCheck(self):
         return self._calibCheck
-    
+
     @calibCheck.setter
-    def calibCheck(self,newcalibCheck):
-        if isinstance(newcalibCheck,bool):
+    def calibCheck(self, newcalibCheck):
+        if isinstance(newcalibCheck, bool):
             self._calibCheck = newcalibCheck
         else:
-            raise TypeError('Channel calibration check must be True or False.')          
-            
-    
+            raise TypeError('Channel calibration check must be True or False.')
+
+
 class ChannelsList():
-    
-    def __add__(self,other):
+
+    def __init__(self, chN=0):
         # TODO
-        # sum channels
-        return
-    
-    def __sub__(self,other):
-        # TODO
-        # 
-        return
-    
-    def __truediv__(self,otherList):
-        # TODO
-        return
-    
-    def __getitem__(self,index):
-        # TO DO
-        return
-    
-    def __mul__(self,otherList):
-        # TODO
-        return
-    
-    def __init__(self):
-# TODO
+        self._channels = []
+        if not isinstance(chN, int):
+            raise ValueError('Number of channels must be an int')
+        for index in range(chN):
+            self._channels.append(ChannelObj())
         pass
+
+    def __len__(self):
+        return len(self._channels)
+
+    def __getitem__(self, index):
+        return self._channels[index]
+
+    def __mul__(self, otherList):
+        if not isinstance(otherList, ChannelsList):
+            raise TypeError('Can\'t "multiply" by other \
+                            type than a ChannelsList')
+        if len(self) != len(otherList):
+            raise ValueError('Channels lists must have the same length')
+        newChList = ChannelsList()
+        for index in range(len(self)):
+            newChList.append(self[index]*otherList[index])
+        return newChList
+
+    def __truediv__(self, otherList):
+        if not isinstance(otherList, ChannelsList):
+            raise TypeError('Can\'t "divide" by other \
+                            type than a ChannelsList')
+        if len(self) != len(otherList):
+            raise ValueError('Channels lists must have the same length')
+        newChList = ChannelsList()
+        for index in range(len(self)):
+            newChList.append(self[index]/otherList[index])
+        return newChList
+
+    def append(self, newCh):
+        if isinstance(newCh, ChannelObj):
+            self._channels.append(newCh)
+        pass
+
+    def pop(self, Ch):
+        if Ch not in range(len(self)):
+            raise IndexError('Inexistent Channel index')
+        self._channels.pop(Ch)
+
+    def conform_to(self, rule):
+        if isinstance(rule, SignalObj):
+            dCh = rule.num_channels() - len(self)
+            if dCh > 0:
+                for i in range(dCh):
+                    self.append(ChannelObj(name='Channel '
+                                           + str(i+rule.num_channels())))
+            if dCh < 0:
+                for i in range(0, -dCh):
+                    self._channels.pop(-1)
+        if isinstance(rule, list):
+            self._channels = []
+            for index in rule:
+                self.append(ChannelObj(name='Channel ' +
+                                       str(index)))
+        pass
+
+    def _do_rename_channels(self):
+        for chIndex in range(len(self)):
+            newname = 'Channel ' + str(chIndex+1)
+            self._channels[chIndex].name = newname
+
 
 class SignalObj(PyTTaObj):
 
@@ -328,91 +389,113 @@ class SignalObj(PyTTaObj):
         - save_mat(filename): save a SignalObj to a .mat file;
     
     """
-    
+
     def __init__(self,
-                     signalArray=np.array([0],ndmin=2).T,
-                     domain='time',
-                     *args,
-                     **kwargs):
+                 signalArray=np.array([0], ndmin=2).T,
+                 domain='time',
+                 *args,
+                 **kwargs):
         # Checking input array dimensions
-        if self.size_check(signalArray)>2:
+        if self.size_check(signalArray) > 2:
             message = "No 'pyttaObj' is able handle to arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
-            signalArray = np.array(signalArray,ndmin=2).T
-            
-        super().__init__(*args,**kwargs)
-        
-        self.channels = []
+            signalArray = np.array(signalArray, ndmin=2).T
+
+        super().__init__(*args, **kwargs)
+
+        self.channels = ChannelsList()
 
         self.domain = domain or args[1]
         if self.domain == 'freq':
-            self.freqSignal = signalArray # [-] signal in frequency domain
+            self.freqSignal = signalArray  # [-] signal in frequency domain
         elif self.domain == 'time':
-            self.timeSignal = signalArray # [-] signal in time domain
+            self.timeSignal = signalArray  # [-] signal in time domain
         else:
             self.timeSignal = signalArray
             self.domain = 'time'
             print('Taking the input as a time domain signal')
-        
-        self._do_conform_channels()
 
-        
-##%% SignalObj Properties
-    @property 
+        self.channels.conform_to(self)
+
+
+# SignalObj Properties
+    @property
     def timeVector(self):
         return self._timeVector
-    
-    @property 
+
+    @property
     def freqVector(self):
         return self._freqVector
-            
-    @property # when timeSignal is called returns the ndarray
+
+    @property  # when timeSignal is called returns the ndarray
     def timeSignal(self):
         return self._timeSignal
-    
+
     @timeSignal.setter
-    def timeSignal(self,newSignal): # when timeSignal have new ndarray value, calculate other properties
-        if isinstance(newSignal,np.ndarray):            
+    def timeSignal(self, newSignal):  # when timeSignal have new ndarray value,
+        # calculate other properties
+        if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal,ndmin=2).T   
+                newSignal = np.array(newSignal, ndmin=2).T
             self._timeSignal = np.array(newSignal)
-            self._freqSignal = np.fft.rfft(self._timeSignal,axis=0,norm=None) # [-] signal in frequency domain
+            # [-] signal in frequency domain
+            self._freqSignal = np.fft.rfft(self._timeSignal, axis=0, norm=None)
             self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
-            self._numSamples = len(self._timeSignal) # [-] number of samples
-            self._fftDegree = np.log2(self._numSamples) # [-] size parameter
-            self._timeLength = self.numSamples / self.samplingRate # [s] signal time lenght
-            self._timeVector = np.linspace(0,self.timeLength - (1/self.samplingRate),self.numSamples ) # [s] time vector (x axis)
-            self._freqVector = np.linspace(0,(self.numSamples - 1) * self.samplingRate / (2*self.numSamples),
-                                          (self.numSamples/2)+1 if self.numSamples%2==0 else (self.numSamples+1)/2 ) # [Hz] frequency vector (x axis)
-            self._do_conform_channels()
-        else: raise TypeError('Input array must be a numpy ndarray')
+            self._numSamples = len(self._timeSignal)  # [-] number of samples
+            self._fftDegree = np.log2(self._numSamples)  # [-] size parameter
+            # [s] signal time lenght
+            self._timeLength = self.numSamples / self.samplingRate
+            # [s] time vector (x axis)
+            self._timeVector = np.linspace(0, self.timeLength
+                                           - (1/self.samplingRate),
+                                           self.numSamples)
+            # [Hz] frequency vector (x axis)
+            self._freqVector = np.linspace(0, (self.numSamples - 1) *
+                                           self.samplingRate /
+                                           (2*self.numSamples),
+                                           (self.numSamples/2)+1
+                                           if self.numSamples % 2 == 0
+                                           else (self.numSamples+1)/2)
+            self.channels.conform_to(self)
+        else:
+            raise TypeError('Input array must be a numpy ndarray')
         return
 
-    @property # when freqSignal is called returns the normalized ndarray
-    def freqSignal(self): 
+    @property  # when freqSignal is called returns the normalized ndarray
+    def freqSignal(self):
         return self._freqSignal
-    
+
     @freqSignal.setter
-    def freqSignal(self,newSignal):
-        if isinstance(newSignal,np.ndarray):            
+    def freqSignal(self, newSignal):
+        if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal,ndmin=2).T
+                newSignal = np.array(newSignal, ndmin=2).T
             self._freqSignal = np.array(newSignal)
-#            self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None) # bug fix for frf stuff
-            self._timeSignal = np.fft.irfft(self._freqSignal,axis=0,norm=None)
-            self._numSamples = len(self.timeSignal) # [-] number of samples
-            self._fftDegree = np.log2(self.numSamples) # [-] size parameter
-            self._timeLength = self.numSamples/self.samplingRate  # [s] signal time lenght
-            self._timeVector = np.arange(0,self.timeLength, 1/self.samplingRate) # [s] time vector
-            self._freqVector = np.linspace(0,(self.numSamples-1) * self.samplingRate / (2*self.numSamples),
-                                           (self.numSamples/2)+1 if self.numSamples%2==0  else (self.numSamples+1)/2 ) # [Hz] frequency vector
-            self._do_conform_channels()
-        else: raise TypeError('Input array must be a numpy ndarray')
+            # self._timeSignal = np.fft.irfft(len(self._freqSignal)*self._freqSignal,axis=0,norm=None) # bug fix for frf stuff
+            self._timeSignal = np.fft.irfft(self._freqSignal,
+                                            axis=0, norm=None)
+            self._numSamples = len(self.timeSignal)  # [-] number of samples
+            self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
+            # [s] signal time lenght
+            self._timeLength = self.numSamples/self.samplingRate
+            # [s] time vector
+            self._timeVector = np.arange(0, self.timeLength,
+                                         1/self.samplingRate)
+            # [Hz] frequency vector
+            self._freqVector = np.linspace(0, (self.numSamples-1) *
+                                           self.samplingRate /
+                                           (2*self.numSamples),
+                                           (self.numSamples/2)+1
+                                           if self.numSamples % 2 == 0
+                                           else (self.numSamples+1)/2)
+            self.channels.conform_to(self)
+        else:
+            raise TypeError('Input array must be a numpy ndarray')
         return
-                    
-##%% SignalObj Methods
+
+# SignalObj Methods
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal,1),lengthDomain='time',samplingRate=self.samplingRate)
     
@@ -579,22 +662,7 @@ class SignalObj(PyTTaObj):
     def save_mat(self,filename=time.ctime(time.time())):
         mySigObj = vars(self)            
         sio.savemat(filename,_to_dict(mySigObj),format='5')
-    
-    def _do_conform_channels(self):
-        dCh = self.num_channels() - len(self.channels)
-        if dCh > 0:
-            for i in range(0,dCh): self.channels.append(ChannelObj(name='Channel '+str(i+self.num_channels())))
-        if dCh < 0:
-            for i in range(0,-dCh): self.channels.pop(-1)
-            
-    def _do_rename_channels(self):
-        for chIndex in range(self.num_channels()):
-            print(chIndex)
-            newname = 'Channel '+str(chIndex+1)
-            print(newname)
-            self.channels[chIndex].name = newname
-            print(self.channels[chIndex].name)
-            
+
     def __truediv__(self, other):
         """
         Frequency domain division method
@@ -602,27 +670,35 @@ class SignalObj(PyTTaObj):
         if type(other) != type(self):
             raise TypeError("A SignalObj can only operate with other alike.")
         if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")              
-        result = SignalObj(np.zeros(self.timeSignal.shape),samplingRate=self.samplingRate)                
+            raise TypeError("Both SignalObj must have the same sampling rate.")
+        result = SignalObj(np.zeros(self.timeSignal.shape),
+                           samplingRate=self.samplingRate)
         result.channels = self.channels
         if self.num_channels() > 1:
             if other.num_channels() > 1:
                 if other.num_channels() != self.num_channels():
-                    raise ValueError("Both signal-like objects must have the same number of channels.")
-                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
+                    raise ValueError("Both signal-like objects must have the \
+                                     same number of channels.")
+                result_freqSignal = np.zeros(self.freqSignal.shape,
+                                             dtype=np.complex_)
                 for channel in range(other.num_channels()):
-                    result.freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,channel]
+                    result.freqSignal[:, channel] = \
+                        self.freqSignal[:, channel] \
+                        / other.freqSignal[:, channel]
                 result.freqSignal = result_freqSignal
             else:
-                result_freqSignal = np.zeros(self.freqSignal.shape,dtype=np.complex_)
+                result_freqSignal = np.zeros(self.freqSignal.shape,
+                                             dtype=np.complex_)
                 for channel in range(self.num_channels()):
-                    result_freqSignal[:,channel] = self.freqSignal[:,channel] / other.freqSignal[:,0]
+                    result_freqSignal[:, channel] = \
+                        self.freqSignal[:, channel] \
+                        / other.freqSignal[:, 0]
                 result.freqSignal = result_freqSignal
-        else: 
+        else:
             result.freqSignal = self.freqSignal / other.freqSignal
-            resul.channels = self.channels / other.channels
-        return result    
-    
+            result.channels = self.channels / other.channels
+        return result
+
     def __add__(self, other):
         """
         Time domain addition method
