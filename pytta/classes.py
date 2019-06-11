@@ -1189,11 +1189,11 @@ class ImpulsiveResponse(PyTTaObj):
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
         f, S11 = ss.csd(sig1, sig1, samplingRate, window=windowName,
-                            nperseg=numberOfSamples, noverlap=overlapSamples,
-                            axis=0)
+                        nperseg=numberOfSamples, noverlap=overlapSamples,
+                        axis=0)
         f, S12 = ss.csd(sig1, sig2, samplingRate, window=windowName,
-                            nperseg=numberOfSamples, noverlap=overlapSamples,
-                            axis=0)
+                        nperseg=numberOfSamples, noverlap=overlapSamples,
+                        axis=0)
         return S12, S11
 
     def _coord_points_per_channel(self):

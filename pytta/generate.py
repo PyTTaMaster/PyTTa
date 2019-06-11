@@ -459,7 +459,7 @@ def stream(IO='IO',
         excit = True
         excitData = excitation.timeSignal[:]
         samplingRate = excitation.samplingRate
-        duration = excitation.timeLenght
+        duration = excitation.timeLength
         outChannels = excitation.channels[:]
     else:
         excit = False
