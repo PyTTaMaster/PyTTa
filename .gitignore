@@ -2,7 +2,8 @@
 *.pyc
 
 # Byte-compiled / optimized / DLL files
-__pycache__/*
+__pycache__/
+pytta/__pycache__/
 *.py[cod]
 *$py.class
 
@@ -70,6 +71,9 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build/
+docs_fonte/
+pytta-env/
 
 # PyBuilder
 target/
@@ -116,9 +120,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-<<<<<<< HEAD
-=======
 
 # DS
 .DS_Store
->>>>>>> 4d5b6b03a0c35332baebc375023e8d43a39c83dd
