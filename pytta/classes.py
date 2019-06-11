@@ -296,22 +296,31 @@ class ChannelObj(object):
         return
 
 
-class ChannelsList():
+class ChannelsList(PyTTaObj):
 
     def __init__(self, chN=0):
-        # TODO
         self._channels = []
         if not isinstance(chN, int):
             raise ValueError('Number of channels must be an int')
         for index in range(chN):
             self._channels.append(ChannelObj())
-        pass
+        return
 
     def __len__(self):
         return len(self._channels)
 
-    def __getitem__(self, index):
-        return self._channels[index]
+    def __getitem__(self, key):
+        try:
+            return self._channels[key]
+        except IndexError:
+            raise IndexError("Out of range.")
+
+    def __setitem__(self, key, item):
+        try:
+            self._channels[key] = item
+            return
+        except IndexError:
+            raise IndexError("Out of range.")
 
     def __mul__(self, otherList):
         if not isinstance(otherList, ChannelsList):
@@ -334,6 +343,12 @@ class ChannelsList():
         for index in range(len(self)):
             newChList.append(self[index]/otherList[index])
         return newChList
+
+    def __dict(self):
+        out = {}
+        for ch in self._channels:
+            out[ch.name] = {'calib': [ch.CF, ch.calibCheck], 'unit': ch.unit}
+        return out
 
     def append(self, newCh):
         if isinstance(newCh, ChannelObj):
@@ -575,6 +590,7 @@ class SignalObj(PyTTaObj):
 
     def __dict(self):
         out = super()._PyTTaObj__dict()
+        out['channels'] = self.channels._ChannelsList__dict()
         out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
         return out
 
