@@ -53,31 +53,39 @@ class PyTTaObj(object):
 
         * samplingRate (44100), (int):
             signal's sampling rate;
+
         * lengthDomain ('time'), (str):
-            input array's domain. May be 'time' or 'samples';
+            signal's length domain. May be 'time' or 'samples';
+
         * timeLength (seconds), (float):
-            signal's time length in seconds;
+            signal's time length in seconds for lengthDomain = 'time';
+
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples;
+            2**fftDegree signal's number of samples for\
+            lengthDomain = 'samples';
+
         * numSamples (samples), (int):
             signal's number of samples
+
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
+
         * freqMax (20000), (int):
             maximum frequency bandwidth limit;
+
         * comment ('No comments.'), (str):
             some commentary about the signal or measurement object;
     """
 
     def __init__(self,
                  samplingRate=None,
+                 freqMin=None,
+                 freqMax=None,
+                 comment="No comments.",
                  lengthDomain=None,
                  fftDegree=None,
                  timeLength=None,
-                 numSamples=None,
-                 freqMin=None,
-                 freqMax=None,
-                 comment="No comments."):
+                 numSamples=None):
 
         self._lengthDomain = lengthDomain
         self._samplingRate = samplingRate
@@ -471,11 +479,30 @@ class SignalObj(PyTTaObj):
     """
     Signal object class.
 
-    Properties:
+    Creation parameters:
     ------------
+
+        * signalArray (ndarray | list), (NumPy array):
+            signal at specified domain
 
         * domain ('time'), (str):
             domain of the input array;
+
+        * samplingRate (44100), (int):
+            signal's sampling rate;
+
+        * freqMin (20), (int):
+            minimum frequency bandwidth limit;
+
+        * freqMax (20000), (int):
+            maximum frequency bandwidth limit;
+
+        * comment ('No comments.'), (str):
+            some commentary about the signal or measurement object;
+
+
+    Attributes:
+    ------------
 
         * timeSignal (ndarray), (NumPy array):
             signal at time domain;
@@ -495,9 +522,6 @@ class SignalObj(PyTTaObj):
         * channelName (dict), (dict/str):
             channels name dict;
 
-        * samplingRate (44100), (int):
-            signal's sampling rate;
-
         * lengthDomain ('time'), (str):
             input array's domain. May be 'time' or 'samples';
 
@@ -510,14 +534,6 @@ class SignalObj(PyTTaObj):
         * numSamples (samples), (int):
             signal's number of samples
 
-        * freqMin (20), (int):
-            minimum frequency bandwidth limit;
-
-        * freqMax (20000), (int):
-            maximum frequency bandwidth limit;
-
-        * comment ('No comments.'), (str):
-            some commentary about the signal or measurement object;
 
     Methods:
     ---------
@@ -552,6 +568,9 @@ class SignalObj(PyTTaObj):
                  domain='time',
                  *args,
                  **kwargs):
+        # Converting signalArray from list to np.array
+        if isinstance(signalArray, list):
+            signalArray = np.array(signalArray)
         # Checking input array dimensions
         if self.size_check(signalArray) > 2:
             message = "No 'pyttaObj' is able handle to arrays with more \
@@ -975,6 +994,13 @@ class SignalObj(PyTTaObj):
         else:
             result.timeSignal = self._timeSignal - other._timeSignal
         return result
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'ndarraya, {self.domain!r}, '
+                f'{self.samplingRate!r}, {self.freqMin!r}, '
+                f'{self.freqMax!r}, '
+                f'{self.comment!r})')
 
     def _calc_spectrogram(self, timeData=None, overlap=0.5,
                           winType='hann', winSize=1024):
@@ -1465,13 +1491,14 @@ class Measurement(PyTTaObj):
             signal's sampling rate;
 
         * lengthDomain ('time'), (str):
-            input array's domain. May be 'time' or 'samples';
+            signal's length domain. May be 'time' or 'samples';
 
         * timeLength (seconds), (float):
-            signal's time length in seconds;
+            signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples;
+            2**fftDegree signal's number of samples for\
+            lengthDomain = 'samples';
 
         * numSamples (samples), (int):
             signal's number of samples
@@ -1584,13 +1611,14 @@ class RecMeasure(Measurement):
     ------------
 
         * lengthDomain ('time'), (str):
-            input array's domain. May be 'time' or 'samples';
+            signal's length domain. May be 'time' or 'samples';
 
         * timeLength (seconds), (float):
-            signal's time length in seconds;
+            signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples;
+            2**fftDegree signal's number of samples for\
+            lengthDomain = 'samples';
 
         * device (system default), (list/int):
             list of input and output devices;
@@ -1730,13 +1758,14 @@ class PlayRecMeasure(Measurement):
             signal's sampling rate;
 
         * lengthDomain ('time'), (str):
-            input array's domain. May be 'time' or 'samples';
+            signal's length domain. May be 'time' or 'samples';
 
         * timeLength (seconds), (float):
-            signal's time length in seconds;
+            signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples;
+            2**fftDegree signal's number of samples for\
+            lengthDomain = 'samples';
 
         * numSamples (samples), (int):
             signal's number of samples
@@ -1870,13 +1899,14 @@ class FRFMeasure(PlayRecMeasure):
             signal's sampling rate;
 
         * lengthDomain ('time'), (str):
-            input array's domain. May be 'time' or 'samples';
+            signal's length domain. May be 'time' or 'samples';
 
         * timeLength (seconds), (float):
-            signal's time length in seconds;
+            signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples;
+            2**fftDegree signal's number of samples for\
+            lengthDomain = 'samples';
 
         * numSamples (samples), (int):
             signal's number of samples
