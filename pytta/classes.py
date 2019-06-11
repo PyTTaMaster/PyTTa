@@ -196,6 +196,27 @@ class ChannelObj(object):
         self.CF = CF
         self.calibCheck = calibCheck
 
+    def __mul__(self, other):
+        if not isinstance(other, ChannelObj):
+            raise TypeError('Can\'t "multiply" by other \
+                            type than a ChannelObj')
+        newCh = ChannelObj(name=self.name+'.'+other.name,
+                           unit=self.unit+'.'+other.unit,
+                           CF=self.CF*other.CF,
+                           calibCheck=self.calibCheck if self.calibCheck
+                           else other.calibCheck)
+        return newCh
+
+    def __truediv__(self, other):
+        if not isinstance(other, ChannelObj):
+            raise TypeError('Can\'t "divide" by other type than a ChannelObj')
+        newCh = ChannelObj(name=self.name+'/'+other.name,
+                           unit=self.unit+'/'+other.unit,
+                           CF=self.CF/other.CF,
+                           calibCheck=self.calibCheck if self.calibCheck
+                           else other.calibCheck)
+        return newCh
+
 # ChannelObj properties
     @property
     def name(self):
@@ -261,6 +282,79 @@ class ChannelObj(object):
             self._calibCheck = newcalibCheck
         else:
             raise TypeError('Channel calibration check must be True or False.')
+        return
+
+
+class ChannelsList():
+
+    def __init__(self, chN=0):
+        # TODO
+        self._channels = []
+        if not isinstance(chN, int):
+            raise ValueError('Number of channels must be an int')
+        for index in range(chN):
+            self._channels.append(ChannelObj())
+        pass
+
+    def __len__(self):
+        return len(self._channels)
+
+    def __getitem__(self, index):
+        return self._channels[index]
+
+    def __mul__(self, otherList):
+        if not isinstance(otherList, ChannelsList):
+            raise TypeError('Can\'t "multiply" by other \
+                            type than a ChannelsList')
+        if len(self) != len(otherList):
+            raise ValueError('Channels lists must have the same length')
+        newChList = ChannelsList()
+        for index in range(len(self)):
+            newChList.append(self[index]*otherList[index])
+        return newChList
+
+    def __truediv__(self, otherList):
+        if not isinstance(otherList, ChannelsList):
+            raise TypeError('Can\'t "divide" by other \
+                            type than a ChannelsList')
+        if len(self) != len(otherList):
+            raise ValueError('Channels lists must have the same length')
+        newChList = ChannelsList()
+        for index in range(len(self)):
+            newChList.append(self[index]/otherList[index])
+        return newChList
+
+    def append(self, newCh):
+        if isinstance(newCh, ChannelObj):
+            self._channels.append(newCh)
+        pass
+
+    def pop(self, Ch):
+        if Ch not in range(len(self)):
+            raise IndexError('Inexistent Channel index')
+        self._channels.pop(Ch)
+
+    def conform_to(self, rule):
+        if isinstance(rule, SignalObj):
+            dCh = rule.num_channels() - len(self)
+            if dCh > 0:
+                for i in range(dCh):
+                    self.append(ChannelObj(name='Channel '
+                                           + str(i+rule.num_channels())))
+            if dCh < 0:
+                for i in range(0, -dCh):
+                    self._channels.pop(-1)
+        if isinstance(rule, list):
+            self._channels = []
+            for index in rule:
+                self.append(ChannelObj(name='Channel ' +
+                                       str(index)))
+        pass
+
+    def _do_rename_channels(self):
+        for chIndex in range(len(self)):
+            newname = 'Channel ' + str(chIndex+1)
+            self._channels[chIndex].name = newname
         return
 
 
@@ -359,7 +453,7 @@ class SignalObj(PyTTaObj):
 
         super().__init__(*args, **kwargs)
 
-        self.channels = []
+        self.channels = ChannelsList()
 
         self.domain = domain or args[1]
         if self.domain == 'freq':
@@ -370,8 +464,8 @@ class SignalObj(PyTTaObj):
             self.timeSignal = signalArray
             self.domain = 'time'
             print('Taking the input as a time domain signal')
+        self.channels.conform_to(self)
 
-        self._do_conform_channels()
 
 # SignalObj Properties
     @property
@@ -388,7 +482,6 @@ class SignalObj(PyTTaObj):
 
     @timeSignal.setter
     def timeSignal(self, newSignal):
-        # when timeSignal have new ndarray value, calculate other properties
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
                 newSignal = np.array(newSignal, ndmin=2).T
@@ -411,8 +504,8 @@ class SignalObj(PyTTaObj):
                                            (2*self.numSamples),
                                            (self.numSamples/2)+1
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples + 1)/2)
-            self._do_conform_channels()
+                                           else (self.numSamples+1)/2)
+            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -440,7 +533,7 @@ class SignalObj(PyTTaObj):
                                            (self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
                                            else (self.numSamples+1)/2)
-            self._do_conform_channels()
+            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -667,25 +760,6 @@ class SignalObj(PyTTaObj):
         mySigObj = vars(self)
         sio.savemat(filename, _to_dict(mySigObj), format='5')
 
-    def _do_conform_channels(self):
-        dCh = self.num_channels() - len(self.channels)
-        if dCh > 0:
-            for i in range(0, dCh):
-                self.channels.append(
-                        ChannelObj(name='Channel '
-                                   + str(i + self.num_channels())))
-        if dCh < 0:
-            for i in range(0, -dCh):
-                self.channels.pop(-1)
-
-    def _do_rename_channels(self):
-        for chIndex in range(self.num_channels()):
-            print(chIndex)
-            newname = 'Channel '+str(chIndex+1)
-            print(newname)
-            self.channels[chIndex].name = newname
-            print(self.channels[chIndex].name)
-
     def __truediv__(self, other):
         """
         Frequency domain division method
@@ -700,25 +774,26 @@ class SignalObj(PyTTaObj):
         if self.num_channels() > 1:
             if other.num_channels() > 1:
                 if other.num_channels() != self.num_channels():
-                    raise ValueError("Both signal-like objects must have\
-                                     the same number of channels.")
+                    raise ValueError("Both signal-like objects must have the \
+                                     same number of channels.")
                 result_freqSignal = np.zeros(self.freqSignal.shape,
                                              dtype=np.complex_)
                 for channel in range(other.num_channels()):
-                    result_freqSignal[:, channel]\
-                        = self.freqSignal[:, channel]\
+                    result.freqSignal[:, channel] = \
+                        self.freqSignal[:, channel] \
                         / other.freqSignal[:, channel]
                 result.freqSignal = result_freqSignal
             else:
                 result_freqSignal = np.zeros(self.freqSignal.shape,
                                              dtype=np.complex_)
                 for channel in range(self.num_channels()):
-                    result_freqSignal[:, channel]\
-                        = self.freqSignal[:, channel]\
+                    result_freqSignal[:, channel] = \
+                        self.freqSignal[:, channel] \
                         / other.freqSignal[:, 0]
                 result.freqSignal = result_freqSignal
         else:
             result.freqSignal = self.freqSignal / other.freqSignal
+            result.channels = self.channels / other.channels
         return result
 
     def __add__(self, other):
