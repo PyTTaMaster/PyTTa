@@ -8,9 +8,7 @@ import pytta
 def parseArgs(args):
     file = None
     for arg in args:
-        if arg in ['python', 'python3', __name__]:
-            pass
-        elif arg[-3:] in ['wav', 'wave', 'WAV', 'WAVE', 'Wav', 'Wave']:
+        if arg.split('.')[-1] in ['wav', 'WAV', 'Wav']:
             file = arg
     return file
 
@@ -35,6 +33,8 @@ class AudioPlayer(object):
         if fileName is None:
             print("Please, insert a file name: ")
             fileName = input()
+        if fileName == '-exit':
+            self.exit()
         self.file = fileName
         self.audio = pytta.read_wav(self.file)
         self.streaming = pytta.generate.stream('O', excitation=self.audio)
