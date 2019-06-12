@@ -503,6 +503,12 @@ class ChannelsList(object):
             out.append(obj.num)
         return out
 
+    def CFlist(self):
+        out = []
+        for obj in self._channels:
+            out.append(obj.CF)
+        return out
+
     def _to_dict(self):
         out = {}
         for ch in self._channels:
@@ -2244,7 +2250,8 @@ class Streaming(PyTTaObj):
         return
 
     def __Icallback(self, Idata, frames, time, status):
-        self.inData = np.append(self.inData, Idata, axis=0)
+        self.inData = np.append(self.inData[:]*self.inChannels.CFlist(),
+                                Idata, axis=0)
         if self.durationInSamples is None:
             pass
         elif self.inData.shape[0] >= self.durationInSamples:
@@ -2263,7 +2270,8 @@ class Streaming(PyTTaObj):
         return
 
     def __IOcallback(self, Idata, Odata, frames, time, status):
-        self.inData = np.append(self.inData[:, :], Idata, axis=0)
+        self.inData = np.append(self.inData[:]*self.inChannels.CFlist(),
+                                Idata, axis=0)
         try:
             Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
             self.kn = self.kn + frames
@@ -2300,6 +2308,39 @@ class Streaming(PyTTaObj):
 
     def close(self):
         self.stream.close()
+        return
+
+    def calib_pressure(self, chIndex, refSignalObj,
+                       refPrms=1.00, refFreq=1000):
+        """
+        .. method:: calibPressure(chIndex, refSignalObj, refPrms, refFreq):
+            use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor and apply to every incoming audio on specified channel.
+
+            >>> Streaming.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
+
+        Parameters:
+        -------------
+
+            * chIndex (), (int):
+                channel index for calibration. Starts in 0;
+
+            * refSignalObj (), (SignalObj):
+                SignalObj with the calibration recorded signal;
+
+            * refPrms (1.00), (float):
+                the reference pressure provided by the acoustic calibrator;
+
+            * refFreq (1000), (int):
+                the reference sine frequency provided by the acoustic
+                calibrator;
+        """
+
+        if chIndex in range(len(self.inChannels)):
+            self.inChannels[chIndex].calib_press(
+                    refSignalObj, refPrms, refFreq)
+            self.inChannels[chIndex].calibCheck = True
+        else:
+            raise IndexError('chIndex greater than channels number')
         return
 
     @property
