@@ -2143,10 +2143,10 @@ class Streaming(PyTTaObj):
                  outChannels: Optional[List[ChannelObj]] = None,
                  duration: Optional[float] = None,
                  excitationData: Optional[np.ndarray] = None,
-                 IOcallback: Optional[callable] = None,
+                 callback: Optional[callable] = None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_channels(inChannels, outChannels, excitationData)
+        self._set_channels(inChannels, outChannels, excitationData)
         if duration is not None:
             self._durationInSamples = int(duration*samplingRate)
         else:
@@ -2159,11 +2159,11 @@ class Streaming(PyTTaObj):
         self._duration = duration
         self._device = device
         self.__kount = 0
-        self.IOcallback = IOcallback
-        self._call_for_stream(self.IOcallback)
+        self.callback = callback
+        self._call_for_stream(self.callback)
         return
 
-    def set_channels(self, inputs, outputs, data):
+    def _set_channels(self, inputs, outputs, data):
         if inputs is not None:
             self._inData = np.zeros((1, len(inputs)))
         else:
@@ -2246,10 +2246,6 @@ class Streaming(PyTTaObj):
             self.__timeout()
         return
 
-    def get_inData_as_signal(self):
-        signal = SignalObj(self.inData, 'time', self.samplingRate)
-        return signal
-
     def __timeout(self):
         self.stop()
         self._call_for_stream(self.IOcallback)
@@ -2257,6 +2253,10 @@ class Streaming(PyTTaObj):
         if self.inData is not None:
             self.inData = self.inData[1:, :]
         return
+
+    def getSignal(self):
+        signal = SignalObj(self.inData, 'time', self.samplingRate)
+        return signal
 
     def reset(self):
         self.set_channels(self.inChannels, self.outChannels, self.outData)

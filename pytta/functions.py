@@ -2,14 +2,14 @@
 """
 Functions
 =========
-    
+
     This submodule carries a set of useful functions of general purpouses when
     using PyTTa, like reading and writing wave files, seeing the audio IO devices
     available and some signal processing tools.
-    
+
     Available functions:
     --------------------
-    
+
         >>> pytta.list_devices()
         >>> pytta.read_wav( fileName )
         >>> pytta.write_wav( fileName, signalObject )
@@ -19,7 +19,7 @@ Functions
         >>> pytta.corr_coef( signalObj1, signalObj2 )
         >>> pytta.resample( signalObj, newSamplingRate )
         >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN )
-        
+
     For further information, check the function specific documentation.
 """
 
@@ -28,7 +28,8 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
-from .classes import SignalObj
+from .classes import SignalObj, ImpulsiveResponse, RecMeasure,\
+                     PlayRecMeasure, FRFMeasure
 import copy as cp
 
 
