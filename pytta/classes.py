@@ -279,6 +279,37 @@ class ChannelObj(object):
                            else other.calibCheck)
         return newCh
 
+    def calib_volt(self, refSignalObj, refVrms, refFreq):
+        Vrms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
+        print(Vrms)
+        freqFound = np.round(
+                refSignalObj.freqVector[np.where(
+                        np.abs(refSignalObj.freqSignal)
+                        == np.max(np.abs(refSignalObj.freqSignal)))[0]])
+        if freqFound != refFreq:
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
+                  + '{:.2}'.format(freqFound)
+                  + ' [Hz]) differs from refFreq ('
+                  + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+        self.CF = refVrms/Vrms
+        self.unit = 'V'
+        return
+
+    def calib_press(self, refSignalObj, refPrms, refFreq):
+        Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
+        print(Prms)
+        freqFound = np.round(refSignalObj.freqVector[np.where(
+                np.abs(refSignalObj.freqSignal)
+                == np.max(np.abs(refSignalObj.freqSignal)))[0]])
+        if freqFound != refFreq:
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
+                  + '{:.2}'.format(freqFound)
+                  + ' [Hz]) differs from refFreq ('
+                  + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+        self.CF = refPrms/Prms
+        self.unit = 'Pa'
+        return
+
 # ChannelObj properties
     @property
     def num(self):
@@ -852,19 +883,20 @@ class SignalObj(PyTTaObj):
                 calibrator;
         """
         if chIndex in range(self.num_channels()):
-            Vrms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-            print(Vrms)
-            freqFound = np.round(
-                    refSignalObj.freqVector[np.where(
-                            np.abs(refSignalObj.freqSignal)
-                            == np.max(np.abs(refSignalObj.freqSignal)))[0]])
-            if freqFound != refFreq:
-                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-                      + '{:.2}'.format(freqFound)
-                      + ' [Hz]) differs from refFreq ('
-                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
-            self.channels[chIndex].CF = refVrms/Vrms
-            self.channels[chIndex].unit = 'V'
+            self.channels[chIndex].calib_volt(refSignalObj, refVrms, refFreq)
+#            Vrms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
+#            print(Vrms)
+#            freqFound = np.round(
+#                    refSignalObj.freqVector[np.where(
+#                            np.abs(refSignalObj.freqSignal)
+#                            == np.max(np.abs(refSignalObj.freqSignal)))[0]])
+#            if freqFound != refFreq:
+#                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
+#                      + '{:.2}'.format(freqFound)
+#                      + ' [Hz]) differs from refFreq ('
+#                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+#            self.channels[chIndex].CF = refVrms/Vrms
+#            self.channels[chIndex].unit = 'V'
             newtimeSignal = cp.deepcopy(self.timeSignal)
             newtimeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
@@ -901,18 +933,19 @@ class SignalObj(PyTTaObj):
         """
 
         if chIndex in range(self.num_channels()):
-            Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-            print(Prms)
-            freqFound = np.round(refSignalObj.freqVector[np.where(
-                    np.abs(refSignalObj.freqSignal)
-                    == np.max(np.abs(refSignalObj.freqSignal)))[0]])
-            if freqFound != refFreq:
-                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-                      + '{:.2}'.format(freqFound)
-                      + ' [Hz]) differs from refFreq ('
-                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
-            self.channels[chIndex].CF = refPrms/Prms
-            self.channels[chIndex].unit = 'Pa'
+            self.channels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
+#            Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
+#            print(Prms)
+#            freqFound = np.round(refSignalObj.freqVector[np.where(
+#                    np.abs(refSignalObj.freqSignal)
+#                    == np.max(np.abs(refSignalObj.freqSignal)))[0]])
+#            if freqFound != refFreq:
+#                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
+#                      + '{:.2}'.format(freqFound)
+#                      + ' [Hz]) differs from refFreq ('
+#                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+#            self.channels[chIndex].CF = refPrms/Prms
+#            self.channels[chIndex].unit = 'Pa'
             newtimeSignal = cp.deepcopy(self.timeSignal)
             newtimeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
