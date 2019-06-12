@@ -55,7 +55,7 @@ from .functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time
 from . import generate
 
-__version__ = '0.1.0'  # package version
+__version__ = '0.1.0rc'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Submodules
