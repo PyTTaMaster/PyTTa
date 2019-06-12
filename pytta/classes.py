@@ -40,7 +40,6 @@ import sounddevice as sd
 from pytta import default
 from typing import Optional, List
 import time
-import copy as cp
 
 
 class PyTTaObj(object):
@@ -897,10 +896,8 @@ class SignalObj(PyTTaObj):
 #                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
 #            self.channels[chIndex].CF = refVrms/Vrms
 #            self.channels[chIndex].unit = 'V'
-            newtimeSignal = cp.deepcopy(self.timeSignal)
-            newtimeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
+            self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
-            self.timeSignal = newtimeSignal
             self.channels[chIndex].calibCheck = True
         else:
             raise IndexError('chIndex greater than channels number')
@@ -946,10 +943,8 @@ class SignalObj(PyTTaObj):
 #                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
 #            self.channels[chIndex].CF = refPrms/Prms
 #            self.channels[chIndex].unit = 'Pa'
-            newtimeSignal = cp.deepcopy(self.timeSignal)
-            newtimeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
+            self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
-            self.timeSignal = newtimeSignal
             self.channels[chIndex].calibCheck = True
         else:
             raise IndexError('chIndex greater than channels number')
