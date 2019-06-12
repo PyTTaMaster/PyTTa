@@ -218,15 +218,16 @@ class ChannelObj(object):
             String with name or ID;
 
         .. attribute:: unit:
-            String with International System units for the data, e.g. 'Pa',
+            String with International System units for the data, e.g. 'Pa', \
             'V', 'FS';
 
         .. attribute:: CF:
-            Calibration factor, numerically convert normalized float32 values
+            Calibration factor, numerically convert normalized float32 values \
             to :attr:`unit` values;
 
         .. attribute:: calibCheck:
-            :type:`bool`, information about wether :attr:`CF` is applied (True), or not (False -> default);
+            :type:`bool`, information about wether :attr:`CF` is applied \
+            (True), or not (False -> default);
 
     Special methods:
     ------------------
@@ -270,7 +271,8 @@ class ChannelObj(object):
     def __truediv__(self, other):
         if not isinstance(other, ChannelObj):
             raise TypeError('Can\'t "divide" by other type than a ChannelObj')
-        newCh = ChannelObj(self.num, name=self.name+'/'+other.name,
+        newCh = ChannelObj(self.num,
+                           # name=self.name+'/'+other.name,
                            unit=self.unit+'/'+other.unit,
                            CF=self.CF/other.CF,
                            calibCheck=self.calibCheck if self.calibCheck
@@ -329,8 +331,8 @@ class ChannelObj(object):
                 self.dBRef = 1
             else:
                 self._unit = newunit
-                self.dBName = 'dB' + 'newunit'
-                self.dBref = 1
+                self.dBName = 'dB'
+                self.dBRef = 1
         else:
             raise TypeError('Channel unit must be a string.')
 
@@ -363,7 +365,8 @@ class ChannelsList(object):
     """
     .. class:: ChannelsList(self, chN=0):
 
-        Class to wrap a list of ChannelObj and handle multi-channel SignalObj operations.
+        Class to wrap a list of ChannelObj and handle multi-channel SignalObj \
+        operations.
 
         :param int chN: Number of initialized ChannelObj inside the list;
 
@@ -422,22 +425,46 @@ class ChannelsList(object):
         if not isinstance(otherList, ChannelsList):
             raise TypeError('Can\'t "multiply" by other \
                             type than a ChannelsList')
-        if len(self) != len(otherList):
-            raise ValueError('Channels lists must have the same length')
-        newChList = ChannelsList()
-        for index in range(len(self)):
-            newChList.append(self[index]*otherList[index])
+        if len(self) > 1:
+            if len(otherList) > 1:
+                if len(self) != len(otherList):
+                    raise ValueError("Both ChannelsList-like objects must \
+                                     have the same number of channels.")
+                newChList = ChannelsList([self[index]*otherList[index]
+                                          for index in range(len(self))])
+            else:
+                newChList = ChannelsList([self.channels[index] *
+                                          otherList.channels[0]
+                                          for index in range(len(self))])
+        else:
+            if len(otherList) > 1:
+                newChList = ChannelsList([self[0]*otherList[index]
+                                          for index in range(len(otherList))])
+            else:
+                newChList = ChannelsList([self[0]*otherList[0]])
         return newChList
 
     def __truediv__(self, otherList):
         if not isinstance(otherList, ChannelsList):
             raise TypeError('Can\'t "divide" by other \
                             type than a ChannelsList')
-        if len(self) != len(otherList):
-            raise ValueError('Channels lists must have the same length')
-        newChList = ChannelsList()
-        for index in range(len(self)):
-            newChList.append(self[index]/otherList[index])
+        if len(self) > 1:
+            if len(otherList) > 1:
+                if len(self) != len(otherList):
+                    raise ValueError("Both ChannelsList-like objects must \
+                                     have the same number of channels.")
+                newChList = ChannelsList([self[index]/otherList[index]
+                                          for index in range(len(self))])
+            else:
+                newChList = ChannelsList([self.channels[index] /
+                                          otherList.channels[0]
+                                          for index in range(len(self))])
+        else:
+            if len(otherList) > 1:
+                newChList = ChannelsList([self[0]/otherList[index]
+                                          for index in range(len(otherList))])
+            else:
+                newChList = ChannelsList([self[0]/otherList[0]])
         return newChList
 
     def mapping(self):
@@ -952,7 +979,7 @@ class SignalObj(PyTTaObj):
                 result.freqSignal = result_freqSignal
         else:
             result.freqSignal = self.freqSignal / other.freqSignal
-            result.channels = self.channels / other.channels
+        result.channels = self.channels / other.channels
         return result
 
     def __add__(self, other):
@@ -1423,6 +1450,7 @@ class ImpulsiveResponse(PyTTaObj):
                         result.freqSignal[:, channel] \
                             = (YY - XX + np.sqrt(
                                     (XX-YY)**2 + 4*np.abs(XY)**2)) / 2*YX
+
                 else:
                     XY, XX = self._calc_csd_tf(
                             inputSignal.timeSignal,
@@ -1451,7 +1479,8 @@ class ImpulsiveResponse(PyTTaObj):
                 result.freqSignal = (YY - XX
                                      + np.sqrt((XX-YY)**2
                                                + 4*np.abs(XY)**2)) / 2*YX
-        result.channels = outputSignal.channels
+
+        result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
@@ -1563,7 +1592,7 @@ class Measurement(PyTTaObj):
         return
 
 # From now in/outChannel's management done by ChannelsList
-        
+
 #    @property
 #    def inChannel(self):
 #        return self._inChannel
