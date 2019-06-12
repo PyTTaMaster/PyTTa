@@ -241,12 +241,20 @@ class ChannelObj(object):
     def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False):
         self.num = num
         if name is None:
-            self.name = str(self.num)
+            self.name = 'Ch. '+str(self.num)
         else:
             self.name = name
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'num={self.num!r}, '
+                f'name={self.name!r}, '
+                f'unit={self.unit!r}, '
+                f'CF={self.CF!r}, '
+                f'calibCheck={self.calibCheck!r})')
 
     def __mul__(self, other):
         if not isinstance(other, ChannelObj):
@@ -390,6 +398,10 @@ class ChannelsList(object):
             self._channels.append(ChannelObj(1))
         return
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'{self._channels!r})')
+
     def __len__(self):
         return len(self._channels)
 
@@ -458,22 +470,20 @@ class ChannelsList(object):
             if dCh > 0:
                 for i in range(dCh):
                     newIndex = i+rule.num_channels()
-                    self.append(ChannelObj(num=newIndex+1,
-                                           name='Channel '
-                                           + str(newIndex+1)))
+                    self.append(ChannelObj(num=(newIndex+1)))
             if dCh < 0:
                 for i in range(0, -dCh):
                     self._channels.pop(-1)
         if isinstance(rule, list):
             self._channels = []
             for index in rule:
-                self.append(ChannelObj(name='Channel ' +
+                self.append(ChannelObj(num=index+1, name='Channel ' +
                                        str(index)))
         pass
 
-    def _do_rename_channels(self):
+    def rename_channels(self):
         for chIndex in range(len(self)):
-            newname = 'Channel ' + str(chIndex+1)
+            newname = 'Ch. ' + str(chIndex+1)
             self._channels[chIndex].name = newname
 
 
@@ -999,10 +1009,11 @@ class SignalObj(PyTTaObj):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
-                f'ndarray, {self.domain!r}, '
-                f'{self.samplingRate!r}, {self.freqMin!r}, '
-                f'{self.freqMax!r}, '
-                f'{self.comment!r})')
+                f'SignalArray=ndarray, domain={self.domain!r}, '
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r})')
 
     def _calc_spectrogram(self, timeData=None, overlap=0.5,
                           winType='hann', winSize=1024):

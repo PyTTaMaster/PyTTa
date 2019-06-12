@@ -96,7 +96,7 @@ def merge(signal1,*signalObjects):
         timeSignal = np.hstack(( timeSignal, inObj.timeSignal ))
         j += 1
     newSignal = SignalObj(timeSignal,domain='time',samplingRate=signal1.samplingRate,comment=comment)
-    newSignal.channels = channels
+    newSignal.channels.rename_channels()
     return newSignal
 
 def split(signal):
