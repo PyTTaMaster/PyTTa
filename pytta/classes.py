@@ -457,8 +457,10 @@ class ChannelsList(object):
             dCh = rule.num_channels() - len(self)
             if dCh > 0:
                 for i in range(dCh):
-                    self.append(ChannelObj(name='Channel '
-                                           + str(i+rule.num_channels())))
+                    newIndex = i+rule.num_channels()
+                    self.append(ChannelObj(num=newIndex+1,
+                                           name='Channel '
+                                           + str(newIndex+1)))
             if dCh < 0:
                 for i in range(0, -dCh):
                     self._channels.pop(-1)
@@ -632,7 +634,7 @@ class SignalObj(PyTTaObj):
                                            (self.numSamples/2)+1
                                            if self.numSamples % 2 == 0
                                            else (self.numSamples+1)/2)
-#            self.channels.conform_to(self)
+            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -660,7 +662,7 @@ class SignalObj(PyTTaObj):
                                            (self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
                                            else (self.numSamples+1)/2)
-#            self.channels.conform_to(self)
+            self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
@@ -997,7 +999,7 @@ class SignalObj(PyTTaObj):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
-                f'ndarraya, {self.domain!r}, '
+                f'ndarray, {self.domain!r}, '
                 f'{self.samplingRate!r}, {self.freqMin!r}, '
                 f'{self.freqMax!r}, '
                 f'{self.comment!r})')
@@ -1524,14 +1526,12 @@ class Measurement(PyTTaObj):
         super().__init__(*args, **kwargs)
         # device number. For device list use sounddevice.query_devices()
         self.device = device
-        if inChannel is None:
-            self.inChannel = ChannelsList()
-        else:
-            self.inChannel = inChannel  # input channels
-        if outChannel is None:
-            self.outChannel = ChannelsList()
-        else:
-            self.outChannel = outChannel  # output channels
+        self.inChannel = ChannelsList(inChannel)
+        self.outChannel = ChannelsList(outChannel)
+#        if outChannel is None:
+#            self.outChannel = ChannelsList()
+#        else:
+#            self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
 
@@ -1551,37 +1551,42 @@ class Measurement(PyTTaObj):
         self._device = newDevice
         return
 
-    @property
-    def inChannel(self):
-        return self._inChannel
+# From now in/outChannel's management done by ChannelsList
+        
+#    @property
+#    def inChannel(self):
+#        return self._inChannel
+#
+#    @inChannel.setter
+#    def inChannel(self, newInCh):
+#        if newInCh is None:
+#            self._inChannel = ChannelsList(default.inChannel)
+#        if type(newInCh) is int:
+#            self._inChannel = ChannelsList([newInCh])
+#        elif type(newInCh) is list:
+#            self._inChannel = ChannelsList(newInCh)
+#        elif type(newInCh) is ChannelsList:
+#            self._inChannel = newInCh[:]
+#        else:
+#            raise AttributeError('inChannel must be a list; e.g. [1] .')
+#        print(type(self.inChannel)) # DEBUGGING
+#        return
 
-    @inChannel.setter
-    def inChannel(self, newInCh):
-        if type(newInCh) is int:
-            self._inChannel = ChannelsList([newInCh])
-        elif type(newInCh) is list:
-            self._inChannel = ChannelsList(newInCh)
-        elif type(newInCh) is ChannelsList:
-            self._inChannel = newInCh[:]
-        else:
-            raise AttributeError('inChannel must be a list; e.g. [1] .')
-        return
-
-    @property
-    def outChannel(self):
-        return self._outChannel
-
-    @outChannel.setter
-    def outChannel(self, newOutCh):
-        if type(newOutCh) is int:
-            self._outChannel = ChannelsList([newOutCh])
-        elif type(newOutCh) is list:
-            self._outChannel = ChannelsList(newOutCh)
-        elif type(newOutCh) is ChannelsList:
-            self._inChannel = newOutCh[:]
-        else:
-            raise AttributeError('inChannel must be a list; e.g. [1] .')
-        return
+#    @property
+#    def outChannel(self):
+#        return self._outChannel
+#
+#    @outChannel.setter
+#    def outChannel(self, newOutCh):
+#        if type(newOutCh) is int:
+#            self._outChannel = ChannelsList([newOutCh])
+#        elif type(newOutCh) is list:
+#            self._outChannel = ChannelsList(newOutCh)
+#        elif type(newOutCh) is ChannelsList:
+#            self._inChannel = newOutCh[:]
+#        else:
+#            raise AttributeError('inChannel must be a list; e.g. [1] .')
+#        return
 
 #    @property
 #    def channelName(self):
@@ -1813,7 +1818,6 @@ class PlayRecMeasure(Measurement):
                               domain='time',
                               samplingRate=self.samplingRate)
         recording.channels = self.inChannel
-        print(type(recording.channels))
         recording.timeStamp = timeStamp
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
