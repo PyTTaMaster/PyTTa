@@ -65,6 +65,8 @@ class AudioPlayer(object):
         return
 
     def exit(self):
+        if self.stream.active:
+            self.stream.close()
         sys.exit()
         return
 
