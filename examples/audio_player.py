@@ -79,17 +79,18 @@ class AudioPlayer(object):
             if self.file is None:
                 self.load()
 
-            # sys.stdin is a file-like object with the command line inputs
+            # read command from command line
             command = input()
 
-            # check if the read command can be used by the application
+            # check if the command can be used by the application
             if command in self.commandList:
+
+                # True: evaluates it as a function
                 eval('self.' + command[1:] + '()')
 
-            # or if it is ignored
+            # False: it is ignored
             else:
                 print("Unknown command", command, "\nSkipping.")
-                pass
 
         # untill program closure
         return
