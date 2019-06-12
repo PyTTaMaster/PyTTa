@@ -5,16 +5,41 @@ import sys
 import pytta
 
 
+def parseArgs(args):
+    file = None
+    for arg in args:
+        if arg in ['python', 'python3', __name__]:
+            pass
+        elif arg[-3:] in ['wav', 'wave', 'WAV', 'WAVE', 'Wav', 'Wave']:
+            file = arg
+    return file
+
+
 class AudioPlayer(object):
     """
     Example class for simple audio player app based on PyTTa
     """
-    def __init__(self, fileName):
+
+    def __init__(self, fileName=None):
         """
         fileName is a str with the absolute or relative path to a WAVE file
         """
-        self.audio = pytta.read_wav(fileName)
+        print("Welcome to MyAudioPlayer!")
+        print("To quit the program use the command:\n -exit")
+
+        self.load(fileName)
+        self.commandList = ['-load', '-play', '-pause', '-stop', '-exit']
+        return
+
+    def load(self, fileName=None):
+        if fileName is None:
+            print("Please, insert a file name: ")
+            fileName = input()
+        self.file = fileName
+        self.audio = pytta.read_wav(self.file)
         self.streaming = pytta.generate.stream('O', excitation=self.audio)
+        print("Opened file", self.file)
+        print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
         return
 
     def play(self):
@@ -39,30 +64,35 @@ class AudioPlayer(object):
         self.kn = 0
         return
 
+    def exit(self):
+        sys.exit()
+        return
+
     def exec_(self):
         """
         Application context for continuous read of command line arguments to
         control the reproduction of the audio file
         """
+
         # It goes on, and on, and on, and on, and on, and on, ..., and on, ...
         while True:
+            if self.file is None:
+                self.load()
+
             # sys.stdin is a file-like object with the command line inputs
-            command = sys.stdin.readline()
+            command = input()
 
             # check if the read command can be used by the application
-            if command in ['stop', 'play', 'pause']:
-                eval('self.' + command)
-
-            # or if it ends it
-            elif command == 'exit':
-                break
+            if command in self.commandList:
+                eval('self.' + command[1:] + '()')
 
             # or if it is ignored
             else:
+                print("Unknown command", command, "\nSkipping.")
                 pass
 
         # untill program closure
-        return sys.exit()
+        return
 
 
 if __name__ == "__main__":
@@ -70,9 +100,9 @@ if __name__ == "__main__":
     This IF statement guarantees that the execution of the file will only ocurr
     when explicitly told so, e.g.:
 
-        ~ $ python audio_player.py 'mywavefile.wav'
+        ~ $ python audio_player.py mywavefile.wav
 
     """
-
-    player = AudioPlayer(sys.argv[1])
+    file = parseArgs(sys.argv[:])
+    player = AudioPlayer(file)
     sys.exit(player.exec_())

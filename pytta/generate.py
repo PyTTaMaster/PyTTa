@@ -468,7 +468,7 @@ def stream(IO='IO',
     if IO in ['I', 'in', 'input']:
         Istreaming = Streaming(device=device, integration=integration,
                                inChannels=inChannels, duration=duration,
-                               IOcallback=callback, samplingRate=samplingRate,
+                               callback=callback, samplingRate=samplingRate,
                                *args, **kwargs)
         return Istreaming
 
@@ -478,7 +478,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
-                                   IOcallback=callback,
+                                   callback=callback,
                                    *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -489,7 +489,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
-                                   IOcallback=callback,
+                                   callback=callback,
                                    *args, **kwargs)
         return Ostreaming
 
@@ -502,7 +502,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
-                                    IOcallback=callback,
+                                    callback=callback,
                                     *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -516,7 +516,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
-                                    IOcallback=callback,
+                                    callback=callback,
                                     *args, **kwargs)
         return IOstreaming
 

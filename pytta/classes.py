@@ -2248,7 +2248,7 @@ class Streaming(PyTTaObj):
 
     def __timeout(self):
         self.stop()
-        self._call_for_stream(self.IOcallback)
+        self._call_for_stream(self.callback)
         self.kn = 0
         if self.inData is not None:
             self.inData = self.inData[1:, :]
