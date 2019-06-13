@@ -5,6 +5,9 @@
 # PyTTa compressed file
 *.pytta
 
+# DS
+*.DS_Store
+
 # System files
 *.swp
 
