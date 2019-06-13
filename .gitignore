@@ -2,6 +2,12 @@
 *.pyc
 *.cpython-*.pyc
 
+# PyTTa compressed file
+*.pytta
+
+# System files
+*.swp
+
 # Byte-compiled / optimized / DLL files
 __pycache__/*
 pytta/__pycache__/*
