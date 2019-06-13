@@ -191,6 +191,15 @@ def peak_time(signal):
 
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
+    """
+    Saves any number of PyTTaObj subclasses' objects to fileName.pytta file.
+
+    Just calls .save() method of each class and packs them all into a major
+    .pytta file along with a Meta.json file containing the fileName of each
+    saved object.
+
+    The .pytta extension must not be appended to the fileName
+    """
     meta = {}
     with zf.ZipFile(fileName + '.pytta', 'w') as zdir:
         for idx, obj in enumerate(PyTTaObjs):
@@ -206,23 +215,19 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
 
 
 def load(fileName: str):
+    """
+    Loads .pytta files and parses it's types to the correct objects.
+    """
     if fileName.split('.')[-1] == 'pytta':
-        output = []
         with zf.ZipFile(fileName, 'r') as zdir:
             objects = zdir.namelist()
             for obj in objects:
                 if obj.split('.')[-1] == 'json':
                     meta = obj
             zdir.extractall()
-            obj = __parse_load(meta)
-            if type(obj) is str:
-                pass
-            else:
-                output.append(obj)
+            output = __parse_load(meta)
     else:
         raise ValueError("Load function only works with *.pytta files")
-    if len(output) == 1:
-        output = output[0]
     return output
 
 
