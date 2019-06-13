@@ -394,7 +394,7 @@ def measurement(kind = 'playrec',
                 except:
                     recordObj.fftDegree = default.fftDegree
         else:
-            recordObj.domain = 'samples'
+            recordObj.lengthDomain = 'samples'
             recordObj.fftDegree = default.fftDegree
         return recordObj
 	

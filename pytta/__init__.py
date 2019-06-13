@@ -52,7 +52,8 @@ default = properties.Default()
 from .classes import SignalObj, ImpulsiveResponse,\
                     RecMeasure, PlayRecMeasure, FRFMeasure, Streaming
 from .functions import read_wav, write_wav, merge, list_devices,\
-                    fft_convolve, find_delay, corr_coef, resample, peak_time
+                    fft_convolve, find_delay, corr_coef, resample, peak_time,\
+                    save, load
 from . import generate
 
 __version__ = '0.1.0rc'  # package version
@@ -71,6 +72,8 @@ __all__ = [  # Submodules
            'resample',
            'corr_coef',
            'peak_time',
+           'save',
+           'load',
 
            # Classes
            'RecMeasure',
