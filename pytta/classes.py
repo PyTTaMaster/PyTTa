@@ -37,7 +37,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as ss
 import scipy.io as sio
 import sounddevice as sd
-from pytta import default
+from pytta import default, units
 from typing import Optional, List
 import time
 
@@ -345,22 +345,10 @@ class ChannelObj(object):
     @unit.setter
     def unit(self, newunit):
         if isinstance(newunit, str):
-            if newunit == 'V':
+            if newunit in units:
                 self._unit = newunit
-                self.dBName = 'dBu'
-                self.dBRef = 0.775
-            elif newunit == 'Pa':
-                self._unit = newunit
-                self.dBName = 'dB'
-                self.dBRef = 2e-5
-            elif newunit == 'W/m^2':
-                self._unit = newunit
-                self.dBName = 'dB'
-                self.dBRef = 1e-12
-            elif newunit == 'FS':
-                self._unit = 'FS'
-                self.dBName = 'dBFs'
-                self.dBRef = 1
+                self.dBName = units[newunit][0]
+                self.dBRef = units[newunit][1]
             else:
                 self._unit = newunit
                 self.dBName = 'dB'
