@@ -204,6 +204,70 @@ class PyTTaObj(object):
         return
 
 
+class CoordinateObj(object):
+
+    def __init__(self,
+                 polar=[0, 0, 0],
+                 point=[0, 0, 0],
+                 ref='Your eyes',
+                 unit='m'):
+        self.point = point
+        if self.point == [0, 0, 0]:
+            self.polar = polar
+        self.ref = ref
+        self.unit = unit
+
+    @property
+    def point(self):
+        return self._point
+
+    @point.setter
+    def point(self, newpoint):
+        if isinstance(newpoint, list) and len(newpoint) == 3:
+            self._point = newpoint
+            # Calc polar coord
+        else:
+            TypeError('Cartesian three-dimensional coordinates must be a list,\
+                       e.g. [X, Y, Z])')
+
+    @property
+    def polar(self):
+        return self._polar
+
+    @polar.setter
+    def polar(self, newpolar):
+        if isinstance(newpolar, list) and len(newpolar) == 3:
+            self._polar = newpolar
+            # Calc cartesian coord
+        else:
+            TypeError('Polar three-dimensional coordinates must be a list,\
+                       e.g. [Distance, Azimuth, Elevation])')
+
+    @property
+    def ref(self):
+        return self._ref
+
+    @ref.setter
+    def ref(self, newref):
+        if isinstance(newref, str):
+            self._ref = newref
+        else:
+            TypeError('ref must be a string,\
+                       e.g. \'Room inferior back left corner\'')
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @unit.setter
+    def unit(self, newunit):
+        if isinstance(newunit, str):
+            self._unit = newunit
+        else:
+            TypeError('unit must be a string,\
+                       e.g. \'m\'')
+
+
 class ChannelObj(object):
     """
     Base class for signal meta information about the IO channel it's been
@@ -247,6 +311,7 @@ class ChannelObj(object):
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
+        self.coordinates = CoordinateObj()
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
