@@ -1273,12 +1273,9 @@ class ImpulsiveResponse(PyTTaObj):
             rec = self.recording.save('recording')
             zdir.write(rec)
             os.remove(rec)
-#            sysht = self.systemSignal.save('response')
-#            zdir.write(sysht)
-#            os.remove(sysht)
             out = self._to_dict()
             out['SignalAddress'] = {'excitation': excit,
-                                   'recording': rec}
+                                    'recording': rec}
             with open('ImpulsiveResponse.json', 'w') as f:
                 json.dump(out, f, indent=4)
             zdir.write('ImpulsiveResponse.json')
@@ -1604,10 +1601,6 @@ class Measurement(PyTTaObj):
         self.device = device
         self.inChannel = ChannelsList(inChannel)
         self.outChannel = ChannelsList(outChannel)
-#        if outChannel is None:
-#            self.outChannel = ChannelsList()
-#        else:
-#            self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
 

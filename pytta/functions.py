@@ -3,7 +3,9 @@
 Functions:
 -----------
 
-    This submodule carries a set of useful functions of general purpouses when using PyTTa, like reading and writing wave files, seeing the audio IO devices available and some signal processing tools.
+    This submodule carries a set of useful functions of general purpouses when
+    using PyTTa, like reading and writing wave files, seeing the audio IO
+    devices available and some signal processing tools.
 
     Available functions:
     ---------------------
@@ -42,7 +44,9 @@ import copy as cp
 
 def list_devices():
     """
-    Shortcut to sounddevice.query_devices(). Made to exclude the need of importing Sounddevice directly just to find out which audio devices can be used.
+    Shortcut to sounddevice.query_devices(). Made to exclude the need of
+    importing Sounddevice directly just to find out which audio devices can be
+    used.
 
         >>> pytta.list_devices()
 
@@ -61,6 +65,7 @@ def read_wav(fileName):
         data = data/(2**31)
     signal = SignalObj(data, 'time', samplingRate=samplingRate)
     return signal
+
 
 def write_wav(fileName, signalIn):
     """
@@ -93,13 +98,7 @@ def merge(signal1, *signalObjects):
             \n To merge signals they must have the same length!\
             \n SignalObj 1 and '+str(j+1)+' have different lengths.'
             raise AttributeError(message)
-#        if signal1.unit != inObj.unit:
-#            message ='\
-#            \n To merge signals they must have the same unit!\
-#            \n SignalObj 1 and '+str(j+1)+' have different units.'
-#            raise AttributeError(message)
         comment = comment + ' / ' + inObj.comment
-#        print(inObj.channels)
         for ch in inObj.channels:
             channels.append(ch)
         timeSignal = np.hstack((timeSignal, inObj.timeSignal))
@@ -129,7 +128,8 @@ def fft_convolve(signal1, signal2):
 
 def find_delay(signal1, signal2):
     """
-    Cross Correlation alternative, more efficient fft based method to calculate time shift between two signals.
+    Cross Correlation alternative, more efficient fft based method to calculate
+    time shift between two signals.
 
     >>> shift = pytta.find_delay(signal1,signal2)
 
@@ -185,6 +185,15 @@ def peak_time(signal):
 
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
+    """
+    Saves any number of PyTTaObj subclasses' objects to fileName.pytta file.
+
+    Just calls .save() method of each class and packs them all into a major
+    .pytta file along with a Meta.json file containing the fileName of each
+    saved object.
+
+    The .pytta extension must not be appended to the fileName
+    """
     meta = {}
     with zf.ZipFile(fileName + '.pytta', 'w') as zdir:
         for idx, obj in enumerate(PyTTaObjs):
@@ -200,23 +209,19 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
 
 
 def load(fileName: str):
+    """
+    Loads .pytta files and parses it's types to the correct objects.
+    """
     if fileName.split('.')[-1] == 'pytta':
-        output = []
         with zf.ZipFile(fileName, 'r') as zdir:
             objects = zdir.namelist()
             for obj in objects:
                 if obj.split('.')[-1] == 'json':
                     meta = obj
             zdir.extractall()
-            obj = __parse_load(meta)
-            if type(obj) is str:
-                pass
-            else:
-                output.append(obj)
+            output = __parse_load(meta)
     else:
         raise ValueError("Load function only works with *.pytta files")
-    if len(output) == 1:
-        output = output[0]
     return output
 
 
@@ -263,8 +268,8 @@ def __parse_load(className):
     elif name == 'FRFMeasure':
         inch = list(1 + np.arange(len(openJson['inChannel'])))
         excit = load(openJson['excitationAddress'])
-        out = PlayRecMeasure(excitation=excit, device=openJson['device'],
-                             inChannel=inch)
+        out = FRFMeasure(excitation=excit, device=openJson['device'],
+                         inChannel=inch)
         out.inChannel = __parse_channels(openJson['inChannel'],
                                          out.inChannel)
         os.remove(openJson['excitationAddress'])
