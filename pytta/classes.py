@@ -270,9 +270,13 @@ class ChannelObj(object):
     def __truediv__(self, other):
         if not isinstance(other, ChannelObj):
             raise TypeError('Can\'t "divide" by other type than a ChannelObj')
+        if self.unit == other.unit:
+            newunit = 'FS'
+        else:
+            newunit = self.unit+'/'+other.unit
         newCh = ChannelObj(self.num,
                            # name=self.name+'/'+other.name,
-                           unit=self.unit+'/'+other.unit,
+                           unit=newunit,
                            CF=self.CF/other.CF,
                            calibCheck=self.calibCheck if self.calibCheck
                            else other.calibCheck)
