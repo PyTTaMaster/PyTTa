@@ -47,9 +47,9 @@ Inside each submodule the user will find instructions on the available tools, an
 
 For now, the installation must be made through pip and git, as follows:
 
-    >>> pip install git+https://www.github.com/pyttamaster/pytta@refactory
+    >>> pip install git+https://www.github.com/pyttamaster/pytta
 
-This will install directly the refactory branch, which is the most up to date branch on the repository
+This will install directly the refactory branch, which is the most stable branch on the repository
 
 ### Contributing and Credits
 
