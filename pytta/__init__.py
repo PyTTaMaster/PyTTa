@@ -52,7 +52,7 @@ default = properties.Default()
 from .classes import SignalObj, ImpulsiveResponse,\
                     RecMeasure, PlayRecMeasure, FRFMeasure, Streaming
 from .functions import read_wav, write_wav, merge, list_devices,\
-                    fft_convolve, find_delay, corr_coef, resample, peak_time,
+                    fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
 from . import generate
 
