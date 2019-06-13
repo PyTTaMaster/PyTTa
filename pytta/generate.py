@@ -164,7 +164,7 @@ def sweep(freqMin = None,
     sweepSignal = SignalObj(signalArray=timeSignal,domain='time',samplingRate=samplingRate) 
     # transforms into a pytta signalObj
     
-    sweepSignal._freqMin, sweepSignal._freqMax \
+    sweepSignal.freqMin, sweepSignal.freqMax \
             = freqLimits[0], freqLimits[1] 
     # pass on the frequency limits considering the fade in and fade out
     return sweepSignal
@@ -369,18 +369,17 @@ def measurement(kind = 'playrec',
     if freqMax is None: freqMax = default.freqMax
     if samplingRate is None: samplingRate = default.samplingRate
     if device is None: device = default.device
-    if inChannel is None: inChannel = default.inChannel
-    if outChannel is None: outChannel = default.outChannel
+    if inChannel is None: inChannel = default.inChannel[:]
+    if outChannel is None: outChannel = default.outChannel[:]
 
-##%% Kind REC
-    if kind in ['rec','record','recording','r']:
-        recordObj = RecMeasure(samplingRate = samplingRate,
-                            freqMin = freqMin,
-                            freqMax = freqMax,
-                            device = device,
-                            inChannel = inChannel,
-                            **kwargs,
-                            )
+# Kind REC
+    if kind in ['rec', 'record', 'recording', 'r']:
+        recordObj = RecMeasure(samplingRate=samplingRate,
+                               freqMin=freqMin,
+                               freqMax=freqMax,
+                               device=device,
+                               inChannel=inChannel,
+                               **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
@@ -395,13 +394,13 @@ def measurement(kind = 'playrec',
                 except:
                     recordObj.fftDegree = default.fftDegree
         else:
-            recordObj.domain = 'samples'
+            recordObj.lengthDomain = 'samples'
             recordObj.fftDegree = default.fftDegree
         return recordObj
 	
 ##%% Kind PLAYREC    
     elif kind in ['playrec','playbackrecord','pr']:
-        if ('excitation' in kwargs) or args:
+        if ('excitation' in kwargs.keys()) or args:
             signalIn = kwargs.get('excitation') or args[0]
             kwargs.pop('excitation', None)
         else:
@@ -469,7 +468,7 @@ def stream(IO='IO',
     if IO in ['I', 'in', 'input']:
         Istreaming = Streaming(device=device, integration=integration,
                                inChannels=inChannels, duration=duration,
-                               IOcallback=callback, samplingRate=samplingRate,
+                               callback=callback, samplingRate=samplingRate,
                                *args, **kwargs)
         return Istreaming
 
@@ -479,7 +478,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
-                                   IOcallback=callback,
+                                   callback=callback,
                                    *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -490,7 +489,7 @@ def stream(IO='IO',
                                    outChannels=outChannels, duration=duration,
                                    excitationData=excitData,
                                    samplingRate=samplingRate,
-                                   IOcallback=callback,
+                                   callback=callback,
                                    *args, **kwargs)
         return Ostreaming
 
@@ -503,7 +502,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
-                                    IOcallback=callback,
+                                    callback=callback,
                                     *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
@@ -517,7 +516,7 @@ def stream(IO='IO',
                                     duration=duration,
                                     excitationData=excitData,
                                     samplingRate=samplingRate,
-                                    IOcallback=callback,
+                                    callback=callback,
                                     *args, **kwargs)
         return IOstreaming
 

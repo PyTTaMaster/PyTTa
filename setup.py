@@ -13,7 +13,7 @@ from setuptools import setup
 
 settings = {
     'name': 'PyTTa',
-    'version': '0.0.0a2',
+    'version': '0.1.0b',
     'description': 'Signal processing tools for acoustics and vibrations in python.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
     'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
