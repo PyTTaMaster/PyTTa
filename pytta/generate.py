@@ -35,6 +35,7 @@ Generate
 from pytta import default
 from .classes import SignalObj, RecMeasure, FRFMeasure,\
         PlayRecMeasure, Streaming
+from .filter import OctFilter
 from scipy import signal
 import numpy as np
 
@@ -523,3 +524,14 @@ def stream(IO='IO',
     else:
         raise ValueError("The IO parameter could not identify whether the\
                          stream will be Input, Output or Input-Output type.")
+
+
+def filter(order: int = 4,
+           nthOct: int = 3,
+           samplingRate: int = 44100,
+           minFreq: float = 20,
+           maxFreq: float = 16000,
+           refFreq: float = 1000,
+           base: int = 10) -> OctFilter:
+    return OctFilter(order, nthOct, samplingRate,
+                     minFreq, maxFreq, refFreq, base)
