@@ -98,13 +98,7 @@ def merge(signal1, *signalObjects):
             \n To merge signals they must have the same length!\
             \n SignalObj 1 and '+str(j+1)+' have different lengths.'
             raise AttributeError(message)
-#        if signal1.unit != inObj.unit:
-#            message ='\
-#            \n To merge signals they must have the same unit!\
-#            \n SignalObj 1 and '+str(j+1)+' have different units.'
-#            raise AttributeError(message)
         comment = comment + ' / ' + inObj.comment
-#        print(inObj.channels)
         for ch in inObj.channels:
             channels.append(ch)
         timeSignal = np.hstack((timeSignal, inObj.timeSignal))
