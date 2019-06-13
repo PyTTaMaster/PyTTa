@@ -3,7 +3,9 @@
 Functions:
 -----------
 
-    This submodule carries a set of useful functions of general purpouses when using PyTTa, like reading and writing wave files, seeing the audio IO devices available and some signal processing tools.
+    This submodule carries a set of useful functions of general purpouses when
+    using PyTTa, like reading and writing wave files, seeing the audio IO
+    devices available and some signal processing tools.
 
     Available functions:
     ---------------------
@@ -42,7 +44,9 @@ import copy as cp
 
 def list_devices():
     """
-    Shortcut to sounddevice.query_devices(). Made to exclude the need of importing Sounddevice directly just to find out which audio devices can be used.
+    Shortcut to sounddevice.query_devices(). Made to exclude the need of
+    importing Sounddevice directly just to find out which audio devices can be
+    used.
 
         >>> pytta.list_devices()
 
@@ -61,6 +65,7 @@ def read_wav(fileName):
         data = data/(2**31)
     signal = SignalObj(data, 'time', samplingRate=samplingRate)
     return signal
+
 
 def write_wav(fileName, signalIn):
     """
@@ -129,7 +134,8 @@ def fft_convolve(signal1, signal2):
 
 def find_delay(signal1, signal2):
     """
-    Cross Correlation alternative, more efficient fft based method to calculate time shift between two signals.
+    Cross Correlation alternative, more efficient fft based method to calculate
+    time shift between two signals.
 
     >>> shift = pytta.find_delay(signal1,signal2)
 
@@ -263,8 +269,8 @@ def __parse_load(className):
     elif name == 'FRFMeasure':
         inch = list(1 + np.arange(len(openJson['inChannel'])))
         excit = load(openJson['excitationAddress'])
-        out = PlayRecMeasure(excitation=excit, device=openJson['device'],
-                             inChannel=inch)
+        out = FRFMeasure(excitation=excit, device=openJson['device'],
+                         inChannel=inch)
         out.inChannel = __parse_channels(openJson['inChannel'],
                                          out.inChannel)
         os.remove(openJson['excitationAddress'])

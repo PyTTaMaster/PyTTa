@@ -1272,9 +1272,6 @@ class ImpulsiveResponse(PyTTaObj):
             rec = self.recording.save('recording')
             zdir.write(rec)
             os.remove(rec)
-#            sysht = self.systemSignal.save('response')
-#            zdir.write(sysht)
-#            os.remove(sysht)
             out = self._to_dict()
             out['SignalAddress'] = {'excitation': excit,
                                     'recording': rec}
@@ -1603,10 +1600,6 @@ class Measurement(PyTTaObj):
         self.device = device
         self.inChannel = ChannelsList(inChannel)
         self.outChannel = ChannelsList(outChannel)
-#        if outChannel is None:
-#            self.outChannel = ChannelsList()
-#        else:
-#            self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
 
@@ -1625,61 +1618,6 @@ class Measurement(PyTTaObj):
     def device(self, newDevice):
         self._device = newDevice
         return
-
-# From now in/outChannel's management done by ChannelsList
-
-#    @property
-#    def inChannel(self):
-#        return self._inChannel
-#
-#    @inChannel.setter
-#    def inChannel(self, newInCh):
-#        if newInCh is None:
-#            self._inChannel = ChannelsList(default.inChannel)
-#        if type(newInCh) is int:
-#            self._inChannel = ChannelsList([newInCh])
-#        elif type(newInCh) is list:
-#            self._inChannel = ChannelsList(newInCh)
-#        elif type(newInCh) is ChannelsList:
-#            self._inChannel = newInCh[:]
-#        else:
-#            raise AttributeError('inChannel must be a list; e.g. [1] .')
-#        print(type(self.inChannel)) # DEBUGGING
-#        return
-
-#    @property
-#    def outChannel(self):
-#        return self._outChannel
-#
-#    @outChannel.setter
-#    def outChannel(self, newOutCh):
-#        if type(newOutCh) is int:
-#            self._outChannel = ChannelsList([newOutCh])
-#        elif type(newOutCh) is list:
-#            self._outChannel = ChannelsList(newOutCh)
-#        elif type(newOutCh) is ChannelsList:
-#            self._inChannel = newOutCh[:]
-#        else:
-#            raise AttributeError('inChannel must be a list; e.g. [1] .')
-#        return
-
-#    @property
-#    def channelName(self):
-#        return self._channelName
-#
-#    @channelName.setter
-#    def channelName(self, channelName):
-#        if channelName is None:
-#            self._channelName = []
-#            for chIndex in range(0, len(self.inChannel)):
-#                self._channelName.append('Channel ' + str(chIndex + 1))
-#        elif len(channelName) == len(self.inChannel):
-#            self._channelName = []
-#            self._channelName = channelName
-#        else:
-#            raise AttributeError('Incompatible number of channel names and\
-#                                 channel number.')
-#        return
 
 
 # RecMeasure class
@@ -2329,7 +2267,10 @@ class Streaming(PyTTaObj):
                        refPrms=1.00, refFreq=1000):
         """
         .. method:: calibPressure(chIndex, refSignalObj, refPrms, refFreq):
-            use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor and apply to every incoming audio on specified channel.
+            use informed SignalObj, with a calibration acoustic pressure
+            signal, and the reference RMS acoustic pressure to calculate the
+            Correction Factor and apply to every incoming audio on specified
+            channel.
 
             >>> Streaming.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
 
