@@ -317,11 +317,13 @@ class ChannelObj(object):
     @num.setter
     def num(self, ber):
         if type(ber) is not int:
-            raise TypeError("Channel number must be an integer.")
+            try:
+                ber = int(ber)
+            except ValueError:
+                raise TypeError("Channel number must be an integer.")
         elif ber < 1:
             raise ValueError("Channel number must be greater than 1.")
-        else:
-            self._num = ber
+        self._num = ber
         return
 
     @property
@@ -548,6 +550,7 @@ class ChannelsList(object):
         for chIndex in range(len(self)):
             newname = 'Ch. ' + str(chIndex+1)
             self._channels[chIndex].name = newname
+        return
 
 
 class SignalObj(PyTTaObj):
@@ -657,14 +660,14 @@ class SignalObj(PyTTaObj):
         super().__init__(*args, **kwargs)
 
         self.channels = ChannelsList()
-        self.domain = domain or args[1]
-        if self.domain == 'freq':
+        self.lengthDomain = domain
+        if self.lengthDomain == 'freq':
             self.freqSignal = signalArray  # [-] signal in frequency domain
-        elif self.domain == 'time':
+        elif self.lengthDomain == 'time':
             self.timeSignal = signalArray  # [-] signal in time domain
         else:
             self.timeSignal = signalArray
-            self.domain = 'time'
+            self.lengthDomain = 'time'
             print('Taking the input as a time domain signal')
 
         self.channels.conform_to(self)
@@ -1070,7 +1073,7 @@ class SignalObj(PyTTaObj):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
-                f'SignalArray=ndarray, domain={self.domain!r}, '
+                f'SignalArray=ndarray, domain={self.lengthDomain!r}, '
                 f'samplingRate={self.samplingRate!r}, '
                 f'freqMin={self.freqMin!r}, '
                 f'freqMax={self.freqMax!r}, '
@@ -1270,13 +1273,9 @@ class ImpulsiveResponse(PyTTaObj):
             rec = self.recording.save('recording')
             zdir.write(rec)
             os.remove(rec)
-            sysht = self.systemSignal.save('response')
-            zdir.write(sysht)
-            os.remove(sysht)
             out = self._to_dict()
-            out['SignalAddres'] = {'excitation': excit,
-                                   'recording': rec,
-                                   'system': sysht}
+            out['SignalAddress'] = {'excitation': excit,
+                                    'recording': rec}
             with open('ImpulsiveResponse.json', 'w') as f:
                 json.dump(out, f, indent=4)
             zdir.write('ImpulsiveResponse.json')
@@ -1602,10 +1601,6 @@ class Measurement(PyTTaObj):
         self.device = device
         self.inChannel = ChannelsList(inChannel)
         self.outChannel = ChannelsList(outChannel)
-#        if outChannel is None:
-#            self.outChannel = ChannelsList()
-#        else:
-#            self.outChannel = outChannel  # output channels
         self.blocking = blocking
         return
 
@@ -1624,61 +1619,6 @@ class Measurement(PyTTaObj):
     def device(self, newDevice):
         self._device = newDevice
         return
-
-# From now in/outChannel's management done by ChannelsList
-
-#    @property
-#    def inChannel(self):
-#        return self._inChannel
-#
-#    @inChannel.setter
-#    def inChannel(self, newInCh):
-#        if newInCh is None:
-#            self._inChannel = ChannelsList(default.inChannel)
-#        if type(newInCh) is int:
-#            self._inChannel = ChannelsList([newInCh])
-#        elif type(newInCh) is list:
-#            self._inChannel = ChannelsList(newInCh)
-#        elif type(newInCh) is ChannelsList:
-#            self._inChannel = newInCh[:]
-#        else:
-#            raise AttributeError('inChannel must be a list; e.g. [1] .')
-#        print(type(self.inChannel)) # DEBUGGING
-#        return
-
-#    @property
-#    def outChannel(self):
-#        return self._outChannel
-#
-#    @outChannel.setter
-#    def outChannel(self, newOutCh):
-#        if type(newOutCh) is int:
-#            self._outChannel = ChannelsList([newOutCh])
-#        elif type(newOutCh) is list:
-#            self._outChannel = ChannelsList(newOutCh)
-#        elif type(newOutCh) is ChannelsList:
-#            self._inChannel = newOutCh[:]
-#        else:
-#            raise AttributeError('inChannel must be a list; e.g. [1] .')
-#        return
-
-#    @property
-#    def channelName(self):
-#        return self._channelName
-#
-#    @channelName.setter
-#    def channelName(self, channelName):
-#        if channelName is None:
-#            self._channelName = []
-#            for chIndex in range(0, len(self.inChannel)):
-#                self._channelName.append('Channel ' + str(chIndex + 1))
-#        elif len(channelName) == len(self.inChannel):
-#            self._channelName = []
-#            self._channelName = channelName
-#        else:
-#            raise AttributeError('Incompatible number of channel names and\
-#                                 channel number.')
-#        return
 
 
 # RecMeasure class
@@ -1742,15 +1682,12 @@ class RecMeasure(Measurement):
         else:
             self._timeLength = None
             self._fftDegree = None
+        self._outChannel = None
         return
 
     def _to_dict(self):
         sup = super()._to_dict()
-        if self.lengthDomain == 'samples':
-            length = self.fftDegree
-        else:
-            length = self.timeLength
-        sup['length'] = [self.lengthDomain, length]
+        sup['fftDegree'] = self.fftDegree
         return sup
 
     def save(self, dirname=time.ctime(time.time())):
@@ -1870,6 +1807,7 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
+            self.outChannel = excitation.channels
         return
 
 # PlayRec Methods
@@ -1902,6 +1840,7 @@ class PlayRecMeasure(Measurement):
 
     def _to_dict(self):
         sup = super()._to_dict()
+        sup['excitationAddress'] = self.excitation._to_dict()
         return sup
 
     def save(self, dirname=time.ctime(time.time())):
@@ -1909,6 +1848,7 @@ class PlayRecMeasure(Measurement):
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
             excit = self.excitation.save('excitation')
+            dic['excitationAddress'] = excit
             zdir.write(excit)
             os.remove(excit)
             with open('PlayRecMeasure.json', 'w') as f:
@@ -2019,6 +1959,20 @@ class FRFMeasure(PlayRecMeasure):
         self.winSize = winSize
         self.overlap = overlap
         return
+
+    def save(self, dirname=time.ctime(time.time())):
+        dic = self._to_dict()
+        name = dirname + '.pytta'
+        with zipfile.ZipFile(name, 'w') as zdir:
+            excit = self.excitation.save('excitation')
+            dic['excitationAddress'] = excit
+            zdir.write(excit)
+            os.remove(excit)
+            with open('FRFMeasure.json', 'w') as f:
+                json.dump(dic, f, indent=4)
+            zdir.write('FRFMeasure.json')
+            os.remove('FRFMeasure.json')
+        return name
 
     def run(self):
         """
@@ -2314,7 +2268,10 @@ class Streaming(PyTTaObj):
                        refPrms=1.00, refFreq=1000):
         """
         .. method:: calibPressure(chIndex, refSignalObj, refPrms, refFreq):
-            use informed SignalObj, with a calibration acoustic pressure signal, and the reference RMS acoustic pressure to calculate the Correction Factor and apply to every incoming audio on specified channel.
+            use informed SignalObj, with a calibration acoustic pressure
+            signal, and the reference RMS acoustic pressure to calculate the
+            Correction Factor and apply to every incoming audio on specified
+            channel.
 
             >>> Streaming.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
 
