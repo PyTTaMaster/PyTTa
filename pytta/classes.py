@@ -317,11 +317,13 @@ class ChannelObj(object):
     @num.setter
     def num(self, ber):
         if type(ber) is not int:
-            raise TypeError("Channel number must be an integer.")
+            try:
+                ber = int(ber)
+            except ValueError:
+                raise TypeError("Channel number must be an integer.")
         elif ber < 1:
             raise ValueError("Channel number must be greater than 1.")
-        else:
-            self._num = ber
+        self._num = ber
         return
 
     @property
@@ -657,14 +659,14 @@ class SignalObj(PyTTaObj):
         super().__init__(*args, **kwargs)
 
         self.channels = ChannelsList()
-        self.domain = domain or args[1]
-        if self.domain == 'freq':
+        self.lengthDomain = domain
+        if self.lengthDomain == 'freq':
             self.freqSignal = signalArray  # [-] signal in frequency domain
-        elif self.domain == 'time':
+        elif self.lengthDomain == 'time':
             self.timeSignal = signalArray  # [-] signal in time domain
         else:
             self.timeSignal = signalArray
-            self.domain = 'time'
+            self.lengthDomain = 'time'
             print('Taking the input as a time domain signal')
 
         self.channels.conform_to(self)
@@ -1070,7 +1072,7 @@ class SignalObj(PyTTaObj):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
-                f'SignalArray=ndarray, domain={self.domain!r}, '
+                f'SignalArray=ndarray, domain={self.lengthDomain!r}, '
                 f'samplingRate={self.samplingRate!r}, '
                 f'freqMin={self.freqMin!r}, '
                 f'freqMax={self.freqMax!r}, '
@@ -1270,13 +1272,12 @@ class ImpulsiveResponse(PyTTaObj):
             rec = self.recording.save('recording')
             zdir.write(rec)
             os.remove(rec)
-            sysht = self.systemSignal.save('response')
-            zdir.write(sysht)
-            os.remove(sysht)
+#            sysht = self.systemSignal.save('response')
+#            zdir.write(sysht)
+#            os.remove(sysht)
             out = self._to_dict()
             out['SignalAddres'] = {'excitation': excit,
-                                   'recording': rec,
-                                   'system': sysht}
+                                   'recording': rec}
             with open('ImpulsiveResponse.json', 'w') as f:
                 json.dump(out, f, indent=4)
             zdir.write('ImpulsiveResponse.json')
@@ -1742,15 +1743,12 @@ class RecMeasure(Measurement):
         else:
             self._timeLength = None
             self._fftDegree = None
+        self._outChannel = None
         return
 
     def _to_dict(self):
         sup = super()._to_dict()
-        if self.lengthDomain == 'samples':
-            length = self.fftDegree
-        else:
-            length = self.timeLength
-        sup['length'] = [self.lengthDomain, length]
+        sup['fftDegree'] = self.fftDegree
         return sup
 
     def save(self, dirname=time.ctime(time.time())):
@@ -1870,6 +1868,7 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
+            self.outChannel = excitation.channels
         return
 
 # PlayRec Methods
@@ -1902,6 +1901,7 @@ class PlayRecMeasure(Measurement):
 
     def _to_dict(self):
         sup = super()._to_dict()
+        sup['excitationAddress'] = self.excitation._to_dict()
         return sup
 
     def save(self, dirname=time.ctime(time.time())):
@@ -1909,6 +1909,7 @@ class PlayRecMeasure(Measurement):
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
             excit = self.excitation.save('excitation')
+            dic['excitationAddress'] = excit
             zdir.write(excit)
             os.remove(excit)
             with open('PlayRecMeasure.json', 'w') as f:
@@ -2019,6 +2020,21 @@ class FRFMeasure(PlayRecMeasure):
         self.winSize = winSize
         self.overlap = overlap
         return
+
+    def save(self, dirname=time.ctime(time.time())):
+        dic = self._to_dict()
+        name = dirname + '.pytta'
+        with zipfile.ZipFile(name, 'w') as zdir:
+            excit = self.excitation.save('excitation')
+            dic['excitationAddress'] = excit
+            zdir.write(excit)
+            os.remove(excit)
+            with open('FRFMeasure.json', 'w') as f:
+                json.dump(dic, f, indent=4)
+            zdir.write('FRFMeasure.json')
+            os.remove('FRFMeasure.json')
+        return name
+
 
     def run(self):
         """
