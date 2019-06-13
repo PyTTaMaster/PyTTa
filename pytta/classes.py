@@ -1277,7 +1277,7 @@ class ImpulsiveResponse(PyTTaObj):
 #            zdir.write(sysht)
 #            os.remove(sysht)
             out = self._to_dict()
-            out['SignalAddres'] = {'excitation': excit,
+            out['SignalAddress'] = {'excitation': excit,
                                    'recording': rec}
             with open('ImpulsiveResponse.json', 'w') as f:
                 json.dump(out, f, indent=4)
