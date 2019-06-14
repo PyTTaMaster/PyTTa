@@ -85,8 +85,8 @@ class OctFilter(object):
                             samplingRate: int = 44100) -> np.ndarray:
         sos = np.zeros((order, 6, len(bandEdges)))
         for i, edges in enumerate(bandEdges):
-            if edges[1] > samplingRate//2:
-                edges[1] = samplingRate//2
+            if edges[1] >= samplingRate//2:
+                edges[1] = samplingRate//2 - 1
             sos[:, :, i] = ss.butter(order, [edges[0], edges[1]], 'bp',
                                      output='sos', fs=samplingRate)
         return sos
