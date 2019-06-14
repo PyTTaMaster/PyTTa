@@ -75,15 +75,15 @@ class OctFilter(object):
         self.sos = self.get_sos_filters()
         return
 
-    def __freqs_to_center_and_edges(freqs):
+    def __freqs_to_center_and_edges(self, freqs):
         center = freqs[:, 1].T
         edges = np.array([freqs[:, 0], freqs[:, 2]]).T
         return center, edges
 
-    def __design_sos_butter(bandEdges: np.ndarray,
+    def __design_sos_butter(self, bandEdges: np.ndarray,
                             order: int = 4,
                             samplingRate: int = 44100) -> np.ndarray:
-        sos = np.zeros((4, 6, len(bandEdges)))
+        sos = np.zeros((order, 6, len(bandEdges)))
         for i, edges in enumerate(bandEdges):
             if edges[1] > samplingRate//2:
                 edges[1] = samplingRate//2
@@ -97,8 +97,8 @@ class OctFilter(object):
                                               self.maxFreq,
                                               self.refFreq,
                                               self.base)
-        center, edges = __freqs_to_center_and_edges(freqs)
-        return __design_sos_butter(edges, self.order, self.samplingRate)
+        center, edges = self.__freqs_to_center_and_edges(freqs)
+        return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
     def filter(self, signalObj):
         if self.samplingRate != signalObj.samplingRate:
@@ -113,7 +113,10 @@ class OctFilter(object):
                                             signalObj.timeSignal[:, ch],
                                             axis=0).T
             output.append(SignalObj(filtered, 'time', self.samplingRate))
-        return output
+        if len(output) == 1:
+            return output[0]
+        else:
+            return output
 
 
 k1 = 12194
