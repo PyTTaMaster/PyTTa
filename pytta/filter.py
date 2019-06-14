@@ -38,7 +38,7 @@ def fractional_octave_frequencies(nthOct: int = 3,
     minBand = freq_to_band(minFreq, refFreq, base)
     maxBand = freq_to_band(maxFreq, refFreq, base)
     bands = np.arange(minBand, maxBand+1)
-    freqs = np.zeros((len(bands), nthOct))
+    freqs = np.zeros((len(bands), 3))
     nthOct = 1/nthOct
     for k, band in enumerate(bands):
         center = refFreq*base**(band*nthOct*factor)
