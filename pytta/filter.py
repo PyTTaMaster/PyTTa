@@ -55,22 +55,6 @@ def apply_sos_filter(sos: np.ndarray, signal: np.ndarray):
 class OctFilter(object):
     """
     """
-    def __freqs_to_center_and_edges(freqs):
-        center = freqs[:, 1].T
-        edges = np.array([freqs[:, 0], freqs[:, 2]]).T
-        return center, edges
-
-    def __design_sos_butter(bandEdges: np.ndarray,
-                            order: int = 4,
-                            samplingRate: int = 44100) -> np.ndarray:
-        sos = np.zeros((4, 6, len(bandEdges)))
-        for i, edges in enumerate(bandEdges):
-            if edges[1] > samplingRate//2:
-                edges[1] = samplingRate//2
-            sos[:, :, i] = ss.butter(order, [edges[0], edges[1]], 'bp',
-                                     output='sos', fs=samplingRate)
-        return sos
-
     def __init__(self,
                  order: int = None,
                  nthOct: int = None,
@@ -90,6 +74,22 @@ class OctFilter(object):
         self.base = base
         self.sos = self.get_sos_filters()
         return
+
+    def __freqs_to_center_and_edges(freqs):
+        center = freqs[:, 1].T
+        edges = np.array([freqs[:, 0], freqs[:, 2]]).T
+        return center, edges
+
+    def __design_sos_butter(bandEdges: np.ndarray,
+                            order: int = 4,
+                            samplingRate: int = 44100) -> np.ndarray:
+        sos = np.zeros((4, 6, len(bandEdges)))
+        for i, edges in enumerate(bandEdges):
+            if edges[1] > samplingRate//2:
+                edges[1] = samplingRate//2
+            sos[:, :, i] = ss.butter(order, [edges[0], edges[1]], 'bp',
+                                     output='sos', fs=samplingRate)
+        return sos
 
     def get_sos_filters(self) -> np.ndarray:
         freqs = fractional_octave_frequencies(self.nthOct,
