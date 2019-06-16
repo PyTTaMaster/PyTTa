@@ -75,6 +75,15 @@ class OctFilter(object):
         self.sos = self.get_sos_filters()
         return
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, value, traceback):
+        if traceback is None:
+            return
+        else:
+            raise value
+
     def __freqs_to_center_and_edges(self, freqs):
         center = freqs[:, 1].T
         edges = np.array([freqs[:, 0], freqs[:, 2]]).T

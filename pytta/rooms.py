@@ -1,9 +1,58 @@
 # -*- coding: utf-8 -*-
 
+from pytta import default
+from .filter import OctFilter
+import numpy as np
+import scipy .signal as ss
+import scipy.integrate as si
 
 
+def __filter(signal,
+             order: int = 4,
+             nthOct: int = 3,
+             samplingRate: int = 44100,
+             minFreq: float = 20,
+             maxFreq: float = 16000,
+             refFreq: float = 1000,
+             base: int = 10):
+    with OctFilter(order=order,
+                   nthOct=nthOct,
+                   samplingRate=signal.samplingRate,
+                   minFreq=minFreq,
+                   maxFreq=maxFreq,
+                   refFreq=refFreq,
+                   base=base) as of:
+        return of.filter(signal)
 
 
+def __remove_init_silence(timeSignal):
+    RMS = (np.mean(timeSignal**2))**0.5
+    idx = np.where(np.abs(timeSignal) >= RMS)[0]
+    return timeSignal[idx[0]:], idx[0]
+
+
+def __remove_nonlinear(timeSignal, samplingRate):
+    RMS = (np.mean(timeSignal**2))**0.5
+    idx = np.where(np.abs(timeSignal[samplingRate//2:]) <= RMS)[0]
+    return timeSignal[:samplingRate//2+idx[0]], samplingRate//2+idx[0]
+
+
+def __cumulative_integration(timeSignal, timeVector, samplingRate):
+    signal, ini = __remove_init_silence(timeSignal[:])
+    signal, fin = __remove_nonlinear(signal[:], samplingRate)
+    signal = signal[::-1]**2
+    signal = np.array(si.cumtrapz(signal, timeVector[ini:ini+fin],
+                      axis=0, initial=0)[::-1], ndmin=2).T
+    return 20*np.log10(signal/np.max(np.abs(signal)))
+
+
+def _preprocess(signalObj, nthOct, **kwargs):
+    filteredObj = __filter(signalObj, nthOct, **kwargs)
+    integList = [__cumulative_integration(filteredObj.timeSignal[:, ch],
+                                          filteredObj.timeVector[:],
+                                          filteredObj.samplingRate)
+                 for ch in range(filteredObj.num_channels())]
+    return integList
 
 
 # %% LEGACY CODE
