@@ -12,7 +12,7 @@ from scipy.io import loadmat
 from matplotlib import pyplot as plt
 
 
-f = loadmat('RIS/MonoRIS3_time.mat')
+f = loadmat('RIS/RI_mono_3.mat')
 
 
 mySignal = pytta.SignalObj(f['MonoRIS3_time'], 'time', 44100)
