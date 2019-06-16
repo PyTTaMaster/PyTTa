@@ -75,7 +75,6 @@ def RT(decay, signalObj, nthOct, **kwargs):
         for bd in range(len(filtDecay)):
             x1 = np.where(filtDecay[bd] >= y1)[0][-1]
             x2 = np.where(filtDecay[bd] >= y2)[0][-1]
-            print(y2, y1, x2, x1)
             RT.append(3*(x2/signalObj.samplingRate
                          - x1/signalObj.samplingRate))
         output.append(RT)
