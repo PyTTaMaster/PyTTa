@@ -46,7 +46,7 @@ def __cumulative_integration(timeSignal, timeVector, samplingRate):
     return 20*np.log10(signal/np.max(np.abs(signal)))
 
 
-def _preprocess(signalObj, nthOct, **kwargs):
+def filtered_decays(signalObj, nthOct, **kwargs):
     filteredObj = __filter(signalObj, nthOct, **kwargs)
     integList = [__cumulative_integration(filteredObj.timeSignal[:, ch],
                                           filteredObj.timeVector[:],
@@ -54,6 +54,40 @@ def _preprocess(signalObj, nthOct, **kwargs):
                  for ch in range(filteredObj.num_channels())]
     return integList
 
+
+def RT(decay, signalObj, nthOct, **kwargs):
+    try:
+        decay = int(decay)
+        y1 = -5
+        y2 = y1 - decay
+    except ValueError:
+        if decay in ['EDT', 'edt']:
+            y1 = 0
+            y2 = -10
+        else:
+            raise ValueError("Decay must be either 'EDT' or an integer \
+                             corresponding to the amount of energy decayed to \
+                             evaluate.")
+    output = []
+    for ch in range(signalObj.num_channels()):
+        filtDecay = filtered_decays(signalObj[ch], nthOct, **kwargs)
+        RT = []
+        for bd in range(len(filtDecay)):
+            x1 = np.where(filtDecay[bd] >= y1)[0][-1]
+            x2 = np.where(filtDecay[bd] >= y2)[0][-1]
+            print(y2, y1, x2, x1)
+            RT.append(3*(x2/signalObj.samplingRate
+                         - x1/signalObj.samplingRate))
+        output.append(RT)
+    return output
+
+
+def C(temp, signalObj, nthOct, **kwargs):
+    pass
+
+
+def D(temp, signalObj, nthOct, **kwargs):
+    pass
 
 # %% LEGACY CODE
 #import numpy as np  

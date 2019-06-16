@@ -892,19 +892,6 @@ class SignalObj(PyTTaObj):
         """
         if chIndex in range(self.num_channels()):
             self.channels[chIndex].calib_volt(refSignalObj, refVrms, refFreq)
-#            Vrms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-#            print(Vrms)
-#            freqFound = np.round(
-#                    refSignalObj.freqVector[np.where(
-#                            np.abs(refSignalObj.freqSignal)
-#                            == np.max(np.abs(refSignalObj.freqSignal)))[0]])
-#            if freqFound != refFreq:
-#                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-#                      + '{:.2}'.format(freqFound)
-#                      + ' [Hz]) differs from refFreq ('
-#                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
-#            self.channels[chIndex].CF = refVrms/Vrms
-#            self.channels[chIndex].unit = 'V'
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
             self.channels[chIndex].calibCheck = True
@@ -940,18 +927,6 @@ class SignalObj(PyTTaObj):
 
         if chIndex in range(self.num_channels()):
             self.channels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
-#            Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-#            print(Prms)
-#            freqFound = np.round(refSignalObj.freqVector[np.where(
-#                    np.abs(refSignalObj.freqSignal)
-#                    == np.max(np.abs(refSignalObj.freqSignal)))[0]])
-#            if freqFound != refFreq:
-#                print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-#                      + '{:.2}'.format(freqFound)
-#                      + ' [Hz]) differs from refFreq ('
-#                      + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
-#            self.channels[chIndex].CF = refPrms/Prms
-#            self.channels[chIndex].unit = 'Pa'
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
             self.channels[chIndex].calibCheck = True
@@ -1078,6 +1053,13 @@ class SignalObj(PyTTaObj):
                 f'freqMin={self.freqMin!r}, '
                 f'freqMax={self.freqMax!r}, '
                 f'comment={self.comment!r})')
+
+    def __getitem__(self, key):
+        if key > self.num_channels():
+            raise IndexError("Index out of bounds.")
+        elif key < 0:
+            key += self.num_channels()
+        return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
 
     def _calc_spectrogram(self, timeData=None, overlap=0.5,
                           winType='hann', winSize=1024):
