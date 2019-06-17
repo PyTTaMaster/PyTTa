@@ -48,6 +48,7 @@ from . import properties
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
 default = properties.Default()
+units = properties.units
 
 from .classes import SignalObj, ImpulsiveResponse,\
                     RecMeasure, PlayRecMeasure, FRFMeasure, Streaming
