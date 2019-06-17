@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import sys
 import pytta
+import soundfile as sf
 
 
 def parseArgs(args):
     file = None
     for arg in args:
-        if arg.split('.')[-1] in ['wav', 'WAV', 'Wav']:
+        if arg.split('.')[-1] in sf.available_formats().keys():
             file = arg
     return file
 
@@ -25,38 +25,41 @@ class AudioPlayer(object):
         print("Welcome to MyAudioPlayer!")
         print("To quit the program use the command:\n -exit")
 
-        self.load(fileName)
+        self.executing = True
+        self.load_(fileName)
         self.commandList = ['-load', '-play', '-pause', '-stop', '-exit']
         return
 
-    def load(self, fileName=None):
+    def load_(self, fileName=None):
         if fileName is None:
             print("Please, insert a file name: ")
             fileName = input()
         if fileName == '-exit':
-            self.exit()
-        self.file = fileName
-        self.audio = pytta.read_wav(self.file)
+            self.exit_()
+            return
+        self.file = sf.SoundFile(fileName)
+        self.audio = pytta.SignalObj(self.file.read(), 'time',
+                                     self.file.samplerate)
         self.streaming = pytta.generate.stream('O', excitation=self.audio)
-        print("Opened file", self.file)
+        print("Opened file", self.file.name)
         print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
         return
 
-    def play(self):
+    def play_(self):
         """
         Start playback of the wave file
         """
         self.streaming.start()
         return
 
-    def pause(self):
+    def pause_(self):
         """
         Stop playback of the wave file
         """
         self.streaming.stop()
         return
 
-    def stop(self):
+    def stop_(self):
         """
         Start playback of the wave file and move the audio to the beggining
         """
@@ -64,12 +67,16 @@ class AudioPlayer(object):
         self.kn = 0
         return
 
-    def exit(self):
+    def exit_(self):
         try:
             self.stream.close()
         except AttributeError:
             pass
-        sys.exit()
+        self.executing = False
+        return
+
+    def bye_(self):
+        print('Bye, bye!')
         return
 
     def exec_(self):
@@ -77,26 +84,32 @@ class AudioPlayer(object):
         Application context for continuous read of command line arguments to
         control the reproduction of the audio file
         """
-
+        if not self.executing:
+            self.bye_()
+            return
         # It goes on, and on, and on, and on, and on, and on, ..., and on, ...
-        while True:
-            if self.file is None:
-                self.load()
+        while self.executing:
 
-            # read command from command line
-            command = input()
+            try:
+                # check if the command can be used by the application
+                if self.command in self.commandList:
 
-            # check if the command can be used by the application
-            if command in self.commandList:
+                    # True: evaluates it as a function
+                    eval('self.' + self.command[1:] + '_()')
 
-                # True: evaluates it as a function
-                eval('self.' + command[1:] + '()')
+                # False: it is ignored
+                else:
+                    print("Unknown command", self.command, "\nSkipping.")
 
-            # False: it is ignored
-            else:
-                print("Unknown command", command, "\nSkipping.")
+                # read command from command line
+                self.command = input()
 
-        # untill program closure
+            except AttributeError:
+                # read command from command line
+                self.command = input()
+
+            finally:
+                self.bye_()
         return
 
 
@@ -108,6 +121,6 @@ if __name__ == "__main__":
         ~ $ python audio_player.py mywavefile.wav
 
     """
-    file = parseArgs(sys.argv[:])
+    file = None
     player = AudioPlayer(file)
-    sys.exit(player.exec_())
+    player.exec_()
