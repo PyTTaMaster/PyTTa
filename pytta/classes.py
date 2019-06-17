@@ -457,8 +457,7 @@ class ChannelsList(object):
                 newChList = ChannelsList([self[index]*otherList[index]
                                           for index in range(len(self))])
             else:
-                newChList = ChannelsList([self.channels[index] *
-                                          otherList.channels[0]
+                newChList = ChannelsList([self[index]*otherList[0]
                                           for index in range(len(self))])
         else:
             if len(otherList) > 1:
@@ -480,8 +479,7 @@ class ChannelsList(object):
                 newChList = ChannelsList([self[index]/otherList[index]
                                           for index in range(len(self))])
             else:
-                newChList = ChannelsList([self.channels[index] /
-                                          otherList.channels[0]
+                newChList = ChannelsList([self[index]/otherList[0]
                                           for index in range(len(self))])
         else:
             if len(otherList) > 1:
@@ -514,12 +512,13 @@ class ChannelsList(object):
     def append(self, newCh):
         if isinstance(newCh, ChannelObj):
             self._channels.append(newCh)
-        pass
+        return
 
     def pop(self, Ch):
         if Ch not in range(len(self)):
             raise IndexError('Inexistent Channel index')
         self._channels.pop(Ch)
+        return
 
     def conform_to(self, rule):
         if isinstance(rule, SignalObj):
@@ -536,7 +535,7 @@ class ChannelsList(object):
             for index in rule:
                 self.append(ChannelObj(num=index+1, name='Channel ' +
                                        str(index)))
-        pass
+        return
 
     def rename_channels(self):
         for chIndex in range(len(self)):
@@ -647,7 +646,9 @@ class SignalObj(PyTTaObj):
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
-            signalArray = np.array(signalArray, ndmin=2).T
+            signalArray = np.array(signalArray, ndmin=2)
+        if signalArray.shape[1] > signalArray.shape[0]:
+            signalArray = signalArray.T
 
         super().__init__(*args, **kwargs)
 
@@ -681,7 +682,9 @@ class SignalObj(PyTTaObj):
     def timeSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2).T
+                newSignal = np.array(newSignal, ndmin=2)
+            if newSignal.shape[1] > newSignal.shape[0]:
+                newSignal = newSignal.T
             self._timeSignal = np.array(newSignal)
             self._freqSignal = np.fft.rfft(self._timeSignal, axis=0, norm=None)
             self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
@@ -715,7 +718,9 @@ class SignalObj(PyTTaObj):
     def freqSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2).T
+                newSignal = np.array(newSignal, ndmin=2)
+            if newSignal.shape[1] > newSignal.shape[0]:
+                newSignal = newSignal.T
             self._freqSignal = np.array(newSignal)
             self._timeSignal = np.fft.irfft(self._freqSignal,
                                             axis=0, norm=None)
@@ -1374,7 +1379,8 @@ class ImpulsiveResponse(PyTTaObj):
                                 outputSignal.timeSignal[:, channel],
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
-                        result.freqSignal[:, channel] = XY/XX
+                        result.freqSignal[:, channel] \
+                            = np.array(XY/XX, ndmin=2).T
                 else:
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(
@@ -1382,14 +1388,15 @@ class ImpulsiveResponse(PyTTaObj):
                                 outputSignal.timeSignal[:, channel],
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
-                        result.freqSignal[:, channel] = XY/XX
+                        result.freqSignal[:, channel] \
+                            = np.array(XY/XX, ndmin=2).T
             else:
                 XY, XX = self._calc_csd_tf(
                         inputSignal.timeSignal,
                         outputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = XY/XX
+                result.freqSignal = np.array(XY/XX, ndmin=2).T
 
         elif method == 'H2':
             if winType is None:
@@ -1412,21 +1419,23 @@ class ImpulsiveResponse(PyTTaObj):
                                 inputSignal.timeSignal[:, channel],
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
-                        result.freqSignal[:, channel] = YY/YX
+                        result.freqSignal[:, channel] \
+                            = np.array(YY/YX, ndmin=2).T
                 else:
                     YX, YY = self._calc_csd_tf(
                             outputSignal.timeSignal[:, channel],
                             inputSignal.timeSignal,
                             inputSignal.samplingRate,
                             winType, winSize, winSize*overlap)
-                    result.freqSignal[:, channel] = YY/YX
+                    result.freqSignal[:, channel] \
+                        = np.array(YY/YX, ndmin=2).T
             else:
                 YX, YY = self._calc_csd_tf(
                         outputSignal.timeSignal,
                         inputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = YY/YX
+                result.freqSignal = np.array(YY/YX, ndmin=2).T
 
         elif method == 'Ht':
             if winType is None:
