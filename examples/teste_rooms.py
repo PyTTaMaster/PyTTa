@@ -12,11 +12,12 @@ from scipy.io import loadmat
 from matplotlib import pyplot as plt
 
 
-f = loadmat('RIS/RI_mono_2.mat')
+f = loadmat('RIS/RI_mono_1.mat')
 
 
-mySignal = pytta.SignalObj(f['MonoRIS2_time'], 'time', 44100)
+mySignal = pytta.SignalObj(f['MonoRIS1_time'], 'time', 44100)
 
 
-myOut = pytta.rooms.RT('20', mySignal, 3)
-
+myRT = pytta.rooms.RT(20, mySignal, 3)
+myD50 = pytta.rooms.D(50, mySignal, 1)
+myC80 = pytta.rooms.C(80, mySignal, 6)
