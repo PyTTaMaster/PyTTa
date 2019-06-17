@@ -105,7 +105,7 @@ def merge(signal1, *signalObjects):
         j += 1
     newSignal = SignalObj(timeSignal, domain='time',
                           samplingRate=signal1.samplingRate, comment=comment)
-    newSignal.channels.rename_channels()
+    newSignal.channels[:] = channels
     return newSignal
 
 
