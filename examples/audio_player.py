@@ -64,7 +64,7 @@ class AudioPlayer(object):
         Start playback of the wave file and move the audio to the beggining
         """
         self.streaming.stop()
-        self.kn = 0
+        self.streaming.kn = 0
         return
 
     def exit_(self):
@@ -90,6 +90,7 @@ class AudioPlayer(object):
         # It goes on, and on, and on, and on, and on, and on, ..., and on, ...
         while self.executing:
 
+            # TRY-except: TRY to run the following code:
             try:
                 # check if the command can be used by the application
                 if self.command in self.commandList:
@@ -101,15 +102,17 @@ class AudioPlayer(object):
                 else:
                     print("Unknown command", self.command, "\nSkipping.")
 
-                # read command from command line
-                self.command = input()
+                if self.executing:
+                    # read command from command line
+                    self.command = input()
 
+            # try-EXCEPT: EXCEPT if there's no attribute, then do this:
             except AttributeError:
                 # read command from command line
                 self.command = input()
 
-            finally:
-                self.bye_()
+        # end of while block, end of running. Bye, bye!
+        self.bye_()
         return
 
 
