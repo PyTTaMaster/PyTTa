@@ -55,6 +55,7 @@ from .classes import SignalObj, ImpulsiveResponse,\
 from .functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
+from .filter import OctFilter, fractional_octave_frequencies
 from . import generate
 
 __version__ = '0.1.0rc'  # package version
@@ -75,6 +76,7 @@ __all__ = [  # Submodules
            'peak_time',
            'save',
            'load',
+           'fractional_octave_frequencies',
 
            # Classes
            'RecMeasure',
@@ -82,6 +84,7 @@ __all__ = [  # Submodules
            'PlayRecMeasure',
            'FRFMeasure',
            'SignalObj',
+           'OctFilter',
 
            # Objects
            'default']
