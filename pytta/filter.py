@@ -16,8 +16,8 @@ __nominal_frequencies = np.array([
 ])
 
 
-def freq_to_band(freq: float, ref: float, base: int):
-    return np.round(np.log10(freq/ref)*base)
+def freq_to_band(freq: float, nthOct: int, ref: float, base: int):
+    return np.round(np.log10(freq/ref)*base*(nthOct/3))
 
 
 def fractional_octave_frequencies(nthOct: int = 3,
@@ -29,9 +29,9 @@ def fractional_octave_frequencies(nthOct: int = 3,
         factor = 3/10
     elif base == 2:
         factor = 1/2
-    minBand = freq_to_band(minFreq, refFreq, base)
-    maxBand = freq_to_band(maxFreq, refFreq, base)
-    bands = np.arange(minBand, maxBand+1)
+    minBand = freq_to_band(minFreq, nthOct, refFreq, base)
+    maxBand = freq_to_band(maxFreq, nthOct, refFreq, base)
+    bands = np.arange(minBand, maxBand + 1)
     freqs = np.zeros((len(bands), 3))
     nthOct = 1/nthOct
     for k, band in enumerate(bands):
@@ -67,9 +67,9 @@ class OctFilter(object):
         self.nthOct = nthOct
         self.samplingRate = samplingRate
         self.minFreq = minFreq
-        self.minBand = freq_to_band(minFreq, refFreq, base)
+        self.minBand = freq_to_band(minFreq, nthOct, refFreq, base)
         self.maxFreq = maxFreq
-        self.maxBand = freq_to_band(maxFreq, refFreq, base)
+        self.maxBand = freq_to_band(maxFreq, nthOct, refFreq, base)
         self.refFreq = refFreq
         self.base = base
         self.sos = self.get_sos_filters()
