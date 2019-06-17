@@ -359,6 +359,7 @@ class ChannelObj(object):
                 self.dBRef = 1
         else:
             raise TypeError('Channel unit must be a string.')
+        return
 
     @property
     def CF(self):
@@ -744,6 +745,10 @@ class SignalObj(PyTTaObj):
     def mean(self):
         return SignalObj(signalArray=np.mean(self.timeSignal, 1),
                          lengthDomain='time', samplingRate=self.samplingRate)
+
+    @property
+    def numChannels(self):
+        return self.num_channels()
 
     def num_channels(self):
         try:
