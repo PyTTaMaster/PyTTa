@@ -207,8 +207,8 @@ class PyTTaObj(object):
 class CoordinateObj(object):
 
     def __init__(self,
-                 polar=[0, 0, 0],
                  point=[0, 0, 0],
+                 polar=[0, 0, 0],
                  ref='Your eyes',
                  unit='m'):
         self.point = point
@@ -216,6 +216,13 @@ class CoordinateObj(object):
             self.polar = polar
         self.ref = ref
         self.unit = unit
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'point={self.point!r}, '
+                f'polar={self.polar!r}, '
+                f'ref={self.ref!r}, '
+                f'unit={self.unit!r})')
 
     @property
     def point(self):
@@ -226,22 +233,42 @@ class CoordinateObj(object):
         if isinstance(newpoint, list) and len(newpoint) == 3:
             self._point = newpoint
             # Calc polar coord
+            r = (self._point[0]**2+self._point[1]**2+self._point[2]**2)**(1/2)
+            if r != 0:
+                elev = np.arccos(self._point[2]/r)
+                azi = np.arctan(self._point[1] /
+                                self._point[0])
+            else:
+                elev = 0
+                azi = 0
+            self._polar = [r, elev, azi]
         else:
             TypeError('Cartesian three-dimensional coordinates must be a list,\
                        e.g. [X, Y, Z])')
 
     @property
     def polar(self):
-        return self._polar
+        polarInDeg = [self._polar[0],
+                      self._polar[1]/np.pi*180,
+                      self._polar[2]/np.pi*180]
+        return polarInDeg
 
     @polar.setter
     def polar(self, newpolar):
         if isinstance(newpolar, list) and len(newpolar) == 3:
-            self._polar = newpolar
+            self._polar = [newpolar[0],
+                           newpolar[1]/180*np.pi,
+                           newpolar[2]/180*np.pi]
             # Calc cartesian coord
+            x = self._polar[0] * np.sin(self._polar[1]) * \
+                np.cos(self._polar[2])
+            y = self._polar[0] * np.sin(self._polar[1]) * \
+                np.sin(self._polar[2])
+            z = self._polar[0] * np.cos(self._polar[1])
+            self._point = [x, y, z]
         else:
             TypeError('Polar three-dimensional coordinates must be a list,\
-                       e.g. [Distance, Azimuth, Elevation])')
+                       e.g. [Radius, Elevation, Azimuth])')
 
     @property
     def ref(self):
