@@ -204,7 +204,7 @@ class PyTTaObj(object):
         return
 
 
-class CoordinateObj(object):
+class CoordinatesObj(object):
 
     def __init__(self,
                  point=[0, 0, 0],
@@ -338,7 +338,8 @@ class ChannelObj(object):
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
-        self.coordinates = CoordinateObj()
+        self.coordinates = CoordinatesObj()
+        self.orientation = CoordinatesObj()
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
