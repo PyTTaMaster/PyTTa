@@ -1509,6 +1509,7 @@ class ImpulsiveResponse(PyTTaObj):
     def methodInfo(self):
         return self._methodInfo
 
+# NOW COORDINATES MANAGEMENT DONE DIRECTLY TO THE SIGNALOBJS
 # Public methods
 #    def set_channels_points(self, channels, points):
 #        if isinstance(channels, list):
