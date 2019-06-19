@@ -37,8 +37,8 @@ import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
 import zipfile as zf
-from .classes import SignalObj, ImpulsiveResponse, RecMeasure,\
-                     PlayRecMeasure, FRFMeasure
+from .signal import SignalObj, ImpulsiveResponse
+from .measurement import RecMeasure, PlayRecMeasure, FRFMeasure
 import copy as cp
 
 
