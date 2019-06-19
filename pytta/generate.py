@@ -34,11 +34,10 @@ Generate:
 
 # Import modules
 from pytta import default
-from .signal import SignalObj
-from .measurement import RecMeasure, FRFMeasure, PlayRecMeasure
-from .streaming import Streaming
+from classes import SignalObj, RecMeasure, FRFMeasure, \
+                    PlayRecMeasure, Streaming
 from .filter import OctFilter
-from scipy import signal
+from scipy import signal as ss
 import numpy as np
 
 
@@ -152,7 +151,7 @@ def sweep(freqMin=None,
     timeVecSweep = np.arange(0, sweepTime, samplingTime)  # [s] time vector
     if timeVecSweep.size > sweepSamples:
         timeVecSweep = timeVecSweep[0:int(sweepSamples)]  # adjust length
-    sweep = 0.8*signal.chirp(timeVecSweep,
+    sweep = 0.8*ss.chirp(timeVecSweep,
                              freqLimits[0],
                              sweepTime,
                              freqLimits[1],
@@ -205,8 +204,8 @@ def __do_sweep_windowing(inputSweep,
     # exact sample where the chirp reaches freqMax [Hz]
     freqMaxSample = np.where(freqSweep <= freqMax)
     freqMaxSample = len(freqSweep) - freqMaxSample[-1][-1]
-    windowStart = signal.hann(2*freqMinSample)
-    windowEnd = signal.hann(2*freqMaxSample)
+    windowStart = ss.hann(2*freqMinSample)
+    windowEnd = ss.hann(2*freqMaxSample)
 
     # Uses first half of windowStart, last half of windowEnd, and a vector of
     # ones with the remaining length, in between the half windows
@@ -287,7 +286,7 @@ def __do_noise_windowing(inputNoise,
                          window):
     # sample equivalent to the first five percent of noise duration
     fivePercentSample = int((5/100) * (noiseSamples))
-    windowStart = signal.hann(2*fivePercentSample)
+    windowStart = ss.hann(2*fivePercentSample)
     fullWindow = np.concatenate((windowStart[0:fivePercentSample],
                                  np.ones(int(noiseSamples-fivePercentSample))))
     newNoise = fullWindow * inputNoise
