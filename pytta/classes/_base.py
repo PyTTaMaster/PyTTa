@@ -29,13 +29,14 @@ For further information see the specific class, or method, documentation
 """
 
 # Importing modules
+from ._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
 import scipy.io as sio
 from pytta import default, units
 import time
 
 
-class PyTTaObj(object):
+class PyTTaObj(RICI):
     """
     PyTTa object class to define some properties and methods to be used
     by any signal and processing classes. pyttaObj is a private class created
@@ -78,7 +79,7 @@ class PyTTaObj(object):
                  fftDegree=None,
                  timeLength=None,
                  numSamples=None):
-
+        super().__init__()
         self._lengthDomain = lengthDomain
         self._samplingRate = samplingRate
         self._fftDegree = fftDegree

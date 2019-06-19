@@ -35,10 +35,10 @@ Generate:
 # Import modules
 from pytta import default
 from .classes import SignalObj, RecMeasure, FRFMeasure, \
-                    PlayRecMeasure, Streaming, OctFilter, Result, ResultList
+                     PlayRecMeasure, Streaming, OctFilter, Result, ResultList
 from scipy import signal as ss
 import numpy as np
-
+import traceback
 
 def sin(Arms=0.5,
         freq=1000,
@@ -109,6 +109,16 @@ def sweep(freqMin=None,
    is respected.
 
     """
+    # Code snippet to guarantee that generated object name is the declared one
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
+
     if freqMin is None:
         freqMin = default.freqMin
     if freqMax is None:
@@ -151,11 +161,11 @@ def sweep(freqMin=None,
     if timeVecSweep.size > sweepSamples:
         timeVecSweep = timeVecSweep[0:int(sweepSamples)]  # adjust length
     sweep = 0.8*ss.chirp(timeVecSweep,
-                             freqLimits[0],
-                             sweepTime,
-                             freqLimits[1],
-                             'logarithmic',
-                             phi=-90)  # sweep, time domain
+                         freqLimits[0],
+                         sweepTime,
+                         freqLimits[1],
+                         'logarithmic',
+                         phi=-90)  # sweep, time domain
     sweep = __do_sweep_windowing(sweep,
                                  timeVecSweep,
                                  freqLimits,
@@ -169,14 +179,13 @@ def sweep(freqMin=None,
     if timeSignal.size != numSamples:
         timeSignal = timeSignal[0:int(numSamples)]  # adjust length
 
-    sweepSignal = SignalObj(signalArray=timeSignal,
-                            domain='time',
-                            samplingRate=samplingRate)
-    # transforms into a pytta signalObj
+    # transforms into a pytta signalObj and sets the correct name
+    sweepSignal = SignalObj(signalArray=timeSignal, domain='time', samplingRate=samplingRate)
+    sweepSignal.creation_name = creation_name
 
+    # pass on the frequency limits considering the fade in and fade out
     sweepSignal.freqMin, sweepSignal.freqMax \
         = freqLimits[0], freqLimits[1]
-    # pass on the frequency limits considering the fade in and fade out
     return sweepSignal
 
 
@@ -271,13 +280,11 @@ def noise(kind='white',
 
     noiseSignal = __do_noise_windowing(noiseSignal, noiseSamples, windowing)
     noiseSignal = noiseSignal / max(abs(noiseSignal))
-    fullSignal = np.concatenate((np.zeros(int(startSamples)),
+    noiseSignal = np.concatenate((np.zeros(int(startSamples)),
                                  noiseSignal,
                                  np.zeros(int(stopSamples))))
-    fullSignal = SignalObj(signalArray=fullSignal,
-                           domain='time',
-                           samplingRate=samplingRate)
-    return fullSignal
+    noiseSignal = SignalObj(signalArray=noiseSignal, domain='time', samplingRate=samplingRate)
+    return noiseSignal
 
 
 def __do_noise_windowing(inputNoise,
@@ -308,10 +315,8 @@ def impulse(samplingRate=None,
         * np.ones(numSamples) + 1j * np.random.randn(numSamples)
     impulseSignal = np.real(np.fft.ifft(impulseSignal))
     impulseSignal = impulseSignal / max(impulseSignal)
-    newImpulse = SignalObj(signalArray=impulseSignal,
-                           domain='time',
-                           samplingRate=samplingRate)
-    return newImpulse
+    impulseSignal = SignalObj(signalArray=impulseSignal, domain='time', samplingRate=samplingRate)
+    return impulseSignal
 
 
 def measurement(kind='playrec',
@@ -405,12 +410,7 @@ def measurement(kind='playrec',
 
 # Kind REC
     if kind in ['rec', 'record', 'recording', 'r']:
-        recordObj = RecMeasure(samplingRate=samplingRate,
-                               freqMin=freqMin,
-                               freqMax=freqMax,
-                               device=device,
-                               inChannel=inChannel,
-                               **kwargs)
+        recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin, freqMax=freqMax, device=device, inChannel=inChannel, **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
@@ -440,11 +440,7 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        playRecObj = PlayRecMeasure(excitation=signalIn,
-                                    device=device,
-                                    inChannel=inChannel,
-                                    outChannel=outChannel,
-                                    **kwargs)
+        playRecObj = PlayRecMeasure(excitation=signalIn, device=device, inChannel=inChannel, outChannel=outChannel, **kwargs)
         return playRecObj
 
 # Kind FRF
@@ -458,11 +454,7 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        frfObj = FRFMeasure(excitation=signalIn,
-                            device=device,
-                            inChannel=inChannel,
-                            outChannel=outChannel,
-                            **kwargs)
+        frfObj = FRFMeasure(excitation=signalIn, device=device, inChannel=inChannel, outChannel=outChannel, **kwargs)
         return frfObj
 
 
@@ -496,59 +488,28 @@ def stream(IO='IO',
             samplingRate = default.samplingRate
 
     if IO in ['I', 'in', 'input']:
-        Istreaming = Streaming(device=device, integration=integration,
-                               inChannels=inChannels, duration=duration,
-                               callback=callback, samplingRate=samplingRate,
-                               *args, **kwargs)
-        return Istreaming
+        return Streaming(device=device, integration=integration, inChannels=inChannels, duration=duration, callback=callback, samplingRate=samplingRate, *args, **kwargs)
 
     elif IO in ['O', 'out', 'output']:
         if excit:
-            Ostreaming = Streaming(device=device, integration=integration,
-                                   outChannels=outChannels, duration=duration,
-                                   excitationData=excitData,
-                                   samplingRate=samplingRate,
-                                   callback=callback,
-                                   *args, **kwargs)
+            return Streaming(device=device, integration=integration, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
             outChannels = excitation.channels
             duration = excitation.timeLength
             excitData = excitation.timeSignal[:]
-            Ostreaming = Streaming(device=device, integration=integration,
-                                   outChannels=outChannels, duration=duration,
-                                   excitationData=excitData,
-                                   samplingRate=samplingRate,
-                                   callback=callback,
-                                   *args, **kwargs)
-        return Ostreaming
+            return Streaming(device=device, integration=integration, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
 
     elif IO in ['IO', 'in-out', 'input-output']:
         if excit:
-            IOstreaming = Streaming(device=device,
-                                    integration=integration,
-                                    inChannels=inChannels,
-                                    outChannels=outChannels,
-                                    duration=duration,
-                                    excitationData=excitData,
-                                    samplingRate=samplingRate,
-                                    callback=callback,
-                                    *args, **kwargs)
+            return Streaming(device=device, integration=integration, inChannels=inChannels, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
             outChannels = excitation.channels[:]
             duration = excitation.timeLength
             excitData = excitation.timeSignal[:]
-            IOstreaming = Streaming(device=device,
-                                    integration=integration,
-                                    inChannels=inChannels,
-                                    outChannels=outChannels,
-                                    duration=duration,
-                                    excitationData=excitData,
-                                    samplingRate=samplingRate,
-                                    callback=callback,
-                                    *args, **kwargs)
-        return IOstreaming
+            return Streaming(device=device, integration=integration, inChannels=inChannels, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
+
 
     else:
         raise ValueError("The IO parameter could not identify whether the\
@@ -562,5 +523,4 @@ def filter(order: int = 4,
            maxFreq: float = 16000,
            refFreq: float = 1000,
            base: int = 10) -> OctFilter:
-    return OctFilter(order, nthOct, samplingRate,
-                     minFreq, maxFreq, refFreq, base)
+    return OctFilter(order, nthOct, samplingRate, minFreq, maxFreq, refFreq, base)
