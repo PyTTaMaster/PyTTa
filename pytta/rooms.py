@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # from pytta import default
-from .filter import OctFilter
+from .classes import OctFilter
 import numpy as np
 # import scipy .signal as ss
 import scipy.integrate as si

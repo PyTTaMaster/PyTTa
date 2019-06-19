@@ -34,9 +34,8 @@ Generate:
 
 # Import modules
 from pytta import default
-from classes import SignalObj, RecMeasure, FRFMeasure, \
-                    PlayRecMeasure, Streaming
-from .filter import OctFilter
+from .classes import SignalObj, RecMeasure, FRFMeasure, \
+                    PlayRecMeasure, Streaming, OctFilter, Result, ResultList
 from scipy import signal as ss
 import numpy as np
 

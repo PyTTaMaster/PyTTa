@@ -50,7 +50,7 @@ from . import properties
 default = properties.Default()
 units = properties.units
 
-from classes import SignalObj, ImpulsiveResponse,\
+from .classes import SignalObj, ImpulsiveResponse,\
                     RecMeasure, PlayRecMeasure, FRFMeasure,\
                     Streaming,\
                     OctFilter, weighting
