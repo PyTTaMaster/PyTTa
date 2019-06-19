@@ -329,7 +329,8 @@ class ChannelObj(object):
             perform :attr:`unit` concatenation  # TODO unit conversion.
 
     """
-    def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False):
+    def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False,
+                 coordinates=CoordinatesObj(), orientation=CoordinatesObj()):
         self.num = num
         if name is None:
             self.name = 'Ch. '+str(self.num)
@@ -338,8 +339,8 @@ class ChannelObj(object):
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
-        self.coordinates = CoordinatesObj()
-        self.orientation = CoordinatesObj()
+        self.coordinates = coordinates
+        self.orientation = orientation
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
@@ -347,7 +348,9 @@ class ChannelObj(object):
                 f'name={self.name!r}, '
                 f'unit={self.unit!r}, '
                 f'CF={self.CF!r}, '
-                f'calibCheck={self.calibCheck!r})')
+                f'calibCheck={self.calibCheck!r}, '
+                f'coordinates={self.coordinates.point!r}, '
+                f'orientation={self.orientation.point!r})')
 
     def __mul__(self, other):
         if not isinstance(other, ChannelObj):
@@ -476,6 +479,37 @@ class ChannelObj(object):
             self._calibCheck = newcalibCheck
         else:
             raise TypeError('Channel calibration check must be True or False.')
+        return
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, newcoord):
+        if isinstance(newcoord, list) and len(newcoord) == 3:
+            self._coordinates.point = newcoord
+        elif isinstance(newcoord, CoordinatesObj):
+            self._coordinates = newcoord
+        else:
+            raise TypeError('Coordinates must be a list with the ' +
+                            'three-dimensional cartesian points (e.g. [3, 3,' +
+                            ' 4]), or a CoordinatesObj.')
+
+    @property
+    def orientation(self):
+        return self._orientation
+
+    @orientation.setter
+    def orientation(self, neworient):
+        if isinstance(neworient, list) and len(neworient) == 3:
+            self._orientation.point = neworient
+        elif isinstance(neworient, CoordinatesObj):
+            self._orientation = neworient
+        else:
+            raise TypeError('Orientation must be a list with the ' +
+                            'three-dimensional cartesian points (e.g. [3, 3,' +
+                            ' 4]), or a CoordinatesObj.')
         return
 
 
@@ -614,21 +648,45 @@ class ChannelsList(object):
         self._channels.pop(Ch)
         return
 
-    def conform_to(self, rule):
+    def conform_to(self, rule=None):
         if isinstance(rule, SignalObj):
             dCh = rule.num_channels() - len(self)
+            # Adjusting number of channels
             if dCh > 0:
+                newIndex = len(self)
                 for i in range(dCh):
-                    newIndex = i+rule.num_channels()
-                    self.append(ChannelObj(num=(newIndex+1)))
+                    self.append(ChannelObj(num=(newIndex+i+1)))
             if dCh < 0:
                 for i in range(0, -dCh):
                     self._channels.pop(-1)
-        if isinstance(rule, list):
+        elif isinstance(rule, list):
             self._channels = []
             for index in rule:
                 self.append(ChannelObj(num=index+1, name='Channel ' +
                                        str(index)))
+        elif rule is None:
+            count = 1
+            newchs = []
+            # Adjusting channel's numbers
+            for ch in self._channels:
+                newchs.append(ChannelObj(num=count, name=ch.name, unit=ch.unit,
+                                         CF=ch.CF, calibCheck=ch.calibCheck,
+                                         coordinates=ch.coordinates,
+                                         orientation=ch.orientation))
+                count += 1
+            # Adjusting channel's names
+            for idx1 in range(len(newchs)):
+                neq = 2
+                for idx2 in range(len(newchs)):
+                    if idx1 != idx2:
+                        if newchs[idx1].name == newchs[idx2].name:
+                            newchs[idx2].name = newchs[idx1].name + \
+                                ' - ' + str(neq)
+                            neq += 1
+            self._channels = newchs
+        else:
+            raise TypeError('Rule must be an SignalObj or a list with ' +
+                            'channel\'s numbers')
         return
 
     def rename_channels(self):
@@ -756,8 +814,6 @@ class SignalObj(PyTTaObj):
             self.lengthDomain = 'time'
             print('Taking the input as a time domain signal')
 
-        self.channels.conform_to(self)
-
 # SignalObj Properties
     @property
     def timeVector(self):
@@ -832,6 +888,20 @@ class SignalObj(PyTTaObj):
         else:
             raise TypeError('Input array must be a numpy ndarray')
         return
+
+    @property
+    def coordinates(self):
+        coords = []
+        for chIndex in range(self.num_channels()):
+            coords.append(self.channels[chIndex].coordinates)
+        return coords
+
+    @property
+    def orientation(self):
+        orientations = []
+        for chIndex in range(self.num_channels()):
+            orientations.append(self.channels[chIndex].orientation)
+        return orientations
 
 # SignalObj Methods
     def mean(self):
@@ -1334,15 +1404,15 @@ class ImpulsiveResponse(PyTTaObj):
     """
 
     def __init__(self, excitationSignal, recordedSignal,
-                 coordinates={'points': [],
-                              'reference': 'south-west-floor corner',
-                              'unit': 'm'},
+                 # coordinates={'points': [],
+                 #            'reference': 'south-west-floor corner',
+                 #             'unit': 'm'},
                  method='linear', winType=None, winSize=None, overlap=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._excitation = excitationSignal
         self._recording = recordedSignal
-        self._coordinates = coordinates
+#        self._coordinates = coordinates
         self._methodInfo = {'method': method, 'winType': winType,
                             'winSize': winSize, 'overlap': overlap}
         self._systemSignal = self._calculate_tf_ir(excitationSignal,
@@ -1351,7 +1421,7 @@ class ImpulsiveResponse(PyTTaObj):
                                                    winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
-        self._coord_points_per_channel()
+#        self._coord_points_per_channel()
         return
 
     def _to_dict(self):
@@ -1415,55 +1485,73 @@ class ImpulsiveResponse(PyTTaObj):
 
     @property
     def coordinates(self):
-        return self._coordinates
+        excoords = []
+        for chIndex in range(self.excitation.num_channels()):
+            excoords.append(self.excitation.channels[chIndex].coordinates)
+        incoords = []
+        for chIndex in range(self.inputSignal.num_channels()):
+            incoords.append(self.inputSignal.channels[chIndex].coordinates)
+        coords = {'excitation': excoords, 'inputSignal': incoords}
+        return coords
+
+    @property
+    def orientation(self):
+        exori = []
+        for chIndex in range(self.excitation.num_channels()):
+            exori.append(self.excitation.channels[chIndex].orientation)
+        inori = []
+        for chIndex in range(self.inputSignal.num_channels()):
+            inori.append(self.inputSignal.channels[chIndex].orientation)
+        oris = {'excitation': exori, 'inputSignal': inori}
+        return oris
 
     @property
     def methodInfo(self):
         return self._methodInfo
 
 # Public methods
-    def set_channels_points(self, channels, points):
-        if isinstance(channels, list):
-            if len(channels) != len(points):
-                raise IndexError("Each value on channels list must have a\
-                                 corresponding [x, y, z] on points list.")
-            else:
-                for idx in range(len(channels)):
-                    self.coordinates['points'][idx] = points[idx]
-        elif isinstance(channels, int):
-            try:
-                self.coordinates['points'][channels-1] = points
-            except IndexError:
-                print('The channel value goes beyond the number of channels,\
-                      the point was appended to the points list.')
-                self.coordinates['points'].append(points)
-        else:
-            raise TypeError("channels parameter must be either an int or\
-                            list of int")
-        return
+#    def set_channels_points(self, channels, points):
+#        if isinstance(channels, list):
+#            if len(channels) != len(points):
+#                raise IndexError("Each value on channels list must have a\
+#                                 corresponding [x, y, z] on points list.")
+#            else:
+#                for idx in range(len(channels)):
+#                    self.coordinates['points'][idx] = points[idx]
+#        elif isinstance(channels, int):
+#            try:
+#                self.coordinates['points'][channels-1] = points
+#            except IndexError:
+#                print('The channel value goes beyond the number of channels,\
+#                      the point was appended to the points list.')
+#                self.coordinates['points'].append(points)
+#        else:
+#            raise TypeError("channels parameter must be either an int or\
+#                            list of int")
+#        return
 
-    def get_channels_points(self, channels):
-        if isinstance(channels, list):
-            outlist = []
-            for idx in channels:
-                outlist.append(self.coordinates['points'][idx-1])
-            return outlist
-        elif isinstance(channels, int):
-            try:
-                return self.coordinates['points'][channels-1]
-            except IndexError:
-                print('Index out of bounds, returning last channel\'s point')
-                return self.coordinates['points'][-1]
-        else:
-            raise TypeError("channels parameter must be either an int or\
-                            list of int")
-            return
+#    def get_channels_points(self, channels):
+#        if isinstance(channels, list):
+#            outlist = []
+#            for idx in channels:
+#                outlist.append(self.coordinates['points'][idx-1])
+#            return outlist
+#        elif isinstance(channels, int):
+#            try:
+#                return self.coordinates['points'][channels-1]
+#            except IndexError:
+#                print('Index out of bounds, returning last channel\'s point')
+#                return self.coordinates['points'][-1]
+#        else:
+#            raise TypeError("channels parameter must be either an int or\
+#                            list of int")
+#            return
 
 # Private methods
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                          winType=None, winSize=None, overlap=None):
         if type(inputSignal) is not type(outputSignal):
-            raise TypeError("Only signal-like objects can become an\
+            raise TypeError("Only signal-like objects can become an \
                             Impulsive Response.")
         elif inputSignal.samplingRate != outputSignal.samplingRate:
             raise ValueError("Both signal-like objects must have the same\
@@ -1620,19 +1708,19 @@ class ImpulsiveResponse(PyTTaObj):
                         axis=0)
         return S12, S11
 
-    def _coord_points_per_channel(self):
-        if len(self.coordinates['points']) == 0:
-            for idx in range(self.IR.num_channels()):
-                self.coordinates['points'].append([0., 0., 0.])
-        elif len(self.coordinates['points']) != self.IR.num_channels():
-            while len(self.coordinates['points']) != self.IR.num_channels():
-                if len(self.coordinates['points']) < self.IR.num_channels():
-                    self.coordinates['points'].append([0., 0., 0.])
-                elif len(self.coordinates['points']) < self.IR.num_channels():
-                    self.coordinates['points'].pop(-1)
-        elif len(self.coordinates['points']) == self.IR.num_channels():
-            pass
-        return
+#    def _coord_points_per_channel(self):
+#        if len(self.coordinates['points']) == 0:
+#            for idx in range(self.IR.num_channels()):
+#                self.coordinates['points'].append([0., 0., 0.])
+#        elif len(self.coordinates['points']) != self.IR.num_channels():
+#            while len(self.coordinates['points']) != self.IR.num_channels():
+#                if len(self.coordinates['points']) < self.IR.num_channels():
+#                    self.coordinates['points'].append([0., 0., 0.])
+#                elif len(self.coordinates['points']) < self.IR.num_channels():
+#                    self.coordinates['points'].pop(-1)
+#        elif len(self.coordinates['points']) == self.IR.num_channels():
+#            pass
+#        return
 
 
 # Measurement class
@@ -2076,7 +2164,7 @@ class FRFMeasure(PlayRecMeasure):
         recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
                                              recording,
-                                             self.coordinates,
+                                             # self.coordinates,
                                              self.method,
                                              self.winType,
                                              self.winSize,
