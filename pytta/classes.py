@@ -294,6 +294,12 @@ class CoordinatesObj(object):
             TypeError('unit must be a string,\
                        e.g. \'m\'')
 
+    def _to_dict(self):
+        out = {'point': self.point,
+               'ref': self.ref,
+               'unit': self.unit}
+        return out
+
 
 class ChannelObj(object):
     """
@@ -512,6 +518,14 @@ class ChannelObj(object):
                             ' 4]), or a CoordinatesObj.')
         return
 
+    def _to_dict(self):
+        out = {'calib': [self.CF, self.calibCheck],
+               'unit': self.unit,
+               'name': self.name,
+               'coordinates': self.coordinates._to_dict(),
+               'orientation': self.orientation._to_dict()}
+        return out
+
 
 class ChannelsList(object):
     """
@@ -632,9 +646,7 @@ class ChannelsList(object):
     def _to_dict(self):
         out = {}
         for ch in self._channels:
-            out[ch.num] = {'calib': [ch.CF, ch.calibCheck],
-                           'unit': ch.unit,
-                           'name': ch.name}
+            out[ch.num] = ch._to_dict()
         return out
 
     def append(self, newCh):
