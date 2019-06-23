@@ -96,8 +96,9 @@ class OctFilter(object):
         for i, edges in enumerate(bandEdges):
             if edges[1] >= samplingRate//2:
                 edges[1] = samplingRate//2 - 1
-            sos[:, :, i] = ss.butter(order, [edges[0], edges[1]], 'bp',
-                                     output='sos', fs=samplingRate)
+            sos[:, :, i] = ss.butter(N=order, Wn=np.array([edges[0],
+                                                          edges[1]]),
+                                     btype='bp', output='sos', fs=samplingRate)
         return sos
 
     def get_sos_filters(self) -> np.ndarray:

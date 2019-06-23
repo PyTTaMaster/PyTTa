@@ -51,9 +51,10 @@ default = properties.Default()
 units = properties.units
 
 from .classes import SignalObj, ImpulsiveResponse,\
-                    RecMeasure, PlayRecMeasure, FRFMeasure,\
-                    Streaming,\
-                    OctFilter, weighting
+                     RecMeasure, PlayRecMeasure, FRFMeasure,\
+                     Streaming,\
+                     OctFilter, weighting,\
+                     ResultList
 from .functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load

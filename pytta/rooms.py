@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # from pytta import default
-from .classes import OctFilter
+from .classes import OctFilter, ResultsList
 import numpy as np
 # import scipy .signal as ss
 import scipy.integrate as si
@@ -37,6 +37,9 @@ def __remove_nonlinear(timeSignal, samplingRate):
 
 
 def strip_silences(signalObj):
+    """
+
+    """
     signal, ini = __remove_init_silence(signalObj.timeSignal[:])
     signal, fin = __remove_nonlinear(signalObj.timeSignal[:],
                                      signalObj.samplingRate)
@@ -53,6 +56,9 @@ def __cumulative_integration(timeSignal, timeVector, samplingRate):
 
 
 def filtered_response(signalObj, nthOct, **kwargs):
+    """
+
+    """
     filtered = __filter(signalObj, nthOct=nthOct, **kwargs)
     signal = [strip_silences(filtered[bd])
               for bd in range(filtered.num_channels())]
@@ -60,6 +66,9 @@ def filtered_response(signalObj, nthOct, **kwargs):
 
 
 def filtered_decays(signalObj, nthOct, **kwargs):
+    """
+
+    """
     filteredObj = __filter(signalObj, nthOct=nthOct, **kwargs)
     integList = [__cumulative_integration(filteredObj.timeSignal[:, ch],
                                           filteredObj.timeVector[:],
@@ -69,6 +78,9 @@ def filtered_decays(signalObj, nthOct, **kwargs):
 
 
 def RT(decay, signalObj, nthOct, **kwargs):
+    """
+
+    """
     try:
         decay = int(decay)
         y1 = -5
@@ -95,6 +107,9 @@ def RT(decay, signalObj, nthOct, **kwargs):
 
 
 def C(temp, signalObj, nthOct, **kwargs):
+    """
+
+    """
     try:
         temp = int(temp)*signalObj.samplingRate//1000
     except ValueError:
@@ -112,6 +127,9 @@ def C(temp, signalObj, nthOct, **kwargs):
 
 
 def D(temp, signalObj, nthOct, **kwargs):
+    """
+
+    """
     try:
         temp = int(temp)*signalObj.samplingRate//1000
     except ValueError:
@@ -126,3 +144,10 @@ def D(temp, signalObj, nthOct, **kwargs):
                                  / np.sum(filtResp[bd][:], axis=0))[0])
         output.append(D)
     return output
+
+
+def analyse(obj, *param, **kwargs):
+    """
+
+    """
+    pass
