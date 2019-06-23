@@ -4,7 +4,6 @@ from .streaming import Streaming
 from .filter import OctFilter, weighting
 from .analysis import Result, ResultList
 
-
 __all__ = ['SignalObj', 'ImpulsiveResponse',
            'RecMeasure', 'PlayRecMeasure', 'FRFMeasure',
            'Streaming',

@@ -58,13 +58,18 @@ from .functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
 
+from .apps import roomir
+
 from . import rooms
 from . import generate
 
 __version__ = '0.1.0rc'  # package version
 
 # package submodules and scripts to be called as pytta.something
-__all__ = [  # Submodules
+__all__ = [  # Apps
+           'roomir',
+
+           # Submodules
            'generate',
 
            # Functions
