@@ -329,13 +329,18 @@ class ChannelObj(object):
             perform :attr:`unit` concatenation  # TODO unit conversion.
 
     """
-    def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False,
-                 coordinates=CoordinateObj(), orientation=CoordinateObj()):
+    def __init__(self, num, name=None, code=None, unit='FS', CF=1,
+                 calibCheck=False, coordinates=CoordinateObj(),
+                 orientation=CoordinateObj()):
         self.num = num
         if name is None:
             self.name = 'Ch. '+str(self.num)
         else:
             self.name = name
+        if code is None:
+            self.code = self.name[0:2].replace(' ', '')+str(self.num)
+        else:
+            self.code = code
         self.unit = unit
         self.CF = CF
         self.calibCheck = calibCheck
@@ -346,6 +351,7 @@ class ChannelObj(object):
         return (f'{self.__class__.__name__}('
                 f'num={self.num!r}, '
                 f'name={self.name!r}, '
+                f'code={self.code!r}, '
                 f'unit={self.unit!r}, '
                 f'CF={self.CF!r}, '
                 f'calibCheck={self.calibCheck!r}, '
@@ -356,7 +362,8 @@ class ChannelObj(object):
         if not isinstance(other, ChannelObj):
             raise TypeError('Can\'t "multiply" by other \
                             type than a ChannelObj')
-        newCh = ChannelObj(self.num, name=self.name+'.'+other.name,
+        newCh = ChannelObj(self.num,
+                           # name=self.name+'.'+other.name,
                            unit=self.unit+'.'+other.unit,
                            CF=self.CF*other.CF,
                            calibCheck=self.calibCheck if self.calibCheck
@@ -436,6 +443,21 @@ class ChannelObj(object):
             self._name = newname
         else:
             raise TypeError('Channel name must be a string.')
+        return
+
+    @property
+    def code(self):
+        return self._code
+
+    @code.setter
+    def code(self, newcode):
+        if isinstance(newcode, str):
+            if ' ' not in newcode:
+                self._code = newcode
+            else:
+                raise TypeError('Channel code cannot contain spaces.')
+        else:
+            raise TypeError('Channel code must be a string.')
         return
 
     @property

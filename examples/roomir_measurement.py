@@ -45,8 +45,8 @@ SM = m.newMeasurement(name='med-teste',  # Nome da medição
                       # Dicionário com códigos e canais de saída associados
                       inChannel={'OE': ([1], 'Orelha E'),
                                  'OD': ([2], 'Orelha D'),
-                                 'MIC1': ([4], 'Mic 1'),
-                                 'MIC2': ([5], 'Mic 2')},
+                                 'Mic1': ([4], 'Mic 1'),
+                                 'Mic2': ([5], 'Mic 2')},
                       # Dicionário com códigos e canais de saída associados
                       outChannel={'S1': ([1], 'Dodecaedro 1'),
                                   'S2': ([2], 'Dodecaedro 2'),
