@@ -78,49 +78,65 @@ D.getStatus()
 #%% Cria nova tomada de medição para uma nova configuração fonte receptor
 measureTake = m.measureTake(SM,
                             kind='newpoint',
-                            # Status do canal: True para Ativado e False para Desativado
-                            channelStatus=[True, # canal 1
-                                             True, # canal 2
-                                             True, # canal 3
-                                             True], # canal 4
+                            # Status do canal:
+                            # True para Ativado e False para Desativado
+                            channelStatus=[True,  # canal 1
+                                           True,  # canal 2
+                                           True,  # canal 3
+                                           True],  # canal 4
                             # Configuração fonte receptor
-                            # Obs. 1: manter itens da lista para canais Desativados
-                            receiver=['R1', # canal 1 (ATENÇÃO: canal 1 e 2 devem ter a mesma cfg.)
-                                        'R1', # canal 2 (ATENÇÃO: canal 1 e 2 devem ter a mesma cfg.)
-                                        'R2', # canal 3 
-                                        'R3'], # canal 4
-#                            source='S1', # código de fonte a ser utilizado. Para fins de seleção dos canais de saída
-                            source= 'S2',
-#                            source='S3',
-                            excitation='varredura', # escolhe sinal de excitacão  disponível no Setup de Medição
-#                            excitation='fala',
-#                            excitation='musica',
-                            tempHumid=tempHumid) # passa objeto de comunicação com LabJack U3 + EI1050
+                            # Obs. 1: manter itens da lista para
+                            #         canais Desativados;
+                            # Obs. 2: canais combinados devem ter a mesma cfg.
+                            receiver=['R1',  # canal 1
+                                      'R1',  # canal 2
+                                      'R2',  # canal 3
+                                      'R3'],  # canal 4
+                            # Código de fonte a ser utilizado.
+                            # Para fins de seleção dos canais de saída
+                            # source='S1',
+                            source='S2',
+                            # source='S3',
+                            # escolhe sinal de excitacão
+                            # disponível no Setup de Medição
+                            excitation='varredura',
+                            # excitation='fala',
+                            # excitation='musica',
+                            # Passa objeto de comunicação
+                            # com o LabJack U3 + EI1050 probe
+                            tempHumid=tempHumid)
 #%% Cria nova tomada de medição do ruído de fundo
 measureTake = m.measureTake(SM,
-                            kind = 'noisefloor',
-                            # Status do canal: True para Ativado e False para Desativado
-                            channelStatus = [True, # canal 1
-                                             True, # canal 2
-                                             True, # canal 3
-                                             True], # canal 4
+                            kind='noisefloor',
+                            # Status do canal:
+                            # True para Ativado e False para Desativado
+                            channelStatus=[True,  # canal 1
+                                           True,  # canal 2
+                                           True,  # canal 3
+                                           True],  # canal 4
                             # Configuração fonte receptor
-                            # Obs. 1: manter itens da lista para canais Desativados
-                            # Obs. 2: para kind = 'noisefloor' não há fonte
-                            receiver = ['R1', # canal 1 (ATENÇÃO: canal 1 e 2 devem ter a mesma cfg.)
-                                        'R1', # canal 2 (ATENÇÃO: canal 1 e 2 devem ter a mesma cfg.)
-                                        'R2', # canal 4
-                                        'R3'], # canal 3 
-                            tempHumid = tempHumid) # passa objeto de comunicação com LabJack U3 + EI1050
+                            # Obs. 1: manter itens da lista para
+                            #         canais Desativados;
+                            # Obs. 2: canais combinados devem ter a mesma cfg;
+                            # Obs. 3: para kind = 'noisefloor' não há fonte.
+                            receiver=['R1',  # canal 1
+                                      'R1',  # canal 2
+                                      'R2',  # canal 3
+                                      'R3'],  # canal 4
+                            # Passa objeto de comunicação
+                            # com o LabJack U3 + EI1050 probe
+                            tempHumid=tempHumid)
 #%% Cria nova tomada de medição para calibração
 measureTake = m.measureTake(SM,
-                            kind = 'calibration',
-                            # Status do canal: True para Ativado e False para Desativado
-                            # Obs. 1: para kind = 'calibration' os canais devem ser calibrados individualmente
-                            channelStatus = [True, # canal 1
-                                             False, # canal 2
-                                             False, # canal 3
-                                             False], # canal 4
+                            kind='calibration',
+                            # Status do canal:
+                            # True para Ativado e False para Desativado
+                            # Obs. 1: para kind = 'calibration' os canais devem
+                            #         ser calibrados individualmente.
+                            channelStatus=[True,  # canal 1
+                                           True,  # canal 2
+                                           True,  # canal 3
+                                           True],  # canal 4
                             tempHumid = tempHumid) # passa objeto de comunicação com LabJack U3 + EI1050
 #%% Nova tomada de medição
 measureTake.run()
