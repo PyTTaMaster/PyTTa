@@ -12,7 +12,6 @@ import pytta
 from pytta.classes._base import ChannelObj, ChannelsList
 import numpy as np
 import copy as cp
-import time
 import pickle
 import matplotlib.pyplot as plot
 from os import getcwd, listdir, mkdir
@@ -32,7 +31,6 @@ class newMeasurement():
                  freqMin,
                  freqMax,
                  inChannel,
-                 inChName,
                  outChannel,
                  averages,
                  sourcesNumber,
@@ -45,9 +43,16 @@ class newMeasurement():
         self.samplingRate = samplingRate
         self.freqMin = freqMin
         self.freqMax = freqMax
-        self.inChannel = inChannel
-        self.inChName = inChName
-        self.outChannel = outChannel
+        self.inChannel = ChannelsList()
+        for chCode, chContents in inChannel.items():
+            self.inChannel.append(ChannelObj(num=chContents[0],
+                                             name=chContents[1],
+                                             code=chCode))
+        self.outChannel = ChannelsList()
+        for chCode, chContents in outChannel.items():
+            self.outChannel.append(ChannelObj(num=chContents[0],
+                                              name=chContents[1],
+                                              code=chCode))
         self.averages = averages
         self.sourcesNumber = sourcesNumber
         self.receiversNumber = receiversNumber
@@ -61,8 +66,7 @@ class newMeasurement():
                                                         freqMax=self.freqMax,
                                                         device=self.device,
                                                         inChannel=self.inChannel,
-                                                        outChannel=self.outChannel['S1'][0],
-                                                        channelName=self.inChName,
+                                                        outChannel=self.outChannel[0],
                                                         comment='varredura'),
                    'musica' : pytta.generate.measurement('playrec',
                                                         excitation=self.excitationSignals['musica'],
@@ -71,8 +75,7 @@ class newMeasurement():
                                                         freqMax=self.freqMax,
                                                         device=self.device,
                                                         inChannel=self.inChannel,
-                                                        outChannel=self.outChannel['S1'][0],
-                                                        channelName=self.inChName,
+                                                        outChannel=self.outChannel[0],
                                                         comment='musica'),
                    'fala' : pytta.generate.measurement('playrec',
                                                         excitation=self.excitationSignals['fala'],
@@ -81,8 +84,7 @@ class newMeasurement():
                                                         freqMax=self.freqMax,
                                                         device=self.device,
                                                         inChannel=self.inChannel,
-                                                        outChannel=self.outChannel['S1'][0],
-                                                        channelName=self.inChName,
+                                                        outChannel=self.outChannel[0],
                                                         comment='fala'),
                    'noisefloor' : pytta.generate.measurement('rec',
                                                          lengthDomain='time',
@@ -116,7 +118,8 @@ class Data(object):
         self.measuredData = {} # Cria o dicionário vazio que conterá todos os níveis de informação do nosso dia de medição
         self.status = {} # Cria o dicionário vazio que conterá o status de cada ponto de medição
         # Gerando chaves para configurações fonte-receptor
-        for sourceCode in self.MS.outChannel:
+        for ch in self.MS.outChannel:
+            sourceCode = ch.code
             for rN in range(1,self.MS.receiversNumber+1):
                 self.measuredData[sourceCode+'R'+str(rN)] = {} # Insere as chaves referente as configurações fonte receptor
                 self.status[sourceCode+'R'+str(rN)] = {}
@@ -127,7 +130,8 @@ class Data(object):
         self.status['noisefloor'] = False
         self.measuredData['calibration'] = {} # Cria dicionário com os canais de entrada da medição
         self.status['calibration'] = {}
-        for chN in self.MS.inChName:
+        for ch in self.MS.inChannel:
+            chN = ch.name
             self.measuredData['calibration'][chN] = [] # Cria uma lista de calibrações para cada canal
             self.status['calibration'][chN] = False
             
@@ -254,7 +258,7 @@ class measureTake():
             self.averages = MS.averages
         j = 0
         inChannel = ChannelsList()
-        channelName = []
+#        channelName = []
         for i in self.channelStatus:
             if i:
                 inChannel.append(self.MS.measurementObjects[excitation].inChannel[j])
@@ -262,9 +266,9 @@ class measureTake():
             j=j+1
         if kind == 'newpoint':
             self.measurementObject.outChannel = \
-                ChannelsList(self.MS.outChannel[self.source][0])
+                ChannelsList(self.MS.outChannel[self.source])
         self.measurementObject.inChannel = inChannel # Ao redefinir a propriedade inChannelo o PyTTa já reajusta a lista channelName com os nomes antigos + nomes padrão para novos canais
-        self.measurementObject.channelName = channelName # Atribuiu os nomes corretos aos canais selecionados
+#        self.measurementObject.channelName = channelName # Atribuiu os nomes corretos aos canais selecionados
 
     def run(self):
         self.measuredTake = []
@@ -292,8 +296,8 @@ class measureTake():
                                                'time',
                                                samplingRate=self.measuredTake[i].samplingRate,
                                                comment=self.excitation))
-                    self.binaural[-1].channels[0].name = self.MS.inChName[0]
-                    self.binaural[-1].channels[1].name = self.MS.inChName[1]
+                    self.binaural[-1].channels[0].name = self.MS.inChannel[0].name
+                    self.binaural[-1].channels[1].name = self.MS.inChannel[1].name
                     if self.kind == 'noisefloor': 
                         SR = [self.receiver[0],self.receiver[1]] 
                     else: 
@@ -309,7 +313,7 @@ class measureTake():
                                           'time',
                                           samplingRate=self.measuredTake[i].samplingRate,
                                           comment=self.excitation))
-                    self.hc1[-1].channels[0].name = self.MS.inChName[2]
+                    self.hc1[-1].channels[0].name = self.MS.inChannel[2].name
                     if self.kind == 'noisefloor': 
                         SR = self.receiver[2]
                     else: 
@@ -325,7 +329,7 @@ class measureTake():
                                           'time',
                                           samplingRate=self.measuredTake[i].samplingRate,
                                           comment=self.excitation))
-                    self.hc2[-1].channels[0].name = self.MS.inChName[3]
+                    self.hc2[-1].channels[0].name = self.MS.inChannel[3].name
                     if self.kind == 'noisefloor': 
                         SR = self.receiver[3]
                     else: 
@@ -418,7 +422,7 @@ class measureTake():
                    'excitationSignals':self.MS.excitationSignals,
                    'freqMax':self.MS.freqMax,
                    'freqMin':self.MS.freqMin,
-                   'inChName':self.MS.inChName,
+#                   'inChName':self.MS.inChName,
                    'inChannel':self.MS.inChannel,
 #                   'measurementObjects':self.MS.measurementObjects,
                    'name':self.MS.name,

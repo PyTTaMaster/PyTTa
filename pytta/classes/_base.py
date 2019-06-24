@@ -575,6 +575,8 @@ class ChannelsList(object):
                 self._channels.append(ChannelObj(chList))
             elif type(chList) is ChannelObj:
                 self._channels.append(chList)
+            elif type(chList) is ChannelsList:
+                self._channels = chList._channels
             else:
                 raise TypeError('List initializer must be either positive int,\
                                 ChannelObj, a list of positive int or\
@@ -591,9 +593,15 @@ class ChannelsList(object):
         return len(self._channels)
 
     def __getitem__(self, key):
-        try:
-            return self._channels[key]
-        except IndexError:
+        if isinstance(key, int):
+            try:
+                return self._channels[key]
+            except IndexError:
+                raise IndexError("Out of range.")
+        elif isinstance(key, str):
+            for ch in self._channels:
+                if ch.name == key or ch.code == key:
+                    return ch
             raise IndexError("Out of range.")
 
     def __setitem__(self, key, item):

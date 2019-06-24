@@ -69,7 +69,6 @@ class Measurement(_base.PyTTaObj):
         # device number. For device list use sounddevice.query_devices()
         self.device = device
         self.inChannel = _base.ChannelsList(inChannel)
-        print(self.inChannel)
         self.outChannel = _base.ChannelsList(outChannel)
         self.blocking = blocking
         return
