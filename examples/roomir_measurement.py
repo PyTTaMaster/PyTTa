@@ -77,8 +77,8 @@ measureTake = m.measureTake(SM,
 #                            source = 'S1', # código de fonte a ser utilizado. Para fins de seleção dos canais de saída
                             source = 'S2',
 #                            source = 'S3',
-#                            excitation = 'varredura', # escolhe sinal de excitacão  disponível no Setup de Medição
-                            excitation = 'fala',
+                            excitation = 'varredura', # escolhe sinal de excitacão  disponível no Setup de Medição
+#                            excitation = 'fala',
 #                            excitation = 'musica',
                             tempHumid = tempHumid) # passa objeto de comunicação com LabJack U3 + EI1050
 #%% Cria nova tomada de medição do ruído de fundo

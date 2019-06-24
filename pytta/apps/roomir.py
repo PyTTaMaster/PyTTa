@@ -9,7 +9,7 @@ Created on Sun Jun 23 15:05:17 2019
 # Importando bibliotecas
 
 import pytta
-import pytta.classes._base
+from pytta.classes._base import ChannelObj, ChannelsList
 import numpy as np
 import copy as cp
 import time
@@ -242,25 +242,27 @@ class measureTake():
             if self.excitation != None and self.excitation not in self.MS.excitationSignals:
                 raise ValueError('Sinal de excitação não existe em '+MS.name)            
             self.averages = MS.averages
-            self.measurementObject = cp.deepcopy(MS.measurementObjects[excitation])
+            MS.measurementObjects[excitation]
+            self.measurementObject = cp.copy(MS.measurementObjects[excitation])
         if self.kind == 'calibration':            
             if self.channelStatus.count(True) != 1:
                 raise ValueError('Somente 1 canal por tomada de calibração!')
-            self.measurementObject = cp.deepcopy(MS.measurementObjects[kind])
+            self.measurementObject = cp.copy(MS.measurementObjects[kind])
             self.averages = MS.averages
         if self.kind == 'noisefloor':
-            self.measurementObject = cp.deepcopy(MS.measurementObjects[kind])
+            self.measurementObject = cp.copy(MS.measurementObjects[kind])
             self.averages = MS.averages
         j = 0
-        inChannel = []
+        inChannel = ChannelsList()
         channelName = []
         for i in self.channelStatus:
             if i:
-                inChannel.append(self.MS.inChannel[j])
-                channelName.append(self.MS.inChName[j])
+                inChannel.append(self.MS.measurementObjects[excitation].inChannel[j])
+#                channelName.append(self.MS.inChName[j])
             j=j+1
         if kind == 'newpoint':
-            self.measurementObject.outChannel = self.MS.outChannel[self.source][0]
+            self.measurementObject.outChannel = \
+                ChannelsList(self.MS.outChannel[self.source][0])
         self.measurementObject.inChannel = inChannel # Ao redefinir a propriedade inChannelo o PyTTa já reajusta a lista channelName com os nomes antigos + nomes padrão para novos canais
         self.measurementObject.channelName = channelName # Atribuiu os nomes corretos aos canais selecionados
 
@@ -418,7 +420,7 @@ class measureTake():
                    'freqMin':self.MS.freqMin,
                    'inChName':self.MS.inChName,
                    'inChannel':self.MS.inChannel,
-                   'measurementObjects':self.MS.measurementObjects,
+#                   'measurementObjects':self.MS.measurementObjects,
                    'name':self.MS.name,
                    'noiseFloorTp':self.MS.noiseFloorTp,
                    'outChannel':self.MS.outChannel,

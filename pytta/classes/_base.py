@@ -557,8 +557,8 @@ class ChannelsList(object):
                 raise TypeError('List initializer must be either positive int,\
                                 ChannelObj, a list of positive int or\
                                 ChannelObj.')
-        else:
-            self._channels.append(ChannelObj(1))
+#        else:
+#            self._channels.append(ChannelObj(1))
         return
 
     def __repr__(self):

@@ -69,6 +69,7 @@ class Measurement(_base.PyTTaObj):
         # device number. For device list use sounddevice.query_devices()
         self.device = device
         self.inChannel = _base.ChannelsList(inChannel)
+        print(self.inChannel)
         self.outChannel = _base.ChannelsList(outChannel)
         self.blocking = blocking
         return
@@ -214,7 +215,7 @@ class RecMeasure(Measurement):
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
         recording.comment = 'SignalObj from a Rec measurement'
-        __print_max_level(recording, kind='input')
+        _print_max_level(recording, kind='input')
         return recording
 
 
@@ -303,8 +304,8 @@ class PlayRecMeasure(Measurement):
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
         recording.comment = 'SignalObj from a PlayRec measurement'
-        __print_max_level(self.excitation, kind='output')
-        __print_max_level(recording, kind='input')
+        _print_max_level(self.excitation, kind='output')
+        _print_max_level(recording, kind='input')
         return recording
 
     def _to_dict(self):
@@ -461,7 +462,7 @@ class FRFMeasure(PlayRecMeasure):
 
 
 # Sub functions
-def __print_max_level(sigObj, kind):
+def _print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
             print('max output level (excitation) on channel ['
