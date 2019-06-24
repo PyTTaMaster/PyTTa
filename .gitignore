@@ -1,3 +1,7 @@
+#
+*.pkl
+*.mat
+
 # All the python stuff
 *.pyc
 *.cpython-*.pyc
