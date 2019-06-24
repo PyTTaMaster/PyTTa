@@ -9,8 +9,6 @@ Created on Sun Jun 23 15:08:25 2019
 import pytta
 from pytta import roomir as m
 from pytta.classes import lju3ei1050
-from scipy import io
-import numpy as np
 
 #%% Cria objeto para stream de dados com o LabJack U3 com o sensor de temperatura e umidade EI1050
 
@@ -30,28 +28,38 @@ excitationSignals['musica'] = pytta.read_wav('audio/Piano Over the rainbow Mic2 
 excitationSignals['fala'] = pytta.read_wav('audio/Voice Sabine Short_edited.WAV') # Carregando sinal de fala
 
 #%% Cria novo Setup de Medição
-SM = m.newMeasurement(name = 'med-teste', # Nome da medição
-#                      Sintaxe : device = [<entrada>,<saida>] ou <entrada/saida>
-#                      Utilize pytta.list_devices() para listar os dispositivos do seu computador. 
-#                     device = [0,1], # PC laza Seleciona dispositivo listado em pytta.list_devices()
-                     device = 4, # Saffire Pro 40 laza Seleciona dispositivo listado em pytta.list_devices()
-#                     device = [1,3], # PC Leo Seleciona dispositivo listado em pytta.list_devices()
-#                     device = 0, # Firebox laza Seleciona dispositivo listado em pytta.list_devices()
-#                     device = [1,4], # PC laza Seleciona dispositivo listado em pytta.list_devices()
-                     excitationSignals=excitationSignals, # Sinais de excitação
-                     samplingRate = 44100, # [Hz]
-                     freqMin = 20, # [Hz]
-                     freqMax = 20000, # [Hz]
-                     inChannel = [1,2,4,5], # Canais de entrada
-                     inChName = ['Orelha E','Orelha D','Mic 1','Mic 2'], # Lista com o nome dos canais 
-                     outChannel = {'S1':([1],'Dodecaedro 1'),
-                                   'S2':([2],'Dodecaedro 2'),
-                                   'S3':([3],'Sistema da sala')}, # Dicionário com códigos e canais de saída associados
-                     averages = 3, # Número de médias por medição
-                     sourcesNumber = 3, # Número de fontes; dodecaedro e p.a. local
-                     receiversNumber = 5, # Número de receptores
-                     noiseFloorTp = 5, # [s] tempo de gravação do ruído de fundo
-                     calibrationTp = 2) # [s] tempo de gravação do sinal de calibração
+SM = m.newMeasurement(name='med-teste',  # Nome da medição
+                      # Sintaxe : device = [<in>,<out>] ou <in/out>
+                      # Utilize pytta.list_devices() para listar
+                      # os dispositivos do seu computador.
+                      # device=[0,1], # PC laza
+                      device=4,  # Saffire Pro 40 laza
+                      # device=[1,3], # PC Leo
+                      # device=0, # Firebox laza
+                      # device=[1,4], # PC laza
+                      # Sinais de excitação
+                      excitationSignals=excitationSignals,
+                      samplingRate=44100,  # [Hz]
+                      freqMin=20,  # [Hz]
+                      freqMax=20000,  # [Hz]
+                      # Dicionário com códigos e canais de saída associados
+                      inChannel={'OE': ([1], 'Orelha E'),
+                                 'OD': ([2], 'Orelha D'),
+                                 'MIC1': ([4], 'Mic 1'),
+                                 'MIC2': ([5], 'Mic 2')},
+                      # Dicionário com códigos e canais de saída associados
+                      outChannel={'S1': ([1], 'Dodecaedro 1'),
+                                  'S2': ([2], 'Dodecaedro 2'),
+                                  'S3': ([3], 'Sistema da sala')},
+                      averages=3,  # Número de médias por medição
+                      # Número de fontes; dodecaedro e p.a. local
+                      sourcesNumber=3,
+                      # Número de receptores
+                      receiversNumber=5,
+                      # [s] tempo de gravação do ruído de fundo
+                      noiseFloorTp=5,
+                      # [s] tempo de gravação do sinal de calibração
+                      calibrationTp=2)
 
 #%% Cria instância de dados medidos
 D = m.Data(SM)
