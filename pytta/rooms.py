@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # from pytta import default
-from .classes import OctFilter, ResultsList
+from .classes import OctFilter, ResultList
 import numpy as np
 # import scipy .signal as ss
 import scipy.integrate as si
@@ -100,8 +100,8 @@ def RT(decay, signalObj, nthOct, **kwargs):
         for bd in range(len(filtDecay)):
             x1 = np.where(filtDecay[bd] >= y1)[0][-1]
             x2 = np.where(filtDecay[bd] >= y2)[0][-1]
-            RT.append(3*(x2/signalObj.samplingRate
-                         - x1/signalObj.samplingRate))
+            RT.append(round(3*(x2/signalObj.samplingRate
+                               - x1/signalObj.samplingRate), 2))
         output.append(RT)
     return output
 
@@ -120,8 +120,8 @@ def C(temp, signalObj, nthOct, **kwargs):
         filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
         C = []
         for bd in range(len(filtResp)):
-            C.append((np.sum(filtResp[bd][:temp], axis=0)
-                      / np.sum(filtResp[bd][temp:], axis=0))[0])
+            C.append(round(np.sum(filtResp[bd][:temp], axis=0)
+                           / np.sum(filtResp[bd][temp:], axis=0)[0], 2))
         output.append(C)
     return output
 
@@ -140,8 +140,9 @@ def D(temp, signalObj, nthOct, **kwargs):
         filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
         D = []
         for bd in range(len(filtResp)):
-            D.append(10*np.log10(np.sum(filtResp[bd][:temp], axis=0)
-                                 / np.sum(filtResp[bd][:], axis=0))[0])
+            D.append(round(10*np.log10(
+                        np.sum(filtResp[bd][:temp], axis=0)
+                        / np.sum(filtResp[bd][:], axis=0))[0], 2))
         output.append(D)
     return output
 

@@ -35,7 +35,7 @@ Generate:
 # Import modules
 from pytta import default
 from .classes import SignalObj, RecMeasure, FRFMeasure, \
-                     PlayRecMeasure, Streaming, OctFilter, Result, ResultList
+                     PlayRecMeasure, Streaming, OctFilter, ResultList
 from scipy import signal as ss
 import numpy as np
 import traceback
