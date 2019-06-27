@@ -2,7 +2,7 @@
 
 import numpy as np
 import scipy.signal as ss
-from .classes import SignalObj
+from .signal import SignalObj
 
 
 """ Cálculo de bandas de oitava a partir de 1 kHz utilizando base 10"""
@@ -74,6 +74,15 @@ class OctFilter(object):
         self.base = base
         self.sos = self.get_sos_filters()
         return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, value, traceback):
+        if traceback is None:
+            return
+        else:
+            raise value
 
     def __freqs_to_center_and_edges(self, freqs):
         center = freqs[:, 1].T
