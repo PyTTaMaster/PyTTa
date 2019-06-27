@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
 import pytta
 import soundfile as sf
 
 
-def parseArgs(args):
+def parseArgs(arg):
     file = None
-    for arg in args:
-        if arg.split('.')[-1] in sf.available_formats().keys():
-            file = arg
+    print(sf.available_formats().keys())
+    if arg.split('.')[-1].upper() in sf.available_formats().keys():
+        file = arg
+    else:
+        file = None
     return file
 
 
@@ -30,19 +33,34 @@ class AudioPlayer(object):
         self.commandList = ['-load', '-play', '-pause', '-stop', '-exit']
         return
 
+    def renew_audio(self):
+        self.audio = pytta.SignalObj(self.file.read(), 'time', self.file.samplerate)
+        return
+
+    def reset_stream(self):
+        try:
+            self.streaming.close()  # tries to close stream obj to avoid PortAudioError
+        except AttributeError:      # if it fails by AttributeError, means that the stream is not
+            pass                    # instantiated yet, so it can pass by this step
+        self.streaming = pytta.generate.stream('O', excitation=self.audio)
+        self.newFileRead = False
+        return
+
     def load_(self, fileName=None):
         if fileName is None:
-            print("Please, insert a file name: ")
+            print("Please, insert a valid audio file name: ")
             fileName = input()
         if fileName == '-exit':
             self.exit_()
             return
-        self.file = sf.SoundFile(fileName)
-        self.audio = pytta.SignalObj(self.file.read(), 'time',
-                                     self.file.samplerate)
-        self.streaming = pytta.generate.stream('O', excitation=self.audio)
-        print("Opened file", self.file.name)
-        print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
+        try:
+            self.file = sf.SoundFile(fileName)
+            self.newFileRead = True
+            print("Opened file", self.file.name)
+            print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
+        except RuntimeError:
+            print("The file could not be opened!")
+            self.load_()
         return
 
     def play_(self):
@@ -87,8 +105,13 @@ class AudioPlayer(object):
         if not self.executing:
             self.bye_()
             return
+
         # It goes on, and on, and on, and on, and on, and on, ..., and on, ...
         while self.executing:
+
+            if self.newFileRead:
+                self.renew_audio()
+                self.reset_stream()
 
             # TRY-except: TRY to run the following code:
             try:
@@ -103,7 +126,7 @@ class AudioPlayer(object):
                     print("Unknown command", self.command, "\nSkipping.")
 
                 if self.executing:
-                    # read command from command line
+                    # read input from command line
                     self.command = input()
 
             # try-EXCEPT: EXCEPT if there's no attribute, then do this:
@@ -123,7 +146,12 @@ if __name__ == "__main__":
 
         ~ $ python audio_player.py mywavefile.wav
 
+    It is simmilar to the "int main() {}" statement on C/C++
     """
-    file = None
-    player = AudioPlayer(file)
-    player.exec_()
+    try:
+        file = parseArgs(sys.argv[1])
+    except IndexError:
+        file = None
+    finally:
+        player = AudioPlayer(file)
+        player.exec_()
