@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import sys
 import pytta
 import soundfile as sf
@@ -8,7 +9,6 @@ import soundfile as sf
 
 def parseArgs(arg):
     file = None
-    print(sf.available_formats().keys())
     if arg.split('.')[-1].upper() in sf.available_formats().keys():
         file = arg
     else:
@@ -29,12 +29,13 @@ class AudioPlayer(object):
         print("To quit the program use the command:\n -exit")
 
         self.executing = True
-        self.load_(fileName)
         self.commandList = ['-load', '-play', '-pause', '-stop', '-exit']
+        self.load_(fileName)
         return
 
     def renew_audio(self):
         self.audio = pytta.SignalObj(self.file.read(), 'time', self.file.samplerate)
+        self.file.close()
         return
 
     def reset_stream(self):
@@ -47,7 +48,7 @@ class AudioPlayer(object):
         return
 
     def load_(self, fileName=None):
-        if fileName is None:
+        if fileName is None or fileName == '':
             print("Please, insert a valid audio file name: ")
             fileName = input()
         if fileName == '-exit':
@@ -56,8 +57,8 @@ class AudioPlayer(object):
         try:
             self.file = sf.SoundFile(fileName)
             self.newFileRead = True
-            print("Opened file", self.file.name)
-            print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
+            print("Opened file", self.file.name.split(os.sep)[-1])
+            print("Available commands are:\n", *self.commandList[:-1])
         except RuntimeError:
             print("The file could not be opened!")
             self.load_()
@@ -115,11 +116,19 @@ class AudioPlayer(object):
 
             # TRY-except: TRY to run the following code:
             try:
-                # check if the command can be used by the application
-                if self.command in self.commandList:
+                arg = ''
+                comm = self.command.split(' ')
+                if len(comm) > 1:
+                    arg, comm = comm[1], comm[0]
+                else:
+                    comm = comm[0]
 
+                # check if the command can be used by the application
                     # True: evaluates it as a function
-                    eval('self.' + self.command[1:] + '_()')
+                if comm[:] == '-load':
+                    eval('self.' + comm[1:] + '_(' + 'arg' + ')')
+                elif comm[:] in self.commandList[1:]:
+                    eval('self.' + comm[1:] + '_()')
 
                 # False: it is ignored
                 else:
