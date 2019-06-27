@@ -1,9 +1,19 @@
 # All the python stuff
 *.pyc
+*.cpython-*.pyc
+
+# PyTTa compressed file
+*.pytta
+
+# DS
+*.DS_Store
+
+# System files
+*.swp
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
-pytta/__pycache__/
+__pycache__/*
+pytta/__pycache__/*
 *.py[cod]
 *$py.class
 
@@ -29,6 +39,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+pytta-env/*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -71,9 +82,8 @@ instance/
 
 # Sphinx documentation
 docs/_build/*
-docs/build/*
 docs_fonte/*
-pytta-env/*
+docs/build/*
 
 # PyBuilder
 target/
@@ -97,11 +107,12 @@ celerybeat-schedule
 # Environments
 .env
 .venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+pytta-env/*
+env/*
+venv/*
+ENV/*
+env.bak/*
+venv.bak/*
 
 # Spyder project settings
 .spyderproject
@@ -123,3 +134,4 @@ dmypy.json
 
 # DS
 .DS_Store
+

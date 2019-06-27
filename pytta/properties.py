@@ -40,13 +40,19 @@ PyTTa Default Properties:
 """
 import sounddevice as sd
 
-__default_device = sd.default.device 
+__default_device = [sd.default.device[0], sd.default.device[1]]
 """ Used only to hold the default audio I/O device at pytta import time"""
+
+units = {'Pa': ('dB', 2e-5),
+         'V': ('dBu', 0.775),
+         'W/m^2': ('dB', 1e-12),
+         'FS': ('dBFs', 1)}
 
 default = {'samplingRate': 44100,
            'lengthDomain': 'samples',
            'fftDegree': 18,
            'timeLength': 10,
+           'integration': 0.125,
            'freqMin': 20,
            'freqMax': 20000,
            'device': __default_device,
@@ -116,6 +122,7 @@ class Default(object):
     _lengthDomain = []
     _fftDegree = []
     _timeLength = []
+    _integration = []
     _freqMin = []
     _freqMax = []
     _device = []
@@ -127,8 +134,8 @@ class Default(object):
                         
     def __init__(self):
         """
-        Changin "factory" default preferences:
-        ======================================
+        Changing "factory" default preferences:
+        ========================================
         
             If wanted, the user can set different "factory default" values by changing
             the properties.default dictionary which is used to hold the values that
@@ -203,7 +210,11 @@ class Default(object):
     @property
     def timeLength(self):
         return self._timeLength
-    
+
+    @property
+    def integration(self):
+        return self._integration
+
     @property
     def freqMin(self):
         return self._freqMin
