@@ -18,8 +18,11 @@ from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
 from scipy import io
 
-# Classe da medição
+_takeKinds = {'newpoint': None,
+              'noisefloor': None,
+              'calibration': None}
 
+# Classe da medição
 
 class newMeasurement():
 
@@ -30,8 +33,8 @@ class newMeasurement():
                  samplingRate,
                  freqMin,
                  freqMax,
-                 inChannel,
-                 outChannel,
+                 inChannels,
+                 outChannels,
                  averages,
                  sourcesNumber,
                  receiversNumber,
@@ -43,14 +46,14 @@ class newMeasurement():
         self.samplingRate = samplingRate
         self.freqMin = freqMin
         self.freqMax = freqMax
-        self.inChannel = ChannelsList()
-        for chCode, chContents in inChannel.items():
-            self.inChannel.append(ChannelObj(num=chContents[0],
+        self.inChannels = ChannelsList()
+        for chCode, chContents in inChannels.items():
+            self.inChannels.append(ChannelObj(num=chContents[0],
                                              name=chContents[1],
                                              code=chCode))
-        self.outChannel = ChannelsList()
-        for chCode, chContents in outChannel.items():
-            self.outChannel.append(ChannelObj(num=chContents[0],
+        self.outChannels = ChannelsList()
+        for chCode, chContents in outChannels.items():
+            self.outChannels.append(ChannelObj(num=chContents[0],
                                               name=chContents[1],
                                               code=chCode))
         self.averages = averages
@@ -58,52 +61,6 @@ class newMeasurement():
         self.receiversNumber = receiversNumber
         self.noiseFloorTp = noiseFloorTp
         self.calibrationTp = calibrationTp
-        # Criando objetos de medição tipo pytta.PlayRecMeasure e pytta.RecMeasure
-        self.measurementObjects = {'varredura' : pytta.generate.measurement('playrec',
-                                                        excitation=self.excitationSignals['varredura'],
-                                                        samplingRate=self.samplingRate,
-                                                        freqMin=self.freqMin,
-                                                        freqMax=self.freqMax,
-                                                        device=self.device,
-                                                        inChannel=self.inChannel,
-                                                        outChannel=self.outChannel[0],
-                                                        comment='varredura'),
-                   'musica' : pytta.generate.measurement('playrec',
-                                                        excitation=self.excitationSignals['musica'],
-                                                        samplingRate=self.samplingRate,
-                                                        freqMin=self.freqMin,
-                                                        freqMax=self.freqMax,
-                                                        device=self.device,
-                                                        inChannel=self.inChannel,
-                                                        outChannel=self.outChannel[0],
-                                                        comment='musica'),
-                   'fala' : pytta.generate.measurement('playrec',
-                                                        excitation=self.excitationSignals['fala'],
-                                                        samplingRate=self.samplingRate,
-                                                        freqMin=self.freqMin,
-                                                        freqMax=self.freqMax,
-                                                        device=self.device,
-                                                        inChannel=self.inChannel,
-                                                        outChannel=self.outChannel[0],
-                                                        comment='fala'),
-                   'noisefloor' : pytta.generate.measurement('rec',
-                                                         lengthDomain='time',
-                                                         timeLength=self.noiseFloorTp,
-                                                         samplingRate=self.samplingRate,
-                                                         freqMin=self.freqMin,
-                                                         freqMax=self.freqMax,
-                                                         device=self.device,
-                                                         inChannel=self.inChannel,
-                                                         comment='noisefloor'),
-                   'calibration' : pytta.generate.measurement('rec',
-                                                         lengthDomain='time',
-                                                         timeLength=self.calibrationTp,
-                                                         samplingRate=self.samplingRate,
-                                                         freqMin=self.freqMin,
-                                                         freqMax=self.freqMax,
-                                                         device=self.device,
-                                                         inChannel=self.inChannel,
-                                                         comment='calibration')}
                    
     def exportDict(self):
        expdic = vars(self)           
@@ -118,7 +75,7 @@ class Data(object):
         self.measuredData = {} # Cria o dicionário vazio que conterá todos os níveis de informação do nosso dia de medição
         self.status = {} # Cria o dicionário vazio que conterá o status de cada ponto de medição
         # Gerando chaves para configurações fonte-receptor
-        for ch in self.MS.outChannel:
+        for ch in self.MS.inChannels:
             sourceCode = ch.code
             for rN in range(1,self.MS.receiversNumber+1):
                 self.measuredData[sourceCode+'R'+str(rN)] = {} # Insere as chaves referente as configurações fonte receptor
@@ -130,7 +87,7 @@ class Data(object):
         self.status['noisefloor'] = False
         self.measuredData['calibration'] = {} # Cria dicionário com os canais de entrada da medição
         self.status['calibration'] = {}
-        for ch in self.MS.inChannel:
+        for ch in self.MS.inChannels:
             chN = ch.name
             self.measuredData['calibration'][chN] = [] # Cria uma lista de calibrações para cada canal
             self.status['calibration'][chN] = False
@@ -139,7 +96,7 @@ class Data(object):
         # Preenche o dicionário de dados medidos com sinais nulos.
         dummyFill = cp.deepcopy(self.MS.excitationSignals)
 #        for key in dummyFill:
-        for sourceCode in self.MS.outChannel:
+        for sourceCode in self.MS.inChannels:
             for rN in range(1,self.MS.receiversNumber+1):
                 self.measuredData[sourceCode+'R'+str(rN)] = {} # Insere as chaves referente as configurações fonte receptor
                 for key in self.MS.excitationSignals:
@@ -228,7 +185,7 @@ class measureTake():
                  channelStatus,
                  tempHumid,
                  source=None,
-                 receiver=None,
+                 receivers=None,
                  excitation=None):
         self.tempHumid = tempHumid
         if self.tempHumid != None:
@@ -237,43 +194,204 @@ class measureTake():
         self.kind = kind
         self.channelStatus = channelStatus
         self.source = source
-        self.receiver = receiver
-        if excitation == None:
-            self.excitation = kind
-        else:
-            self.excitation = excitation
+        self.receivers = receivers
+        self.excitation = excitation
+        self._cfg_channels()
+
+    def _cfg_channels(self):
         if self.kind == 'newpoint':
-            if self.excitation != None and self.excitation not in self.MS.excitationSignals:
-                raise ValueError('Sinal de excitação não existe em '+MS.name)            
-            self.averages = MS.averages
             MS.measurementObjects[excitation]
             self.measurementObject = cp.copy(MS.measurementObjects[excitation])
-        if self.kind == 'calibration':            
+        if self.kind == 'calibration':
             if self.channelStatus.count(True) != 1:
-                raise ValueError('Somente 1 canal por tomada de calibração!')
+                raise ValueError('Only one channel per calibration take!')
             self.measurementObject = cp.copy(MS.measurementObjects[kind])
-            self.averages = MS.averages
         if self.kind == 'noisefloor':
             self.measurementObject = cp.copy(MS.measurementObjects[kind])
-            self.averages = MS.averages
         j = 0
-        inChannel = ChannelsList()
+        inChannels = ChannelsList()
 #        channelName = []
         for i in self.channelStatus:
             if i:
-                inChannel.append(self.MS.measurementObjects[excitation].inChannel[j])
+                inChannels.append(self.MS.measurementObjects[excitation].inChannels[j])
 #                channelName.append(self.MS.inChName[j])
             j=j+1
         if kind == 'newpoint':
-            self.measurementObject.outChannel = \
-                ChannelsList(self.MS.outChannel[self.source])
-        self.measurementObject.inChannel = inChannel # Ao redefinir a propriedade inChannelo o PyTTa já reajusta a lista channelName com os nomes antigos + nomes padrão para novos canais
+            self.measurementObject.inChannels = \
+                ChannelsList(self.MS.inChannels[self.source])
+        self.measurementObject.inChannels = inChannels # Ao redefinir a propriedade inChannelo o PyTTa já reajusta a lista channelName com os nomes antigos + nomes padrão para novos canais
 #        self.measurementObject.channelName = channelName # Atribuiu os nomes corretos aos canais selecionados
+
+    def _cfg_measurement_object(self):
+        # Criando objetos de medição tipo pytta.PlayRecMeasure e pytta.RecMeasure
+        self.measurementObjects = {'varredura' : pytta.generate.measurement('playrec',
+                                                        excitation=self.excitationSignals['varredura'],
+                                                        samplingRate=self.samplingRate,
+                                                        freqMin=self.freqMin,
+                                                        freqMax=self.freqMax,
+                                                        device=self.device,
+                                                        inChannels=self.inChannels,
+                                                        inChannels=self.inChannels[0],
+                                                        comment='varredura'),
+                   'musica' : pytta.generate.measurement('playrec',
+                                                        excitation=self.excitationSignals['musica'],
+                                                        samplingRate=self.samplingRate,
+                                                        freqMin=self.freqMin,
+                                                        freqMax=self.freqMax,
+                                                        device=self.device,
+                                                        inChannels=self.inChannels,
+                                                        inChannels=self.inChannels[0],
+                                                        comment='musica'),
+                   'fala' : pytta.generate.measurement('playrec',
+                                                        excitation=self.excitationSignals['fala'],
+                                                        samplingRate=self.samplingRate,
+                                                        freqMin=self.freqMin,
+                                                        freqMax=self.freqMax,
+                                                        device=self.device,
+                                                        inChannels=self.inChannels,
+                                                        inChannels=self.inChannels[0],
+                                                        comment='fala'),
+                   'noisefloor' : pytta.generate.measurement('rec',
+                                                         lengthDomain='time',
+                                                         timeLength=self.noiseFloorTp,
+                                                         samplingRate=self.samplingRate,
+                                                         freqMin=self.freqMin,
+                                                         freqMax=self.freqMax,
+                                                         device=self.device,
+                                                         inChannels=self.inChannels,
+                                                         comment='noisefloor'),
+                   'calibration' : pytta.generate.measurement('rec',
+                                                         lengthDomain='time',
+                                                         timeLength=self.calibrationTp,
+                                                         samplingRate=self.samplingRate,
+                                                         freqMin=self.freqMin,
+                                                         freqMax=self.freqMax,
+                                                         device=self.device,
+                                                         inChannels=self.inChannels,
+                                                         comment='calibration')}
+
+    @property
+    def MS(self):
+        return self._MS
+
+    @MS.setter
+    def MS(self, newMS):
+        if not isinstance(newMS, newMeasurement):
+            raise TypeError('Measurement setup must be a newMeasurement ' +
+                            'object.')
+        self._MS = newMS
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, newKind):
+        if not isinstance(newKind, str):
+            raise TypeError('Measurement take Kind must be a string')
+        if newKind not in _takeKinds:
+            raise ValueError('Measurement take Kind doesn\'t ' +
+                             'exist in RoomIR application.')
+        self._kind = newKind
+        return
+
+    @property
+    def channelStatus(self):
+        return self._channelStatus
+
+    @channelStatus.setter
+    def channelStatus(self, newChStatus):
+        if not isinstance(newChStatus, list):
+            raise TypeError('channelStatus must be a list of booleans ' +
+                            'with same number of itens as '+self.MS.name +
+                            '\'s inChannels.')
+        if len(newChStatus) < len(self._MS.inChannels):
+            raise ValueError('channelStatus\' number of itens must be the ' +
+                             'same as ' + self.MS.name + '\'s inChannels.')
+        for item in newChStatus:
+            if not isinstance(item, bool):
+                raise TypeError('channelStatus must be a list of booleans ' +
+                                'with the same number of itens as ' +
+                                self.MS.name + '\'s inChannels.')
+        self._channelStatus = newChStatus
+
+    @property
+    def source(self):
+        return self._source
+
+    @source.setter
+    def source(self, newSource):
+        if not isinstance(newSource, str):
+            if newSource is None and self.kind in ['noisefloor',
+                                                   'calibration']:
+                self._source = None
+                return
+            else:
+                raise TypeError('Source must be a string.')
+        if newSource not in self.MS.outChannels:
+            raise ValueError(newSource + ' doesn\'t exist in ' +
+                             self.MS.name + '\'s outChannels.')
+        self._source = newSource
+
+    @property
+    def receivers(self):
+        return self._receivers
+
+    @receivers.setter
+    def receivers(self, newReceivers):
+        if not isinstance(newReceivers, list):
+            if newReceivers is None and self.kind in ['noisefloor']:
+                self._receivers = None
+                return
+            else:
+                raise TypeError('Receivers must be a list of strings ' +
+                                'with same number of transducers and itens ' +
+                                ' in ' + self.MS.name + '\'s inChannels ' +
+                                '(e.g. [\'R1\', \'R5\', \'R13\'])')
+        if len(newReceivers) < len(self._MS.inChannels):
+            raise ValueError('Receivers\' number of itens must be the ' +
+                             'same as ' + self.MS.name + '\'s inChannels.')
+        for item in newReceivers:
+            if item.split('R')[0] != '':
+                raise ValueError(item + 'isn\'t a receiver position. It ' +
+                                 'must start with \'R\' succeeded by It\'s ' +
+                                 'number (e.g. R1).')
+            else:
+                try:
+                    receiverNumber = int(item.split('R')[1])
+                except ValueError:
+                    raise ValueError(item + 'isn\'t a receiver position ' +
+                                     'code. It must start with \'R\' ' +
+                                     'succeeded by It\'s number (e.g. R1).')
+                if receiverNumber > self.MS.receiversNumber:
+                    raise TypeError('Receiver number out of ' + self.MS.name +
+                                    '\'s receivers range.')
+        self._receivers = newReceivers
+        return
+
+    @property
+    def excitation(self):
+        return self._excitation
+
+    @excitation.setter
+    def excitation(self, newExcitation):
+        if not isinstance(newExcitation, str):
+            if newExcitation is None and self.kind in ['noisefloor',
+                                                       'calibration']:
+                self._excitation = None
+                return
+            else:
+                raise TypeError('Excitation signal\'s name must be a string.')
+        if newExcitation not in self.MS.excitationSignals:
+            raise ValueError('Excitation signal doesn\'t exist in ' +
+                             self.MS.name + '\'s excitationSignals')
+        self._excitation = newExcitation
+        return
 
     def run(self):
         self.measuredTake = []
 #        if self.kind == 'newpoint':
-        for i in range(0,self.averages):
+        for i in range(0,self.MS.averages):
             self.measuredTake.append(self.measurementObject.run())
 #            self.measuredTake[i].plot_time()
             # Adquire do LabJack U3 + EI1050 a temperatura e umidade relativa instantânea
@@ -291,49 +409,49 @@ class measureTake():
             self.hc1=[]
             self.hc2=[]
             if self.channelStatus[0] and self.channelStatus[1]:
-                for i in range(0,self.averages):
+                for i in range(0,self.MS.averages):
                     self.binaural.append(pytta.SignalObj(self.measuredTake[i].timeSignal[:,chcont:chcont+2],
                                                'time',
                                                samplingRate=self.measuredTake[i].samplingRate,
                                                comment=self.excitation))
-                    self.binaural[-1].channels[0].name = self.MS.inChannel[0].name
-                    self.binaural[-1].channels[1].name = self.MS.inChannel[1].name
+                    self.binaural[-1].channels[0].name = self.MS.inChannels[0].name
+                    self.binaural[-1].channels[1].name = self.MS.inChannels[1].name
                     if self.kind == 'noisefloor': 
-                        SR = [self.receiver[0],self.receiver[1]] 
+                        SR = [self.receivers[0],self.receivers[1]] 
                     else: 
-                        SR = [self.source+self.receiver[0],self.source+self.receiver[1]]
+                        SR = [self.source+self.receivers[0],self.source+self.receivers[1]]
                     self.binaural[i].sourceReceiver = SR
                     self.binaural[i].temp = self.measuredTake[i].temp
                     self.binaural[i].RH = self.measuredTake[i].RH
                     self.binaural[i].timeStamp = self.measuredTake[i].timeStamp
                 chcont = chcont + 2
             if self.channelStatus[2]:
-                for i in range(0,self.averages):
+                for i in range(0,self.MS.averages):
                     self.hc1.append(pytta.SignalObj(self.measuredTake[i].timeSignal[:,chcont],
                                           'time',
                                           samplingRate=self.measuredTake[i].samplingRate,
                                           comment=self.excitation))
-                    self.hc1[-1].channels[0].name = self.MS.inChannel[2].name
+                    self.hc1[-1].channels[0].name = self.MS.inChannels[2].name
                     if self.kind == 'noisefloor': 
-                        SR = self.receiver[2]
+                        SR = self.receivers[2]
                     else: 
-                        SR = self.source+self.receiver[2]
+                        SR = self.source+self.receivers[2]
                     self.hc1[i].sourceReceiver = SR
                     self.hc1[i].temp = self.measuredTake[i].temp
                     self.hc1[i].RH = self.measuredTake[i].RH
                     self.hc1[i].timeStamp = self.measuredTake[i].timeStamp
                 chcont = chcont + 1
             if self.channelStatus[3]:
-                for i in range(0,self.averages):
+                for i in range(0,self.MS.averages):
                     self.hc2.append(pytta.SignalObj(self.measuredTake[i].timeSignal[:,chcont],
                                           'time',
                                           samplingRate=self.measuredTake[i].samplingRate,
                                           comment=self.excitation))
-                    self.hc2[-1].channels[0].name = self.MS.inChannel[3].name
+                    self.hc2[-1].channels[0].name = self.MS.inChannels[3].name
                     if self.kind == 'noisefloor': 
-                        SR = self.receiver[3]
+                        SR = self.receivers[3]
                     else: 
-                        SR = self.source+self.receiver[3]
+                        SR = self.source+self.receivers[3]
                     self.hc2[i].sourceReceiver = SR
                     self.hc2[i].temp = self.measuredTake[i].temp
                     self.hc2[i].RH = self.measuredTake[i].RH
@@ -380,7 +498,7 @@ class measureTake():
                 if i:
                     self.inChName = [self.MS.inChName[j]]
                 j=j+1
-            for i in range(0,self.averages):
+            for i in range(0,self.MS.averages):
                 self.calibAverages.append(pytta.SignalObj(self.measuredTake[i].timeSignal[:,0],
                                       'time',
                                       samplingRate=self.measuredTake[i].samplingRate,
@@ -423,11 +541,11 @@ class measureTake():
                    'freqMax':self.MS.freqMax,
                    'freqMin':self.MS.freqMin,
 #                   'inChName':self.MS.inChName,
-                   'inChannel':self.MS.inChannel,
+                   'inChannels':self.MS.inChannels,
 #                   'measurementObjects':self.MS.measurementObjects,
                    'name':self.MS.name,
                    'noiseFloorTp':self.MS.noiseFloorTp,
-                   'outChannel':self.MS.outChannel,
+                   'inChannels':self.MS.inChannels,
                    'receiversNumber':self.MS.receiversNumber,
                    'samplingRate':self.MS.samplingRate,
                    'sourcesNumber':self.MS.sourcesNumber}
@@ -471,10 +589,10 @@ def load(medname):
                         freqMax = loadDict['freqMax'],
                         freqMin = loadDict['freqMin'],
                         inChName = loadDict['inChName'],
-                        inChannel = loadDict['inChannel'],
+                        inChannels = loadDict['inChannels'],
                         name = loadDict['name'],
                         noiseFloorTp = loadDict['noiseFloorTp'],
-                        outChannel = loadDict['outChannel'],
+                        inChannels = loadDict['inChannels'],
                         receiversNumber = loadDict['receiversNumber'],
                         samplingRate = loadDict['samplingRate'],
                         sourcesNumber = loadDict['sourcesNumber'])    

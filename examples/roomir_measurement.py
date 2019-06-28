@@ -50,12 +50,12 @@ SM = m.newMeasurement(name='med-teste',  # Nome da medição
                       freqMin=20,  # [Hz]
                       freqMax=20000,  # [Hz]
                       # Dicionário com códigos e canais de saída associados
-                      inChannel={'OE': (1, 'Orelha E'),
+                      inChannels={'OE': (1, 'Orelha E'),
                                  'OD': (2, 'Orelha D'),
                                  'Mic1': (4, 'Mic 1'),
                                  'Mic2': (5, 'Mic 2')},
                       # Dicionário com códigos e canais de saída associados
-                      outChannel={'S1': (1, 'Dodecaedro 1'),
+                      outChannels={'S1': (1, 'Dodecaedro 1'),
                                   'S2': (2, 'Dodecaedro 2'),
                                   'S3': (3, 'Sistema da sala')},
                       averages=3,  # Número de médias por medição
@@ -88,7 +88,7 @@ measureTake = m.measureTake(SM,
                             # Obs. 1: manter itens da lista para
                             #         canais Desativados;
                             # Obs. 2: canais combinados devem ter a mesma cfg.
-                            receiver=['R1',  # canal 1
+                            receivers=['R1',  # canal 1
                                       'R1',  # canal 2
                                       'R2',  # canal 3
                                       'R3'],  # canal 4
@@ -119,7 +119,7 @@ measureTake = m.measureTake(SM,
                             #         canais Desativados;
                             # Obs. 2: canais combinados devem ter a mesma cfg;
                             # Obs. 3: para kind = 'noisefloor' não há fonte.
-                            receiver=['R1',  # canal 1
+                            receivers=['R1',  # canal 1
                                       'R1',  # canal 2
                                       'R2',  # canal 3
                                       'R3'],  # canal 4
