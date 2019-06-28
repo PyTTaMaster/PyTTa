@@ -655,6 +655,9 @@ class ChannelsList(object):
                 newChList = ChannelsList([self[0]/otherList[0]])
         return newChList
 
+    def __contains__(self, chName):
+        return chName in [chObj.name for chObj in self._channels]
+
     def mapping(self):
         out = []
         for obj in self._channels:
