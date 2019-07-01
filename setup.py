@@ -17,7 +17,6 @@ settings = {
     'description': 'Signal processing tools for acoustics and vibrations in python.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
     'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
-    'zip_safe': False,
     'author_email': 'joao.paes@eac.ufsm.br',
     'license': 'MIT',
     'install_requires': ['numpy','scipy', 'matplotlib', 'sounddevice', 'soundfile'],
