@@ -12,9 +12,9 @@ import os
 from setuptools import setup
 
 settings = {
-    'name': 'PyTTa',
-    'version': '0.1.0b',
-    'description': 'Signal processing tools for acoustics and vibrations in python.',
+    'name': 'PyTTa-dev',
+    'version': '0.1.0b0',
+    'description': 'Signal processing tools for acoustics and vibrations in python, development package.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
     'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
     'author_email': 'joao.paes@eac.ufsm.br',
