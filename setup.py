@@ -8,7 +8,7 @@ PyTTa setup file
 
 """
 
-#%%
+import os
 from setuptools import setup
 
 settings = {
@@ -17,18 +17,13 @@ settings = {
     'description': 'Signal processing tools for acoustics and vibrations in python.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
     'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
-    'packages': ['pytta'],
     'zip_safe': False,
     'author_email': 'joao.paes@eac.ufsm.br',
-    'license': 'LGPL',
-    'requires': ['numpy','scipy','sounddevice','pyfilterbank'],
-#    'package_data': {
-#        'pytta': [
-#            'sosfilt.c',
-#            'sosfilt64.dll',
-#            'sosfilt32.dll',
-#            'sosfilt.so'
-#        ]
-#    }
+    'license': 'MIT',
+    'install_requires': ['numpy','scipy', 'matplotlib', 'sounddevice', 'soundfile'],
+    'packages': ['pytta', 'pytta.classes'],
+    'package_dir': {'classes': 'pytta'},
+    'package_data': {'pytta': '..'+os.sep+'examples/*.py'}
 }
+
 setup(**settings)
