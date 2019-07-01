@@ -214,7 +214,7 @@ class RecMeasure(Measurement):
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
         recording.comment = 'SignalObj from a Rec measurement'
-        __print_max_level(recording, kind='input')
+        __print_max_level(sigObj=recording, kind='input')
         return recording
 
 
@@ -461,7 +461,7 @@ class FRFMeasure(PlayRecMeasure):
 
 
 # Sub functions
-def __print_max_level(sigObj, kind):
+def _RecMeasure__print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
             print('max output level (excitation) on channel ['
