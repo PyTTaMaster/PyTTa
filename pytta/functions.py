@@ -37,8 +37,8 @@ import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
 import zipfile as zf
-from .classes import SignalObj, ImpulsiveResponse, RecMeasure,\
-                     PlayRecMeasure, FRFMeasure
+from .classes import SignalObj, ImpulsiveResponse, \
+                    RecMeasure, PlayRecMeasure, FRFMeasure
 import copy as cp
 
 
@@ -105,7 +105,8 @@ def merge(signal1, *signalObjects):
         j += 1
     newSignal = SignalObj(timeSignal, domain='time',
                           samplingRate=signal1.samplingRate, comment=comment)
-    newSignal.channels.rename_channels()
+    channels.conform_to()
+    newSignal.channels = channels
     return newSignal
 
 

@@ -51,11 +51,14 @@ default = properties.Default()
 units = properties.units
 
 from .classes import SignalObj, ImpulsiveResponse,\
-                    RecMeasure, PlayRecMeasure, FRFMeasure, Streaming
+                    RecMeasure, PlayRecMeasure, FRFMeasure,\
+                    Streaming,\
+                    OctFilter, weighting
 from .functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
-from .filter import OctFilter, fractional_octave_frequencies
+
+from . import rooms
 from . import generate
 
 __version__ = '0.1.0rc'  # package version
@@ -76,7 +79,7 @@ __all__ = [  # Submodules
            'peak_time',
            'save',
            'load',
-           'fractional_octave_frequencies',
+           'weighting',
 
            # Classes
            'RecMeasure',
@@ -85,6 +88,7 @@ __all__ = [  # Submodules
            'FRFMeasure',
            'SignalObj',
            'OctFilter',
+           'Streaming',
 
            # Objects
            'default']
