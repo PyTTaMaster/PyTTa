@@ -510,7 +510,10 @@ class ChannelObj(object):
     @coordinates.setter
     def coordinates(self, newcoord):
         if isinstance(newcoord, list) and len(newcoord) == 3:
-            self._coordinates.point = newcoord
+            try:
+                self._coordinates.point = newcoord
+            except AttributeError:
+                self._coordinates = CoordinateObj(point=newcoord)
         elif isinstance(newcoord, CoordinateObj):
             self._coordinates = newcoord
         else:
@@ -525,7 +528,10 @@ class ChannelObj(object):
     @orientation.setter
     def orientation(self, neworient):
         if isinstance(neworient, list) and len(neworient) == 3:
-            self._orientation.point = neworient
+            try:
+                self._orientation.point = neworient
+            except AttributeError:
+                self._orientation = CoordinateObj(point=neworient)
         elif isinstance(neworient, CoordinateObj):
             self._orientation = neworient
         else:
@@ -594,15 +600,19 @@ class ChannelsList(object):
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            try:
-                return self._channels[key]
-            except IndexError:
-                raise IndexError("Out of range.")
+            # try:
+            #    return self._channels[key]
+            # except IndexError:
+            #    raise IndexError("Out of range.")
+            for ch in self._channels:
+                if ch.num == key:
+                    return ch
+            raise IndexError("Channel number out of range.")
         elif isinstance(key, str):
             for ch in self._channels:
                 if ch.name == key or ch.code == key:
                     return ch
-            raise IndexError("Out of range.")
+            raise IndexError("Channel name/code out of range.")
 
     def __setitem__(self, key, item):
         try:
@@ -655,14 +665,23 @@ class ChannelsList(object):
                 newChList = ChannelsList([self[0]/otherList[0]])
         return newChList
 
-    def __contains__(self, chName):
-        return chName in [chObj.name for chObj in self._channels]
+    def __contains__(self, chRef):
+        if isinstance(chRef, str):
+            return chRef in [chObj.name for chObj in self._channels]
+        elif isinstance(chRef, int):
+            return chRef in [chObj.num for chObj in self._channels]
 
+    @property
     def mapping(self):
-        out = []
-        for obj in self._channels:
-            out.append(obj.num)
-        return out
+        return [ch.num for ch in self._channels]
+
+    @property
+    def names(self):
+        return [ch.name for ch in self._channels]
+
+    @property
+    def codes(self):
+        return [ch.code for ch in self._channels]
 
     def CFlist(self):
         out = []
