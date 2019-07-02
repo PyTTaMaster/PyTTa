@@ -6,8 +6,8 @@ import pytta
 
 if __name__ == "__main__":
 
-    mySignal = pytta.generate.noise()
-#    mySignal = pytta.generate.sweep()
+#    mySignal = pytta.generate.noise()
+    mySignal = pytta.generate.sweep()
 
     mySignal.plot_time()
     mySignal.plot_freq()
