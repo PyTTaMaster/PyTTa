@@ -24,7 +24,8 @@ _takeKinds = {'newpoint': None,
 
 # Classe da medição
 
-class newMeasurement():
+
+class MeasurementSetup():
 
     def __init__(self,
                  name,
@@ -49,13 +50,13 @@ class newMeasurement():
         self.inChannels = ChannelsList()
         for chCode, chContents in inChannels.items():
             self.inChannels.append(ChannelObj(num=chContents[0],
-                                             name=chContents[1],
-                                             code=chCode))
+                                              name=chContents[1],
+                                              code=chCode))
         self.outChannels = ChannelsList()
         for chCode, chContents in outChannels.items():
             self.outChannels.append(ChannelObj(num=chContents[0],
-                                              name=chContents[1],
-                                              code=chCode))
+                                               name=chContents[1],
+                                               code=chCode))
         self.averages = averages
         self.sourcesNumber = sourcesNumber
         self.receiversNumber = receiversNumber

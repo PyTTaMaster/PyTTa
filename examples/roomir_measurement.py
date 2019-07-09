@@ -53,11 +53,12 @@ SM = m.newMeasurement(name='med-teste',  # Nome da medição
                       inChannels={'OE': (1, 'Orelha E'),
                                  'OD': (2, 'Orelha D'),
                                  'Mic1': (4, 'Mic 1'),
-                                 'Mic2': (5, 'Mic 2')},
+                                 'Mic2': (5, 'Mic 2'),
+                                 'combinedChannels': [(1,2)]},
                       # Dicionário com códigos e canais de saída associados
                       outChannels={'S1': (1, 'Dodecaedro 1'),
                                   'S2': (2, 'Dodecaedro 2'),
-                                  'S3': (3, 'Sistema da sala')},
+                                  'S3': (3, 'Sistema da sala'),
                       averages=3,  # Número de médias por medição
                       # Número de fontes; dodecaedro e p.a. local
                       sourcesNumber=3,
