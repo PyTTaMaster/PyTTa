@@ -59,24 +59,23 @@ class Measurement(_base.PyTTaObj):
 
     def __init__(self,
                  device=None,
-                 inChannel=None,
-                 outChannel=None,
-                 channelName=None,
+                 inChannels=None,
+                 outChannels=None,
                  blocking=True,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
         # device number. For device list use sounddevice.query_devices()
         self.device = device
-        self.inChannel = _base.ChannelsList(inChannel)
-        self.outChannel = _base.ChannelsList(outChannel)
+        self.inChannels = _base.ChannelsList(inChannels)
+        self.outChannels = _base.ChannelsList(outChannels)
         self.blocking = blocking
         return
 
     def _to_dict(self):
         out = {'device': self.device,
-               'inChannel': self.inChannel._to_dict(),
-               'outChannel': self.outChannel._to_dict()}
+               'inChannels': self.inChannels._to_dict(),
+               'outChannels': self.outChannels._to_dict()}
         return out
 
 # Measurement Properties
@@ -87,6 +86,52 @@ class Measurement(_base.PyTTaObj):
     @device.setter
     def device(self, newDevice):
         self._device = newDevice
+        return
+
+    @property
+    def numInChannels(self):
+        return len(self.inChannels)
+
+    @property
+    def numOutChannels(self):
+        return len(self.outChannels)
+
+    def calib_pressure(self, chIndex,
+                       refPrms=1.00, refFreq=1000):
+        """
+        calibPressure method: use informed SignalObj, with a calibration
+        acoustic pressure signal, and the reference RMS acoustic pressure to
+        calculate the Correction Factor.
+
+            >>> SignalObj.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
+
+        Parameters:
+        -------------
+
+            * chIndex (), (int):
+                channel index for calibration. Starts in 0;
+
+            * refSignalObj (), (SignalObj):
+                SignalObj with the calibration recorded signal;
+
+            * refPrms (1.00), (float):
+                the reference pressure provided by the acoustic calibrator;
+
+            * refFreq (1000), (int):
+                the reference sine frequency provided by the acoustic
+                calibrator;
+        """
+
+        refSignalObj = RecMeasure(lengthDomain='time',
+                                  timeLength=5,
+                                  samplingRate=self.samplingRate,
+                                  inChannels=chIndex,
+                                  device=self.device).run()
+        if chIndex in self.inChannels.mapping():
+            self.inChannels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
+            self.inChannels[chIndex].calibCheck = True
+        else:
+            raise IndexError('chIndex not in list of channel numbers')
         return
 
 
@@ -145,13 +190,13 @@ class RecMeasure(Measurement):
         super().__init__(*args, **kwargs)
         self.lengthDomain = lengthDomain
         if self.lengthDomain == 'samples':
-            self._fftDegree = fftDegree
+            self.fftDegree = fftDegree
         elif self.lengthDomain == 'time':
-            self._timeLength = timeLength
+            self.timeLength = timeLength
         else:
             self._timeLength = None
             self._fftDegree = None
-        self._outChannel = None
+        self._outChannels = None
         return
 
     def _to_dict(self):
@@ -198,18 +243,18 @@ class RecMeasure(Measurement):
         Outputs a signalObj with the recording content
         """
         # Record
-        recording = sd.rec(self.numSamples,
-                           self.samplingRate,
-                           mapping=self.inChannel.mapping(),
+        recording = sd.rec(frames=self.numSamples,
+                           samplerate=self.samplingRate,
+                           mapping=self.inChannels.mapping(),
                            blocking=self.blocking,
                            device=self.device,
                            latency='low',
                            dtype='float32')
         recording = np.squeeze(recording)
-        recording = SignalObj(signalArray=recording,
+        recording = SignalObj(signalArray=recording*self.inChannels.CFlist(),
                               domain='time',
                               samplingRate=self.samplingRate)
-        recording.channels = self.inChannel
+        recording.channels = self.inChannels
         recording.timeStamp = time.ctime(time.time())
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
@@ -288,8 +333,8 @@ class PlayRecMeasure(Measurement):
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal,
                                samplerate=self.samplingRate,
-                               input_mapping=self.inChannel.mapping(),
-                               output_mapping=self.outChannel.mapping(),
+                               input_mapping=self.inChannels.mapping(),
+                               output_mapping=self.outChannels.mapping(),
                                device=self.device,
                                blocking=self.blocking,
                                latency='low',
@@ -298,7 +343,7 @@ class PlayRecMeasure(Measurement):
         recording = SignalObj(signalArray=recording,
                               domain='time',
                               samplingRate=self.samplingRate)
-        recording.channels = self.inChannel
+        recording.channels = self.inChannels
         recording.timeStamp = timeStamp
         recording.freqMin, recording.freqMax\
             = (self.freqMin, self.freqMax)
