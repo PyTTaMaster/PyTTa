@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+import sys
 import pytta
 import soundfile as sf
 
 
-def parseArgs(args):
+def parseArgs(arg):
     file = None
-    for arg in args:
-        if arg.split('.')[-1] in sf.available_formats().keys():
-            file = arg
+    if arg.split('.')[-1].upper() in sf.available_formats().keys():
+        file = arg
+    else:
+        file = None
     return file
 
 
@@ -26,23 +29,39 @@ class AudioPlayer(object):
         print("To quit the program use the command:\n -exit")
 
         self.executing = True
-        self.load_(fileName)
         self.commandList = ['-load', '-play', '-pause', '-stop', '-exit']
+        self.load_(fileName)
+        return
+
+    def renew_audio(self):
+        self.audio = pytta.SignalObj(self.file.read(), 'time', self.file.samplerate)
+        self.file.close()
+        return
+
+    def reset_stream(self):
+        try:
+            self.streaming.close()  # tries to close stream obj to avoid PortAudioError
+        except AttributeError:      # if it fails by AttributeError, means that the stream is not
+            pass                    # instantiated yet, so it can pass by this step
+        self.streaming = pytta.generate.stream('O', excitation=self.audio)
+        self.newFileRead = False
         return
 
     def load_(self, fileName=None):
-        if fileName is None:
-            print("Please, insert a file name: ")
+        if fileName is None or fileName == '':
+            print("Please, insert a valid audio file name: ")
             fileName = input()
         if fileName == '-exit':
             self.exit_()
             return
-        self.file = sf.SoundFile(fileName)
-        self.audio = pytta.SignalObj(self.file.read(), 'time',
-                                     self.file.samplerate)
-        self.streaming = pytta.generate.stream('O', excitation=self.audio)
-        print("Opened file", self.file.name)
-        print("Available commands are:\n", "-play;\n", "-pause;\n", "-stop.")
+        try:
+            self.file = sf.SoundFile(fileName)
+            self.newFileRead = True
+            print("Opened file", self.file.name.split(os.sep)[-1])
+            print("Available commands are:\n", *self.commandList[:-1])
+        except RuntimeError:
+            print("The file could not be opened!")
+            self.load_()
         return
 
     def play_(self):
@@ -87,23 +106,36 @@ class AudioPlayer(object):
         if not self.executing:
             self.bye_()
             return
+
         # It goes on, and on, and on, and on, and on, and on, ..., and on, ...
         while self.executing:
 
+            if self.newFileRead:
+                self.renew_audio()
+                self.reset_stream()
+
             # TRY-except: TRY to run the following code:
             try:
-                # check if the command can be used by the application
-                if self.command in self.commandList:
+                arg = ''
+                comm = self.command.split(' ')
+                if len(comm) > 1:
+                    arg, comm = comm[1], comm[0]
+                else:
+                    comm = comm[0]
 
+                # check if the command can be used by the application
                     # True: evaluates it as a function
-                    eval('self.' + self.command[1:] + '_()')
+                if comm[:] == '-load':
+                    eval('self.' + comm[1:] + '_(' + 'arg' + ')')
+                elif comm[:] in self.commandList[1:]:
+                    eval('self.' + comm[1:] + '_()')
 
                 # False: it is ignored
                 else:
                     print("Unknown command", self.command, "\nSkipping.")
 
                 if self.executing:
-                    # read command from command line
+                    # read input from command line
                     self.command = input()
 
             # try-EXCEPT: EXCEPT if there's no attribute, then do this:
@@ -123,7 +155,12 @@ if __name__ == "__main__":
 
         ~ $ python audio_player.py mywavefile.wav
 
+    It is simmilar to the "int main() {}" statement on C/C++
     """
-    file = None
-    player = AudioPlayer(file)
-    player.exec_()
+    try:
+        file = parseArgs(sys.argv[1])
+    except IndexError:
+        file = None
+    finally:
+        player = AudioPlayer(file)
+        player.exec_()

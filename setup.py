@@ -22,7 +22,7 @@ settings = {
     'install_requires': ['numpy','scipy', 'matplotlib', 'sounddevice', 'soundfile'],
     'packages': ['pytta', 'pytta.classes'],
     'package_dir': {'classes': 'pytta'},
-    'package_data': {'pytta': '..'+os.sep+'examples/*.py'}
+    'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
 }
 
 setup(**settings)
