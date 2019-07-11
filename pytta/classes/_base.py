@@ -396,11 +396,9 @@ class ChannelObj(object):
 
     def calib_press(self, refSignalObj, refPrms, refFreq):
         Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-        print(Prms)
-        freqFound = np.round(refSignalObj.freqVector[np.where(
-                np.abs(refSignalObj.freqSignal)
-                == np.max(np.abs(refSignalObj.freqSignal)))[0]])
-        if freqFound != refFreq:
+        freqFound = np.round(refSignalObj.freqVector[np.argmax(
+                refSignalObj.freqSignal)])
+        if np.isclose(freqFound, refFreq, rtol=1e-4):
             print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
                   + '{:.2}'.format(freqFound)
                   + ' [Hz]) differs from refFreq ('
