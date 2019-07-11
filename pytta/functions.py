@@ -179,7 +179,7 @@ def peak_time(signal):
         maxindex = np.where(signal.timeSignal[:, chindex] == np.abs(maxamp))[0]
         maxtime = signal.timeVector[maxindex][0]
         peaks_time.append(maxtime)
-    if signal.num_channels() > 1:
+    if signal.numChannels > 1:
         return peaks_time
     else:
         return peaks_time[0]
@@ -294,3 +294,4 @@ def __parse_channels(chDict, chList):
         chList[ch].calibCheck\
             = chDict[key]['calib'][1]
     return chList
+

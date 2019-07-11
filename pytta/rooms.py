@@ -357,3 +357,4 @@ def D(temp, signalObj, nthOct, **kwargs):
                                  / np.sum(filtResp[bd][:], axis=0))[0])
         output.append(D)
     return output
+

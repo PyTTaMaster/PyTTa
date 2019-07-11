@@ -6,8 +6,8 @@ import zipfile
 import numpy as np
 import sounddevice as sd
 import time
-from . import _base
-from .signal import SignalObj, ImpulsiveResponse
+from pytta.classes import _base
+from pytta.classes.signal import SignalObj, ImpulsiveResponse
 
 
 # Measurement class
@@ -509,22 +509,16 @@ class FRFMeasure(PlayRecMeasure):
 def _print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
-            print('max output level (excitation) on channel ['
-                  + str(chIndex+1) + ']: '
-                  + '{:.2f}'.format(sigObj.max_level()[chIndex])
-                  + ' ' + sigObj.channels[chIndex].dBName + ' - ref.: '
-                  + str(sigObj.channels[chIndex].dBRef)
-                  + ' [' + sigObj.channels[chIndex].unit + ']')
+            print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
+                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
         for chIndex in range(sigObj.num_channels()):
-            print('max input level (recording) on channel ['
-                  + str(chIndex+1) + ']: '
-                  + '{:.2f}'.format(sigObj.max_level()[chIndex])
-                  + ' ' + sigObj.channels[chIndex].dBName
-                  + ' - ref.: ' + str(sigObj.channels[chIndex].dBRef)
-                  + ' [' + sigObj.channels[chIndex].unit + ']')
+            print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
+                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return

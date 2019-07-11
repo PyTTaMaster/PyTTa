@@ -1,38 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Classes:
----------
+Base classes:
+--------------
 
 @Autores:
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
-This submodule is mainly the means to an end. PyTTa is made intended to be
-user friendly, the manipulation of the classes are documented here, but their
-instantiation should be used through the <generate> submodule:
-
-    >>> pytta.generate.sweep()
-    >>> pytta.generate.noise()
-    >>> pytta.generate.measurement('playrec')
-    >>> pytta.generate.measurement('rec', lengthDomain = 'time', timeLen = 5)
-
-This way, the default settings will be loaded into any object instantiated.
-
-User intended classes:
-
-    >>> pytta.SignalObj()
-    >>> pytta.RecMeasure()
-    >>> pytta.PlayRecMeasure()
-    >>> pytta.FRFMeasure()
-
-For further information see the specific class, or method, documentation
 """
 
 # Importing modules
-from ._instanceinfo import RememberInstanceCreationInfo as RICI
+from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
 import scipy.io as sio
-from pytta import default, units
 import time
 
 
@@ -85,10 +65,8 @@ class PyTTaObj(RICI):
         self._fftDegree = fftDegree
         self._timeLength = timeLength
         self._numSamples = numSamples
-        if freqMin is None or freqMax is None:
-            self._freqMin, self._freqMax = default.freqMin, default.freqMax
-        else:
-            self._freqMin, self._freqMax = freqMin, freqMax
+        self._freqMin = freqMin
+        self._freqMax = freqMax
         self._comment = comment
         return
 
@@ -329,6 +307,17 @@ class ChannelObj(object):
             perform :attr:`unit` concatenation  # TODO unit conversion.
 
     """
+
+# Moved the units dict, which represent all possible signal units of measurement,
+# from pytta.properties to ChannelObj class.
+# It is a class property and will only be called from class's instances, therefore
+# was not necessary to have it inside another module.
+    units = {'Pa': ('dB', 2e-5),
+             'V': ('dBu', 0.775),
+             'W/m^2': ('dB', 1e-12),
+             'FS': ('dBFS', 1)}
+        
+
     def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False,
                  coordinates=CoordinateObj(), orientation=CoordinateObj()):
         self.num = num
@@ -341,6 +330,7 @@ class ChannelObj(object):
         self.calibCheck = calibCheck
         self.coordinates = coordinates
         self.orientation = orientation
+        return
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
@@ -351,6 +341,7 @@ class ChannelObj(object):
                 f'calibCheck={self.calibCheck!r}, '
                 f'coordinates={self.coordinates.point!r}, '
                 f'orientation={self.orientation.point!r})')
+        return
 
     def __mul__(self, other):
         if not isinstance(other, ChannelObj):
@@ -420,7 +411,7 @@ class ChannelObj(object):
             except ValueError:
                 raise TypeError("Channel number must be an integer.")
         elif ber < 1:
-            raise ValueError("Channel number must be greater than 1.")
+            raise ValueError("Channel number must be 1 or greater.")
         self._num = ber
         return
 
@@ -443,10 +434,10 @@ class ChannelObj(object):
     @unit.setter
     def unit(self, newunit):
         if isinstance(newunit, str):
-            if newunit in units:
+            if newunit in self.units:
                 self._unit = newunit
-                self.dBName = units[newunit][0]
-                self.dBRef = units[newunit][1]
+                self.dBName = self.units[newunit][0]
+                self.dBRef = self.units[newunit][1]
             else:
                 self._unit = newunit
                 self.dBName = 'dB'
@@ -702,3 +693,4 @@ class ChannelsList(object):
             newname = 'Ch. ' + str(chIndex+1)
             self._channels[chIndex].name = newname
         return
+
