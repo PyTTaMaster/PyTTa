@@ -101,20 +101,20 @@ class SignalObj(_base.PyTTaObj):
     """
 
     def __init__(self,
-                 signalArray=np.array([0], ndmin=2).T,
+                 signalArray=np.array([0], ndmin=2, dtype='float32').T,
                  domain='time',
                  *args,
                  **kwargs):
         # Converting signalArray from list to np.array
         if isinstance(signalArray, list):
-            signalArray = np.array(signalArray)
+            signalArray = np.array(signalArray, dtype='float32')
         # Checking input array dimensions
         if self.size_check(signalArray) > 2:
             message = "No 'pyttaObj' is able handle to arrays with more \
                         than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif self.size_check(signalArray) == 1:
-            signalArray = np.array(signalArray, ndmin=2)
+            signalArray = np.array(signalArray, ndmin=2, dtype='float32')
         if signalArray.shape[1] > signalArray.shape[0]:
             signalArray = signalArray.T
 
@@ -148,10 +148,10 @@ class SignalObj(_base.PyTTaObj):
     def timeSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2)
+                newSignal = np.array(newSignal, ndmin=2, dtype='float32')
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._timeSignal = np.array(newSignal)
+            self._timeSignal = np.array(newSignal, dtype='float32')
             self._freqSignal = np.fft.rfft(self._timeSignal, axis=0, norm=None)
             self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             # number of samples
@@ -183,10 +183,10 @@ class SignalObj(_base.PyTTaObj):
     def freqSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2)
+                newSignal = np.array(newSignal, ndmin=2, dtype='float32')
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._freqSignal = np.array(newSignal)
+            self._freqSignal = np.array(newSignal, dtype='float32')
             self._timeSignal = np.fft.irfft(self._freqSignal,
                                             axis=0, norm=None)
             self._numSamples = len(self.timeSignal)  # [-] number of samples
@@ -892,7 +892,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2).T
+                            = np.array(XY/XX, ndmin=2, dtype='float32').T
                 else:
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(
@@ -901,14 +901,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2).T
+                            = np.array(XY/XX, ndmin=2, dtype='float32').T
             else:
                 XY, XX = self._calc_csd_tf(
                         inputSignal.timeSignal,
                         outputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(XY/XX, ndmin=2).T
+                result.freqSignal = np.array(XY/XX, ndmin=2, dtype='float32').T
 
         elif method == 'H2':
             if winType is None:
@@ -932,7 +932,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(YY/YX, ndmin=2).T
+                            = np.array(YY/YX, ndmin=2, dtype='float32').T
                 else:
                     YX, YY = self._calc_csd_tf(
                             outputSignal.timeSignal[:, channel],
@@ -940,14 +940,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                             inputSignal.samplingRate,
                             winType, winSize, winSize*overlap)
                     result.freqSignal[:, channel] \
-                        = np.array(YY/YX, ndmin=2).T
+                        = np.array(YY/YX, ndmin=2, dtype='float32').T
             else:
                 YX, YY = self._calc_csd_tf(
                         outputSignal.timeSignal,
                         inputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(YY/YX, ndmin=2).T
+                result.freqSignal = np.array(YY/YX, ndmin=2, dtype='float32'.T)
 
         elif method == 'Ht':
             if winType is None:

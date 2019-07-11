@@ -410,7 +410,7 @@ def measurement(kind='playrec',
 
 # Kind REC
     if kind in ['rec', 'record', 'recording', 'r']:
-        recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin, freqMax=freqMax, device=device, inChannel=inChannel, **kwargs)
+        recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin, freqMax=freqMax, device=device, inChannels=inChannel, **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
@@ -440,7 +440,7 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        playRecObj = PlayRecMeasure(excitation=signalIn, device=device, inChannel=inChannel, outChannel=outChannel, **kwargs)
+        playRecObj = PlayRecMeasure(excitation=signalIn, device=device, inChannels=inChannel, outChannels=outChannel, **kwargs)
         return playRecObj
 
 # Kind FRF
@@ -454,7 +454,7 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        frfObj = FRFMeasure(excitation=signalIn, device=device, inChannel=inChannel, outChannel=outChannel, **kwargs)
+        frfObj = FRFMeasure(excitation=signalIn, device=device, inChannels=inChannel, outChannels=outChannel, **kwargs)
         return frfObj
 
 
