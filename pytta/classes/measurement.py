@@ -6,8 +6,8 @@ import zipfile
 import numpy as np
 import sounddevice as sd
 import time
-from . import _base
-from .signal import SignalObj, ImpulsiveResponse
+from pytta.classes import _base
+from pytta.classes.signal import SignalObj, ImpulsiveResponse
 
 
 # Measurement class
@@ -127,9 +127,9 @@ class Measurement(_base.PyTTaObj):
                                   samplingRate=self.samplingRate,
                                   inChannels=chIndex,
                                   device=self.device).run()
-        if chIndex in self.inChannels.mapping():
-            self.inChannels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
-            self.inChannels[chIndex].calibCheck = True
+        if chIndex-1 in range(len(self.inChannels)):
+            self.inChannels[chIndex-1].calib_press(refSignalObj, refPrms, refFreq)
+            self.inChannels[chIndex-1].calibCheck = True
         else:
             raise IndexError('chIndex not in list of channel numbers')
         return
@@ -340,7 +340,7 @@ class PlayRecMeasure(Measurement):
                                latency='low',
                                dtype='float32')
         recording = np.squeeze(recording)
-        recording = SignalObj(signalArray=recording,
+        recording = SignalObj(signalArray=recording*self.inChannels.CFlist(),
                               domain='time',
                               samplingRate=self.samplingRate)
         recording.channels = self.inChannels
@@ -509,22 +509,16 @@ class FRFMeasure(PlayRecMeasure):
 def _print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.num_channels()):
-            print('max output level (excitation) on channel ['
-                  + str(chIndex+1) + ']: '
-                  + '{:.2f}'.format(sigObj.max_level()[chIndex])
-                  + ' ' + sigObj.channels[chIndex].dBName + ' - ref.: '
-                  + str(sigObj.channels[chIndex].dBRef)
-                  + ' [' + sigObj.channels[chIndex].unit + ']')
+            print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
+                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
         for chIndex in range(sigObj.num_channels()):
-            print('max input level (recording) on channel ['
-                  + str(chIndex+1) + ']: '
-                  + '{:.2f}'.format(sigObj.max_level()[chIndex])
-                  + ' ' + sigObj.channels[chIndex].dBName
-                  + ' - ref.: ' + str(sigObj.channels[chIndex].dBRef)
-                  + ' [' + sigObj.channels[chIndex].unit + ']')
+            print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
+                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return
