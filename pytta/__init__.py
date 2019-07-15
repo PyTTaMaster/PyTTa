@@ -43,7 +43,7 @@ documentation.
 """
 
 # Importing .py files as submodules
-import properties
+import pytta.properties as properties
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
@@ -54,14 +54,14 @@ from pytta.classes import SignalObj, ImpulsiveResponse,\
                           RecMeasure, PlayRecMeasure, FRFMeasure,\
                           Streaming,\
                           OctFilter, weighting
-from functions import read_wav, write_wav, merge, list_devices,\
+from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
 
-import rooms
-import generate
+import pytta.rooms as rooms
+import pytta.generate as generate
 
-__version__ = '0.1.0b1'  # package version
+__version__ = '0.1.0b4'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Submodules
