@@ -125,7 +125,7 @@ class OctFilter(object):
         for ch in range(signalObj.numChannels):
             filtered = np.zeros((signalObj.numSamples, n))
             for k in range(n):
-                filtered[:, k] = ss.sosfilt(self.sos[:, :, k],
+                filtered[:, k] = ss.sosfiltfilt(self.sos[:, :, k],
                                             signalObj.timeSignal[:, ch],
                                             axis=0).T
             output.append(SignalObj(filtered, 'time', self.samplingRate))

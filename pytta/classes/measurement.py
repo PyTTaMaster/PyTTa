@@ -345,8 +345,8 @@ class PlayRecMeasure(Measurement):
                               samplingRate=self.samplingRate)
         recording.channels = self.inChannels
         recording.timeStamp = timeStamp
-        recording.freqMin, recording.freqMax\
-            = (self.freqMin, self.freqMax)
+        recording.freqMin = self.freqMin
+        recording.freqMax = self.freqMax
         recording.comment = 'SignalObj from a PlayRec measurement'
         _print_max_level(self.excitation, kind='output')
         _print_max_level(recording, kind='input')

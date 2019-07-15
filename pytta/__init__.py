@@ -43,23 +43,23 @@ documentation.
 """
 
 # Importing .py files as submodules
-from . import properties
+import properties
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
 default = properties.Default()
 # units = properties.units  # MOVED TO ChannelObj CLASS
 
-from .classes import SignalObj, ImpulsiveResponse,\
-                    RecMeasure, PlayRecMeasure, FRFMeasure,\
-                    Streaming,\
-                    OctFilter, weighting
-from .functions import read_wav, write_wav, merge, list_devices,\
+from pytta.classes import SignalObj, ImpulsiveResponse,\
+                          RecMeasure, PlayRecMeasure, FRFMeasure,\
+                          Streaming,\
+                          OctFilter, weighting
+from functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
 
-from . import rooms
-from . import generate
+import rooms
+import generate
 
 __version__ = '0.1.0rc'  # package version
 
