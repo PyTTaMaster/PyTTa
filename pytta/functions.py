@@ -243,36 +243,30 @@ def __parse_load(className):
     elif name == 'ImpulsiveResponse':
         excit = load(openJson['SignalAddress']['excitation'])
         record = load(openJson['SignalAddress']['recording'])
-        out = ImpulsiveResponse(excit, record, openJson['coordinates'],
-                                **openJson['methodInfo'])
+        out = ImpulsiveResponse(excit, record, **openJson['methodInfo'])
         os.remove(openJson['SignalAddress']['excitation'])
         os.remove(openJson['SignalAddress']['recording'])
 
     elif name == 'RecMeasure':
-        inch = list(np.arange(len(openJson['inChannel'])))
-        out = RecMeasure(device=openJson['device'],
-                         inChannel=inch,
-                         lengthDomain='samples',
-                         fftDegree=openJson['fftDegree'])
-        out.inChannel = __parse_channels(openJson['inChannel'],
-                                         out.inChannel)
+        inch = list(np.arange(len(openJson['inChannels'])))
+        out = RecMeasure(device=openJson['device'], inChannels=inch, lengthDomain='samples', fftDegree=openJson['fftDegree'])
+        out.inChannels = __parse_channels(openJson['inChannels'],
+                                          out.inChannels)
 
     elif name == 'PlayRecMeasure':
-        inch = list(1 + np.arange(len(openJson['inChannel'])))
+        inch = list(1 + np.arange(len(openJson['inChannels'])))
         excit = load(openJson['excitationAddress'])
-        out = PlayRecMeasure(excitation=excit, device=openJson['device'],
-                             inChannel=inch)
-        out.inChannel = __parse_channels(openJson['inChannel'],
-                                         out.inChannel)
+        out = PlayRecMeasure(excitation=excit, device=openJson['device'], inChannels=inch)
+        out.inChannels = __parse_channels(openJson['inChannels'],
+                                          out.inChannels)
         os.remove(openJson['excitationAddress'])
 
     elif name == 'FRFMeasure':
-        inch = list(1 + np.arange(len(openJson['inChannel'])))
+        inch = list(1 + np.arange(len(openJson['inChannels'])))
         excit = load(openJson['excitationAddress'])
-        out = FRFMeasure(excitation=excit, device=openJson['device'],
-                         inChannel=inch)
-        out.inChannel = __parse_channels(openJson['inChannel'],
-                                         out.inChannel)
+        out = FRFMeasure(excitation=excit, device=openJson['device'], inChannels=inch)
+        out.inChannels = __parse_channels(openJson['inChannels'],
+                                          out.inChannels)
         os.remove(openJson['excitationAddress'])
 
     elif name == 'Meta':
@@ -287,12 +281,11 @@ def __parse_load(className):
 def __parse_channels(chDict, chList):
     ch = 0
     for key in chDict.keys():
-        chList[ch].num = ch+1
+        chList[ch].num = key
         chList[ch].unit = chDict[key]['unit']
         chList[ch].name = chDict[key]['name']
         chList[ch].CF = chDict[key]['calib'][0]
         chList[ch].calibCheck\
             = chDict[key]['calib'][1]
-        ch += 1    
+        ch += 1
     return chList
-

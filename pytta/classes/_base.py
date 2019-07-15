@@ -389,11 +389,11 @@ class ChannelObj(object):
         Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
-        if np.isclose(freqFound, refFreq, rtol=1e-4):
+        if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
             print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-                  + '{:.2}'.format(freqFound)
+                  + '{}'.format(freqFound)
                   + ' [Hz]) differs from refFreq ('
-                  + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+                  + '{}'.format(refFreq) + ' [Hz])\x1b[0m')
         self.CF = refPrms/Prms
         self.unit = 'Pa'
         return
