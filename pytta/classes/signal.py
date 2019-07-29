@@ -9,7 +9,9 @@ import scipy.signal as ss
 import scipy.io as sio
 import sounddevice as sd
 import time
-from . import _base
+from warnings import warn
+from pytta import default
+from pytta.classes import _base
 
 
 class SignalObj(_base.PyTTaObj):
@@ -107,13 +109,13 @@ class SignalObj(_base.PyTTaObj):
                  **kwargs):
         # Converting signalArray from list to np.array
         if isinstance(signalArray, list):
-            signalArray = np.array(signalArray, dtype='float32')
+            signalArray = np.array(signalArray, dtype='float32', ndmin=2).T
         # Checking input array dimensions
-        if self.size_check(signalArray) > 2:
+        if len(signalArray.shape) > 2:
             message = "No 'pyttaObj' is able handle to arrays with more \
-                        than 2 dimensions, '[:,:]', YET!."
+                       than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
-        elif self.size_check(signalArray) == 1:
+        elif len(signalArray.shape) == 1:
             signalArray = np.array(signalArray, ndmin=2, dtype='float32')
         if signalArray.shape[1] > signalArray.shape[0]:
             signalArray = signalArray.T
@@ -183,12 +185,13 @@ class SignalObj(_base.PyTTaObj):
     def freqSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2, dtype='float32')
+                newSignal = np.array(newSignal, ndmin=2)
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._freqSignal = np.array(newSignal, dtype='float32')
-            self._timeSignal = np.fft.irfft(self._freqSignal,
-                                            axis=0, norm=None)
+            self._freqSignal = np.array(newSignal)
+            self._timeSignal = np.array(np.fft.irfft(self._freqSignal,
+                                                     axis=0, norm=None),
+                                        dtype='float32')
             self._numSamples = len(self.timeSignal)  # [-] number of samples
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
@@ -208,14 +211,14 @@ class SignalObj(_base.PyTTaObj):
     @property
     def coordinates(self):
         coords = []
-        for chIndex in range(self.num_channels()):
+        for chIndex in range(self.numChannels):
             coords.append(self.channels[chIndex].coordinates)
         return coords
 
     @property
     def orientation(self):
         orientations = []
-        for chIndex in range(self.num_channels()):
+        for chIndex in range(self.numChannels):
             orientations.append(self.channels[chIndex].orientation)
         return orientations
 
@@ -239,18 +242,19 @@ class SignalObj(_base.PyTTaObj):
 
     @property
     def numChannels(self):
-        return self.num_channels()
-
-    def num_channels(self):
         try:
             numChannels = self.timeSignal.shape[1]
         except IndexError:
             numChannels = 1
         return numChannels
 
+    def num_channels(self):  # DEPRECATED
+        warn(DeprecationWarning("This method is DEPRECATED and being replaced by .numChannels property."))
+        return self.numChannels
+
     def max_level(self):
         maxlvl = []
-        for chIndex in range(self.num_channels()):
+        for chIndex in range(self.numChannels):
             maxAmplitude = np.max(np.abs(self.timeSignal[:, chIndex]))
             maxlvl.append(20*np.log10(maxAmplitude /
                                       self.channels[chIndex].dBRef))
@@ -266,7 +270,10 @@ class SignalObj(_base.PyTTaObj):
         Play method
         """
         if outChannel is None:
-            outChannel = np.arange(1, self.num_channels()+1)
+            if self.numChannels <= 1:
+                outChannel = default.outChannel
+            elif self.numChannels > 1:
+                outChannel = np.arange(1, self.numChannels+1)
         sd.play(self.timeSignal, self.samplingRate,
                 mapping=outChannel, **kwargs)
         return
@@ -275,10 +282,9 @@ class SignalObj(_base.PyTTaObj):
         """
         Time domain plotting method
         """
-        # DB
         plt.figure(figsize=(10, 5))
         if self.num_channels() > 1:
-            for chIndex in range(self.num_channels()):
+            for chIndex in range(self.numChannels):
                 label = self.channels[chIndex].name +\
                         ' [' + self.channels[chIndex].unit + ']'
                 plt.plot(self.timeVector,
@@ -299,13 +305,40 @@ class SignalObj(_base.PyTTaObj):
         plt.ylabel(r'$Amplitude$')
         return
 
+    def plot_time_dB(self):
+        """
+        Time domain plotting method
+        """
+        plt.figure(figsize=(10, 5))
+        if self.numChannels > 1:
+            for chIndex in range(self.numChannels):
+                label = self.channels[chIndex].name +\
+                        ' [' + self.channels[chIndex].unit + ']'
+                plt.plot(self.timeVector,
+                         10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
+        else:
+            chIndex = 0
+            label = self.channels[chIndex].name +\
+                ' [' + self.channels[chIndex].unit + ']'
+            plt.plot(self.timeVector,
+                     10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
+        plt.legend(loc='best')
+        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
+        plt.axis((self.timeVector[0] - 10/self.samplingRate,
+                  self.timeVector[-1] + 10/self.samplingRate,
+                  1.05 * np.min(self.timeSignal),
+                  1.05 * np.max(self.timeSignal)))
+        plt.xlabel(r'$Time$ [s]')
+        plt.ylabel(r'$Amplitude$')
+        return
+
     def plot_freq(self, smooth=False):
         """
         Frequency domain dB plotting method
         """
         plt.figure(figsize=(10, 5))
-        if self.num_channels() > 1:
-            for chIndex in range(0, self.num_channels()):
+        if self.numChannels > 1:
+            for chIndex in range(0, self.numChannels):
                 if smooth:
                     Signal = ss.savgol_filter(np.squeeze(np.abs(
                              self.freqSignal[:, chIndex]) / (2**(1/2))),
@@ -380,7 +413,7 @@ class SignalObj(_base.PyTTaObj):
                 the reference sine frequency provided by the voltage
                 calibrator;
         """
-        if chIndex in range(self.num_channels()):
+        if chIndex in range(self.numChannels):
             self.channels[chIndex].calib_volt(refSignalObj, refVrms, refFreq)
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
@@ -415,7 +448,7 @@ class SignalObj(_base.PyTTaObj):
                 calibrator;
         """
 
-        if chIndex in range(self.num_channels()):
+        if chIndex in range(self.numChannels):
             self.channels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chIndex].CF
@@ -423,6 +456,12 @@ class SignalObj(_base.PyTTaObj):
         else:
             raise IndexError('chIndex greater than channels number')
         return
+
+    def _to_dict(self):
+        out = super()._to_dict()
+        out['channels'] = self.channels._to_dict()
+        out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
+        return out
 
     def save(self, dirname=time.ctime(time.time())):
         mySigObj = self._to_dict()
@@ -442,12 +481,6 @@ class SignalObj(_base.PyTTaObj):
             os.remove(filename)
         return dirname + '.pytta'
 
-    def _to_dict(self):
-        out = super()._to_dict()
-        out['channels'] = self.channels._to_dict()
-        out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
-        return out
-
     def __truediv__(self, other):
         """
         Frequency domain division method
@@ -459,14 +492,14 @@ class SignalObj(_base.PyTTaObj):
         result = SignalObj(np.zeros(self.timeSignal.shape),
                            samplingRate=self.samplingRate)
         result.channels = self.channels
-        if self.num_channels() > 1:
-            if other.num_channels() > 1:
-                if other.num_channels() != self.num_channels():
+        if self.numChannels > 1:
+            if other.numChannels > 1:
+                if other.numChannels != self.numChannels:
                     raise ValueError("Both signal-like objects must have the \
                                      same number of channels.")
                 result_freqSignal = np.zeros(self.freqSignal.shape,
                                              dtype=np.complex_)
-                for channel in range(other.num_channels()):
+                for channel in range(other.numChannels):
                     result.freqSignal[:, channel] = \
                         self.freqSignal[:, channel] \
                         / other.freqSignal[:, channel]
@@ -474,7 +507,7 @@ class SignalObj(_base.PyTTaObj):
             else:
                 result_freqSignal = np.zeros(self.freqSignal.shape,
                                              dtype=np.complex_)
-                for channel in range(self.num_channels()):
+                for channel in range(self.numChannels):
                     result_freqSignal[:, channel] = \
                         self.freqSignal[:, channel] \
                         / other.freqSignal[:, 0]
@@ -494,16 +527,16 @@ class SignalObj(_base.PyTTaObj):
             raise TypeError("Both SignalObj must have the same sampling rate.")
         result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                if other.size_check() != self.size_check():
+        if self.numChannels > 1:
+            if other.numChannels > 1:
+                if other.numChannels != self.numChannels:
                     raise ValueError("Both signal-like objects must have\
                                      the same number of channels.")
-                for channel in range(other.num_channels()):
+                for channel in range(other.numChannels):
                     result.timeSignal = self._timeSignal[:, channel]\
                         + other._timeSignal[:, channel]
             else:
-                for channel in range(other.num_channels()):
+                for channel in range(other.numChannels):
                     result.timeSignal = self._timeSignal[:, channel]\
                         + other._timeSignal
         else:
@@ -520,16 +553,16 @@ class SignalObj(_base.PyTTaObj):
             raise TypeError("Both SignalObj must have the same sampling rate.")
         result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
-        if self.size_check() > 1:
-            if other.size_check() > 1:
-                if other.size_check() != self.size_check():
+        if self.numChannels > 1:
+            if other.numChannels > 1:
+                if other.numChannels != self.numChannels:
                     raise ValueError("Both signal-like objects must have\
                                      the same number of channels.")
-                for channel in range(other.num_channels()):
+                for channel in range(other.numChannels):
                     result.timeSignal = self._timeSignal[:, channel]\
                         - other._timeSignal[:, channel]
             else:
-                for channel in range(other.num_channels()):
+                for channel in range(other.numChannels):
                     result.timeSignal = self._timeSignal[:, channel]\
                         - other._timeSignal
         else:
@@ -545,18 +578,18 @@ class SignalObj(_base.PyTTaObj):
                 f'comment={self.comment!r})')
 
     def __getitem__(self, key):
-        if key > self.num_channels():
+        if key > self.numChannels:
             raise IndexError("Index out of bounds.")
         elif key < 0:
-            key += self.num_channels()
+            key += self.numChannels
         return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
 
     def _calc_spectrogram(self, timeData=None, overlap=0.5,
-                          winType='hann', winSize=1024):
+                          winType='hann', winSize=1024, *, channel=0):
         if timeData is None:
             timeData = self.timeSignal
-            if self.num_channels() > 1:
-                timeData = timeData[:, 0]
+            if self.numChannels > 1 :
+                timeData = timeData[:, channel]
         window = eval('ss.windows.' + winType)(winSize)
         nextIdx = int(winSize*overlap)
         rng = int(timeData.shape[0]/winSize/overlap - 1)
@@ -702,25 +735,17 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 All names are valid, returns the computed impulsive response
                 signal-like object;
 
-            * coordinates:
-                Returns the coordinates parameter passed at the object instan-
-                tiation. It's "points" values may be updated;
-
             * methodInfo:
                 Returns a dict with the "method", "winType", "winSize" and
                 "overlap" parameters.
     """
 
     def __init__(self, excitationSignal, recordedSignal,
-                 # coordinates={'points': [],
-                 #            'reference': 'south-west-floor corner',
-                 #             'unit': 'm'},
                  method='linear', winType=None, winSize=None, overlap=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._excitation = excitationSignal
         self._recording = recordedSignal
-#        self._coordinates = coordinates
         self._methodInfo = {'method': method, 'winType': winType,
                             'winSize': winSize, 'overlap': overlap}
         self._systemSignal = self._calculate_tf_ir(excitationSignal,
@@ -729,12 +754,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                    winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
-#        self._coord_points_per_channel()
-        return
+        return 
 
     def _to_dict(self):
-        out = {'methodInfo': self.methodInfo,
-               'coordinates': self.coordinates}
+        out = {'methodInfo': self.methodInfo}
         return out
 
     def save(self, dirname=time.ctime(time.time())):
@@ -817,45 +840,6 @@ class ImpulsiveResponse(_base.PyTTaObj):
     def methodInfo(self):
         return self._methodInfo
 
-# NOW COORDINATES MANAGEMENT DONE DIRECTLY TO THE SIGNALOBJS
-# Public methods
-#    def set_channels_points(self, channels, points):
-#        if isinstance(channels, list):
-#            if len(channels) != len(points):
-#                raise IndexError("Each value on channels list must have a\
-#                                 corresponding [x, y, z] on points list.")
-#            else:
-#                for idx in range(len(channels)):
-#                    self.coordinates['points'][idx] = points[idx]
-#        elif isinstance(channels, int):
-#            try:
-#                self.coordinates['points'][channels-1] = points
-#            except IndexError:
-#                print('The channel value goes beyond the number of channels,\
-#                      the point was appended to the points list.')
-#                self.coordinates['points'].append(points)
-#        else:
-#            raise TypeError("channels parameter must be either an int or\
-#                            list of int")
-#        return
-
-#    def get_channels_points(self, channels):
-#        if isinstance(channels, list):
-#            outlist = []
-#            for idx in channels:
-#                outlist.append(self.coordinates['points'][idx-1])
-#            return outlist
-#        elif isinstance(channels, int):
-#            try:
-#                return self.coordinates['points'][channels-1]
-#            except IndexError:
-#                print('Index out of bounds, returning last channel\'s point')
-#                return self.coordinates['points'][-1]
-#        else:
-#            raise TypeError("channels parameter must be either an int or\
-#                            list of int")
-#            return
-
 # Private methods
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                          winType=None, winSize=None, overlap=None):
@@ -892,7 +876,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2, dtype='float32').T
+                            = np.array(XY/XX, ndmin=2).T
                 else:
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(
@@ -901,14 +885,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2, dtype='float32').T
+                            = np.array(XY/XX, ndmin=2).T
             else:
                 XY, XX = self._calc_csd_tf(
                         inputSignal.timeSignal,
                         outputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(XY/XX, ndmin=2, dtype='float32').T
+                result.freqSignal = np.array(XY/XX, ndmin=2).T
 
         elif method == 'H2':
             if winType is None:
@@ -932,7 +916,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(YY/YX, ndmin=2, dtype='float32').T
+                            = np.array(YY/YX, ndmin=2).T
                 else:
                     YX, YY = self._calc_csd_tf(
                             outputSignal.timeSignal[:, channel],
@@ -940,14 +924,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                             inputSignal.samplingRate,
                             winType, winSize, winSize*overlap)
                     result.freqSignal[:, channel] \
-                        = np.array(YY/YX, ndmin=2, dtype='float32').T
+                        = np.array(YY/YX, ndmin=2).T
             else:
                 YX, YY = self._calc_csd_tf(
                         outputSignal.timeSignal,
                         inputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(YY/YX, ndmin=2, dtype='float32'.T)
+                result.freqSignal = np.array(YY/YX, ndmin=2).T
 
         elif method == 'Ht':
             if winType is None:

@@ -3,9 +3,9 @@
 import numpy as np
 import sounddevice as sd
 from typing import Optional, List
-from . import _base
-from .signal import SignalObj
-
+from pytta.classes import _base
+from pytta.classes.signal import SignalObj
+from pytta.classes.measurement import RecMeasure
 
 # Streaming class
 class Streaming(_base.PyTTaObj):
@@ -280,8 +280,7 @@ class Streaming(_base.PyTTaObj):
         self.stream.close()
         return
 
-    def calib_pressure(self, chIndex, refSignalObj,
-                       refPrms=1.00, refFreq=1000):
+    def calib_pressure(self, chIndex, refPrms=1.00, refFreq=1000):
         """
         .. method:: calibPressure(chIndex, refSignalObj, refPrms, refFreq):
             use informed SignalObj, with a calibration acoustic pressure
@@ -295,10 +294,7 @@ class Streaming(_base.PyTTaObj):
         -------------
 
             * chIndex (), (int):
-                channel index for calibration. Starts in 0;
-
-            * refSignalObj (), (SignalObj):
-                SignalObj with the calibration recorded signal;
+                channel number for calibration;
 
             * refPrms (1.00), (float):
                 the reference pressure provided by the acoustic calibrator;
@@ -307,11 +303,15 @@ class Streaming(_base.PyTTaObj):
                 the reference sine frequency provided by the acoustic
                 calibrator;
         """
-
-        if chIndex in range(len(self.inChannels)):
-            self.inChannels[chIndex].calib_press(
-                    refSignalObj, refPrms, refFreq)
-            self.inChannels[chIndex].calibCheck = True
+	
+        refSignalObj = RecMeasure(lengthDomain='time',
+                                  timeLength=5,
+                                  samplingRate=self.samplingRate,
+                                  inChannels=chIndex,
+                                  device=self.device).run()
+        if chIndex-1 in self.inChannels.mapping():
+            self.inChannels[chIndex-1].calib_press(refSignalObj, refPrms, refFreq)
+            self.inChannels[chIndex-1].calibCheck = True
         else:
             raise IndexError('chIndex greater than channels number')
         return

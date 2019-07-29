@@ -34,11 +34,13 @@ Generate:
 
 # Import modules
 from pytta import default
-from .classes import SignalObj, RecMeasure, FRFMeasure, \
-                     PlayRecMeasure, Streaming, OctFilter, ResultList
+from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
+                          PlayRecMeasure, Streaming, OctFilter, \
+                          Result, ResultList
 from scipy import signal as ss
 import numpy as np
 import traceback
+
 
 def sin(Arms=0.5,
         freq=1000,
@@ -74,11 +76,22 @@ def sin(Arms=0.5,
             Nothing to say;
 
     """
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
+
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
     t = np.linspace(0, timeLength - (1/samplingRate), samplingRate*timeLength)
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
     sinSigObj = SignalObj(sin, domain='time', samplingRate=samplingRate)
+    sinSigObj.creation_name = creation_name
     return sinSigObj
 
 
@@ -109,7 +122,7 @@ def sweep(freqMin=None,
    is respected.
 
     """
-    # Code snippet to guarantee that generated object name is the declared one
+    # Code snippet to guarantee that generated object name is the declared at global scope
     for frame, line in traceback.walk_stack(None):
         varnames = frame.f_code.co_varnames
         if varnames is ():
@@ -243,6 +256,15 @@ def noise(kind='white',
 
         Blue noise is still in progress;
     """
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
 
     if samplingRate is None:
         samplingRate = default.samplingRate
@@ -283,7 +305,10 @@ def noise(kind='white',
     noiseSignal = np.concatenate((np.zeros(int(startSamples)),
                                  noiseSignal,
                                  np.zeros(int(stopSamples))))
-    noiseSignal = SignalObj(signalArray=noiseSignal, domain='time', samplingRate=samplingRate)
+    noiseSignal = SignalObj(signalArray=noiseSignal, domain='time',
+                            freqMin=default.freqMin, freqMax=default.freqMax,
+                            samplingRate=samplingRate)
+    noiseSignal.creation_name = creation_name
     return noiseSignal
 
 
@@ -305,6 +330,16 @@ def impulse(samplingRate=None,
     Generates a normalized impulse signal at time zero,
     with zeros to fill the time length
     """
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
+
     if samplingRate is None:
         samplingRate = default.samplingRate
     if fftDegree is None:
@@ -316,6 +351,7 @@ def impulse(samplingRate=None,
     impulseSignal = np.real(np.fft.ifft(impulseSignal))
     impulseSignal = impulseSignal / max(impulseSignal)
     impulseSignal = SignalObj(signalArray=impulseSignal, domain='time', samplingRate=samplingRate)
+    impulseSignal.creation_name = creation_name
     return impulseSignal
 
 
@@ -393,6 +429,15 @@ def measurement(kind='playrec',
 
         Same as for (kind='playrec')
     """
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
 
 # Default Parameters
     if freqMin is None:
@@ -410,7 +455,8 @@ def measurement(kind='playrec',
 
 # Kind REC
     if kind in ['rec', 'record', 'recording', 'r']:
-        recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin, freqMax=freqMax, device=device, inChannels=inChannel, **kwargs)
+        recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin, 
+                freqMax=freqMax, device=device, inChannels=inChannel, **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
@@ -427,6 +473,7 @@ def measurement(kind='playrec',
         else:
             recordObj.lengthDomain = 'samples'
             recordObj.fftDegree = default.fftDegree
+        recordObj.creation_name = creation_name
         return recordObj
 
 # Kind PLAYREC
@@ -440,7 +487,10 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        playRecObj = PlayRecMeasure(excitation=signalIn, device=device, inChannels=inChannel, outChannels=outChannel, **kwargs)
+        playRecObj = PlayRecMeasure(excitation=signalIn, device=device,
+                inChannels=inChannel, outChannels=outChannel,
+                freqMin=freqMin, freqMax=freqMax, **kwargs)
+        playRecObj.creation_name = creation_name
         return playRecObj
 
 # Kind FRF
@@ -454,7 +504,10 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        frfObj = FRFMeasure(excitation=signalIn, device=device, inChannels=inChannel, outChannels=outChannel, **kwargs)
+        frfObj = FRFMeasure(excitation=signalIn, device=device,
+                inChannels=inChannel, outChannels=outChannel,
+                freqMin=freqMin, freqMax=freqMax, **kwargs)
+        frfObj.creation_name = creation_name
         return frfObj
 
 
@@ -470,6 +523,16 @@ def stream(IO='IO',
            *args, **kwargs):
     """
     """
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
+
     if device is None:
         device = default.device
     if integration is None:
@@ -488,39 +551,61 @@ def stream(IO='IO',
             samplingRate = default.samplingRate
 
     if IO in ['I', 'in', 'input']:
-        return Streaming(device=device, integration=integration, inChannels=inChannels, duration=duration, callback=callback, samplingRate=samplingRate, *args, **kwargs)
+        stream = Streaming(device=device, integration=integration, inChannels=inChannels,
+                duration=duration, callback=callback, samplingRate=samplingRate, *args, **kwargs)
 
     elif IO in ['O', 'out', 'output']:
         if excit:
-            return Streaming(device=device, integration=integration, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
+            stream = Streaming(device=device, integration=integration, outChannels=outChannels,
+                    duration=duration, excitationData=excitData, samplingRate=samplingRate,
+                    callback=callback, *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
             outChannels = excitation.channels
             duration = excitation.timeLength
             excitData = excitation.timeSignal[:]
-            return Streaming(device=device, integration=integration, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
+            stream = Streaming(device=device, integration=integration, outChannels=outChannels,
+                    duration=duration, excitationData=excitData, samplingRate=samplingRate,
+                    callback=callback, *args, **kwargs)
 
     elif IO in ['IO', 'in-out', 'input-output']:
         if excit:
-            return Streaming(device=device, integration=integration, inChannels=inChannels, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
+            stream = Streaming(device=device, integration=integration, inChannels=inChannels,
+                    outChannels=outChannels, duration=duration, excitationData=excitData,
+                    samplingRate=samplingRate, callback=callback, *args, **kwargs)
         else:
             excitation = sweep(samplingRate=samplingRate)
             outChannels = excitation.channels[:]
             duration = excitation.timeLength
             excitData = excitation.timeSignal[:]
-            return Streaming(device=device, integration=integration, inChannels=inChannels, outChannels=outChannels, duration=duration, excitationData=excitData, samplingRate=samplingRate, callback=callback, *args, **kwargs)
-
-
+            stream = Streaming(device=device, integration=integration, inChannels=inChannels,
+                    outChannels=outChannels, duration=duration, excitationData=excitData,
+                    samplingRate=samplingRate, callback=callback, *args, **kwargs)
     else:
         raise ValueError("The IO parameter could not identify whether the\
                          stream will be Input, Output or Input-Output type.")
+    stream.creation_name = creation_name
+    return stream
+
 
 
 def filter(order: int = 4,
            nthOct: int = 3,
            samplingRate: int = 44100,
            minFreq: float = 20,
-           maxFreq: float = 16000,
+           maxFreq: float = 20000,
            refFreq: float = 1000,
            base: int = 10) -> OctFilter:
-    return OctFilter(order, nthOct, samplingRate, minFreq, maxFreq, refFreq, base)
+    # Code snippet to guarantee that generated object name is the declared at global scope
+    for frame, line in traceback.walk_stack(None):
+        varnames = frame.f_code.co_varnames
+        if varnames is ():
+            break
+    creation_file, creation_line, creation_function, \
+        creation_text = \
+        traceback.extract_stack(frame, 1)[0]
+    creation_name = creation_text.split("=")[0].strip()
+
+    of = OctFilter(order, nthOct, samplingRate, minFreq, maxFreq, refFreq, base)
+    of.creation_name = creation_name
+    return of

@@ -2,10 +2,10 @@
 
 import numpy as np
 import scipy.signal as ss
-from .signal import SignalObj
+from pytta.classes.signal import SignalObj
 
 
-""" Cálculo de bandas de oitava a partir de 1 kHz utilizando base 10"""
+""" Cálculo de bandas de oitava a partir de 1 kHz utilizando base 10 ou 2"""
 
 __nominal_frequencies = np.array([
     0.1, 0.125, 0.16, 0.2, 0.25, 0.315, 0.4, 0.5, 0.6, 3, 0.8,
@@ -16,12 +16,14 @@ __nominal_frequencies = np.array([
 ])
 
 
-def freq_to_band(freq: float, nthOct: int, ref: float, factor: int, base: int):
+def freq_to_band(freq: float, nthOct: int, ref: float, base: int):
     if base == 10:
         log = np.log10
+        factor = 3/10
     elif base == 2:
         log = np.log2
-    return np.round(log(freq/ref)*factor*nthOct)
+        factor = 1
+    return np.round(log(freq/ref)*(nthOct/factor))
 
 
 def fractional_octave_frequencies(nthOct: int = 3,
@@ -33,8 +35,8 @@ def fractional_octave_frequencies(nthOct: int = 3,
         factor = 3/10
     elif base == 2:
         factor = 1
-    minBand = freq_to_band(minFreq, nthOct, refFreq, factor, base)
-    maxBand = freq_to_band(maxFreq, nthOct, refFreq, factor, base)
+    minBand = freq_to_band(minFreq, nthOct, refFreq, base)
+    maxBand = freq_to_band(maxFreq, nthOct, refFreq, base)
     bands = np.arange(minBand, maxBand + 1)
     freqs = np.zeros((len(bands), 3))
     nthOct = 1/nthOct
@@ -95,7 +97,8 @@ class OctFilter(object):
         edges = np.array([freqs[:, 0], freqs[:, 2]]).T
         return center, edges
 
-    def __design_sos_butter(self, bandEdges: np.ndarray,
+    def __design_sos_butter(self,
+                            bandEdges: np.ndarray,
                             order: int = 4,
                             samplingRate: int = 44100) -> np.ndarray:
         sos = np.zeros((order, 6, len(bandEdges)))
@@ -122,10 +125,10 @@ class OctFilter(object):
                              rate of filter to be filtered.")
         n = self.sos.shape[2]
         output = []
-        for ch in range(signalObj.num_channels()):
+        for ch in range(signalObj.numChannels):
             filtered = np.zeros((signalObj.numSamples, n))
             for k in range(n):
-                filtered[:, k] = ss.sosfilt(self.sos[:, :, k],
+                filtered[:, k] = ss.sosfiltfilt(self.sos[:, :, k],
                                             signalObj.timeSignal[:, ch],
                                             axis=0).T
             output.append(SignalObj(filtered, 'time', self.samplingRate))
@@ -134,6 +137,8 @@ class OctFilter(object):
         else:
             return output
 
+
+#class SPLWeight(object):
 
 k1 = 12194
 k2 = 20.6
@@ -153,10 +158,9 @@ fc = 1000
 def __Ra(freq):
     Ra = (k1**2)*(freq**4) / ((freq**2 + k2**2)
                               * (((freq**2 + k3**2)
-                                  * (freq**2 + k4**2))**0.5)
+                              * (freq**2 + k4**2))**0.5)
                               * (freq**2 + k1**2))
     return Ra
-
 
 def __A(freq):
     A = round(20*np.log10(__Ra(freq)) - 20*np.log10(__Ra(fc)), 2)

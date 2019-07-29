@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Properties
-===========
+Properties:
+------------
   
 @Autores:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -42,11 +42,6 @@ import sounddevice as sd
 
 __default_device = [sd.default.device[0], sd.default.device[1]]
 """ Used only to hold the default audio I/O device at pytta import time"""
-
-units = {'Pa': ('dB', 2e-5),
-         'V': ('dBu', 0.775),
-         'W/m^2': ('dB', 1e-12),
-         'FS': ('dBFs', 1)}
 
 default = {'samplingRate': 44100,
            'lengthDomain': 'samples',
