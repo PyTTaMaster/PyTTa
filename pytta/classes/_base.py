@@ -318,7 +318,7 @@ class ChannelObj(object):
              'FS': ('dBFS', 1)}
         
 
-    def __init__(self, num, name=None, unit='FS', CF=1, calibCheck=False,
+    def __init__(self, num, name=None, code=None, unit='FS', CF=1, calibCheck=False,
                  coordinates=CoordinateObj(), orientation=CoordinateObj()):
 
         self.num = num

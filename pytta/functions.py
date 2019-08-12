@@ -279,7 +279,7 @@ def __parse_load(className):
 
 
 def __parse_channels(chDict, chList):
-    ch = 0
+    ch = 1
     for key in chDict.keys():
         chList[ch].num = key
         chList[ch].unit = chDict[key]['unit']
