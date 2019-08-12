@@ -10,6 +10,7 @@ import scipy.io as sio
 import sounddevice as sd
 import time
 from warnings import warn
+from pytta import default
 from pytta.classes import _base
 
 
@@ -185,12 +186,13 @@ class SignalObj(_base.PyTTaObj):
     def freqSignal(self, newSignal):
         if isinstance(newSignal, np.ndarray):
             if self.size_check(newSignal) == 1:
-                newSignal = np.array(newSignal, ndmin=2, dtype='float32')
+                newSignal = np.array(newSignal, ndmin=2)
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._freqSignal = np.array(newSignal, dtype='float32')
-            self._timeSignal = np.fft.irfft(self._freqSignal,
-                                            axis=0, norm=None)
+            self._freqSignal = np.array(newSignal)
+            self._timeSignal = np.array(np.fft.irfft(self._freqSignal,
+                                                     axis=0, norm=None),
+                                        dtype='float32')
             self._numSamples = len(self.timeSignal)  # [-] number of samples
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
@@ -862,7 +864,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2, dtype='float32').T
+                            = np.array(XY/XX, ndmin=2).T
                 else:
                     for channel in range(outputSignal.num_channels()):
                         XY, XX = self._calc_csd_tf(
@@ -871,14 +873,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(XY/XX, ndmin=2, dtype='float32').T
+                            = np.array(XY/XX, ndmin=2).T
             else:
                 XY, XX = self._calc_csd_tf(
                         inputSignal.timeSignal,
                         outputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(XY/XX, ndmin=2, dtype='float32').T
+                result.freqSignal = np.array(XY/XX, ndmin=2).T
 
         elif method == 'H2':
             if winType is None:
@@ -902,7 +904,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                 inputSignal.samplingRate,
                                 winType, winSize, winSize*overlap)
                         result.freqSignal[:, channel] \
-                            = np.array(YY/YX, ndmin=2, dtype='float32').T
+                            = np.array(YY/YX, ndmin=2).T
                 else:
                     YX, YY = self._calc_csd_tf(
                             outputSignal.timeSignal[:, channel],
@@ -910,14 +912,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
                             inputSignal.samplingRate,
                             winType, winSize, winSize*overlap)
                     result.freqSignal[:, channel] \
-                        = np.array(YY/YX, ndmin=2, dtype='float32').T
+                        = np.array(YY/YX, ndmin=2).T
             else:
                 YX, YY = self._calc_csd_tf(
                         outputSignal.timeSignal,
                         inputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = np.array(YY/YX, ndmin=2, dtype='float32'.T)
+                result.freqSignal = np.array(YY/YX, ndmin=2).T
 
         elif method == 'Ht':
             if winType is None:

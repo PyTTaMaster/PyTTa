@@ -43,27 +43,26 @@ documentation.
 """
 
 # Importing .py files as submodules
-from . import properties
+import pytta.properties as properties
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
 default = properties.Default()
 # units = properties.units  # MOVED TO ChannelObj CLASS
 
-from .classes import SignalObj, ImpulsiveResponse,\
-                    RecMeasure, PlayRecMeasure, FRFMeasure,\
-                    Streaming,\
-                    OctFilter, weighting
-from .functions import read_wav, write_wav, merge, list_devices,\
+from pytta.classes import SignalObj, ImpulsiveResponse,\
+                          RecMeasure, PlayRecMeasure, FRFMeasure,\
+                          Streaming,\
+                          OctFilter, weighting
+from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load
 
-from .apps import roomir2
 
-from . import rooms
-from . import generate
+import pytta.rooms as rooms
+import pytta.generate as generate
 
-__version__ = '0.1.0rc'  # package version
+__version__ = '0.1.0b4'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps

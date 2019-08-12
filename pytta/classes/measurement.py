@@ -126,7 +126,9 @@ class Measurement(_base.PyTTaObj):
                                   timeLength=5,
                                   samplingRate=self.samplingRate,
                                   inChannels=chIndex,
-                                  device=self.device).run()
+                                  device=self.device,
+                                  freqMin=self.freqMin,
+                                  freqMax=self.freqMax).run()
         if chIndex-1 in range(len(self.inChannels)):
             self.inChannels[chIndex-1].calib_press(refSignalObj, refPrms, refFreq)
             self.inChannels[chIndex-1].calibCheck = True
@@ -257,7 +259,7 @@ class RecMeasure(Measurement):
         recording.channels = self.inChannels
         recording.timeStamp = time.ctime(time.time())
         recording.freqMin, recording.freqMax\
-            = (self.freqMin, self.freqMax)
+            = self.freqMin, self.freqMax
         recording.comment = 'SignalObj from a Rec measurement'
         _print_max_level(recording, kind='input')
         return recording
@@ -345,8 +347,8 @@ class PlayRecMeasure(Measurement):
                               samplingRate=self.samplingRate)
         recording.channels = self.inChannels
         recording.timeStamp = timeStamp
-        recording.freqMin, recording.freqMax\
-            = (self.freqMin, self.freqMax)
+        recording.freqMin = self.freqMin
+        recording.freqMax = self.freqMax
         recording.comment = 'SignalObj from a PlayRec measurement'
         _print_max_level(self.excitation, kind='output')
         _print_max_level(recording, kind='input')

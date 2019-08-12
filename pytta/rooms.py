@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # from pytta import default
-from .classes import OctFilter
+from pytta.classes import OctFilter
 import numpy as np
 from numpy import log10, mean, max, argmax, abs, where,\
                   ones, ndarray, array, asarray

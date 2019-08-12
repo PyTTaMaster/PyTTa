@@ -34,8 +34,9 @@ Generate:
 
 # Import modules
 from pytta import default
-from .classes import SignalObj, RecMeasure, FRFMeasure, \
-                     PlayRecMeasure, Streaming, OctFilter, Result, ResultList
+from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
+                          PlayRecMeasure, Streaming, OctFilter, \
+                          Result, ResultList
 from scipy import signal as ss
 import numpy as np
 import traceback
@@ -304,7 +305,9 @@ def noise(kind='white',
     noiseSignal = np.concatenate((np.zeros(int(startSamples)),
                                  noiseSignal,
                                  np.zeros(int(stopSamples))))
-    noiseSignal = SignalObj(signalArray=noiseSignal, domain='time', samplingRate=samplingRate)
+    noiseSignal = SignalObj(signalArray=noiseSignal, domain='time',
+                            freqMin=default.freqMin, freqMax=default.freqMax,
+                            samplingRate=samplingRate)
     noiseSignal.creation_name = creation_name
     return noiseSignal
 
@@ -485,7 +488,8 @@ def measurement(kind='playrec',
                              **kwargs)
 
         playRecObj = PlayRecMeasure(excitation=signalIn, device=device,
-                inChannels=inChannel, outChannels=outChannel, **kwargs)
+                inChannels=inChannel, outChannels=outChannel,
+                freqMin=freqMin, freqMax=freqMax, **kwargs)
         playRecObj.creation_name = creation_name
         return playRecObj
 
@@ -501,7 +505,8 @@ def measurement(kind='playrec',
                              **kwargs)
 
         frfObj = FRFMeasure(excitation=signalIn, device=device,
-                inChannels=inChannel, outChannels=outChannel, **kwargs)
+                inChannels=inChannel, outChannels=outChannel,
+                freqMin=freqMin, freqMax=freqMax, **kwargs)
         frfObj.creation_name = creation_name
         return frfObj
 
