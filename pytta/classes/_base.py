@@ -192,7 +192,7 @@ class CoordinateObj(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}('
                 f'point={self.point!r}, '
-                f'polar={self.polar!r}, '
+#                f'polar={self.polar!r}, '
                 f'ref={self.ref!r}, '
                 f'unit={self.unit!r})')
 
@@ -656,9 +656,12 @@ class ChannelsList(object):
 
     def __contains__(self, chRef):
         if isinstance(chRef, str):
-            return chRef in [chObj.name for chObj in self._channels]
+            if chRef in self.names or chRef in self.codes:
+                return True
+            else:
+                return False
         elif isinstance(chRef, int):
-            return chRef in [chObj.num for chObj in self._channels]
+            return chRef in self.mapping
 
     @property
     def mapping(self):
