@@ -99,7 +99,7 @@ def merge(signal1, *signalObjects):
             \n SignalObj 1 and '+str(j+1)+' have different lengths.'
             raise AttributeError(message)
         comment = comment + ' / ' + inObj.comment
-        for ch in inObj.channels:
+        for ch in inObj.channels._channels:
             channels.append(ch)
         timeSignal = np.hstack((timeSignal, inObj.timeSignal))
         j += 1
