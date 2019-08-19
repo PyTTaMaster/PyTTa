@@ -8,32 +8,37 @@ Created on Tue Jul  2 10:35:05 2019
 
 # import pytta
 from pytta.classes._base import ChannelObj, ChannelsList
+from pytta import generate
 
-_takeKinds = {'newpoint': None,
-              'noisefloor': None,
-              'calibration': None}
+# Dict with the measurementKinds
+measurementKinds = {'roomir': 'PlayRecMeasure',
+                    'noisefloor': 'RecMeasure',
+                    'miccalibration': 'RecMeasure',
+                    'sourcerecalibration': 'PlayRecMeasure'}
 
 
 class MeasurementSetup(object):
 
     def __init__(self,
                  name,
+                 samplingRate,
                  device,
                  excitationSignals,
-                 samplingRate,
                  freqMin,
                  freqMax,
                  inChannels,
                  outChannels,
                  averages,
-                 sourcesNumber,
-                 receiversNumber,
                  noiseFloorTp,
                  calibrationTp):
+        self.measurementKinds = measurementKinds
         self.name = name
-        self.device = device
-        self.excitationSignals = excitationSignals
         self.samplingRate = samplingRate
+        self.device = device
+        self.noiseFloorTp = noiseFloorTp
+        self.calibrationTp = calibrationTp
+        self.excitationSignals = excitationSignals
+        self.averages = averages
         self.freqMin = freqMin
         self.freqMax = freqMax
         self.inChannels = MeasurementChList(kind='in')
@@ -49,25 +54,319 @@ class MeasurementSetup(object):
             self.outChannels.append(ChannelObj(num=chContents[0],
                                                name=chContents[1],
                                                code=chCode))
-        self.averages = averages
-        self.sourcesNumber = sourcesNumber
-        self.receiversNumber = receiversNumber
-        self.noiseFloorTp = noiseFloorTp
-        self.calibrationTp = calibrationTp
 
 
-class Source(object):
+class Data(object):
 
-    def __init__(self, name, code, coordinates, orientation):
-        self.name = name
-        self.code = code
+    # Magic methods
+
+    def __init__(self, MS):
+        self.raw = {}  # Creates empty dict for raw data
+        for medkind in MS.measurementKinds:
+            # Creates empty lists for each measurement kind
+            self.raw[medkind] = []
+
+    # Properties
+
+    # Methods
+
+    def getStatus():
+        pass
 
 
-class Receiver(object):
+class TakeMeasure(object):
 
-    def __init__(self, name, code, coordinates, orientation):
-        self.name = name
-        self.code = code
+    # Magic methods
+
+    def __init__(self,
+                 MS,
+                 tempHumid,
+                 kind,
+                 inChSel,
+                 receiversPos=None,
+                 excitation=None,
+                 outChSel=None,
+                 sourcePos=None):
+        self.MS = MS
+        self.tempHumid = tempHumid
+        if self.tempHumid is not None:
+            self.tempHumid.start()
+        self.kind = kind
+        self.inChSel = inChSel
+        self.receiversPos = receiversPos
+        self.excitation = excitation
+        self.outChSel = outChSel
+        self.sourcePos = sourcePos
+        self._cfg_channels()
+        self._cfg_take()
+
+    def _cfg_channels(self):
+        # Check for disabled combined channels
+        if self.kind not in ['miccalibration', 'sourcerecalibratoin']:
+            j = 0
+            for status in self.inChSel:
+                chNumUnderCheck = self.MS.inChannels.mapping[j]
+                if status is True:
+                    # look for the group where chNumUnderCheck is present
+                    for comb in self.MS.inChannels.combinedChannels:
+                        if chNumUnderCheck in comb:
+                            # Get other ChNums in group
+                            othersCombndChs = []
+                            for chNum in comb:
+                                if chNum != chNumUnderCheck:
+                                    othersCombndChs.append(chNum)
+                    # check if other ChNums in group are also active
+                    for chNum in othersCombndChs:
+                        chStatusIndex = self.MS.inChannels.mapping.index(chNum)
+                        if self.inChSel[chStatusIndex] is False:
+                            raise ValueError('Grouped input channel ' +
+                                             str(chNum) + ' must be enabled ' +
+                                             'because its other group member' +
+                                             ', channel ' +
+                                             str(chNumUnderCheck) +
+                                             ', is also enabled')
+                j += 1
+        # Constructing the inChannels list for the current take
+        j = 0
+        self.inChannels = MeasurementChList(kind='in')
+        for i in self.inChSel:
+            chNum = self.MS.inChannels.mapping[j]
+            if i:
+                self.inChannels.append(self.MS.inChannels[chNum])
+            j = j+1
+        # Setting the outChannel for the current take
+        self.outChannel = MeasurementChList(kind='out')
+        self.outChannel.append(self.MS.outChannels[self.outChSel])
+
+    def _cfg_take(self):
+        # For roomir measurement kind
+        if self.kind == 'roomir':
+            self.measurementObject = \
+                generate.measurement('playrec',
+                                     excitation=self.MS.
+                                     excitationSignals[self.excitation],
+                                     samplingRate=self.MS.samplingRate,
+                                     freqMin=self.MS.freqMin,
+                                     freqMax=self.MS.freqMax,
+                                     device=self.MS.device,
+                                     inChannel=self.inChannels.mapping,
+                                     outChannel=self.outChannel.mapping,
+                                     comment='roomir')
+
+        # For miccalibration measurement kind
+        if self.kind == 'calibration':
+            if self.inChSel.count(True) != 1:
+                raise ValueError('Only one channel per calibration take!')
+            self.measurementObject = \
+                generate.measurement('rec',
+                                     lengthDomain='time',
+                                     timeLength=self.calibrationTp,
+                                     samplingRate=self.samplingRate,
+                                     freqMin=self.freqMin,
+                                     freqMax=self.freqMax,
+                                     device=self.device,
+                                     inChannel=self.inChannels.mapping,
+                                     comment='calibration')
+
+        # For noisefloor measurement kind
+        if self.kind == 'noisefloor':
+            self.measurementObject = \
+                generate.measurement('rec',
+                                     lengthDomain='time',
+                                     timeLength=self.noiseFloorTp,
+                                     samplingRate=self.samplingRate,
+                                     freqMin=self.freqMin,
+                                     freqMax=self.freqMax,
+                                     device=self.device,
+                                     inChannel=self.inChannels,
+                                     comment='noisefloor')
+
+        # For sourcerecalibration measurement kind
+        if self.kind == 'sourcerecalibration':
+            self.measurementObject = \
+                generate.measurement('playrec',
+                                     excitation=self.MS.
+                                     excitationSignals[self.excitation],
+                                     samplingRate=self.MS.samplingRate,
+                                     freqMin=self.MS.freqMin,
+                                     freqMax=self.MS.freqMax,
+                                     device=self.MS.device,
+                                     inChannel=self.inChannels,
+                                     outChannel=self.outChannels[0],
+                                     comment='sourcerecalibration')
+
+    @property
+    def MS(self):
+        return self._MS
+
+    @MS.setter
+    def MS(self, newMS):
+        if not isinstance(newMS, MeasurementSetup):
+            raise TypeError('Measurement setup must be a MeasurementSetup ' +
+                            'object.')
+        self._MS = newMS
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, newKind):
+        if not isinstance(newKind, str):
+            raise TypeError('Measurement take Kind must be a string')
+        if newKind not in self.MS.measurementKinds:
+            raise ValueError('Measurement take Kind doesn\'t ' +
+                             'exist in RoomIR application.')
+        self._kind = newKind
+        return
+
+    @property
+    def inChSel(self):
+        return self._inChSel
+
+    @inChSel.setter
+    def inChSel(self, newChSelection):
+        if not isinstance(newChSelection, list):
+            raise TypeError('inChSel must be a list of booleans ' +
+                            'with same number of itens as '+self.MS.name +
+                            '\'s inChannels.')
+        if len(newChSelection) < len(self._MS.inChannels):
+            raise ValueError('inChSel\' number of itens must be the ' +
+                             'same as ' + self.MS.name + '\'s inChannels.')
+        for item in newChSelection:
+            if not isinstance(item, bool):
+                raise TypeError('inChSel must be a list of booleans ' +
+                                'with the same number of itens as ' +
+                                self.MS.name + '\'s inChannels.')
+        self._inChSel = newChSelection
+
+    @property
+    def outChSel(self):
+        return self._outChSel
+
+    @outChSel.setter
+    def outChSel(self, newChSelection):
+        if not isinstance(newChSelection, str):
+            raise TypeError('outChSel must be a string with a valid output ' +
+                            'channel code listed in '+self.MS.name +
+                            '\'s outChannels.')
+        if newChSelection not in self.MS.outChannels:
+            raise TypeError('Invalid outChSel code or name. It must be a ' +
+                            'valid ' + self.MS.name + '\'s output channel.')
+        self._outChSel = newChSelection
+
+    @property
+    def sourcePos(self):
+        return self._sourcePos
+
+    @sourcePos.setter
+    def sourcePos(self, newSource):
+        if not isinstance(newSource, str):
+            if newSource is None and self.kind in ['noisefloor',
+                                                   'calibration']:
+                self._sourcePos = None
+                return
+            else:
+                raise TypeError('Source must be a string.')
+#        if newSource not in self.MS.outChannels:
+#            raise ValueError(newSource + ' doesn\'t exist in ' +
+#                             self.MS.name + '\'s outChannels.')
+        self._sourcePos = newSource
+
+    @property
+    def receiversPos(self):
+        return self._receiversPos
+
+    @receiversPos.setter
+    def receiversPos(self, newReceivers):
+        if not isinstance(newReceivers, list):
+            if newReceivers is None and self.kind in ['noisefloor']:
+                self._receiversPos = None
+                return
+            else:
+                raise TypeError('Receivers must be a list of strings ' +
+                                'with same number of transducers and itens ' +
+                                ' in ' + self.MS.name + '\'s inChannels ' +
+                                '(e.g. [\'R1\', \'R5\', \'R13\'])')
+        if len(newReceivers) < len(self._MS.inChannels):
+            raise ValueError('Receivers\' number of itens must be the ' +
+                             'same as ' + self.MS.name + '\'s inChannels.')
+        for item in newReceivers:
+            if item.split('R')[0] != '':
+                raise ValueError(item + 'isn\'t a receiver position. It ' +
+                                 'must start with \'R\' succeeded by It\'s ' +
+                                 'number (e.g. R1).')
+            else:
+                try:
+                    receiverNumber = int(item.split('R')[1])
+                except ValueError:
+                    raise ValueError(item + 'isn\'t a receiver position ' +
+                                     'code. It must start with \'R\' ' +
+                                     'succeeded by It\'s number (e.g. R1).')
+#                if receiverNumber > self.MS.receiversNumber:
+#                    raise TypeError('Receiver number out of ' + self.MS.name +
+#                                    '\'s receivers range.')
+        self._receiversPos = newReceivers
+        return
+
+    @property
+    def excitation(self):
+        return self._excitation
+
+    @excitation.setter
+    def excitation(self, newExcitation):
+        if not isinstance(newExcitation, str):
+            if newExcitation is None and self.kind in ['noisefloor',
+                                                       'calibration']:
+                self._excitation = None
+                return
+            else:
+                raise TypeError('Excitation signal\'s name must be a string.')
+        if newExcitation not in self.MS.excitationSignals:
+            raise ValueError('Excitation signal doesn\'t exist in ' +
+                             self.MS.name + '\'s excitationSignals')
+        self._excitation = newExcitation
+        return
+
+    def run(self):
+        self.measuredTake = []
+#        if self.kind == 'newpoint':
+        for i in range(0, self.MS.averages):
+            self.measuredTake.append(self.measurementObject.run())
+            # Adquire do LabJack U3 + EI1050 a temperatura e
+            # umidade relativa instantânea
+            if self.tempHumid is not None:
+                self.measuredTake[i].temp, self.measuredTake[i].RH = \
+                    self.tempHumid.read()
+            else:
+                self.measuredTake[i].temp, self.measuredTake[i].RH = \
+                    (None, None)
+
+    def save(self, dataObj):
+        # Desmembra o SignalObj measureTake de 4 canais em 3 SignalObj
+        # referentes ao arranjo biauricular em uma posição e ao centro
+        # da cabeça em duas outras posições
+        # TO DO
+        pass
+
+
+class MeasuredThing(object):
+
+    # Magic methods
+
+    def __init__(self,
+                 kind,
+                 measuredSignals,
+                 inChannel,
+                 position=(None, None),
+                 excitation=None,
+                 outChannel=None):
+        self.kind = kind
+        self.position = position
+        self.excitation = excitation
+        self.measuredSignals = measuredSignals
+        self.inChannel = inChannel
+        self.outChannel = outChannel
 
 
 class MeasurementChList(ChannelsList):
@@ -145,77 +444,6 @@ class MeasurementChList(ChannelsList):
                 for chNum in comb:
                     combChNumList.append(chNum)
             return chRef in combChNumList
-
-
-class Data(object):
-    pass
-
-
-class MeasurementIR(object):
-
-    # Magic methods
-
-    def __init__(self, IR, inChannel, outChannel):
-        self.IR = IR
-        self.inChannel = inChannel
-        self.outChannel = outChannel
-
-
-class RoomIRs(object):
-
-    # Magic methods
-
-    def __init__(self, sourceCode, receiverCode):
-        self.MIRs = []
-        self.sourceCode = sourceCode
-        self.receiverCode = receiverCode
-
-    def __repr__(self):
-        return (f'{self.__class__.__name__}('
-                f'sourceCode={self.sourceCode!r}, '
-                f'receiverCode={self.receiverCode!r})')
-
-    # Methods
-
-    def append(self, newMIR):
-        if isinstance(newMIR, MeasurementIR):
-            self.MIRs.append(newMIR)
-        else:
-            raise TypeError("RoomIRs can contain only MeasurementIRs.")
-
-
-class NoiseFloor(object):
-
-    # Magic methods
-
-    def __init__(self, NF, inChannel):
-        self.NF = NF
-        self.inChannel = inChannel
-
-
-class RoomNFs(object):
-
-    # Magic methods
-
-    def __init__(self, receiverCode):
-        self.NFs = []
-        self.receiverCode = receiverCode
-
-    # Methods
-
-    def append(self, newNF):
-        if isinstance(newNF, NoiseFloor):
-            self.NFs.append(newNF)
-        else:
-            raise TypeError("RoomNFs can contain only NoiseFloors.")
-
-
-class Calibration(object):
-
-    # Magic methods
-
-    def __init__(self, calibSignal):
-        self.calibSignal = calibSignal
 
 
 class Transducer(object):

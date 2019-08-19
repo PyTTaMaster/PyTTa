@@ -335,8 +335,8 @@ class PlayRecMeasure(Measurement):
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal,
                                samplerate=self.samplingRate,
-                               input_mapping=self.inChannels.mapping(),
-                               output_mapping=self.outChannels.mapping(),
+                               input_mapping=self.inChannels.mapping,
+                               output_mapping=self.outChannels.mapping,
                                device=self.device,
                                blocking=self.blocking,
                                latency='low',
@@ -510,16 +510,16 @@ class FRFMeasure(PlayRecMeasure):
 # Sub functions
 def _print_max_level(sigObj, kind):
     if kind == 'output':
-        for chIndex in range(sigObj.num_channels()):
+        for chIndex in sigObj.channels.mapping:
             print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                  .format(chIndex, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
                           sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
-        for chIndex in range(sigObj.num_channels()):
+        for chIndex in sigObj.channels.mapping:
             print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
+                  .format(chIndex, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
                           sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
