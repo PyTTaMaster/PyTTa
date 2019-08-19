@@ -510,17 +510,19 @@ class FRFMeasure(PlayRecMeasure):
 # Sub functions
 def _print_max_level(sigObj, kind):
     if kind == 'output':
-        for chIndex in sigObj.channels.mapping:
+        for chIndex in range(sigObj.numChannels):
+            chNum = sigObj.channels.mapping[chIndex]
             print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chIndex, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
-                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
+                  .format(chNum, sigObj.max_level()[chIndex], sigObj.channels[chNum].dBName,
+                          sigObj.channels[chNum].dBRef, sigObj.channels[chNum].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
-        for chIndex in sigObj.channels.mapping:
+        for chIndex in range(sigObj.numChannels):
+            chNum = sigObj.channels.mapping[chIndex]
             print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chIndex, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
-                          sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
+                  .format(chNum, sigObj.max_level()[chIndex], sigObj.channels[chNum].dBName,
+                          sigObj.channels[chNum].dBRef, sigObj.channels[chNum].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return

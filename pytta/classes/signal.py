@@ -212,15 +212,15 @@ class SignalObj(_base.PyTTaObj):
     @property
     def coordinates(self):
         coords = []
-        for chIndex in range(self.numChannels):
-            coords.append(self.channels[chIndex].coordinates)
+        for chNum in self.channels.mapping:
+            coords.append(self.channels[chNum].coordinates)
         return coords
 
     @property
     def orientation(self):
         orientations = []
-        for chIndex in range(self.numChannels):
-            orientations.append(self.channels[chIndex].orientation)
+        for chNum in self.channels.mapping:
+            orientations.append(self.channels[chNum].orientation)
         return orientations
 
 # SignalObj Methods
@@ -243,9 +243,10 @@ class SignalObj(_base.PyTTaObj):
     def max_level(self):
         maxlvl = []
         for chIndex in range(self.numChannels):
+            chNum = self.channels.mapping[chIndex]
             maxAmplitude = np.max(np.abs(self.timeSignal[:, chIndex]))
             maxlvl.append(20*np.log10(maxAmplitude /
-                                      self.channels[chIndex].dBRef))
+                                      self.channels[chNum].dBRef))
         return maxlvl
 
     def size_check(self, inputArray=[]):
@@ -273,14 +274,16 @@ class SignalObj(_base.PyTTaObj):
         plt.figure(figsize=(10, 5))
         if self.num_channels() > 1:
             for chIndex in range(self.numChannels):
-                label = self.channels[chIndex].name +\
-                        ' [' + self.channels[chIndex].unit + ']'
+                chNum = self.channels.mapping[chIndex]
+                label = self.channels[chNum].name +\
+                        ' [' + self.channels[chNum].unit + ']'
                 plt.plot(self.timeVector,
                          self.timeSignal[:, chIndex], label=label)
         else:
             chIndex = 0
-            label = self.channels[chIndex].name +\
-                ' [' + self.channels[chIndex].unit + ']'
+            chNum = self.channels.mapping[chIndex]
+            label = self.channels[chNum].name +\
+                ' [' + self.channels[chNum].unit + ']'
             plt.plot(self.timeVector,
                      self.timeSignal[:, chIndex], label=label)
         plt.legend(loc='best')
@@ -300,14 +303,16 @@ class SignalObj(_base.PyTTaObj):
         plt.figure(figsize=(10, 5))
         if self.numChannels > 1:
             for chIndex in range(self.numChannels):
-                label = self.channels[chIndex].name +\
-                        ' [' + self.channels[chIndex].unit + ']'
+                chNum = self.channels.mapping[chIndex]
+                label = self.channels[chNum].name +\
+                        ' [' + self.channels[chNum].unit + ']'
                 plt.plot(self.timeVector,
                          10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
         else:
             chIndex = 0
-            label = self.channels[chIndex].name +\
-                ' [' + self.channels[chIndex].unit + ']'
+            chNum = self.channels.mapping[chIndex]
+            label = self.channels[chNum].name +\
+                ' [' + self.channels[chNum].unit + ']'
             plt.plot(self.timeVector,
                      10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
         plt.legend(loc='best')
@@ -327,6 +332,7 @@ class SignalObj(_base.PyTTaObj):
         plt.figure(figsize=(10, 5))
         if self.numChannels > 1:
             for chIndex in range(0, self.numChannels):
+                chNum = self.channels.mapping[chIndex]
                 if smooth:
                     Signal = ss.savgol_filter(np.squeeze(np.abs(
                              self.freqSignal[:, chIndex]) / (2**(1/2))),
@@ -334,14 +340,15 @@ class SignalObj(_base.PyTTaObj):
                 else:
                     Signal = self.freqSignal[:, chIndex] / (2**(1/2))
                 dBSignal = 20 * np.log10(np.abs(Signal)
-                                         / self.channels[chIndex].dBRef)
-                label = self.channels[chIndex].name \
-                    + ' [' + self.channels[chIndex].dBName + ' ref.: ' \
-                    + str(self.channels[chIndex].dBRef) + ' ' \
-                    + self.channels[chIndex].unit + ']'
+                                         / self.channels[chNum].dBRef)
+                label = self.channels[chNum].name \
+                    + ' [' + self.channels[chNum].dBName + ' ref.: ' \
+                    + str(self.channels[chNum].dBRef) + ' ' \
+                    + self.channels[chNum].unit + ']'
                 plt.semilogx(self.freqVector, dBSignal, label=label)
         else:
             chIndex = 0
+            chNum = self.channels.mapping[chIndex]
             if smooth:
                 Signal = ss.savgol_filter(np.squeeze(np.abs(
                          self.freqSignal[:, chIndex]) / (2**(1/2))),
@@ -349,11 +356,11 @@ class SignalObj(_base.PyTTaObj):
             else:
                 Signal = self.freqSignal[:, chIndex] / (2**(1/2))
             dBSignal = 20 * np.log10(np.abs(Signal)
-                                     / self.channels[chIndex].dBRef)
-            label = self.channels[chIndex].name + ' ['\
-                + self.channels[chIndex].dBName + ' ref.: '\
-                + str(self.channels[chIndex].dBRef) + ' '\
-                + self.channels[chIndex].unit + ']'
+                                     / self.channels[chNum].dBRef)
+            label = self.channels[chNum].name + ' ['\
+                + self.channels[chNum].dBName + ' ref.: '\
+                + str(self.channels[chNum].dBRef) + ' '\
+                + self.channels[chNum].unit + ']'
             plt.semilogx(self.freqVector, dBSignal, label=label)
         plt.grid(color='gray', linestyle='-.', linewidth=0.4)
         plt.legend(loc='best')
@@ -402,10 +409,11 @@ class SignalObj(_base.PyTTaObj):
                 calibrator;
         """
         if chIndex in range(self.numChannels):
-            self.channels[chIndex].calib_volt(refSignalObj, refVrms, refFreq)
+            chNum = self.channels.mapping[chIndex]
+            self.channels[chNum].calib_volt(refSignalObj, refVrms, refFreq)
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
-                * self.channels[chIndex].CF
-            self.channels[chIndex].calibCheck = True
+                * self.channels[chNum].CF
+            self.channels[chNum].calibCheck = True
         else:
             raise IndexError('chIndex greater than channels number')
         return
@@ -437,10 +445,11 @@ class SignalObj(_base.PyTTaObj):
         """
 
         if chIndex in range(self.numChannels):
-            self.channels[chIndex].calib_press(refSignalObj, refPrms, refFreq)
+            chNum = self.channels.mapping[chIndex]
+            self.channels[chNum].calib_press(refSignalObj, refPrms, refFreq)
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
-                * self.channels[chIndex].CF
-            self.channels[chIndex].calibCheck = True
+                * self.channels[chNum].CF
+            self.channels[chNum].calibCheck = True
         else:
             raise IndexError('chIndex greater than channels number')
         return
