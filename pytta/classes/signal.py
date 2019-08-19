@@ -367,7 +367,7 @@ class SignalObj(_base.PyTTaObj):
         if np.max(dBSignal) > 0:
             ylim = [1.05*np.min(dBSignal), 1.12*np.max(dBSignal)]
         else:
-            ylim = [np.min(dBSignal) - 2, np.max(dBSignal) + 2]
+            ylim = [np.nanmin(dBSignal[dBSignal !=-np.inf]) - 2, np.max(dBSignal) + 2]
         plt.axis((self.freqMin, self.freqMax, ylim[0], ylim[1]))
         plt.xlabel(r'$Frequency$ [Hz]')
         plt.ylabel(r'$Magnitude$ in dB')
