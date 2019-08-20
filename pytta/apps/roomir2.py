@@ -102,7 +102,7 @@ class TakeMeasure(object):
 
     def _cfg_channels(self):
         # Check for disabled combined channels
-        if self.kind not in ['miccalibration', 'sourcerecalibratoin']:
+        if self.kind not in ['miccalibration', 'sourcerecalibration']:
             j = 0
             # Look for grouped channels through the active channels
             for status in self.inChSel:
@@ -120,6 +120,11 @@ class TakeMeasure(object):
                                              str(chNumUnderCheck) +
                                              ', is also enabled')
                 j += 1
+        else:
+            #
+            # TO DO
+            #
+            pass
         # Constructing the inChannels list for the current take
         j = 0
         self.inChannels = MeasurementChList(kind='in')
@@ -185,8 +190,8 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels,
-                                     outChannel=self.outChannels[0],
+                                     inChannel=self.inChannels.mapping,
+                                     outChannel=self.outChannel.mapping,
                                      comment='sourcerecalibration')
 
     @property
@@ -473,10 +478,10 @@ class MeasurementChList(ChannelsList):
         for chNum in self.mapping:
             groupMapping = mChList.get_group_membs(
                     chNum, 'rest')
-            for chNum in groupMapping:
+            for chNum2 in groupMapping:
                 # Getting groups information for reconstructd
                 # inChannels
-                if self[chNum] == mChList[chNum]:
+                if self[chNum] == mChList[chNum2]:
                     groups[mChList.get_array_name(chNum)] =\
                         mChList.get_group_membs(chNum)
         self.groups = groups

@@ -77,10 +77,10 @@ takeMeasure = m.TakeMeasure(MS=SM,
                             # Passa objeto de comunicação
                             # com o LabJack U3 + EI1050 probe
                             tempHumid=tempHumid,
-                            kind='roomir',
+                            kind='sourcerecalibration',
                             # Status do canal:
                             # True para Ativado e False para Desativado
-                            inChSel=[True,  # canal 1
+                            inChSel=[False,  # canal 1
                                      True,  # canal 2
                                      False,  # canal 3
                                      True],  # canal 4
