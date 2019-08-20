@@ -43,8 +43,8 @@ class MeasurementSetup(object):
         self.freqMax = freqMax
         self.inChannels = MeasurementChList(kind='in')
         for chCode, chContents in inChannels.items():
-            if chCode == 'combinedChannels':
-                self.inChannels.combinedChannels = chContents
+            if chCode == 'groups':
+                self.inChannels.groups = chContents
             else:
                 self.inChannels.append(ChannelObj(num=chContents[0],
                                                   name=chContents[1],
@@ -104,18 +104,12 @@ class TakeMeasure(object):
         # Check for disabled combined channels
         if self.kind not in ['miccalibration', 'sourcerecalibratoin']:
             j = 0
+            # Look for grouped channels through the active channels
             for status in self.inChSel:
                 chNumUnderCheck = self.MS.inChannels.mapping[j]
                 if status is True:
-                    # look for the group where chNumUnderCheck is present
-                    for comb in self.MS.inChannels.combinedChannels:
-                        if chNumUnderCheck in comb:
-                            # Get other ChNums in group
-                            othersCombndChs = []
-                            for chNum in comb:
-                                if chNum != chNumUnderCheck:
-                                    othersCombndChs.append(chNum)
-                    # check if other ChNums in group are also active
+                    othersCombndChs = self.MS.inChannels.get_group_membs(
+                            chNumUnderCheck, 'rest')
                     for chNum in othersCombndChs:
                         chStatusIndex = self.MS.inChannels.mapping.index(chNum)
                         if self.inChSel[chStatusIndex] is False:
@@ -134,6 +128,9 @@ class TakeMeasure(object):
             if i:
                 self.inChannels.append(self.MS.inChannels[chNum])
             j = j+1
+        # Getting groups information for reconstructd
+        # inChannels MeasurementChList
+        self.inChannels.copy_groups(self.MS.inChannels)
         # Setting the outChannel for the current take
         self.outChannel = MeasurementChList(kind='out')
         self.outChannel.append(self.MS.outChannels[self.outChSel])
@@ -152,7 +149,6 @@ class TakeMeasure(object):
                                      inChannel=self.inChannels.mapping,
                                      outChannel=self.outChannel.mapping,
                                      comment='roomir')
-
         # For miccalibration measurement kind
         if self.kind == 'calibration':
             if self.inChSel.count(True) != 1:
@@ -160,27 +156,25 @@ class TakeMeasure(object):
             self.measurementObject = \
                 generate.measurement('rec',
                                      lengthDomain='time',
-                                     timeLength=self.calibrationTp,
-                                     samplingRate=self.samplingRate,
-                                     freqMin=self.freqMin,
-                                     freqMax=self.freqMax,
-                                     device=self.device,
+                                     timeLength=self.MS.calibrationTp,
+                                     samplingRate=self.MS.samplingRate,
+                                     freqMin=self.MS.freqMin,
+                                     freqMax=self.MS.freqMax,
+                                     device=self.MS.device,
                                      inChannel=self.inChannels.mapping,
                                      comment='calibration')
-
         # For noisefloor measurement kind
         if self.kind == 'noisefloor':
             self.measurementObject = \
                 generate.measurement('rec',
                                      lengthDomain='time',
-                                     timeLength=self.noiseFloorTp,
-                                     samplingRate=self.samplingRate,
-                                     freqMin=self.freqMin,
-                                     freqMax=self.freqMax,
-                                     device=self.device,
+                                     timeLength=self.MS.noiseFloorTp,
+                                     samplingRate=self.MS.samplingRate,
+                                     freqMin=self.MS.freqMin,
+                                     freqMax=self.MS.freqMax,
+                                     device=self.MS.evice,
                                      inChannel=self.inChannels,
                                      comment='noisefloor')
-
         # For sourcerecalibration measurement kind
         if self.kind == 'sourcerecalibration':
             self.measurementObject = \
@@ -356,16 +350,18 @@ class MeasuredThing(object):
 
     def __init__(self,
                  kind,
+                 arrayName,
                  measuredSignals,
-                 inChannel,
+                 inChannels,
                  position=(None, None),
                  excitation=None,
                  outChannel=None):
         self.kind = kind
+        self.arrayName = arrayName
         self.position = position
         self.excitation = excitation
         self.measuredSignals = measuredSignals
-        self.inChannel = inChannel
+        self.inChannels = inChannels
         self.outChannel = outChannel
 
 
@@ -373,15 +369,15 @@ class MeasurementChList(ChannelsList):
 
     # Magic methods
 
-    def __init__(self, kind, combinedChannels=[], *args, **kwargs):
+    def __init__(self, kind, groups={}, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.kind = kind
-        self.combinedChannels = combinedChannels
+        self.groups = groups
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
                 f'kind={self.kind!r}, '
-                f'combinedChannels={self.combinedChannels!r}, '
+                f'groups={self.groups!r}, '
                 f'chList={self._channels!r})')
 
     # Properties
@@ -398,29 +394,30 @@ class MeasurementChList(ChannelsList):
             raise ValueError('Kind must be \'in\' or \'out\'')
 
     @property
-    def combinedChannels(self):
-        return self._combinedChannels
+    def groups(self):
+        return self._groups
 
-    @combinedChannels.setter
-    def combinedChannels(self, newComb):
-        if not isinstance(newComb, list):
-            raise TypeError('combinedChannels must be a list with tuples '
-                            + 'containing the combined channels')
-        for group in newComb:
+    @groups.setter
+    def groups(self, newComb):
+        if not isinstance(newComb, dict):
+            raise TypeError('groups must be a dict with array name ' +
+                            'as key and channel numbers in a tuple as value.')
+        for arrayName, group in newComb.items():
             if not isinstance(group, tuple):
                 raise TypeError('Groups of channels inside the ' +
-                                'combinedChannels list must be contained by' +
+                                'groups dict must be contained by' +
                                 ' a tuple.')
                 for chNum in group:
                     if chNum not in MeasurementChList.mapping:
                         raise ValueError('Channel number ' + str(chNum) +
                                          ' isn\'t a valid ' + self.kind +
                                          'put channel.')
-        self._combinedChannels = newComb
+        self._groups = newComb
 
     # Methods
 
-    def isCombined(self, chRef):
+    def is_grouped(self, chRef):
+        # Check if chRef is in any group
         if isinstance(chRef, str):
             if chRef in self.codes:
                 nameOrCode = 'code'
@@ -429,7 +426,7 @@ class MeasurementChList(ChannelsList):
             else:
                 raise ValueError("Channel name/code doesn't exist.")
             combChRefList = []
-            for comb in self.combinedChannels:
+            for comb in self.groups.values():
                 for chNum in comb:
                     if nameOrCode == 'code':
                         combChRefList.append(self.channels[chNum].code)
@@ -440,10 +437,49 @@ class MeasurementChList(ChannelsList):
             if chRef not in self.mapping:
                 raise ValueError("Channel number doesn't exist.")
             combChNumList = []
-            for comb in self.combinedChannels:
+            for comb in self.groups.values():
                 for chNum in comb:
                     combChNumList.append(chNum)
             return chRef in combChNumList
+
+    def get_group_membs(self, chNumUnderCheck, *args):
+        # Return a list with channel numbers in ChNumUnderCheck's group
+        if 'rest' in args:
+            rest = 'rest'
+        else:
+            rest = 'entire'
+        othersCombndChs = []
+        for comb in self.groups.values():
+            if chNumUnderCheck in comb:
+                # Get other ChNums in group
+                for chNum in comb:
+                    if chNum != chNumUnderCheck:
+                        othersCombndChs.append(chNum)
+                    else:
+                        if rest == 'entire':
+                            othersCombndChs.append(chNum)
+        return tuple(othersCombndChs)
+
+    def get_array_name(self, chNum):
+        # Get chNum's array name
+        for arname, group in self.groups.items():
+            if chNum in group:
+                return arname
+        return None
+
+    def copy_groups(self, mChList):
+        # Copy groups from mChList containing any identical channel to self
+        groups = {}
+        for chNum in self.mapping:
+            groupMapping = mChList.get_group_membs(
+                    chNum, 'rest')
+            for chNum in groupMapping:
+                # Getting groups information for reconstructd
+                # inChannels
+                if self[chNum] == mChList[chNum]:
+                    groups[mChList.get_array_name(chNum)] =\
+                        mChList.get_group_membs(chNum)
+        self.groups = groups
 
 
 class Transducer(object):

@@ -59,7 +59,7 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                                     'OD': (2, 'Orelha D'),
                                     'Mic1': (4, 'Mic 1'),
                                     'Mic2': (5, 'Mic 2'),
-                                    'combinedChannels': [(1, 2)]},
+                                    'groups': {'HATS':(1, 2)}},
                         # Dicionário com códigos e canais de saída associados
                         outChannels={'O1': (1, 'Dodecaedro 1'),
                                      'O2': (2, 'Dodecaedro 2'),
