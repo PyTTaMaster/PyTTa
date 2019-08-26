@@ -651,7 +651,8 @@ class ChannelsList(object):
                 newChList = ChannelsList([self[0]/otherList[index]
                                           for index in range(len(otherList))])
             else:
-                newChList = ChannelsList([self[0]/otherList[0]])
+                newChList = ChannelsList([self._channels[0] /
+                                          otherList._channels[0]])
         return newChList
 
     def __contains__(self, chRef):
