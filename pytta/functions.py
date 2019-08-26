@@ -37,8 +37,10 @@ import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
 import zipfile as zf
+import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
+from pytta.classes._base import ChannelsList, ChannelObj
 import copy as cp
 
 
@@ -207,6 +209,59 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
         zdir.write('Meta.json')
         os.remove('Meta.json')
     return fileName + '.pytta'
+
+
+def h5save(fileName: str, *PyTTaObjs):
+    with h5py.File(fileName, 'w') as f:
+        for idx, pobj in enumerate(PyTTaObjs):
+            if isinstance(pobj, (SignalObj,
+                                 ImpulsiveResponse,
+                                 RecMeasure,
+                                 PlayRecMeasure,
+                                 FRFMeasure)):
+                ObjGroup = f.create_group(pobj.creation_name)
+                pobj.h5save(ObjGroup)
+            else:
+                print("Only PyTTa objects can be saved through this" +
+                      "function. Skipping object number " + str(idx) + ".")
+
+
+def h5load(fileName: str):
+    f = h5py.File(fileName, 'r')
+    loadedObjects = {}
+    for PyTTaObjName, PyTTaObj in f.items():
+        if PyTTaObj.attrs['class'] == 'SignalObj':
+            if PyTTaObj.attrs['freqMin'] != 'None':
+                freqMin = PyTTaObj.attrs['freqMin']
+            else:
+                freqMin = None
+            if PyTTaObj.attrs['freqMax'] != 'None':
+                freqMax = PyTTaObj.attrs['freqMax']
+            else:
+                freqMax = None
+            SigObj = SignalObj(signalArray=np.array(PyTTaObj['timeSignal']),
+                               domain='time',
+                               samplingRate=PyTTaObj.attrs['samplingRate'],
+                               freqMin=freqMin,
+                               freqMax=freqMax,
+                               comment=PyTTaObj.attrs['comment'])
+            channels = PyTTaObj.attrs['channels']
+            SigObj.channels = eval(channels)
+            loadedObjects[PyTTaObjName] = SigObj
+        if PyTTaObj.attrs['class'] == 'ImpulsiveResponse':
+            pass
+
+        if PyTTaObj.attrs['class'] == 'RecMeasure':
+            pass
+
+        if PyTTaObj.attrs['class'] == 'PlayRecMeasure':
+            pass
+
+        if PyTTaObj.attrs['class'] == 'FRFMeasure':
+            pass
+
+    f.close()
+    return loadedObjects
 
 
 def load(fileName: str):

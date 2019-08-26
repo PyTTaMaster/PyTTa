@@ -478,6 +478,13 @@ class SignalObj(_base.PyTTaObj):
             os.remove(filename)
         return dirname + '.pytta'
 
+    def h5save(self, h5group):
+        h5group.attrs['class'] = 'SignalObj'
+        h5group.attrs['channels'] = str(self.channels)
+        h5group['timeSignal'] = self.timeSignal
+        super().h5save(h5group)
+        pass
+
     def __truediv__(self, other):
         """
         Frequency domain division method

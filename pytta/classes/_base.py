@@ -175,6 +175,17 @@ class PyTTaObj(RICI):
         sio.savemat(filename, myObjno_, format='5', oned_as='column')
         return
 
+    def h5save(self, h5group):
+        h5group.attrs['samplingRate'] = self.samplingRate
+        h5group.attrs['freqMin'] = self.freqMin if self.freqMin is not None \
+            else 'None'
+        h5group.attrs['freqMax'] = self.freqMax if self.freqMax is not None \
+            else 'None'
+        h5group.attrs['fftDegree'] = self.fftDegree
+        h5group.attrs['lengthDomain'] = self.lengthDomain
+        h5group.attrs['comment'] = self.comment
+        pass
+
 
 class CoordinateObj(object):
 
