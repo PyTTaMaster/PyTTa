@@ -233,16 +233,13 @@ def h5load(fileName: str):
     loadedObjects = {}
     for PyTTaObjName, PyTTaObj in f.items():
         if PyTTaObj.attrs['class'] == 'SignalObj':
-            freqMin = PyTTaObj.attrs['freqMin'] if PyTTaObj.attrs['freqMin'] \
-                != 'None' else None
-            freqMax = PyTTaObj.attrs['freqMax'] if PyTTaObj.attrs['freqMax'] \
-                != 'None' else None
             samplingRate = PyTTaObj.attrs['samplingRate']
             lengthDomain = PyTTaObj.attrs['lengthDomain']
             comment = PyTTaObj.attrs['comment']
-            timeSignal = np.array(PyTTaObj['timeSignal'])
             channels = eval(PyTTaObj.attrs['channels'])
-            SigObj = SignalObj(signalArray=timeSignal,
+            freqMin = __h5_none_parser(PyTTaObj.attrs['freqMin'])
+            freqMax = __h5_none_parser(PyTTaObj.attrs['freqMax'])
+            SigObj = SignalObj(signalArray=np.array(PyTTaObj['timeSignal']),
                                domain='time',
                                samplingRate=samplingRate,
                                freqMin=freqMin,
@@ -266,6 +263,13 @@ def h5load(fileName: str):
 
     f.close()
     return loadedObjects
+
+
+def __h5_none_parser(attr):
+    if attr != 'None':
+        return attr
+    else:
+        return None
 
 
 def load(fileName: str):
