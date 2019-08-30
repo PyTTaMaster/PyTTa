@@ -2,11 +2,11 @@
 
 import numpy as np
 import scipy.signal as ss
-from pytta.classes.signal import SignalObj
-
+# from pytta.classes.signal import SignalObj
+# from pytta.functions import fractional_octave_frequencies, freq_to_band, \
+#                            normalize_frequencies, freqs_to_center_and_edges
 
 """ Cálculo de bandas de oitava a partir de 1 kHz utilizando base 10 ou 2"""
-
 __nominal_frequencies = np.array([
     0.1, 0.125, 0.16, 0.2, 0.25, 0.315, 0.4, 0.5, 0.6, 3, 0.8,
     1, 1.25, 1.6, 2, 2.5, 3.15, 4, 5, 6.3, 8, 10,
@@ -56,8 +56,10 @@ def normalize_frequencies(freqs: np.ndarray,
     return freqs/nyq
 
 
-def apply_sos_filter(sos: np.ndarray, signal: np.ndarray):
-    return ss.sosfilt(sos, signal, axis=0)
+def freqs_to_center_and_edges(freqs):
+    center = freqs[:, 1].T
+    edges = np.array([freqs[:, 0], freqs[:, 2]]).T
+    return center, edges
 
 
 class OctFilter(object):
@@ -92,11 +94,6 @@ class OctFilter(object):
         else:
             raise value
 
-    def __freqs_to_center_and_edges(self, freqs):
-        center = freqs[:, 1].T
-        edges = np.array([freqs[:, 0], freqs[:, 2]]).T
-        return center, edges
-
     def __design_sos_butter(self,
                             bandEdges: np.ndarray,
                             order: int = 4,
@@ -116,7 +113,7 @@ class OctFilter(object):
                                               self.maxFreq,
                                               self.refFreq,
                                               self.base)
-        self.center, edges = self.__freqs_to_center_and_edges(freqs)
+        self.center, edges = freqs_to_center_and_edges(freqs)
         return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
     def filter(self, signalObj):
@@ -128,12 +125,14 @@ class OctFilter(object):
         for ch in range(signalObj.numChannels):
             filtered = np.zeros((signalObj.numSamples, n))
             for k in range(n):
-                filtered[:, k] = ss.sosfiltfilt(self.sos[:, :, k],
+                filtered[:, k] = ss.sosfilt(self.sos[:, :, k],
                                             signalObj.timeSignal[:, ch],
                                             axis=0).T
-            output.append(SignalObj(filtered, 'time', self.samplingRate))
-        if len(output) == 1:
-            return output[0]
+            output.append({'signalArray': filtered,
+                           'domain': 'time',
+                           'samplingRate': self.samplingRate,
+                           'freqMin': self.minFreq/(2**(1/6)),
+                           'freqMax': self.maxFreq*(2**(1/6))})
         else:
             return output
 

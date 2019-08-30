@@ -129,11 +129,8 @@ class Measurement(_base.PyTTaObj):
                                   device=self.device,
                                   freqMin=self.freqMin,
                                   freqMax=self.freqMax).run()
-        if chIndex-1 in range(len(self.inChannels)):
-            self.inChannels[chIndex-1].calib_press(refSignalObj, refPrms, refFreq)
-            self.inChannels[chIndex-1].calibCheck = True
-        else:
-            raise IndexError('chIndex not in list of channel numbers')
+        self.inChannels[chIndex-chIndex].calib_press(refSignalObj, refPrms, refFreq)
+        self.inChannels[chIndex-chIndex].calibCheck = True
         return
 
 
@@ -318,11 +315,23 @@ class PlayRecMeasure(Measurement):
     """
 
     def __init__(self, excitation=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         if excitation is None:
             self._excitation = None
+            super().__init__(*args, **kwargs)
         else:
             self.excitation = excitation
+            kwargs.pop('freqMin')
+            kwargs.pop('freqMax')
+            super().__init__(*args,
+                             samplingRate=excitation.samplingRate,
+                             freqMin=excitation.freqMin,
+                             freqMax=excitation.freqMax,
+                             fftDegree=excitation.fftDegree,
+                             timeLength=excitation.timeLength,
+                             lengthDomain=excitation.lengthDomain,
+                             numSamples=excitation.numSamples,
+                             **kwargs
+                             )
             self.outChannel = excitation.channels
         return
 
@@ -344,11 +353,11 @@ class PlayRecMeasure(Measurement):
         recording = np.squeeze(recording)
         recording = SignalObj(signalArray=recording*self.inChannels.CFlist(),
                               domain='time',
-                              samplingRate=self.samplingRate)
+                              samplingRate=self.samplingRate,
+                              freqMin=self.freqMin,
+                              freqMax=self.freqMax)
         recording.channels = self.inChannels
         recording.timeStamp = timeStamp
-        recording.freqMin = self.freqMin
-        recording.freqMax = self.freqMax
         recording.comment = 'SignalObj from a PlayRec measurement'
         _print_max_level(self.excitation, kind='output')
         _print_max_level(recording, kind='input')
@@ -383,29 +392,29 @@ class PlayRecMeasure(Measurement):
         self._excitation = newSignalObj
         return
 
-    @property
-    def samplingRate(self):
-        return self.excitation._samplingRate
-
-    @property
-    def fftDegree(self):
-        return self.excitation._fftDegree
-
-    @property
-    def timeLength(self):
-        return self.excitation._timeLength
-
-    @property
-    def numSamples(self):
-        return self.excitation._numSamples
-
-    @property
-    def freqMin(self):
-        return self.excitation._freqMin
-
-    @property
-    def freqMax(self):
-        return self.excitation._freqMax
+#    @property
+#    def samplingRate(self):
+#        return self.excitation._samplingRate
+#
+#    @property
+#    def fftDegree(self):
+#        return self.excitation._fftDegree
+#
+#    @property
+#    def timeLength(self):
+#        return self.excitation._timeLength
+#
+#    @property
+#    def numSamples(self):
+#        return self.excitation._numSamples
+#
+#    @property
+#    def freqMin(self):
+#        return self.excitation._freqMin
+#
+#    @property
+#    def freqMax(self):
+#        return self.excitation._freqMax
 
 
 # FRFMeasure class
@@ -510,14 +519,14 @@ class FRFMeasure(PlayRecMeasure):
 # Sub functions
 def _print_max_level(sigObj, kind):
     if kind == 'output':
-        for chIndex in range(sigObj.num_channels()):
+        for chIndex in range(sigObj.numChannels):
             print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
                   .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
                           sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
-        for chIndex in range(sigObj.num_channels()):
+        for chIndex in range(sigObj.numChannels):
             print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
                   .format(chIndex+1, sigObj.max_level()[chIndex], sigObj.channels[chIndex].dBName,
                           sigObj.channels[chIndex].dBRef, sigObj.channels[chIndex].unit))

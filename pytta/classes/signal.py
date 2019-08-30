@@ -9,9 +9,12 @@ import scipy.signal as ss
 import scipy.io as sio
 import sounddevice as sd
 import time
-from warnings import warn
+from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
+from pytta.classes.filter import fractional_octave_frequencies as FOF
+
+#filterwarnings("default", category=DeprecationWarning)
 
 
 class SignalObj(_base.PyTTaObj):
@@ -132,6 +135,7 @@ class SignalObj(_base.PyTTaObj):
             self.timeSignal = signalArray
             self.lengthDomain = 'time'
             print('Taking the input as a time domain signal')
+        return
 
 # SignalObj Properties
     @property
@@ -202,7 +206,7 @@ class SignalObj(_base.PyTTaObj):
                                            (2*self.numSamples),
                                            ((self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples+1)/2)[:, 0])
+                                           else (self.numSamples+1)/2))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -225,11 +229,11 @@ class SignalObj(_base.PyTTaObj):
 # SignalObj Methods
     def mean(self):
         print('DEPRECATED! This method will be renamed to',
-              ':method:``.chmean()``',
+              ':method:``.channelMean()``',
               'Remember to review your code :D')
         return self.chmean()
 
-    def chmean(self):
+    def channelMean(self):
         """
         Returns a signal object with the arithmetic mean channel-wise
         (column-wise) with same number of samples and sampling rate.
@@ -255,138 +259,212 @@ class SignalObj(_base.PyTTaObj):
     def max_level(self):
         maxlvl = []
         for chIndex in range(self.numChannels):
-            maxAmplitude = np.max(np.abs(self.timeSignal[:, chIndex]))
-            maxlvl.append(20*np.log10(maxAmplitude /
-                                      self.channels[chIndex].dBRef))
+            maxAmplitude = np.max(self.timeSignal[:, chIndex]**2)
+            maxlvl.append(10*np.log10(maxAmplitude /
+                                      self.channels[chIndex].dBRef**2))
         return maxlvl
+
+    def rms(self):
+        return np.mean(self.timeSignal**2, axis=0)**0.5
+
+    def spl(self):
+        refList = np.array([ch.dBRef for ch
+                            in self.channels], dtype=np.float32)
+        return 20*np.log10(self.rms()/refList)
 
     def size_check(self, inputArray=[]):
         if inputArray == []:
             inputArray = self.timeSignal[:]
         return np.size(inputArray.shape)
 
-    def play(self, outChannel=None, latency='low', **kwargs):
+    def play(self, outChannels=None, latency='low', **kwargs):
         """
         Play method
         """
-        if outChannel is None:
+        if outChannels is None:
             if self.numChannels <= 1:
-                outChannel = default.outChannel
+                outChannels = default.outChannel
             elif self.numChannels > 1:
-                outChannel = np.arange(1, self.numChannels+1)
+                outChannels = np.arange(1, self.numChannels+1)
         sd.play(self.timeSignal, self.samplingRate,
-                mapping=outChannel, **kwargs)
+                mapping=outChannels, **kwargs)
         return
 
-    def plot_time(self):
+    def plot_time(self, xlabel=None, ylabel=None):
         """
         Time domain plotting method
         """
-        plt.figure(figsize=(10, 5))
-        if self.num_channels() > 1:
-            for chIndex in range(self.numChannels):
-                label = self.channels[chIndex].name +\
-                        ' [' + self.channels[chIndex].unit + ']'
-                plt.plot(self.timeVector,
-                         self.timeSignal[:, chIndex], label=label)
-        else:
-            chIndex = 0
-            label = self.channels[chIndex].name +\
-                ' [' + self.channels[chIndex].unit + ']'
-            plt.plot(self.timeVector[:self.timeSignal.shape[0]],
-                     self.timeSignal[:, chIndex], label=label)
-        plt.legend(loc='best')
-        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
-        plt.axis((self.timeVector[0] - 10/self.samplingRate,
-                  self.timeVector[-1] + 10/self.samplingRate,
-                  1.05 * np.min(self.timeSignal),
-                  1.05 * np.max(self.timeSignal)))
-        plt.xlabel(r'$Time$ [s]')
-        plt.ylabel(r'$Amplitude$')
+        if xlabel is None:
+            xlabel = 'Time in s'
+        if ylabel is None:
+            ylabel = 'Amplitude in {}'
+        ylabel = ylabel.format(self.channels[0].unit)
+        fig = plt.figure(figsize=(10, 5))
+
+        ax = fig.add_axes([0.08, 0.1, 0.8, 0.85], polar=False,
+                          projection='rectilinear')
+        ax.set_snap(True)
+        for chIndex in range(self.numChannels):
+            label = '{} [{}]'.format(self.channels[chIndex].name,
+                                     self.channels[chIndex].unit)
+            ax.plot(self.timeVector,
+                    self.timeSignal[:, chIndex]*self.channels[chIndex].CF,
+                    label=label)
+        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+
+        xlim = (self.timeVector[0], self.timeVector[-1])
+        ax.set_xlim(xlim)
+        xticks = np.linspace(*xlim, 11).tolist()
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
+                           fontsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
+
+        ylim = (1.05 * np.min(self.timeSignal*self.channels.CFlist()),
+                1.05 * np.max(self.timeSignal*self.channels.CFlist()))
+        ax.set_ylim(ylim)
+        yticks = np.linspace(*ylim, 11).tolist()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+                            for tick in yticks], fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=20)
+        fig.legend(loc='center right', fontsize=12)
         return
 
-    def plot_time_dB(self):
+    def plot_time_dB(self, xlabel=None, ylabel=None):
         """
         Time domain plotting method
         """
-        plt.figure(figsize=(10, 5))
-        if self.numChannels > 1:
-            for chIndex in range(self.numChannels):
-                label = self.channels[chIndex].name +\
-                        ' [' + self.channels[chIndex].unit + ']'
-                plt.plot(self.timeVector,
-                         10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
-        else:
-            chIndex = 0
-            label = self.channels[chIndex].name +\
-                ' [' + self.channels[chIndex].unit + ']'
-            plt.plot(self.timeVector,
-                     10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
-        plt.legend(loc='best')
-        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
-        plt.axis((self.timeVector[0] - 10/self.samplingRate,
-                  self.timeVector[-1] + 10/self.samplingRate,
-                  1.05 * np.min(self.timeSignal),
-                  1.05 * np.max(self.timeSignal)))
-        plt.xlabel(r'$Time$ [s]')
-        plt.ylabel(r'$Amplitude$')
+        norm = self.timeSignal/np.max(np.abs(self.timeSignal), axis=0)
+        if xlabel is None:
+            xlabel = 'Time in s'
+        if ylabel is None:
+            ylabel = 'Magnitude {}'.format(self.channels[0].unit)
+
+        fig = plt.figure(figsize=(10, 5))
+
+        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                          projection='rectilinear')
+        ax.set_snap(True)
+        for chIndex in range(self.numChannels):
+            label = '{} [{}]'.format(self.channels[chIndex].name,
+                                     self.channels[chIndex].unit)
+            ax.plot(self.timeVector,
+                    10*np.log10(norm[:, chIndex]**2),
+                    label=label)
+        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+
+        xlim = (self.timeVector[0], self.timeVector[-1])
+        ax.set_xlim(xlim)
+        xticks = np.linspace(*xlim, 11).tolist()
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
+                           fontsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
+
+        ylim = (-100, 2)
+        ax.set_ylim(ylim)
+        yticks = np.linspace(*ylim, 11).tolist()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+                            for tick in yticks], fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=20)
+        fig.legend(loc='center right', fontsize=12)
         return
 
-    def plot_freq(self, smooth=False):
+    def plot_freq(self, smooth=False, xlabel=None, ylabel=None):
         """
         Frequency domain dB plotting method
         """
-        plt.figure(figsize=(10, 5))
-        if self.numChannels > 1:
-            for chIndex in range(0, self.numChannels):
-                if smooth:
-                    Signal = ss.savgol_filter(np.squeeze(np.abs(
-                             self.freqSignal[:, chIndex]) / (2**(1/2))),
-                             31, 3)
-                else:
-                    Signal = self.freqSignal[:, chIndex] / (2**(1/2))
-                dBSignal = 20 * np.log10(np.abs(Signal)
-                                         / self.channels[chIndex].dBRef)
-                label = self.channels[chIndex].name \
-                    + ' [' + self.channels[chIndex].dBName + ' ref.: ' \
-                    + str(self.channels[chIndex].dBRef) + ' ' \
-                    + self.channels[chIndex].unit + ']'
-                plt.semilogx(self.freqVector, dBSignal, label=label)
-        else:
-            chIndex = 0
+        unitData = '[{} ref.: {} {}]'.format(self.channels[0].dBName,
+                                             self.channels[0].dBRef,
+                                             self.channels[0].unit)
+        if xlabel is None:
+            xlabel = 'Frequency in Hz'
+        if ylabel is None:
+            ylabel = 'Magnitude {}'.format(unitData)
+
+        fig = plt.figure(figsize=(10, 5))
+
+        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                          projection='rectilinear', xscale='log')
+        ax.set_snap(True)
+        for chIndex in range(0, self.numChannels):
             if smooth:
                 Signal = ss.savgol_filter(np.squeeze(np.abs(
-                         self.freqSignal[:, chIndex]) / (2**(1/2))),
+                         self.freqSignal[:, chIndex])),
                          31, 3)
             else:
-                Signal = self.freqSignal[:, chIndex] / (2**(1/2))
+                Signal = self.freqSignal[:, chIndex]  # / (2**(1/2))
             dBSignal = 20 * np.log10(np.abs(Signal)
                                      / self.channels[chIndex].dBRef)
-            label = self.channels[chIndex].name + ' ['\
-                + self.channels[chIndex].dBName + ' ref.: '\
-                + str(self.channels[chIndex].dBRef) + ' '\
-                + self.channels[chIndex].unit + ']'
-            plt.semilogx(self.freqVector, dBSignal, label=label)
-        plt.grid(color='gray', linestyle='-.', linewidth=0.4)
-        plt.legend(loc='best')
-        if np.max(dBSignal) > 0:
-            ylim = [1.05*np.min(dBSignal), 1.12*np.max(dBSignal)]
-        else:
-            ylim = [np.min(dBSignal) - 2, np.max(dBSignal) + 2]
-        plt.axis((self.freqMin, self.freqMax, ylim[0], ylim[1]))
-        plt.xlabel(r'$Frequency$ [Hz]')
-        plt.ylabel(r'$Magnitude$ in dB')
-        return
+            label = '{} {}'.format(self.channels[chIndex].name, unitData)
+            ax.semilogx(self.freqVector, dBSignal, label=label)
+        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-    def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5):
+        xlim = (self.freqMin, self.freqMax)
+        ax.set_xlim(xlim)
+        xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
+                           rotation=45, fontsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
+
+        ylim = (np.round(20*np.log10(np.min(np.abs(self.freqSignal)
+                                     / self.channels.dBRefList()))) - 5,
+                np.round(20*np.log10(np.max(np.abs(self.freqSignal)
+                                     / self.channels.dBRefList()))) + 5)
+        ax.set_ylim(ylim)
+        yticks = np.linspace(*ylim, 11).tolist()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+                            for tick in yticks], fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=20)
+        fig.legend(loc='center right', fontsize=12)
+        return fig
+
+    def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
+                         xlabel=None, ylabel=None):
+        unitData = '[{} ref.: {} {}]'.format(self.channels[0].dBName,
+                                             self.channels[0].dBRef,
+                                             self.channels[0].unit)
+
+        if xlabel is None:
+            xlabel = 'Time in s'
+        if ylabel is None:
+            ylabel = 'Frequency in Hz'
+        fig = plt.figure(figsize=(10, 5))
+
+        ax = fig.add_axes([0.1, 0.1, 0.95, 0.8], polar=False,
+                          projection='rectilinear')
+        ax.set_snap(False)
+
         _spectrogram, _specTime, _specFreq\
             = self._calc_spectrogram(self.timeSignal[:, 0], overlap,
                                      window, winSize)
-        plt.pcolormesh(_specTime, _specFreq, _spectrogram,
-                       cmap=plt.jet(), vmin=-120)
-        plt.xlabel(r'$Time$ [s]')
-        plt.ylabel(r'$Frequency$ [Hz]')
-        plt.colorbar()
+        pcmesh = ax.pcolormesh(_specTime, _specFreq, _spectrogram,
+                               cmap=plt.jet(), vmin=-120)
+
+        xlim = (self.timeVector[0], self.timeVector[-1])
+        ax.set_xlim(xlim)
+        xticks = np.linspace(*xlim, 11).tolist()
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
+                           fontsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
+
+        ylim = (self.freqMin, self.freqMax)
+        ax.set_ylim(ylim)
+        yticks = np.linspace(ylim[0], ylim[1], 11).tolist()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+                            for tick in yticks], fontsize=14)
+        ax.set_ylabel(ylabel, fontsize=20)
+
+        cbar = fig.colorbar(pcmesh)
+        cbar.ax.tick_params(labelsize=12)
+        cbar.ax.set_ylabel('Magnitude {}'.format(unitData),
+                           fontsize=20)
         return
 
     def calib_voltage(self, chIndex, refSignalObj, refVrms=1, refFreq=1000):
@@ -490,7 +568,8 @@ class SignalObj(_base.PyTTaObj):
         if other.samplingRate != self.samplingRate:
             raise TypeError("Both SignalObj must have the same sampling rate.")
         result = SignalObj(np.zeros(self.timeSignal.shape),
-                           samplingRate=self.samplingRate)
+                           samplingRate=self.samplingRate,
+                           freqMin=self.freqMin, freqMax=self.freqMax)
         result.channels = self.channels
         if self.numChannels > 1:
             if other.numChannels > 1:
@@ -588,7 +667,7 @@ class SignalObj(_base.PyTTaObj):
                           winType='hann', winSize=1024, *, channel=0):
         if timeData is None:
             timeData = self.timeSignal
-            if self.numChannels > 1 :
+            if self.numChannels > 1:
                 timeData = timeData[:, channel]
         window = eval('ss.windows.' + winType)(winSize)
         nextIdx = int(winSize*overlap)
@@ -754,7 +833,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                    winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
-        return 
+        return
 
     def _to_dict(self):
         out = {'methodInfo': self.methodInfo}
@@ -863,10 +942,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                          outputSignal.freqSignal.shape[1])),
                                domain='freq',
                                samplingRate=inputSignal.samplingRate)
-            if outputSignal.num_channels() > 1:
-                if inputSignal.num_channels() > 1:
-                    if inputSignal.num_channels()\
-                            != outputSignal.num_channels():
+            if outputSignal.numChannels > 1:
+                if inputSignal.numChannels > 1:
+                    if inputSignal.numChannels\
+                            != outputSignal.numChannels:
                         raise ValueError("Both signal-like objects must have\
                                          the same number of channels.")
                     for channel in range(outputSignal.num_channels()):
@@ -991,7 +1070,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 result.freqSignal = (YY - XX
                                      + np.sqrt((XX-YY)**2
                                                + 4*np.abs(XY)**2)) / 2*YX
-
+        result.freqMin = outputSignal.freqMin
+        result.freqMax = outputSignal.freqMax
         result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()
 

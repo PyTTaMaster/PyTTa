@@ -56,7 +56,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse,\
                           OctFilter, weighting
 from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
-                    save, load
+                    save, load, fft_degree
 
 import pytta.rooms as rooms
 import pytta.generate as generate
@@ -80,6 +80,7 @@ __all__ = [  # Submodules
            'save',
            'load',
            'weighting',
+           'fft_degree',
 
            # Classes
            'RecMeasure',
