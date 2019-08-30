@@ -227,27 +227,31 @@ def h5save(fileName: str, *PyTTaObjs):
 
 
 def h5load(fileName: str):
+    if fileName.split('.')[-1] != 'hdf5':
+        raise ValueError("h5load function only works with *.hdf5 files")
     f = h5py.File(fileName, 'r')
     loadedObjects = {}
     for PyTTaObjName, PyTTaObj in f.items():
         if PyTTaObj.attrs['class'] == 'SignalObj':
-            if PyTTaObj.attrs['freqMin'] != 'None':
-                freqMin = PyTTaObj.attrs['freqMin']
-            else:
-                freqMin = None
-            if PyTTaObj.attrs['freqMax'] != 'None':
-                freqMax = PyTTaObj.attrs['freqMax']
-            else:
-                freqMax = None
-            SigObj = SignalObj(signalArray=np.array(PyTTaObj['timeSignal']),
+            freqMin = PyTTaObj.attrs['freqMin'] if PyTTaObj.attrs['freqMin'] \
+                != 'None' else None
+            freqMax = PyTTaObj.attrs['freqMax'] if PyTTaObj.attrs['freqMax'] \
+                != 'None' else None
+            samplingRate = PyTTaObj.attrs['samplingRate']
+            lengthDomain = PyTTaObj.attrs['lengthDomain']
+            comment = PyTTaObj.attrs['comment']
+            timeSignal = np.array(PyTTaObj['timeSignal'])
+            channels = eval(PyTTaObj.attrs['channels'])
+            SigObj = SignalObj(signalArray=timeSignal,
                                domain='time',
-                               samplingRate=PyTTaObj.attrs['samplingRate'],
+                               samplingRate=samplingRate,
                                freqMin=freqMin,
                                freqMax=freqMax,
-                               comment=PyTTaObj.attrs['comment'])
-            channels = PyTTaObj.attrs['channels']
-            SigObj.channels = eval(channels)
+                               comment=comment)
+            SigObj.channels = channels
+            SigObj.lengthDomain = lengthDomain
             loadedObjects[PyTTaObjName] = SigObj
+
         if PyTTaObj.attrs['class'] == 'ImpulsiveResponse':
             pass
 
