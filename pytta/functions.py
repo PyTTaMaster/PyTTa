@@ -213,14 +213,23 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
 
 def h5save(fileName: str, *PyTTaObjs):
     with h5py.File(fileName, 'w') as f:
+        objsNameCount = {}
         for idx, pobj in enumerate(PyTTaObjs):
             if isinstance(pobj, (SignalObj,
                                  ImpulsiveResponse,
                                  RecMeasure,
                                  PlayRecMeasure,
                                  FRFMeasure)):
-                ObjGroup = f.create_group(pobj.creation_name)
-                pobj.h5save(ObjGroup)
+                # Check if creation_name was already used
+                creationName = pobj.creation_name
+                if creationName in objsNameCount:
+                    objsNameCount[creationName] += 1
+                    creationName += '_' + str(objsNameCount[creationName])
+                else:
+                    objsNameCount[creationName] = 1
+
+                ObjGroup = f.create_group(creationName)  # create obj's group
+                pobj.h5save(ObjGroup)  # save the obj inside its group
             else:
                 print("Only PyTTa objects can be saved through this" +
                       "function. Skipping object number " + str(idx) + ".")
