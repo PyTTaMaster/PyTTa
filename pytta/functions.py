@@ -240,45 +240,64 @@ def h5load(fileName: str):
         raise ValueError("h5load function only works with *.hdf5 files")
     f = h5py.File(fileName, 'r')
     loadedObjects = {}
-    for PyTTaObjName, PyTTaObj in f.items():
-        if PyTTaObj.attrs['class'] == 'SignalObj':
-            samplingRate = PyTTaObj.attrs['samplingRate']
-            lengthDomain = PyTTaObj.attrs['lengthDomain']
-            comment = PyTTaObj.attrs['comment']
-            channels = eval(PyTTaObj.attrs['channels'])
-            freqMin = __h5_none_parser(PyTTaObj.attrs['freqMin'])
-            freqMax = __h5_none_parser(PyTTaObj.attrs['freqMax'])
-            SigObj = SignalObj(signalArray=np.array(PyTTaObj['timeSignal']),
-                               domain='time',
-                               samplingRate=samplingRate,
-                               freqMin=freqMin,
-                               freqMax=freqMax,
-                               comment=comment)
-            SigObj.channels = channels
-            SigObj.lengthDomain = lengthDomain
-            loadedObjects[PyTTaObjName] = SigObj
-
-        if PyTTaObj.attrs['class'] == 'ImpulsiveResponse':
-            pass
-
-        if PyTTaObj.attrs['class'] == 'RecMeasure':
-            pass
-
-        if PyTTaObj.attrs['class'] == 'PlayRecMeasure':
-            pass
-
-        if PyTTaObj.attrs['class'] == 'FRFMeasure':
-            pass
-
+    for PyTTaObjName, PyTTaObjGroup in f.items():
+        loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
     f.close()
     return loadedObjects
 
+def __h5_unpack(ObjGroup):
+    """
+    Unpack an HDF5 group into its respective PyTTa object
+    """
+    if ObjGroup.attrs['class'] == 'SignalObj':
+        samplingRate = ObjGroup.attrs['samplingRate']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        comment = ObjGroup.attrs['comment']
+        channels = eval(ObjGroup.attrs['channels'])
+        freqMin = __h5_none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = __h5_none_parser(ObjGroup.attrs['freqMax'])
+        SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
+                           domain='time',
+                           samplingRate=samplingRate,
+                           freqMin=freqMin,
+                           freqMax=freqMax,
+                           comment=comment)
+        SigObj.channels = channels
+        SigObj.lengthDomain = lengthDomain
+        return SigObj
+
+    if ObjGroup.attrs['class'] == 'ImpulsiveResponse':
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        recording = __h5_unpack(ObjGroup['recording'])
+        method = ObjGroup.attrs['method']
+        winType = ObjGroup.attrs['winType']
+        winSize = ObjGroup.attrs['winSize']
+        overlap = ObjGroup.attrs['overlap']
+        IR = ImpulsiveResponse(excitation,
+                               recording,
+                               method,
+                               winType,
+                               winSize,
+                               overlap)
+        return IR
+
+    if ObjGroup.attrs['class'] == 'RecMeasure':
+        pass
+
+    if ObjGroup.attrs['class'] == 'PlayRecMeasure':
+        pass
+
+    if ObjGroup.attrs['class'] == 'FRFMeasure':
+        pass    
+
 
 def __h5_none_parser(attr):
-    if attr != 'None':
+    if attr != 'None' and attr is not None:
         return attr
-    else:
+    elif attr == 'None':
         return None
+    elif attr is None:
+        return 'None'
 
 
 def load(fileName: str):

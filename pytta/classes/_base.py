@@ -177,10 +177,8 @@ class PyTTaObj(RICI):
 
     def h5save(self, h5group):
         h5group.attrs['samplingRate'] = self.samplingRate
-        h5group.attrs['freqMin'] = self.freqMin if self.freqMin is not None \
-            else 'None'
-        h5group.attrs['freqMax'] = self.freqMax if self.freqMax is not None \
-            else 'None'
+        h5group.attrs['freqMin'] = _h5_none_parser(self.freqMin)
+        h5group.attrs['freqMax'] = _h5_none_parser(self.freqMax)
         h5group.attrs['fftDegree'] = self.fftDegree
         h5group.attrs['lengthDomain'] = self.lengthDomain
         h5group.attrs['comment'] = self.comment
@@ -761,3 +759,11 @@ class ChannelsList(object):
             self._channels[chIndex].name = newname
         return
 
+
+def _h5_none_parser(attr):
+    if attr != 'None' and attr is not None:
+        return attr
+    elif attr == 'None':
+        return None
+    elif attr is None:
+        return 'None'

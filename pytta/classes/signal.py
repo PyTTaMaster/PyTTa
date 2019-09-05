@@ -758,7 +758,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                    winType=winType,
                                                    winSize=winSize,
                                                    overlap=overlap)
-        return 
+        return
 
     def _to_dict(self):
         out = {'methodInfo': self.methodInfo}
@@ -780,6 +780,16 @@ class ImpulsiveResponse(_base.PyTTaObj):
             zdir.write('ImpulsiveResponse.json')
             os.remove('ImpulsiveResponse.json')
         return dirname + '.pytta'
+
+    def h5save(self, h5group):
+        h5group.attrs['class'] = 'ImpulsiveResponse'
+        h5group.attrs['method'] = _h5_none_parser(self.methodInfo['method'])
+        h5group.attrs['winType'] = _h5_none_parser(self.methodInfo['winType'])
+        h5group.attrs['winSize'] = _h5_none_parser(self.methodInfo['winSize'])
+        h5group.attrs['overlap'] = _h5_none_parser(self.methodInfo['overlap'])
+        self.excitation.h5save(h5group.create_group('excitation'))
+        self.recording.h5save(h5group.create_group('recording'))
+        pass
 
 # Properties
     @property
@@ -1008,3 +1018,12 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         nperseg=numberOfSamples, noverlap=overlapSamples,
                         axis=0)
         return S12, S11
+
+
+def _h5_none_parser(attr):
+    if attr != 'None' and attr is not None:
+        return attr
+    elif attr == 'None':
+        return None
+    elif attr is None:
+        return 'None'
