@@ -202,7 +202,7 @@ class SignalObj(_base.PyTTaObj):
                                            (2*self.numSamples),
                                            ((self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples+1)/2)[:, 0])
+                                           else (self.numSamples+1)/2))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
