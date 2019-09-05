@@ -1,6 +1,10 @@
-#
+#VS Code files
+.vscode/
+
+# Data files
 *.pkl
 *.mat
+*.hdf5
 
 # All the python stuff
 *.pyc
