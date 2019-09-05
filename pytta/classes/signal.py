@@ -163,9 +163,8 @@ class SignalObj(_base.PyTTaObj):
             # duration in [s]
             self._timeLength = self.numSamples/self.samplingRate
             # [s] time vector (x axis)
-            self._timeVector = np.linspace(0, self.timeLength -
-                                           (1/self.samplingRate),
-                                           self.numSamples)
+            self._timeVector = np.arange(0, self.timeLength,
+                                         1/self.samplingRate)
             # [Hz] frequency vector (x axis)
             self._freqVector = np.linspace(0, (self.numSamples - 1) *
                                            self.samplingRate /
@@ -201,9 +200,9 @@ class SignalObj(_base.PyTTaObj):
             self._freqVector = np.linspace(0, (self.numSamples-1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
-                                           (self.numSamples/2) + 1
+                                           ((self.numSamples/2) + 1
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples+1)/2)
+                                           else (self.numSamples+1)/2)[:, 0])
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -225,7 +224,20 @@ class SignalObj(_base.PyTTaObj):
 
 # SignalObj Methods
     def mean(self):
-        return SignalObj(signalArray=np.mean(self.timeSignal, 1),
+        print('DEPRECATED! This method will be renamed to',
+              ':method:``.chmean()``',
+              'Remember to review your code :D')
+        return self.chmean()
+
+    def chmean(self):
+        """
+        Returns a signal object with the arithmetic mean channel-wise
+        (column-wise) with same number of samples and sampling rate.
+        """
+        print('New method name in version 0.1.0!',
+              'Remember to review your code.')
+        return SignalObj(signalArray=np.mean(self.timeSignal, axis=1,
+                                             dtype=self.timeSignal.dtype),
                          lengthDomain='time', samplingRate=self.samplingRate)
 
     @property
@@ -237,7 +249,8 @@ class SignalObj(_base.PyTTaObj):
         return numChannels
 
     def num_channels(self):  # DEPRECATED
-        warn(DeprecationWarning("This method is DEPRECATED and being replaced by .numChannels property."))
+        warn(DeprecationWarning("This method is DEPRECATED and being replaced \
+                                by .numChannels property."))
         return self.numChannels
 
     def max_level(self):
@@ -276,7 +289,7 @@ class SignalObj(_base.PyTTaObj):
             for chIndex in range(self.numChannels):
                 chNum = self.channels.mapping[chIndex]
                 label = self.channels[chNum].name +\
-                        ' [' + self.channels[chNum].unit + ']'
+                    ' [' + self.channels[chNum].unit + ']'
                 plt.plot(self.timeVector,
                          self.timeSignal[:, chIndex], label=label)
         else:
@@ -284,7 +297,7 @@ class SignalObj(_base.PyTTaObj):
             chNum = self.channels.mapping[chIndex]
             label = self.channels[chNum].name +\
                 ' [' + self.channels[chNum].unit + ']'
-            plt.plot(self.timeVector,
+            plt.plot(self.timeVector[:self.timeSignal.shape[0]],
                      self.timeSignal[:, chIndex], label=label)
         plt.legend(loc='best')
         plt.grid(color='gray', linestyle='-.', linewidth=0.4)
@@ -305,9 +318,10 @@ class SignalObj(_base.PyTTaObj):
             for chIndex in range(self.numChannels):
                 chNum = self.channels.mapping[chIndex]
                 label = self.channels[chNum].name +\
-                        ' [' + self.channels[chNum].unit + ']'
+                    ' [' + self.channels[chNum].unit + ']'
                 plt.plot(self.timeVector,
-                         10*np.log10(self.timeSignal[:, chIndex]**2), label=label)
+                         10*np.log10(self.timeSignal[:, chIndex]**2),
+                         label=label)
         else:
             chIndex = 0
             chNum = self.channels.mapping[chIndex]
@@ -367,7 +381,8 @@ class SignalObj(_base.PyTTaObj):
         if np.max(dBSignal) > 0:
             ylim = [1.05*np.min(dBSignal), 1.12*np.max(dBSignal)]
         else:
-            ylim = [np.nanmin(dBSignal[dBSignal !=-np.inf]) - 2, np.max(dBSignal) + 2]
+            ylim = [np.nanmin(dBSignal[dBSignal != -np.inf]) - 2,
+                    np.max(dBSignal) + 2]
         plt.axis((self.freqMin, self.freqMax, ylim[0], ylim[1]))
         plt.xlabel(r'$Frequency$ [Hz]')
         plt.ylabel(r'$Magnitude$ in dB')
@@ -377,7 +392,7 @@ class SignalObj(_base.PyTTaObj):
         _spectrogram, _specTime, _specFreq\
             = self._calc_spectrogram(self.timeSignal[:, 0], overlap,
                                      window, winSize)
-        plt.pcolormesh(_specTime.T, _specFreq.T, _spectrogram,
+        plt.pcolormesh(_specTime, _specFreq, _spectrogram,
                        cmap=plt.jet(), vmin=-120)
         plt.xlabel(r'$Time$ [s]')
         plt.ylabel(r'$Frequency$ [Hz]')
@@ -592,7 +607,7 @@ class SignalObj(_base.PyTTaObj):
                           winType='hann', winSize=1024, *, channel=0):
         if timeData is None:
             timeData = self.timeSignal
-            if self.numChannels > 1 :
+            if self.numChannels > 1:
                 timeData = timeData[:, channel]
         window = eval('ss.windows.' + winType)(winSize)
         nextIdx = int(winSize*overlap)

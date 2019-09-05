@@ -35,4 +35,4 @@ __all__ = ['SignalObj', 'ImpulsiveResponse',
            'RecMeasure', 'PlayRecMeasure', 'FRFMeasure',
            'Streaming',
            'OctFilter', 'weighting',
-           'Result', 'ResultList']
+           'ResultList']
