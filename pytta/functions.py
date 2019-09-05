@@ -42,6 +42,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
 from pytta.classes._base import ChannelsList, ChannelObj
 import copy as cp
+import pytta.h5utilities as __h5
 
 
 def list_devices():
@@ -246,17 +247,21 @@ def h5load(fileName: str):
     f.close()
     return loadedObjects
 
+
 def __h5_unpack(ObjGroup):
     """
     Unpack an HDF5 group into its respective PyTTa object
     """
     if ObjGroup.attrs['class'] == 'SignalObj':
+        # PyTTaObj attrs unpacking
         samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = __h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = __h5.none_parser(ObjGroup.attrs['freqMax'])
         lengthDomain = ObjGroup.attrs['lengthDomain']
         comment = ObjGroup.attrs['comment']
+        # SignalObj attr unpacking
         channels = eval(ObjGroup.attrs['channels'])
-        freqMin = __h5_none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = __h5_none_parser(ObjGroup.attrs['freqMax'])
+        # Creating and conforming SignalObj
         SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
                            domain='time',
                            samplingRate=samplingRate,
@@ -289,16 +294,24 @@ def __h5_unpack(ObjGroup):
         pass
 
     if ObjGroup.attrs['class'] == 'FRFMeasure':
-        pass    
-
-
-def __h5_none_parser(attr):
-    if attr != 'None' and attr is not None:
-        return attr
-    elif attr == 'None':
-        return None
-    elif attr is None:
-        return 'None'
+        # PyTTaObj attrs unpacking
+        freqMin = __h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = __h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        # FRFMeasure attrs unpacking
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        device = __h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        frfObj = FRFMeasure(excitation=excitation, device=device,
+                            inChannels=inChannels,
+                            outChannels=outChannels,
+                            freqMin=freqMin,
+                            freqMax=freqMax,
+                            comment=comment,
+                            blocking=blocking)
+        return frfObj
 
 
 def load(fileName: str):
@@ -341,14 +354,17 @@ def __parse_load(className):
 
     elif name == 'RecMeasure':
         inch = list(np.arange(len(openJson['inChannels'])))
-        out = RecMeasure(device=openJson['device'], inChannels=inch, lengthDomain='samples', fftDegree=openJson['fftDegree'])
+        out = RecMeasure(device=openJson['device'], inChannels=inch,
+                         lengthDomain='samples',
+                         fftDegree=openJson['fftDegree'])
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
 
     elif name == 'PlayRecMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
         excit = load(openJson['excitationAddress'])
-        out = PlayRecMeasure(excitation=excit, device=openJson['device'], inChannels=inch)
+        out = PlayRecMeasure(excitation=excit,
+                             device=openJson['device'], inChannels=inch)
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
         os.remove(openJson['excitationAddress'])
@@ -356,7 +372,8 @@ def __parse_load(className):
     elif name == 'FRFMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
         excit = load(openJson['excitationAddress'])
-        out = FRFMeasure(excitation=excit, device=openJson['device'], inChannels=inch)
+        out = FRFMeasure(excitation=excit, device=openJson['device'],
+                         inChannels=inch)
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
         os.remove(openJson['excitationAddress'])

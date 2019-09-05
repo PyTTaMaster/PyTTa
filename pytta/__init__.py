@@ -62,6 +62,7 @@ from pytta.functions import read_wav, write_wav, merge, list_devices,\
 import pytta.rooms as rooms
 import pytta.apps.roomir2 as roomir
 import pytta.generate as generate
+import pytta.h5utilities
 
 __version__ = '0.1.0b4'  # package version
 

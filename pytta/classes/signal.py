@@ -12,6 +12,7 @@ import time
 from warnings import warn
 from pytta import default
 from pytta.classes import _base
+import pytta.h5utilities as _h5
 
 
 class SignalObj(_base.PyTTaObj):
@@ -798,10 +799,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
     def h5save(self, h5group):
         h5group.attrs['class'] = 'ImpulsiveResponse'
-        h5group.attrs['method'] = _h5_none_parser(self.methodInfo['method'])
-        h5group.attrs['winType'] = _h5_none_parser(self.methodInfo['winType'])
-        h5group.attrs['winSize'] = _h5_none_parser(self.methodInfo['winSize'])
-        h5group.attrs['overlap'] = _h5_none_parser(self.methodInfo['overlap'])
+        h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
+        h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
+        h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
+        h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
         self.excitation.h5save(h5group.create_group('excitation'))
         self.recording.h5save(h5group.create_group('recording'))
         pass
@@ -1033,12 +1034,3 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         nperseg=numberOfSamples, noverlap=overlapSamples,
                         axis=0)
         return S12, S11
-
-
-def _h5_none_parser(attr):
-    if attr != 'None' and attr is not None:
-        return attr
-    elif attr == 'None':
-        return None
-    elif attr is None:
-        return 'None'

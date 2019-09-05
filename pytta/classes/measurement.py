@@ -9,6 +9,7 @@ import time
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 import traceback
+import pytta.h5utilities as __h5
 
 
 # Measurement class
@@ -79,6 +80,14 @@ class Measurement(_base.PyTTaObj):
                'outChannels': self.outChannels._to_dict()}
         return out
 
+    def h5save(self, h5group):
+        h5group.attrs['device'] = str(self.device)
+        h5group.attrs['inChannels'] = str(self.inChannels)
+        h5group.attrs['outChannels'] = str(self.outChannels)
+        h5group.attrs['blocking'] = self.blocking
+        super().h5save(h5group)
+        pass
+
 # Measurement Properties
     @property
     def device(self):
@@ -131,7 +140,8 @@ class Measurement(_base.PyTTaObj):
                                   freqMin=self.freqMin,
                                   freqMax=self.freqMax).run()
         if chIndex-1 in range(len(self.inChannels)):
-            self.inChannels[chIndex-1].calib_press(refSignalObj, refPrms, refFreq)
+            self.inChannels[chIndex-1].calib_press(refSignalObj,
+                                                   refPrms, refFreq)
             self.inChannels[chIndex-1].calibCheck = True
         else:
             raise IndexError('chIndex not in list of channel numbers')
@@ -374,6 +384,13 @@ class PlayRecMeasure(Measurement):
             os.remove('PlayRecMeasure.json')
         return name
 
+    def h5save(self, h5group, setClass=True):
+        if setClass is True:
+            h5group.attrs['class'] = 'PlayRecMeasure'
+        self.excitation.h5save(h5group.create_group('excitation'))
+        super().h5save(h5group)
+        pass
+
 # PlayRec Properties
     @property
     def excitation(self):
@@ -491,6 +508,12 @@ class FRFMeasure(PlayRecMeasure):
             os.remove('FRFMeasure.json')
         return name
 
+    def h5save(self, h5group, setClass=True):
+        if setClass is True:
+            h5group.attrs['class'] = 'FRFMeasure'
+        super().h5save(h5group, setClass=False)
+        pass
+
     def run(self):
         """
         Starts reproducing the excitation signal and recording at the same time
@@ -525,17 +548,21 @@ def _print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.numChannels):
             chNum = sigObj.channels.mapping[chIndex]
-            print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chNum, sigObj.max_level()[chIndex], sigObj.channels[chNum].dBName,
-                          sigObj.channels[chNum].dBRef, sigObj.channels[chNum].unit))
+            print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'
+                  .format(chNum, sigObj.max_level()[chIndex],
+                          sigObj.channels[chNum].dBName,
+                          sigObj.channels[chNum].dBRef,
+                          sigObj.channels[chNum].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
     if kind == 'input':
         for chIndex in range(sigObj.numChannels):
             chNum = sigObj.channels.mapping[chIndex]
-            print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'\
-                  .format(chNum, sigObj.max_level()[chIndex], sigObj.channels[chNum].dBName,
-                          sigObj.channels[chNum].dBRef, sigObj.channels[chNum].unit))
+            print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'
+                  .format(chNum, sigObj.max_level()[chIndex],
+                          sigObj.channels[chNum].dBName,
+                          sigObj.channels[chNum].dBRef,
+                          sigObj.channels[chNum].unit))
             if sigObj.max_level()[chIndex] >= 0:
                 print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return

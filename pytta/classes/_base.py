@@ -14,6 +14,7 @@ from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
 import scipy.io as sio
 import time
+import pytta.h5utilities as _h5
 
 
 class PyTTaObj(RICI):
@@ -177,10 +178,10 @@ class PyTTaObj(RICI):
 
     def h5save(self, h5group):
         h5group.attrs['samplingRate'] = self.samplingRate
-        h5group.attrs['freqMin'] = _h5_none_parser(self.freqMin)
-        h5group.attrs['freqMax'] = _h5_none_parser(self.freqMax)
+        h5group.attrs['freqMin'] = _h5.none_parser(self.freqMin)
+        h5group.attrs['freqMax'] = _h5.none_parser(self.freqMax)
         h5group.attrs['fftDegree'] = self.fftDegree
-        h5group.attrs['lengthDomain'] = self.lengthDomain
+        h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
         h5group.attrs['comment'] = self.comment
         pass
 
@@ -758,12 +759,3 @@ class ChannelsList(object):
             newname = 'Ch. ' + str(chIndex+1)
             self._channels[chIndex].name = newname
         return
-
-
-def _h5_none_parser(attr):
-    if attr != 'None' and attr is not None:
-        return attr
-    elif attr == 'None':
-        return None
-    elif attr is None:
-        return 'None'
