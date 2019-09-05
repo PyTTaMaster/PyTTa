@@ -227,9 +227,10 @@ def h5save(fileName: str, *PyTTaObjs):
                     creationName += '_' + str(objsNameCount[creationName])
                 else:
                     objsNameCount[creationName] = 1
-
-                ObjGroup = f.create_group(creationName)  # create obj's group
-                pobj.h5save(ObjGroup)  # save the obj inside its group
+                # create obj's group
+                ObjGroup = f.create_group(creationName)
+                # save the obj inside its group
+                pobj.h5save(ObjGroup)
             else:
                 print("Only PyTTa objects can be saved through this" +
                       "function. Skipping object number " + str(idx) + ".")

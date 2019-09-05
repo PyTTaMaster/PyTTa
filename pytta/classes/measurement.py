@@ -8,6 +8,7 @@ import sounddevice as sd
 import time
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
+import traceback
 
 
 # Measurement class
@@ -495,6 +496,17 @@ class FRFMeasure(PlayRecMeasure):
         Starts reproducing the excitation signal and recording at the same time
         Outputs the transferfunction ImpulsiveResponse
         """
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        for frame, line in traceback.walk_stack(None):
+            varnames = frame.f_code.co_varnames
+            if varnames is ():
+                break
+        creation_file, creation_line, creation_function, \
+            creation_text = \
+            traceback.extract_stack(frame, 1)[0]
+        creation_name = creation_text.split("=")[0].strip()
+
         recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
                                              recording,
@@ -504,6 +516,7 @@ class FRFMeasure(PlayRecMeasure):
                                              self.winSize,
                                              self.overlap)
         transferfunction.timeStamp = recording.timeStamp
+        transferfunction.creation_name = creation_name
         return transferfunction
 
 
