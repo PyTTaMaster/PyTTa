@@ -14,7 +14,7 @@ class TestH5IO(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """
-        It runs before the bunch of tests
+        It runs after the bunch of tests
         """
         print('\n---> tearDownClass')
 
