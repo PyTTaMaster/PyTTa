@@ -4,21 +4,41 @@ import pytta
 
 class TestH5IO(unittest.TestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        """
+        It runs before the bunch of tests
+        """
+        print('---> setUpClass')
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        It runs before the bunch of tests
+        """
+        print('\n---> tearDownClass')
+
     def setUp(self):
-        filename = 'h5teste.hdf5'
+        """
+        It runs first before each test
+        """
+        self.filename = 'h5teste.hdf5'
 
     def tearDown(self):
+        """
+        It runs after each test
+        """
         pass
 
     def test_h5save_signalobj(self):
-        """"
+        """
         SignalObj hdf5 save test
-        """"
+        """
         sin1 = pytta.generate.sin(freq=500, timeLength=6)
         sin2 = pytta.generate.sin(freq=1000, timeLength=7)
         savedlst = [sin1, sin2]
-        pytta.h5save(filename, sin1, sin2)
-        loaded = pytta.h5load(filename)
+        pytta.h5save(self.filename, sin1, sin2)
+        loaded = pytta.h5load(self.filename)
         loadedlst = [loaded[pyttaobj] for pyttaobj in loaded]
         for idx, pobj in enumerate(loadedlst):
             # Testing every attribute
@@ -48,9 +68,9 @@ class TestH5IO(unittest.TestCase):
                                      freqMax=10000, freqMin=100,
                                      comment='testing the stuff')
 
-        pytta.h5save(filename, IR)
+        pytta.h5save(self.filename, IR)
 
-        a = pytta.h5load(filename)
+        a = pytta.h5load(self.filename)
         loadedlst = [a[pyttaobj] for pyttaobj in a]
         self.assertSequenceEqual(loadedlst[0].systemSignal.timeSignal.tolist(),
                                  IR.systemSignal.timeSignal.tolist())
@@ -67,11 +87,11 @@ class TestH5IO(unittest.TestCase):
         #                                 lengthDomain='samples',
         #                                 fftDegree=18)
 
-        # filename = 'h5teste.hdf5'
+        # self.filename = 'h5teste.hdf5'
 
-        # pytta.h5save(filename, med)
+        # pytta.h5save(self.filename, med)
 
-        # a = pytta.h5load(filename)
+        # a = pytta.h5load(self.filename)
 
 
 def test_h5save_playrecmeasure(self):
@@ -84,11 +104,11 @@ def test_h5save_playrecmeasure(self):
         # med = pytta.generate.measurement('playrec',freqMin=20,freqMax=20000,
         # excitation=sweep)
 
-        # filename = 'h5teste.hdf5'
+        # self.filename = 'h5teste.hdf5'
 
-        # pytta.h5save(filename, med)
+        # pytta.h5save(self.filename, med)
 
-        # a = pytta.h5load(filename)
+        # a = pytta.h5load(self.filename)
 
 
 def test_h5save_frfmeasure(self):
@@ -101,11 +121,11 @@ def test_h5save_frfmeasure(self):
         # med = pytta.generate.measurement('frf',freqMin=20,freqMax=20000,
         # excitation=sweep)
 
-        # filename = 'h5teste.hdf5'
+        # self.filename = 'h5teste.hdf5'
 
-        # pytta.h5save(filename, med)
+        # pytta.h5save(self.filename, med)
 
-        # a = pytta.h5load(filename)
+        # a = pytta.h5load(self.filename)
 
 
 if __name__ == '__main__':
