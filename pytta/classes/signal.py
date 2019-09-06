@@ -354,8 +354,8 @@ class SignalObj(_base.PyTTaObj):
                              31, 3)
                 else:
                     Signal = self.freqSignal[:, chIndex] / (2**(1/2))
-                dBSignal = 20 * np.log10(np.abs(Signal) \
-                    / self.channels[chNum].dBRef)
+                dBSignal = 20 * np.log10(np.abs(Signal) /
+                                         self.channels[chNum].dBRef)
                 label = self.channels[chNum].name \
                     + ' [' + self.channels[chNum].dBName + ' ref.: ' \
                     + str(self.channels[chNum].dBRef) + ' ' \
@@ -370,8 +370,8 @@ class SignalObj(_base.PyTTaObj):
                          31, 3)
             else:
                 Signal = self.freqSignal[:, chIndex] / (2**(1/2))
-            dBSignal = 20 * np.log10(np.abs(Signal)  \
-                                     / self.channels[chNum].dBRef)
+            dBSignal = 20 * np.log10(np.abs(Signal) /
+                                     self.channels[chNum].dBRef)
             label = self.channels[chNum].name + ' ['\
                 + self.channels[chNum].dBName + ' ref.: '\
                 + str(self.channels[chNum].dBRef) + ' '\
@@ -776,6 +776,15 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                    overlap=overlap)
         return
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'excitationSignal={self.excitationSignal!r}, '
+                f'recordedSignal={self.recordedSignal!r}, '
+                f'method={self.method!r}, '
+                f'winType={self.winType!r}, '
+                f'winSize={self.winSize!r}, '
+                f'overlap={self.overlap!r})')
+
     def _to_dict(self):
         out = {'methodInfo': self.methodInfo}
         return out
@@ -1019,8 +1028,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
                 result.freqSignal = (YY - XX +
-                                     np.sqrt((XX-YY)**2
-                                     + 4 * np.abs(XY)**2)) / 2*YX
+                                     np.sqrt((XX-YY)**2 +
+                                             4 * np.abs(XY)**2)) / 2*YX
 
         result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()

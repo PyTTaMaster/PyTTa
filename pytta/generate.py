@@ -195,7 +195,8 @@ def sweep(freqMin=None,
         timeSignal = timeSignal[0:int(numSamples)]  # adjust length
 
     # transforms into a pytta signalObj and sets the correct name
-    sweepSignal = SignalObj(signalArray=timeSignal, domain='time', samplingRate=samplingRate)
+    sweepSignal = SignalObj(signalArray=timeSignal, domain='time',
+                            samplingRate=samplingRate)
     sweepSignal.creation_name = creation_name
 
     # pass on the frequency limits considering the fade in and fade out
@@ -233,9 +234,9 @@ def __do_sweep_windowing(inputSweep,
     # Uses first half of windowStart, last half of windowEnd, and a vector of
     # ones with the remaining length, in between the half windows
     fullWindow = np.concatenate((windowStart[0:freqMinSample],
-                                 np.ones(int(len(freqSweep)
-                                             - freqMinSample
-                                             - freqMaxSample + 1)),
+                                 np.ones(int(len(freqSweep) -
+                                             freqMinSample -
+                                             freqMaxSample + 1)),
                                  windowEnd[freqMaxSample:-1]))
     newSweep = fullWindow * inputSweep
     return newSweep

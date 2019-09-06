@@ -9,7 +9,7 @@ import time
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 import traceback
-import pytta.h5utilities as __h5
+import pytta.h5utilities as _h5
 
 
 # Measurement class
@@ -97,7 +97,7 @@ class Measurement(_base.PyTTaObj):
         return out
 
     def h5save(self, h5group):
-        h5group.attrs['device'] = str(self.device)
+        h5group.attrs['device'] = _h5.list_w_int_parser(self.device)
         h5group.attrs['inChannels'] = str(self.inChannels)
         h5group.attrs['outChannels'] = str(self.outChannels)
         h5group.attrs['blocking'] = self.blocking
@@ -590,10 +590,10 @@ class FRFMeasure(PlayRecMeasure):
     def h5save(self, h5group, setClass=True):
         if setClass is True:
             h5group.attrs['class'] = 'FRFMeasure'
-        h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
-        h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
-        h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
-        h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
+        h5group.attrs['method'] = _h5.none_parser(self.method)
+        h5group.attrs['winType'] = _h5.none_parser(self.winType)
+        h5group.attrs['winSize'] = _h5.none_parser(self.winSize)
+        h5group.attrs['overlap'] = _h5.none_parser(self.overlap)
         super().h5save(h5group, setClass=False)
         pass
 
