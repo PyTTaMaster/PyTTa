@@ -177,7 +177,7 @@ def peak_time(signal):
     if not isinstance(signal, SignalObj):
         raise TypeError('Signal must be an SignalObj.')
     peaks_time = []
-    for chindex in range(signal.num_channels()):
+    for chindex in range(signal.numChannels):
         maxamp = max(np.abs(signal.timeSignal[:, chindex]))
         maxindex = np.where(signal.timeSignal[:, chindex] == np.abs(maxamp))[0]
         maxtime = signal.timeVector[maxindex][0]

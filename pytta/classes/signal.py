@@ -170,9 +170,9 @@ class SignalObj(_base.PyTTaObj):
             self._freqVector = np.linspace(0, (self.numSamples - 1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
-                                           (self.numSamples/2)+1
+                                           (int(self.numSamples/2)+1)
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples+1)/2)
+                                           else int((self.numSamples+1)/2))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -250,8 +250,8 @@ class SignalObj(_base.PyTTaObj):
         return numChannels
 
     def num_channels(self):  # DEPRECATED
-        warn(DeprecationWarning("This method is DEPRECATED and being replaced \
-                                by .numChannels property."))
+        warn(DeprecationWarning("This method is DEPRECATED and being " +
+                                "replaced by .numChannels property."))
         return self.numChannels
 
     def max_level(self):
@@ -264,7 +264,7 @@ class SignalObj(_base.PyTTaObj):
         return maxlvl
 
     def size_check(self, inputArray=[]):
-        if inputArray == []:
+        if inputArray.size == 0:
             inputArray = self.timeSignal[:]
         return np.size(inputArray.shape)
 
@@ -286,7 +286,7 @@ class SignalObj(_base.PyTTaObj):
         Time domain plotting method
         """
         plt.figure(figsize=(10, 5))
-        if self.num_channels() > 1:
+        if self.numChannels > 1:
             for chIndex in range(self.numChannels):
                 chNum = self.channels.mapping[chIndex]
                 label = self.channels[chNum].name +\
@@ -856,10 +856,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
     @property
     def coordinates(self):
         excoords = []
-        for chIndex in range(self.excitation.num_channels()):
+        for chIndex in range(self.excitation.numChannels):
             excoords.append(self.excitation.channels[chIndex].coordinates)
         incoords = []
-        for chIndex in range(self.inputSignal.num_channels()):
+        for chIndex in range(self.inputSignal.numChannels):
             incoords.append(self.inputSignal.channels[chIndex].coordinates)
         coords = {'excitation': excoords, 'inputSignal': incoords}
         return coords
@@ -867,10 +867,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
     @property
     def orientation(self):
         exori = []
-        for chIndex in range(self.excitation.num_channels()):
+        for chIndex in range(self.excitation.numChannels):
             exori.append(self.excitation.channels[chIndex].orientation)
         inori = []
-        for chIndex in range(self.inputSignal.num_channels()):
+        for chIndex in range(self.inputSignal.numChannels):
             inori.append(self.inputSignal.channels[chIndex].orientation)
         oris = {'excitation': exori, 'inputSignal': inori}
         return oris
@@ -902,13 +902,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                          outputSignal.freqSignal.shape[1])),
                                domain='freq',
                                samplingRate=inputSignal.samplingRate)
-            if outputSignal.num_channels() > 1:
-                if inputSignal.num_channels() > 1:
-                    if inputSignal.num_channels()\
-                            != outputSignal.num_channels():
+            if outputSignal.numChannels > 1:
+                if inputSignal.numChannels > 1:
+                    if inputSignal.numChannels\
+                            != outputSignal.numChannels:
                         raise ValueError("Both signal-like objects must have\
                                          the same number of channels.")
-                    for channel in range(outputSignal.num_channels()):
+                    for channel in range(outputSignal.numChannels):
                         XY, XX = self._calc_csd_tf(
                                 inputSignal.timeSignal[:, channel],
                                 outputSignal.timeSignal[:, channel],
@@ -917,7 +917,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         result.freqSignal[:, channel] \
                             = np.array(XY/XX, ndmin=2).T
                 else:
-                    for channel in range(outputSignal.num_channels()):
+                    for channel in range(outputSignal.numChannels):
                         XY, XX = self._calc_csd_tf(
                                 inputSignal.timeSignal,
                                 outputSignal.timeSignal[:, channel],
@@ -942,13 +942,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 overlap = 0.5
             result = SignalObj(samplingRate=inputSignal.samplingRate)
             result.domain = 'freq'
-            if outputSignal.num_channels() > 1:
-                if inputSignal.num_channels() > 1:
-                    if inputSignal.num_channels()\
-                            != outputSignal.num_channels():
+            if outputSignal.numChannels > 1:
+                if inputSignal.numChannels > 1:
+                    if inputSignal.numChannels\
+                            != outputSignal.numChannels:
                         raise ValueError("Both signal-like objects must have\
                                          the same number of channels.")
-                    for channel in range(outputSignal.num_channels()):
+                    for channel in range(outputSignal.numChannels):
                         YX, YY = self._calc_csd_tf(
                                 outputSignal.timeSignal[:, channel],
                                 inputSignal.timeSignal[:, channel],
@@ -981,13 +981,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 overlap = 0.5
             result = SignalObj(samplingRate=inputSignal.samplingRate)
             result.domain = 'freq'
-            if outputSignal.num_channels() > 1:
-                if inputSignal.num_channels() > 1:
-                    if inputSignal.num_channels()\
-                            != outputSignal.num_channels():
+            if outputSignal.numChannels > 1:
+                if inputSignal.numChannels > 1:
+                    if inputSignal.numChannels\
+                            != outputSignal.numChannels:
                         raise ValueError("Both signal-like objects must have\
                                          the same number of channels.")
-                    for channel in range(outputSignal.num_channels()):
+                    for channel in range(outputSignal.numChannels):
                         XY, XX = self._calc_csd_tf(
                                 inputSignal.timeSignal[:, channel],
                                 outputSignal.timeSignal[:, channel],

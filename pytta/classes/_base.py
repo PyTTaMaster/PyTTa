@@ -718,7 +718,7 @@ class ChannelsList(object):
 
     def conform_to(self, rule=None):
         try:
-            dCh = rule.num_channels() - len(self)
+            dCh = rule.numChannels - len(self)
             # Adjusting number of channels
             if dCh > 0:
                 newIndex = len(self)
