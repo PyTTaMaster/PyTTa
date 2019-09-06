@@ -537,6 +537,15 @@ class SignalObj(_base.PyTTaObj):
         result.channels = self.channels / other.channels
         return result
 
+    def __mul__(self, other):
+        """
+        Gain apply method/FFT convolution (to do)
+        """
+        if type(other) != float and type(other) != int:
+            raise TypeError("Gain must be float or int")
+        self.timeSignal *= other
+        return self
+
     def __add__(self, other):
         """
         Time domain addition method
