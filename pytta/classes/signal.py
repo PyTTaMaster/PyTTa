@@ -354,8 +354,8 @@ class SignalObj(_base.PyTTaObj):
                              31, 3)
                 else:
                     Signal = self.freqSignal[:, chIndex] / (2**(1/2))
-                dBSignal = 20 * np.log10(np.abs(Signal)
-                                         / self.channels[chNum].dBRef)
+                dBSignal = 20 * np.log10(np.abs(Signal) \
+                    / self.channels[chNum].dBRef)
                 label = self.channels[chNum].name \
                     + ' [' + self.channels[chNum].dBName + ' ref.: ' \
                     + str(self.channels[chNum].dBRef) + ' ' \
@@ -370,7 +370,7 @@ class SignalObj(_base.PyTTaObj):
                          31, 3)
             else:
                 Signal = self.freqSignal[:, chIndex] / (2**(1/2))
-            dBSignal = 20 * np.log10(np.abs(Signal)
+            dBSignal = 20 * np.log10(np.abs(Signal)  \
                                      / self.channels[chNum].dBRef)
             label = self.channels[chNum].name + ' ['\
                 + self.channels[chNum].dBName + ' ref.: '\
@@ -1018,9 +1018,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         inputSignal.timeSignal,
                         inputSignal.samplingRate,
                         winType, winSize, winSize*overlap)
-                result.freqSignal = (YY - XX
-                                     + np.sqrt((XX-YY)**2
-                                               + 4*np.abs(XY)**2)) / 2*YX
+                result.freqSignal = (YY - XX +
+                                     np.sqrt((XX-YY)**2
+                                     + 4 * np.abs(XY)**2)) / 2*YX
 
         result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()

@@ -61,15 +61,25 @@ class PyTTaObj(RICI):
                  timeLength=None,
                  numSamples=None):
         super().__init__()
-        self._lengthDomain = lengthDomain
         self._samplingRate = samplingRate
-        self._fftDegree = fftDegree
-        self._timeLength = timeLength
-        self._numSamples = numSamples
         self._freqMin = freqMin
         self._freqMax = freqMax
         self._comment = comment
-        return
+        self._lengthDomain = lengthDomain
+        self._fftDegree = fftDegree
+        self._timeLength = timeLength
+        self._numSamples = numSamples
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # PyTTaObj properties
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r}), '
+                f'lengthDomain={self.lengthDomain!r}, '
+                f'fftDegree={self.fftDegree!r}, '
+                f'timeLength={self.timeLength!r}')
 
 # PyTTaObj Properties
     @property
@@ -202,7 +212,7 @@ class CoordinateObj(object):
     def __repr__(self):
         return (f'{self.__class__.__name__}('
                 f'point={self.point!r}, '
-#                f'polar={self.polar!r}, '
+                # f'polar={self.polar!r}, '
                 f'ref={self.ref!r}, '
                 f'unit={self.unit!r})')
 
@@ -318,18 +328,14 @@ class ChannelObj(object):
 
     """
 
-# Moved the units dict, which represent all possible signal units of measurement,
-# from pytta.properties to ChannelObj class.
-# It is a class property and will only be called from class's instances, therefore
-# was not necessary to have it inside another module.
     units = {'Pa': ('dB', 2e-5),
              'V': ('dBu', 0.775),
              'W/m^2': ('dB', 1e-12),
              'FS': ('dBFS', 1)}
-        
 
-    def __init__(self, num, name=None, code=None, unit='FS', CF=1, calibCheck=False,
-                 coordinates=CoordinateObj(), orientation=CoordinateObj()):
+    def __init__(self, num, name=None, code=None, unit='FS', CF=1,
+                 calibCheck=False, coordinates=CoordinateObj(),
+                 orientation=CoordinateObj()):
 
         self.num = num
         if name is None:

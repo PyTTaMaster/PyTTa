@@ -43,7 +43,7 @@ class Measurement(_base.PyTTaObj):
             signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples for\
+            2**fftDegree signal's number of samples for
             lengthDomain = 'samples';
 
         * numSamples (samples), (int):
@@ -73,6 +73,22 @@ class Measurement(_base.PyTTaObj):
         self.outChannels = _base.ChannelsList(outChannels)
         self.blocking = blocking
         return
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # Measurement properties
+                f'device={self.device!r}, '
+                f'inChannels={self.inChannels!r}, '
+                f'outChannels={self.outChannels!r}, '
+                f'blocking={self.blocking!r}, '
+                # PyTTaObj properties
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r}), '
+                f'lengthDomain={self.lengthDomain!r}, '
+                f'fftDegree={self.fftDegree!r}, '
+                f'timeLength={self.timeLength!r}')
 
     def _to_dict(self):
         out = {'device': self.device,
@@ -212,6 +228,23 @@ class RecMeasure(Measurement):
         self._outChannels = None
         return
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # RecMeasure properties
+                f'lengthDomain={self.lengthDomain!r}, '
+                f'fftDegree={self.fftDegree!r}, '
+                f'timeLength={self.timeLength!r}, '
+                # Measurement properties
+                f'device={self.device!r}, '
+                f'inChannels={self.inChannels!r}, '
+                f'outChannels={self.outChannels!r}, '
+                f'blocking={self.blocking!r}, '
+                # PyTTaObj properties
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r})')
+
     def _to_dict(self):
         sup = super()._to_dict()
         sup['fftDegree'] = self.fftDegree
@@ -337,6 +370,21 @@ class PlayRecMeasure(Measurement):
             self.outChannels = excitation.channels
         return
 
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # PlayRecMeasure properties
+                f'excitation={self.excitation!r}, '
+                # Measurement properties
+                f'device={self.device!r}, '
+                f'inChannels={self.inChannels!r}, '
+                f'outChannels={self.outChannels!r}, '
+                f'blocking={self.blocking!r}, '
+                # PyTTaObj properties
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r})')
+
 # PlayRec Methods
     def run(self):
         """
@@ -457,7 +505,7 @@ class FRFMeasure(PlayRecMeasure):
             signal's time length in seconds for lengthDomain = 'time';
 
         * fftDegree (fftDegree), (float):
-            2**fftDegree signal's number of samples for\
+            2**fftDegree signal's number of samples for
             lengthDomain = 'samples';
 
         * numSamples (samples), (int):
@@ -481,18 +529,40 @@ class FRFMeasure(PlayRecMeasure):
     """
 
     def __init__(self,
-                 coordinates={'points': [],
-                              'reference': 'south-west-floor corner',
-                              'unit': 'm'},
+                 # Coordinate and orientation management being done trough
+                 # ChannelObj at in/out ChannelsList
+                 #  coordinates={'points': [],
+                 #               'reference': 'south-west-floor corner',
+                 #               'unit': 'm'},
                  method='linear', winType=None, winSize=None,
                  overlap=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.coordinates = coordinates
+        # self.coordinates = coordinates
         self.method = method
         self.winType = winType
         self.winSize = winSize
         self.overlap = overlap
         return
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # FRFMeasure properties
+                f'method={self.method!r}, '
+                f'winType={self.winType!r}, '
+                f'winSize={self.winSize!r}, '
+                f'overlap={self.overlap!r}, '
+                # PlayRecMeasure properties
+                f'excitation={self.excitation!r}, '
+                # Measurement properties
+                f'device={self.device!r}, '
+                f'inChannels={self.inChannels!r}, '
+                f'outChannels={self.outChannels!r}, '
+                f'blocking={self.blocking!r}, '
+                # PyTTaObj properties
+                f'samplingRate={self.samplingRate!r}, '
+                f'freqMin={self.freqMin!r}, '
+                f'freqMax={self.freqMax!r}, '
+                f'comment={self.comment!r})')
 
     def save(self, dirname=time.ctime(time.time())):
         dic = self._to_dict()
@@ -548,8 +618,10 @@ def _print_max_level(sigObj, kind):
     if kind == 'output':
         for chIndex in range(sigObj.numChannels):
             chNum = sigObj.channels.mapping[chIndex]
-            print('max output level (excitation) on channel [{}]: {:.2f} {} - ref.: {} [{}]'
-                  .format(chNum, sigObj.max_level()[chIndex],
+            print('max output level (excitation) on channel [{}]: '
+                  .format(chNum) +
+                  '{:.2f} {} - ref.: {} [{}]'
+                  .format(sigObj.max_level()[chIndex],
                           sigObj.channels[chNum].dBName,
                           sigObj.channels[chNum].dBRef,
                           sigObj.channels[chNum].unit))
@@ -558,8 +630,10 @@ def _print_max_level(sigObj, kind):
     if kind == 'input':
         for chIndex in range(sigObj.numChannels):
             chNum = sigObj.channels.mapping[chIndex]
-            print('max input level (recording) on channel [{}]: {:.2f} {} - ref.: {} [{}]'
-                  .format(chNum, sigObj.max_level()[chIndex],
+            print('max input level (recording) on channel [{}]: '
+                  .format(chNum) +
+                  '{:.2f} {} - ref.: {} [{}]'
+                  .format(sigObj.max_level()[chIndex],
                           sigObj.channels[chNum].dBName,
                           sigObj.channels[chNum].dBRef,
                           sigObj.channels[chNum].unit))
