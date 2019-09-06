@@ -24,10 +24,10 @@ class Measurement(_base.PyTTaObj):
         * device (system default), (list/int):
             list of input and output devices;
 
-        * inChannel ([1]), (ChannelsList | list[int]):
+        * inChannels ([1]), (ChannelsList | list[int]):
             list of device's input channel used for recording;
 
-        * outChannel ([1]), (ChannelsList | list[int]):
+        * outChannels ([1]), (ChannelsList | list[int]):
             list of device's output channel used for playing/reproducing\
             a signalObj;
 
@@ -169,7 +169,7 @@ class RecMeasure(Measurement):
         * device (system default), (list/int):
             list of input and output devices;
 
-        * inChannel ([1]), (list/int):
+        * inChannels ([1]), (list/int):
             list of device's input channel used for recording;
 
         * samplingRate (44100), (int):
@@ -290,10 +290,10 @@ class PlayRecMeasure(Measurement):
         * device (system default), (list/int):
             list of input and output devices;
 
-        * inChannel ([1]), (list/int):
+        * inChannels ([1]), (list/int):
             list of device's input channel used for recording;
 
-        * outChannel ([1]), (list/int):
+        * outChannels ([1]), (list/int):
             list of device's output channel used for playing or reproducing
             a signalObj;
 
@@ -334,7 +334,7 @@ class PlayRecMeasure(Measurement):
             self._excitation = None
         else:
             self.excitation = excitation
-            self.outChannel = excitation.channels
+            self.outChannels = excitation.channels
         return
 
 # PlayRec Methods
@@ -440,10 +440,10 @@ class FRFMeasure(PlayRecMeasure):
         * device (system default), (list | int):
             list of input and output devices;
 
-        * inChannel ([1]), (list | int):
+        * inChannels ([1]), (list | int):
             list of device's input channel used for recording;
 
-        * outChannel ([1]), (list | int):
+        * outChannels ([1]), (list | int):
             list of device's output channel used for playing or reproducing
             a signalObj;
 
