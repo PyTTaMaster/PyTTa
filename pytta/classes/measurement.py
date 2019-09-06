@@ -259,6 +259,15 @@ class RecMeasure(Measurement):
             zdir.write('RecMeasure.json')
         return name
 
+    def h5save(self, h5group, setClass=True):
+        if setClass is True:
+            h5group.attrs['class'] = 'RecMeasure'
+        h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
+        h5group.attrs['fftDegree'] = _h5.none_parser(self.fftDegree)
+        h5group.attrs['timeLength'] = _h5.none_parser(self.timeLength)
+        super().h5save(h5group, setClass=False)
+        pass
+
 # Rec Properties
     @property
     def timeLength(self):
@@ -581,6 +590,10 @@ class FRFMeasure(PlayRecMeasure):
     def h5save(self, h5group, setClass=True):
         if setClass is True:
             h5group.attrs['class'] = 'FRFMeasure'
+        h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
+        h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
+        h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
+        h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
         super().h5save(h5group, setClass=False)
         pass
 

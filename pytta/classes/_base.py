@@ -190,9 +190,10 @@ class PyTTaObj(RICI):
         h5group.attrs['samplingRate'] = self.samplingRate
         h5group.attrs['freqMin'] = _h5.none_parser(self.freqMin)
         h5group.attrs['freqMax'] = _h5.none_parser(self.freqMax)
-        h5group.attrs['fftDegree'] = self.fftDegree
-        h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
         h5group.attrs['comment'] = self.comment
+        h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
+        h5group.attrs['fftDegree'] = self.fftDegree
+        h5group.attrs['timeLength'] = self.timeLength
         pass
 
 
@@ -397,13 +398,13 @@ class ChannelObj(object):
         print(Vrms)
         freqFound = np.round(
                 refSignalObj.freqVector[np.where(
-                        np.abs(refSignalObj.freqSignal)
-                        == np.max(np.abs(refSignalObj.freqSignal)))[0]])
+                        np.abs(refSignalObj.freqSignal) ==
+                        np.max(np.abs(refSignalObj.freqSignal)))[0]])
         if freqFound != refFreq:
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-                  + '{:.2}'.format(freqFound)
-                  + ' [Hz]) differs from refFreq ('
-                  + '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency (' +
+                  '{:.2}'.format(freqFound) +
+                  ' [Hz]) differs from refFreq (' +
+                  '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
         self.CF = refVrms/Vrms
         self.unit = 'V'
         return
@@ -413,10 +414,10 @@ class ChannelObj(object):
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency ('
-                  + '{}'.format(freqFound)
-                  + ' [Hz]) differs from refFreq ('
-                  + '{}'.format(refFreq) + ' [Hz])\x1b[0m')
+            print('\x1b[0;30;43mATENTTION! Found calibration frequency (' +
+                  '{}'.format(freqFound) +
+                  ' [Hz]) differs from refFreq (' +
+                  '{}'.format(refFreq) + ' [Hz])\x1b[0m')
         self.CF = refPrms/Prms
         self.unit = 'Pa'
         return
