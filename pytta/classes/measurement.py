@@ -237,7 +237,6 @@ class RecMeasure(Measurement):
                 # Measurement properties
                 f'device={self.device!r}, '
                 f'inChannels={self.inChannels!r}, '
-                f'outChannels={self.outChannels!r}, '
                 f'blocking={self.blocking!r}, '
                 # PyTTaObj properties
                 f'samplingRate={self.samplingRate!r}, '
@@ -265,7 +264,7 @@ class RecMeasure(Measurement):
         h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
         h5group.attrs['fftDegree'] = _h5.none_parser(self.fftDegree)
         h5group.attrs['timeLength'] = _h5.none_parser(self.timeLength)
-        super().h5save(h5group, setClass=False)
+        super().h5save(h5group)
         pass
 
 # Rec Properties
@@ -300,7 +299,7 @@ class RecMeasure(Measurement):
         # Record
         recording = sd.rec(frames=self.numSamples,
                            samplerate=self.samplingRate,
-                           mapping=self.inChannels.mapping(),
+                           mapping=self.inChannels.mapping,
                            blocking=self.blocking,
                            device=self.device,
                            latency='low',

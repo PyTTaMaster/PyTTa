@@ -288,10 +288,61 @@ def __h5_unpack(ObjGroup):
         return IR
 
     if ObjGroup.attrs['class'] == 'RecMeasure':
-        pass
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        # Recreating the object
+        rObj = RecMeasure(device=device,
+                          inChannels=inChannels,
+                          blocking=blocking,
+                          samplingRate=samplingRate,
+                          freqMin=freqMin,
+                          freqMax=freqMax,
+                          comment=comment,
+                          lengthDomain=lengthDomain,
+                          fftDegree=fftDegree,
+                          timeLength=timeLength)
+        return rObj
 
     if ObjGroup.attrs['class'] == 'PlayRecMeasure':
-        pass
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        # PlayRecMeasure attrs unpacking
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        # Recreating the object
+        prObj = PlayRecMeasure(excitation=excitation,
+                               device=device,
+                               inChannels=inChannels,
+                               outChannels=outChannels,
+                               blocking=blocking,
+                               samplingRate=samplingRate,
+                               freqMin=freqMin,
+                               freqMax=freqMax,
+                               comment=comment,
+                               lengthDomain=lengthDomain,
+                               fftDegree=fftDegree,
+                               timeLength=timeLength)
+        return prObj
 
     if ObjGroup.attrs['class'] == 'FRFMeasure':
         # PyTTaObj attrs unpacking
