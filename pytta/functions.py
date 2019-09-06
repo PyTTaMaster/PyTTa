@@ -42,7 +42,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
 from pytta.classes._base import ChannelsList, ChannelObj
 import copy as cp
-import pytta.h5utilities as __h5
+import pytta.h5utilities as _h5
 
 
 def list_devices():
@@ -255,8 +255,8 @@ def __h5_unpack(ObjGroup):
     if ObjGroup.attrs['class'] == 'SignalObj':
         # PyTTaObj attrs unpacking
         samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = __h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = __h5.none_parser(ObjGroup.attrs['freqMax'])
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
         lengthDomain = ObjGroup.attrs['lengthDomain']
         comment = ObjGroup.attrs['comment']
         # SignalObj attr unpacking
@@ -295,22 +295,42 @@ def __h5_unpack(ObjGroup):
 
     if ObjGroup.attrs['class'] == 'FRFMeasure':
         # PyTTaObj attrs unpacking
-        freqMin = __h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = __h5.none_parser(ObjGroup.attrs['freqMax'])
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
         comment = ObjGroup.attrs['comment']
-        # FRFMeasure attrs unpacking
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        device = __h5.list_w_int_parser(ObjGroup.attrs['device'])
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
         inChannels = eval(ObjGroup.attrs['inChannels'])
         outChannels = eval(ObjGroup.attrs['outChannels'])
         blocking = ObjGroup.attrs['blocking']
-        frfObj = FRFMeasure(excitation=excitation, device=device,
+        # PlayRecMeasure attrs unpacking
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        # FRFMeasure attrs unpacking
+        method = _h5.none_parser(ObjGroup.attrs['method'])
+        winType = _h5.none_parser(ObjGroup.attrs['winType'])
+        winSize = _h5.none_parser(ObjGroup.attrs['winSize'])
+        overlap = _h5.none_parser(ObjGroup.attrs['overlap'])
+        # Recreating the object
+        frfObj = FRFMeasure(method=method,
+                            winType=winType,
+                            winSize=winSize,
+                            overlap=overlap,
+                            excitation=excitation,
+                            device=device,
                             inChannels=inChannels,
                             outChannels=outChannels,
+                            blocking=blocking,
+                            samplingRate=samplingRate,
                             freqMin=freqMin,
                             freqMax=freqMax,
                             comment=comment,
-                            blocking=blocking)
+                            lengthDomain=lengthDomain,
+                            fftDegree=fftDegree,
+                            timeLength=timeLength)
         return frfObj
 
 
