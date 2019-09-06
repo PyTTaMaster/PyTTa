@@ -201,9 +201,9 @@ class SignalObj(_base.PyTTaObj):
             self._freqVector = np.linspace(0, (self.numSamples-1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
-                                           ((self.numSamples/2) + 1
+                                           (int((self.numSamples/2) + 1)
                                            if self.numSamples % 2 == 0
-                                           else (self.numSamples+1)/2))
+                                           else int((self.numSamples+1)/2)))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
