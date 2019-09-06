@@ -280,10 +280,10 @@ def noise(kind='white',
         stopMargin = default.stopMargin
 
     # [samples] initial silence number of samples
-    stopSamples = stopMargin*samplingRate
+    stopSamples = round(stopMargin*samplingRate)
 
     # [samples] ending silence number of samples
-    startSamples = startMargin*samplingRate
+    startSamples = round(startMargin*samplingRate)
 
     # [samples] total silence number of samples
     marginSamples = startSamples + stopSamples
