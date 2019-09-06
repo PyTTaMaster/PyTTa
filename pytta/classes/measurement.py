@@ -299,7 +299,7 @@ class RecMeasure(Measurement):
         # Record
         recording = sd.rec(frames=self.numSamples,
                            samplerate=self.samplingRate,
-                           mapping=self.inChannels.mapping,
+                           mapping=self.inChannels.mapping(),
                            blocking=self.blocking,
                            device=self.device,
                            latency='low',
