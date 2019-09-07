@@ -307,10 +307,10 @@ def h5save(fileName: str, *PyTTaObjs):
 
     >>> pytta.h5save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
     """
+    # Checking if filename has .hdf5 extension
+    if fileName.split('.')[-1] != 'hdf5':
+        fileName += '.hdf5'
     with h5py.File(fileName, 'w') as f:
-        # Checking if filename has .hdf5 extension
-        if fileName.split('.')[-1] != 'hdf5':
-            fileName += '.hdf5'
         # Dict for counting equal names for correctly renaming
         objsNameCount = {}
         for idx, pobj in enumerate(PyTTaObjs):
