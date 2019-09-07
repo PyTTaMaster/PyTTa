@@ -8,4 +8,4 @@ Created on Sun Jun 23 15:02:03 2019
 
 from . import roomir2
 
-__all__ = ['roomir2']
+__all__ = ['roomir']

@@ -3,13 +3,13 @@ Classes:
 ---------
 
     This submodule is mainly the means to an end. PyTTa is made intended to be
-    user friendly, the manipulation of the classes are documented here, but their
-    instantiation should be used through the <generate> submodule:
+    user friendly, the manipulation of the classes are documented here, but
+    their instantiation should be used through the <generate> submodule:
 
         >>> pytta.generate.sweep()
         >>> pytta.generate.noise()
         >>> pytta.generate.measurement('playrec')
-        >>> pytta.generate.measurement('rec', lengthDomain = 'time', timeLen = 5)
+        >>> pytta.generate.measurement('rec', lengthDomain='time', timeLen=5)
 
     This way, the default settings will be loaded into any object instantiated.
 

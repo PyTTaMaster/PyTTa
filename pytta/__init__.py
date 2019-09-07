@@ -60,7 +60,7 @@ from pytta.functions import read_wav, write_wav, merge, list_devices,\
 
 
 import pytta.rooms as rooms
-import pytta.apps.roomir2 as roomir
+import pytta.apps.roomir as roomir
 import pytta.generate as generate
 import pytta.h5utilities
 
