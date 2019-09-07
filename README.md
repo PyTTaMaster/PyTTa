@@ -6,8 +6,8 @@ We are students, teachers, engineers, passionates and inquiring people, on the f
 
 ### Usage
 
-We extrongly recommend using Anaconda Python Distribution, as it integrates an IDE (Spyder) and lots of packages over which PyTTa is based on
-as Numpy, Scipy, Matplotlib and PyPI (pip) which is used to install Sounddevice, PyFilterbank and PyTTa itself
+We strongly recommend using Anaconda Python Distribution, as it integrates an IDE (Spyder) and lots of packages over which PyTTa is based on
+as Numpy, Scipy, Matplotlib and PyPI (pip) which is used to install Sounddevice and PyTTa itself.
 
 ### Documentation
 
@@ -20,7 +20,7 @@ To begin, one can try:
     >>> pytta.list_devices()
     >>> pytta.Default()
 
-This set of commands will print the available audio I/O devices and the default parameters as they are on the Default class object
+This set of commands will print the available audio I/O devices and the default parameters as they are on the Default class object.
 
 To read everything available on the package, and assuming the use of Spyder IDE, one can press "ctrl+i" with the cursor in front of the module, submodule, class, methods, or function names,
 this will open the help menu with the documentation of the respective item.
@@ -45,16 +45,16 @@ Inside each submodule the user will find instructions on the available tools, an
 
 ### Installation
 
-For now, the installation must be made through pip and git, as follows:
+The installation can be made through pip, as follows:
 
-    >>> pip install git+https://www.github.com/pyttamaster/pytta@refactory
+    >>> pip install pytta
 
-This will install directly the refactory branch, which is the most up to date branch on the repository
+This will install directly the master branch, which is the most stable and up to date version on the repository.
 
 ### Contributing and Credits
 
 Our workflow, which may change as we progress with the project, consist on parallel development of submodules, either complementing an existing one, or creating a new.
-Thus, one must create a new branch, named accordingly with the project intent, and that points to the refactory OR the development branches, as they are intended to merge in the near future.
+Thus, one must create a new branch, named accordingly with the project intent, and that points to the master OR the development branches, as they are intended to merge in the near future.
 After the new branch is ready and coding finished, it stays as a branch for, at maximum, two months untill it is merged to the development branch.
 
 ### Contact
