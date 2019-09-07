@@ -17,6 +17,125 @@ measurementKinds = {'roomir': 'PlayRecMeasure',
                     'sourcerecalibration': 'PlayRecMeasure'}
 
 
+class MeasurementChList(ChannelsList):
+
+    # Magic methods
+
+    def __init__(self, kind, groups={}, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.kind = kind
+        self.groups = groups
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                # MeasurementChList properties
+                f'kind={self.kind!r}, '
+                f'groups={self.groups!r}, '
+                # ChannelsList properties
+                f'chList={self._channels!r})')
+
+    # Properties
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, newKind):
+        if newKind == 'in' or newKind == 'out':
+            self._kind = newKind
+        else:
+            raise ValueError('Kind must be \'in\' or \'out\'')
+
+    @property
+    def groups(self):
+        return self._groups
+
+    @groups.setter
+    def groups(self, newComb):
+        if not isinstance(newComb, dict):
+            raise TypeError('groups must be a dict with array name ' +
+                            'as key and channel numbers in a tuple as value.')
+        for arrayName, group in newComb.items():
+            if not isinstance(group, tuple):
+                raise TypeError('Groups of channels inside the ' +
+                                'groups dict must be contained by' +
+                                ' a tuple.')
+                for chNum in group:
+                    if chNum not in MeasurementChList.mapping:
+                        raise ValueError('Channel number ' + str(chNum) +
+                                         ' isn\'t a valid ' + self.kind +
+                                         'put channel.')
+        self._groups = newComb
+
+    # Methods
+
+    def is_grouped(self, chRef):
+        # Check if chRef is in any group
+        if isinstance(chRef, str):
+            if chRef in self.codes:
+                nameOrCode = 'code'
+            elif chRef in self.names:
+                nameOrCode = 'name'
+            else:
+                raise ValueError("Channel name/code doesn't exist.")
+            combChRefList = []
+            for comb in self.groups.values():
+                for chNum in comb:
+                    if nameOrCode == 'code':
+                        combChRefList.append(self.channels[chNum].code)
+                    elif nameOrCode == 'name':
+                        combChRefList.append(self.channels[chNum].name)
+            return chRef in combChRefList
+        elif isinstance(chRef, int):
+            if chRef not in self.mapping:
+                raise ValueError("Channel number doesn't exist.")
+            combChNumList = []
+            for comb in self.groups.values():
+                for chNum in comb:
+                    combChNumList.append(chNum)
+            return chRef in combChNumList
+
+    def get_group_membs(self, chNumUnderCheck, *args):
+        # Return a list with channel numbers in ChNumUnderCheck's group
+        if 'rest' in args:
+            rest = 'rest'
+        else:
+            rest = 'entire'
+        othersCombndChs = []
+        for comb in self.groups.values():
+            if chNumUnderCheck in comb:
+                # Get other ChNums in group
+                for chNum in comb:
+                    if chNum != chNumUnderCheck:
+                        othersCombndChs.append(chNum)
+                    else:
+                        if rest == 'entire':
+                            othersCombndChs.append(chNum)
+        return tuple(othersCombndChs)
+
+    def get_array_name(self, chNum):
+        # Get chNum's array name
+        for arname, group in self.groups.items():
+            if chNum in group:
+                return arname
+        return None
+
+    def copy_groups(self, mChList):
+        # Copy groups from mChList containing any identical channel to self
+        groups = {}
+        for chNum in self.mapping:
+            groupMapping = mChList.get_group_membs(
+                    chNum, 'rest')
+            for chNum2 in groupMapping:
+                # Getting groups information for reconstructd
+                # inChannels
+                if self[chNum] == mChList[chNum2]:
+                    groups[mChList.get_array_name(chNum)] =\
+                        mChList.get_group_membs(chNum)
+        self.groups = groups
+
+
 class MeasurementSetup(object):
 
     def __init__(self,
@@ -97,16 +216,15 @@ class TakeMeasure(object):
         self.excitation = excitation
         self.outChSel = outChSel
         self.sourcePos = sourcePos
-        self._cfg_channels()
-        self._cfg_take()
+        self.__cfg_channels()
+        self.__cfg_measurement_object
 
-    def _cfg_channels(self):
+    def __cfg_channels(self):
         # Check for disabled combined channels
         if self.kind not in ['miccalibration', 'sourcerecalibration']:
-            j = 0
             # Look for grouped channels through the active channels
-            for status in self.inChSel:
-                chNumUnderCheck = self.MS.inChannels.mapping[j]
+            for idx, status in enumerate(self.inChSel):
+                chNumUnderCheck = self.MS.inChannels.mapping[idx]
                 if status is True:
                     othersCombndChs = self.MS.inChannels.get_group_membs(
                             chNumUnderCheck, 'rest')
@@ -119,20 +237,18 @@ class TakeMeasure(object):
                                              ', channel ' +
                                              str(chNumUnderCheck) +
                                              ', is also enabled')
-                j += 1
+        # Check for multiple channels activated during calibration
         else:
             #
-            # TO DO
+            #  TO DO
             #
             pass
         # Constructing the inChannels list for the current take
-        j = 0
         self.inChannels = MeasurementChList(kind='in')
-        for i in self.inChSel:
+        for idx, chStatus in enumerate(self.inChSel):
             chNum = self.MS.inChannels.mapping[j]
-            if i:
+            if chStatus:
                 self.inChannels.append(self.MS.inChannels[chNum])
-            j = j+1
         # Getting groups information for reconstructd
         # inChannels MeasurementChList
         self.inChannels.copy_groups(self.MS.inChannels)
@@ -140,7 +256,7 @@ class TakeMeasure(object):
         self.outChannel = MeasurementChList(kind='out')
         self.outChannel.append(self.MS.outChannels[self.outChSel])
 
-    def _cfg_take(self):
+    def __cfg_measurement_object(self):
         # For roomir measurement kind
         if self.kind == 'roomir':
             self.measurementObject = \
@@ -368,123 +484,6 @@ class MeasuredThing(object):
         self.measuredSignals = measuredSignals
         self.inChannels = inChannels
         self.outChannel = outChannel
-
-
-class MeasurementChList(ChannelsList):
-
-    # Magic methods
-
-    def __init__(self, kind, groups={}, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.kind = kind
-        self.groups = groups
-
-    def __repr__(self):
-        return (f'{self.__class__.__name__}('
-                f'kind={self.kind!r}, '
-                f'groups={self.groups!r}, '
-                f'chList={self._channels!r})')
-
-    # Properties
-
-    @property
-    def kind(self):
-        return self._kind
-
-    @kind.setter
-    def kind(self, newKind):
-        if newKind == 'in' or newKind == 'out':
-            self._kind = newKind
-        else:
-            raise ValueError('Kind must be \'in\' or \'out\'')
-
-    @property
-    def groups(self):
-        return self._groups
-
-    @groups.setter
-    def groups(self, newComb):
-        if not isinstance(newComb, dict):
-            raise TypeError('groups must be a dict with array name ' +
-                            'as key and channel numbers in a tuple as value.')
-        for arrayName, group in newComb.items():
-            if not isinstance(group, tuple):
-                raise TypeError('Groups of channels inside the ' +
-                                'groups dict must be contained by' +
-                                ' a tuple.')
-                for chNum in group:
-                    if chNum not in MeasurementChList.mapping:
-                        raise ValueError('Channel number ' + str(chNum) +
-                                         ' isn\'t a valid ' + self.kind +
-                                         'put channel.')
-        self._groups = newComb
-
-    # Methods
-
-    def is_grouped(self, chRef):
-        # Check if chRef is in any group
-        if isinstance(chRef, str):
-            if chRef in self.codes:
-                nameOrCode = 'code'
-            elif chRef in self.names:
-                nameOrCode = 'name'
-            else:
-                raise ValueError("Channel name/code doesn't exist.")
-            combChRefList = []
-            for comb in self.groups.values():
-                for chNum in comb:
-                    if nameOrCode == 'code':
-                        combChRefList.append(self.channels[chNum].code)
-                    elif nameOrCode == 'name':
-                        combChRefList.append(self.channels[chNum].name)
-            return chRef in combChRefList
-        elif isinstance(chRef, int):
-            if chRef not in self.mapping:
-                raise ValueError("Channel number doesn't exist.")
-            combChNumList = []
-            for comb in self.groups.values():
-                for chNum in comb:
-                    combChNumList.append(chNum)
-            return chRef in combChNumList
-
-    def get_group_membs(self, chNumUnderCheck, *args):
-        # Return a list with channel numbers in ChNumUnderCheck's group
-        if 'rest' in args:
-            rest = 'rest'
-        else:
-            rest = 'entire'
-        othersCombndChs = []
-        for comb in self.groups.values():
-            if chNumUnderCheck in comb:
-                # Get other ChNums in group
-                for chNum in comb:
-                    if chNum != chNumUnderCheck:
-                        othersCombndChs.append(chNum)
-                    else:
-                        if rest == 'entire':
-                            othersCombndChs.append(chNum)
-        return tuple(othersCombndChs)
-
-    def get_array_name(self, chNum):
-        # Get chNum's array name
-        for arname, group in self.groups.items():
-            if chNum in group:
-                return arname
-        return None
-
-    def copy_groups(self, mChList):
-        # Copy groups from mChList containing any identical channel to self
-        groups = {}
-        for chNum in self.mapping:
-            groupMapping = mChList.get_group_membs(
-                    chNum, 'rest')
-            for chNum2 in groupMapping:
-                # Getting groups information for reconstructd
-                # inChannels
-                if self[chNum] == mChList[chNum2]:
-                    groups[mChList.get_array_name(chNum)] =\
-                        mChList.get_group_membs(chNum)
-        self.groups = groups
 
 
 class Transducer(object):

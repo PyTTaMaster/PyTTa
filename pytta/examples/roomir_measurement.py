@@ -5,18 +5,18 @@ Created on Sun Jun 23 15:08:25 2019
 
 @author: mtslazarin
 """
-
+# %% Importing
 import pytta
 from pytta import roomir as m
 from pytta.classes import lju3ei1050
 
-#%% Cria objeto para stream de dados com o LabJack U3 com o sensor 
+# %% Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
 
 # tempHumid = lju3ei1050.main()
 tempHumid = None  # Para testes com LabJack offline
 
-#%% Carrega sinais de excitação
+# %% Carrega sinais de excitação
 excitationSignals = {}
 excitationSignals['varredura'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
@@ -34,14 +34,14 @@ excitationSignals['musica'] = pytta.read_wav(
 excitationSignals['fala'] = pytta.read_wav(
         'audio/Voice Sabine Short_edited.WAV')
 
-#%% Cria novo Setup de Medição
+# %% Cria novo Setup de Medição
 SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         samplingRate=44100,  # [Hz]
                         # Sintaxe : device = [<in>,<out>] ou <in/out>
                         # Utilize pytta.list_devices() para listar
                         # os dispositivos do seu computador.
-#                        device=[0, 1],  # PC laza
-                         device=4,  # Saffire Pro 40 laza
+                        # device=[0, 1],  # PC laza
+                        device=4,  # Saffire Pro 40 laza
                         # device=[1, 3], # PC Leo
                         # device=0, # Firebox laza
                         # device=[1, 4], # PC laza
@@ -59,20 +59,20 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                                     'OD': (2, 'Orelha D'),
                                     'Mic1': (4, 'Mic 1'),
                                     'Mic2': (5, 'Mic 2'),
-                                    'groups': {'HATS':(1, 2)}},
+                                    'groups': {'HATS': (1, 2)}},
                         # Dicionário com códigos e canais de saída associados
                         outChannels={'O1': (1, 'Dodecaedro 1'),
                                      'O2': (2, 'Dodecaedro 2'),
                                      'O3': (3, 'Sistema da sala')})
 
-#%% Cria instância de dados medidos
-#D = m.Data(SM)
+# %% Cria instância de dados medidos
+# D = m.Data(SM)
 # D.dummyFill() # Preenche instância de dados com dummy signals
 
-#%% Mostra status da instância de dados medidos
-#D.getStatus()
+# %% Mostra status da instância de dados medidos
+# D.getStatus()
 
-#%% Cria nova tomada de medição para uma nova configuração fonte receptor
+# %% Cria nova tomada de medição para uma nova configuração fonte receptor
 takeMeasure = m.TakeMeasure(MS=SM,
                             # Passa objeto de comunicação
                             # com o LabJack U3 + EI1050 probe
@@ -101,15 +101,15 @@ takeMeasure = m.TakeMeasure(MS=SM,
                             outChSel='O1',
                             # Configuração sala-fonte-receptor
                             sourcePos='S1')
-#%% Cria nova tomada de medição do ruído de fundo
+# %% Cria nova tomada de medição do ruído de fundo
 
-#%% Cria nova tomada de medição para calibração
+# %% Cria nova tomada de medição para calibração
 
-#%% Nova tomada de medição
+# %% Nova tomada de medição
 takeMeasure.run()
 
-#%% Salva tomada de medição no objeto de dados D e no disco
+# %% Salva tomada de medição no objeto de dados D e no disco
 takeMeasure.save(D)
 
-#%% Carrega dados medidos e setup de medição do arquivo
+# %% Carrega dados medidos e setup de medição do arquivo
 SM, D = m.load('med-teste')
