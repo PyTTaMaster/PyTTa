@@ -495,6 +495,10 @@ class SignalObj(_base.PyTTaObj):
         return dirname + '.pytta'
 
     def h5save(self, h5group):
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...).
+        """
         h5group.attrs['class'] = 'SignalObj'
         h5group.attrs['channels'] = str(self.channels)
         h5group['timeSignal'] = self.timeSignal
@@ -816,6 +820,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
         return dirname + '.pytta'
 
     def h5save(self, h5group):
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...)
+        """
         h5group.attrs['class'] = 'ImpulsiveResponse'
         h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
         h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])

@@ -15,6 +15,8 @@ Functions:
         >>> pytta.write_wav( fileName, signalObject )
         >>> pytta.save(fileName, obj1, ..., objN)
         >>> pytta.load(fileName)
+        >>> pytta.h5save(fileName, obj1, ..., objN)
+        >>> pytta.h5load(fileName)
         >>> pytta.merge( signalObj1, signalObj2, ..., signalObjN )
         >>> pytta.fft_convolve( signalObj1, signalObj2 )
         >>> pytta.find_delay( signalObj1, signalObj2 )
@@ -212,179 +214,6 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     return fileName + '.pytta'
 
 
-def h5save(fileName: str, *PyTTaObjs):
-    with h5py.File(fileName, 'w') as f:
-        objsNameCount = {}
-        for idx, pobj in enumerate(PyTTaObjs):
-            if isinstance(pobj, (SignalObj,
-                                 ImpulsiveResponse,
-                                 RecMeasure,
-                                 PlayRecMeasure,
-                                 FRFMeasure)):
-                # Check if creation_name was already used
-                creationName = pobj.creation_name
-                if creationName in objsNameCount:
-                    objsNameCount[creationName] += 1
-                    creationName += '_' + str(objsNameCount[creationName])
-                else:
-                    objsNameCount[creationName] = 1
-                # create obj's group
-                ObjGroup = f.create_group(creationName)
-                # save the obj inside its group
-                pobj.h5save(ObjGroup)
-            else:
-                print("Only PyTTa objects can be saved through this" +
-                      "function. Skipping object number " + str(idx) + ".")
-
-
-def h5load(fileName: str):
-    if fileName.split('.')[-1] != 'hdf5':
-        raise ValueError("h5load function only works with *.hdf5 files")
-    f = h5py.File(fileName, 'r')
-    loadedObjects = {}
-    for PyTTaObjName, PyTTaObjGroup in f.items():
-        loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
-    f.close()
-    return loadedObjects
-
-
-def __h5_unpack(ObjGroup):
-    """
-    Unpack an HDF5 group into its respective PyTTa object
-    """
-    if ObjGroup.attrs['class'] == 'SignalObj':
-        # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        comment = ObjGroup.attrs['comment']
-        # SignalObj attr unpacking
-        channels = eval(ObjGroup.attrs['channels'])
-        # Creating and conforming SignalObj
-        SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
-                           domain='time',
-                           samplingRate=samplingRate,
-                           freqMin=freqMin,
-                           freqMax=freqMax,
-                           comment=comment)
-        SigObj.channels = channels
-        SigObj.lengthDomain = lengthDomain
-        return SigObj
-
-    if ObjGroup.attrs['class'] == 'ImpulsiveResponse':
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        recording = __h5_unpack(ObjGroup['recording'])
-        method = ObjGroup.attrs['method']
-        winType = ObjGroup.attrs['winType']
-        winSize = ObjGroup.attrs['winSize']
-        overlap = ObjGroup.attrs['overlap']
-        IR = ImpulsiveResponse(excitation,
-                               recording,
-                               method,
-                               winType,
-                               winSize,
-                               overlap)
-        return IR
-
-    if ObjGroup.attrs['class'] == 'RecMeasure':
-        # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
-        # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        blocking = ObjGroup.attrs['blocking']
-        # Recreating the object
-        rObj = RecMeasure(device=device,
-                          inChannels=inChannels,
-                          blocking=blocking,
-                          samplingRate=samplingRate,
-                          freqMin=freqMin,
-                          freqMax=freqMax,
-                          comment=comment,
-                          lengthDomain=lengthDomain,
-                          fftDegree=fftDegree,
-                          timeLength=timeLength)
-        return rObj
-
-    if ObjGroup.attrs['class'] == 'PlayRecMeasure':
-        # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
-        # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        outChannels = eval(ObjGroup.attrs['outChannels'])
-        blocking = ObjGroup.attrs['blocking']
-        # PlayRecMeasure attrs unpacking
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        # Recreating the object
-        prObj = PlayRecMeasure(excitation=excitation,
-                               device=device,
-                               inChannels=inChannels,
-                               outChannels=outChannels,
-                               blocking=blocking,
-                               samplingRate=samplingRate,
-                               freqMin=freqMin,
-                               freqMax=freqMax,
-                               comment=comment,
-                               lengthDomain=lengthDomain,
-                               fftDegree=fftDegree,
-                               timeLength=timeLength)
-        return prObj
-
-    if ObjGroup.attrs['class'] == 'FRFMeasure':
-        # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
-        # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        outChannels = eval(ObjGroup.attrs['outChannels'])
-        blocking = ObjGroup.attrs['blocking']
-        # PlayRecMeasure attrs unpacking
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        # FRFMeasure attrs unpacking
-        method = _h5.none_parser(ObjGroup.attrs['method'])
-        winType = _h5.none_parser(ObjGroup.attrs['winType'])
-        winSize = _h5.none_parser(ObjGroup.attrs['winSize'])
-        overlap = _h5.none_parser(ObjGroup.attrs['overlap'])
-        # Recreating the object
-        frfObj = FRFMeasure(method=method,
-                            winType=winType,
-                            winSize=winSize,
-                            overlap=overlap,
-                            excitation=excitation,
-                            device=device,
-                            inChannels=inChannels,
-                            outChannels=outChannels,
-                            blocking=blocking,
-                            samplingRate=samplingRate,
-                            freqMin=freqMin,
-                            freqMax=freqMax,
-                            comment=comment,
-                            lengthDomain=lengthDomain,
-                            fftDegree=fftDegree,
-                            timeLength=timeLength)
-        return frfObj
-
-
 def load(fileName: str):
     """
     Loads .pytta files and parses it's types to the correct objects.
@@ -469,3 +298,206 @@ def __parse_channels(chDict, chList):
             = chDict[key]['calib'][1]
         ch += 1
     return chList
+
+
+def h5save(fileName: str, *PyTTaObjs):
+    """
+    Open an hdf5 file, create groups for each PyTTa object, pass it to
+    the own object and it saves itself inside the group.
+
+    >>> pytta.h5save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    """
+    with h5py.File(fileName, 'w') as f:
+        # Checking if filename has .hdf5 extension
+        if fileName.split('.')[-1] != 'hdf5':
+            fileName += '.hdf5'
+        # Dict for counting equal names for correctly renaming
+        objsNameCount = {}
+        for idx, pobj in enumerate(PyTTaObjs):
+            if isinstance(pobj, (SignalObj,
+                                 ImpulsiveResponse,
+                                 RecMeasure,
+                                 PlayRecMeasure,
+                                 FRFMeasure)):
+                # Check if creation_name was already used
+                creationName = pobj.creation_name
+                if creationName in objsNameCount:
+                    objsNameCount[creationName] += 1
+                    creationName += '_' + str(objsNameCount[creationName])
+                else:
+                    objsNameCount[creationName] = 1
+                # create obj's group
+                ObjGroup = f.create_group(creationName)
+                # save the obj inside its group
+                pobj.h5save(ObjGroup)
+            else:
+                print("Only PyTTa objects can be saved through this" +
+                      "function. Skipping object number " + str(idx) + ".")
+
+
+def h5load(fileName: str):
+    """
+    Load an hdf5 file and recriate
+    """
+    # Checking if the file is an hdf5 file
+    if fileName.split('.')[-1] != 'hdf5':
+        raise ValueError("h5load function only works with *.hdf5 files")
+    f = h5py.File(fileName, 'r')
+    loadedObjects = {}
+    objCount = 0  # Counter for loaded objects
+    totCount = 0  # Counter for total groups
+    for PyTTaObjName, PyTTaObjGroup in f.items():
+        totCount += 1
+        try:
+            loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
+            objCount += 1
+        except TypeError:
+            print('Skipping hdf5 group named {} as it '.format(PyTTaObjName) +
+                  'isnt an PyTTa object group.')
+    f.close()
+    # Final message
+    plural1 = 's' if objCount > 1 else ''
+    plural2 = 's' if totCount > 1 else ''
+    print('Imported {} PyTTa object-like group'.format(objCount) + plural1 +
+          ' of {} group'.format(totCount) + plural2 +
+          ' inside the hdf5 file.')
+    return loadedObjects
+
+
+def __h5_unpack(ObjGroup):
+    """
+    Unpack an HDF5 group into its respective PyTTa object
+    """
+    if ObjGroup.attrs['class'] == 'SignalObj':
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        comment = ObjGroup.attrs['comment']
+        # SignalObj attr unpacking
+        channels = eval(ObjGroup.attrs['channels'])
+        # Creating and conforming SignalObj
+        SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
+                           domain='time',
+                           samplingRate=samplingRate,
+                           freqMin=freqMin,
+                           freqMax=freqMax,
+                           comment=comment)
+        SigObj.channels = channels
+        SigObj.lengthDomain = lengthDomain
+        return SigObj
+
+    elif ObjGroup.attrs['class'] == 'ImpulsiveResponse':
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        recording = __h5_unpack(ObjGroup['recording'])
+        method = ObjGroup.attrs['method']
+        winType = ObjGroup.attrs['winType']
+        winSize = ObjGroup.attrs['winSize']
+        overlap = ObjGroup.attrs['overlap']
+        IR = ImpulsiveResponse(excitation,
+                               recording,
+                               method,
+                               winType,
+                               winSize,
+                               overlap)
+        return IR
+
+    elif ObjGroup.attrs['class'] == 'RecMeasure':
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        # Recreating the object
+        rObj = RecMeasure(device=device,
+                          inChannels=inChannels,
+                          blocking=blocking,
+                          samplingRate=samplingRate,
+                          freqMin=freqMin,
+                          freqMax=freqMax,
+                          comment=comment,
+                          lengthDomain=lengthDomain,
+                          fftDegree=fftDegree,
+                          timeLength=timeLength)
+        return rObj
+
+    elif ObjGroup.attrs['class'] == 'PlayRecMeasure':
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        # PlayRecMeasure attrs unpacking
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        # Recreating the object
+        prObj = PlayRecMeasure(excitation=excitation,
+                               device=device,
+                               inChannels=inChannels,
+                               outChannels=outChannels,
+                               blocking=blocking,
+                               samplingRate=samplingRate,
+                               freqMin=freqMin,
+                               freqMax=freqMax,
+                               comment=comment,
+                               lengthDomain=lengthDomain,
+                               fftDegree=fftDegree,
+                               timeLength=timeLength)
+        return prObj
+
+    elif ObjGroup.attrs['class'] == 'FRFMeasure':
+        # PyTTaObj attrs unpacking
+        samplingRate = ObjGroup.attrs['samplingRate']
+        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
+        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
+        comment = ObjGroup.attrs['comment']
+        lengthDomain = ObjGroup.attrs['lengthDomain']
+        fftDegree = ObjGroup.attrs['fftDegree']
+        timeLength = ObjGroup.attrs['timeLength']
+        # Measurement attrs unpacking
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        blocking = ObjGroup.attrs['blocking']
+        # PlayRecMeasure attrs unpacking
+        excitation = __h5_unpack(ObjGroup['excitation'])
+        # FRFMeasure attrs unpacking
+        method = _h5.none_parser(ObjGroup.attrs['method'])
+        winType = _h5.none_parser(ObjGroup.attrs['winType'])
+        winSize = _h5.none_parser(ObjGroup.attrs['winSize'])
+        overlap = _h5.none_parser(ObjGroup.attrs['overlap'])
+        # Recreating the object
+        frfObj = FRFMeasure(method=method,
+                            winType=winType,
+                            winSize=winSize,
+                            overlap=overlap,
+                            excitation=excitation,
+                            device=device,
+                            inChannels=inChannels,
+                            outChannels=outChannels,
+                            blocking=blocking,
+                            samplingRate=samplingRate,
+                            freqMin=freqMin,
+                            freqMax=freqMax,
+                            comment=comment,
+                            lengthDomain=lengthDomain,
+                            fftDegree=fftDegree,
+                            timeLength=timeLength)
+        return frfObj
+    else:
+        raise TypeError

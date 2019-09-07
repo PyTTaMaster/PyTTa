@@ -97,6 +97,9 @@ class Measurement(_base.PyTTaObj):
         return out
 
     def h5save(self, h5group):
+        """
+        Saves itself inside a hdf5 group from an already openned file.
+        """
         h5group.attrs['device'] = _h5.list_w_int_parser(self.device)
         h5group.attrs['inChannels'] = str(self.inChannels)
         h5group.attrs['outChannels'] = str(self.outChannels)
@@ -259,6 +262,14 @@ class RecMeasure(Measurement):
         return name
 
     def h5save(self, h5group, setClass=True):
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        seted to RecMeasure.
+
+        >>> RecMeasure.h5save(h5group, setClass=True)
+
+        """
         if setClass is True:
             h5group.attrs['class'] = 'RecMeasure'
         h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
@@ -441,6 +452,14 @@ class PlayRecMeasure(Measurement):
         return name
 
     def h5save(self, h5group, setClass=True):
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        seted to PlayRecMeasure.
+
+        >>> PlayRecMeasure.h5save(h5group, setClass=True)
+
+        """
         if setClass is True:
             h5group.attrs['class'] = 'PlayRecMeasure'
         self.excitation.h5save(h5group.create_group('excitation'))
@@ -587,6 +606,14 @@ class FRFMeasure(PlayRecMeasure):
         return name
 
     def h5save(self, h5group, setClass=True):
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        seted to FRFMeasure.
+
+        >>> FRFMeasure.h5save(h5group, setClass=True)
+
+        """
         if setClass is True:
             h5group.attrs['class'] = 'FRFMeasure'
         h5group.attrs['method'] = _h5.none_parser(self.method)
