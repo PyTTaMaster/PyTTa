@@ -5,7 +5,7 @@ Object Oriented Python in Technical Acoustics
 
 Autores:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-    Matheus Lazarin Alberto, mtslazarin@gmail.com
+    Matheus Lazarin Alberto, matheus.lazarin@eac.ufsm.br
 
 
 PyTTa:
@@ -19,7 +19,6 @@ PyTTa:
     - Matplotlib
     - PortAudio API
     - Sounddevice
-    - PyFilterbank (future release)
 
     We also recommend using the Anaconda Python distribution, it's not a
     mandatory issue, but you should.
@@ -48,7 +47,6 @@ import pytta.properties as properties
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
 default = properties.Default()
-# units = properties.units  # MOVED TO ChannelObj CLASS
 
 from pytta.classes import SignalObj, ImpulsiveResponse,\
                           RecMeasure, PlayRecMeasure, FRFMeasure,\
@@ -57,7 +55,6 @@ from pytta.classes import SignalObj, ImpulsiveResponse,\
 from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, h5save, load, h5load
-
 
 import pytta.rooms as rooms
 import pytta.apps.roomir as roomir

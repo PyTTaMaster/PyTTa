@@ -6,6 +6,6 @@ Created on Sun Jun 23 15:02:03 2019
 @author: mtslazarin
 """
 
-from . import roomir2
+from . import roomir
 
 __all__ = ['roomir']
