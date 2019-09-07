@@ -599,7 +599,7 @@ class ChannelsList(object):
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
-                f'{self._channels!r})')
+                f'chList={self._channels!r})')
 
     def __len__(self):
         return len(self._channels)
