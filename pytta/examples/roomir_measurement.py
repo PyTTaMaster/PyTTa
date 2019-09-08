@@ -80,20 +80,15 @@ takeMeasure = m.TakeMeasure(MS=SM,
                             tempHumid=tempHumid,
                             kind='roomir',
                             # Status do canal:
-                            # True para Ativado e False para Desativado
-                            inChSel=[False,  # canal 1
-                                     False,  # canal 2
-                                     False,  # canal 3
-                                     True],  # canal 4
-                            # Configuração sala-fonte-receptor
-                            # Obs. 1: manter itens da lista para
-                            #         canais Desativados;
-                            # Obs. 2: canais combinados devem ter a mesma cfg.
-                            receiversPos=['R1',  # canal 1
-                                          'R1',  # canal 2
-                                          'R2',  # canal 3
-                                          'R3'],  # canal 4
-                            # escolhe sinal de excitacão
+                            # Lista com códigos de canal individual ou
+                            # códigos de grupo
+                            inChSel=['Mic1', 'HATS'],
+                            # Configuração sala-fonte-receptor:
+                            # Lista com as respectivas posições dos canais
+                            # individuais ou grupos de canais de entrada
+                            # selecionados
+                            receiversPos=['R1', 'R2'],
+                            # Escolha do sinal de excitacão
                             # disponível no Setup de Medição
                             excitation='varredura',
                             # excitation='fala',

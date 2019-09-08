@@ -83,9 +83,9 @@ class MeasurementChList(ChannelsList):
             for comb in self.groups.values():
                 for chNum in comb:
                     if nameOrCode == 'code':
-                        combChRefList.append(self.channels[chNum].code)
+                        combChRefList.append(self[chNum].code)
                     elif nameOrCode == 'name':
-                        combChRefList.append(self.channels[chNum].name)
+                        combChRefList.append(self[chNum].name)
             return chRef in combChRefList
         elif isinstance(chRef, int):
             if chRef not in self.mapping:
@@ -114,7 +114,7 @@ class MeasurementChList(ChannelsList):
                             othersCombndChs.append(chNum)
         return tuple(othersCombndChs)
 
-    def get_array_name(self, chNum):
+    def get_group_name(self, chNum):
         # Get chNum's array name
         for arname, group in self.groups.items():
             if chNum in group:
@@ -131,7 +131,7 @@ class MeasurementChList(ChannelsList):
                 # Getting groups information for reconstructd
                 # inChannels
                 if self[chNum] == mChList[chNum2]:
-                    groups[mChList.get_array_name(chNum)] =\
+                    groups[mChList.get_group_name(chNum)] =\
                         mChList.get_group_membs(chNum)
         self.groups = groups
 
@@ -224,32 +224,30 @@ class TakeMeasure(object):
     def __cfg_channels(self):
         # Check for disabled combined channels
         if self.kind not in ['miccalibration', 'sourcerecalibration']:
-            # Look for grouped channels through the active channels
-            for idx, status in enumerate(self.inChSel):
-                chNumUnderCheck = self.MS.inChannels.mapping[idx]
-                if status is True:
-                    othersCombndChs = self.MS.inChannels.get_group_membs(
-                            chNumUnderCheck, 'rest')
-                    for chNum in othersCombndChs:
-                        chStatusIndex = self.MS.inChannels.mapping.index(chNum)
-                        if self.inChSel[chStatusIndex] is False:
-                            raise ValueError('Grouped input channel ' +
-                                             str(chNum) + ' must be enabled ' +
-                                             'because its other group member' +
-                                             ', channel ' +
-                                             str(chNumUnderCheck) +
-                                             ', is also enabled')
-        # Look for multiple channels activated during calibration ms kinds
+            # Look for grouped channels through the individual channels
+            for idx, code in enumerate(self.inChSel):
+                if code not in self.MS.inChannels.groups:
+                    chNum = self.MS.inChannels[code].num
+                    if self.MS.inChannels.is_grouped(code):
+                            raise ValueError('Input channel number' +
+                                             str(chNum) + ', code \'' + code +
+                                             '\' , can\'t be enabled ' +
+                                             'individually as it\'s in ' +
+                                             group + '\'s group.')
+        # Look for groups activated when ms kind is a calibration
         else:
-            if self.inChSel.count(True) != 1:
-                raise ValueError('Only one channel per calibration take!')
-            pass
+            for idx, code in enumerate(self.inChSel):
+                if code in self.MS.inChannels.groups:
+                    raise ValueError('Groups can\'t be calibrated. Channels ' +
+                                     'must be calibrated individually.')
         # Constructing the inChannels list for the current take
         self.inChannels = MeasurementChList(kind='in')
-        for idx, chStatus in enumerate(self.inChSel):
-            chNum = self.MS.inChannels.mapping[idx]
-            if chStatus:
-                self.inChannels.append(self.MS.inChannels[chNum])
+        for idx, code in enumerate(self.inChSel):
+            if code in self.MS.inChannels.groups:
+                for chNum in self.MS.inChannels.groups[code]:
+                    self.inChannels.append(self.MS.inChannels[chNum])
+            else:
+                self.inChannels.append(self.MS.inChannels[code])
         # Getting groups information for reconstructd
         # inChannels MeasurementChList
         self.inChannels.copy_groups(self.MS.inChannels)
@@ -341,17 +339,19 @@ class TakeMeasure(object):
     @inChSel.setter
     def inChSel(self, newChSelection):
         if not isinstance(newChSelection, list):
-            raise TypeError('inChSel must be a list of booleans ' +
-                            'with same number of itens as '+self.MS.name +
-                            '\'s inChannels.')
-        if len(newChSelection) < len(self._MS.inChannels):
-            raise ValueError('inChSel\' number of itens must be the ' +
-                             'same as ' + self.MS.name + '\'s inChannels.')
+            raise TypeError('inChSel must be a list with codes of ' +
+                            'individual channels and/or groups.')
+        # if len(newChSelection) < len(self._MS.inChannels):
+        #     raise ValueError('inChSel\' number of itens must be the ' +
+        #                      'same as ' + self.MS.name + '\'s inChannels.')
         for item in newChSelection:
-            if not isinstance(item, bool):
-                raise TypeError('inChSel must be a list of booleans ' +
-                                'with the same number of itens as ' +
-                                self.MS.name + '\'s inChannels.')
+            if not isinstance(item, str):
+                raise TypeError('inChSel must be a list with codes of ' +
+                                'individual channels and/or groups.')
+            elif item not in self.MS.inChannels.groups \
+                    and item not in self.MS.inChannels:
+                raise ValueError('\'{}\' isn\'t a valid channel or group.'
+                                 .format(item))
         self._inChSel = newChSelection
 
     @property
@@ -361,9 +361,14 @@ class TakeMeasure(object):
     @outChSel.setter
     def outChSel(self, newChSelection):
         if not isinstance(newChSelection, str):
-            raise TypeError('outChSel must be a string with a valid output ' +
-                            'channel code listed in '+self.MS.name +
-                            '\'s outChannels.')
+            if newChSelection is None and self.kind in ['calibration',
+                                                        'sourcerecalibration',
+                                                        'noisefloor']:
+                pass
+            else:
+                raise TypeError('outChSel must be a string with a valid ' +
+                                'output channel code listed in '+self.MS.name +
+                                '\'s outChannels.')
         if newChSelection not in self.MS.outChannels:
             raise TypeError('Invalid outChSel code or name. It must be a ' +
                             'valid ' + self.MS.name + '\'s output channel.')
@@ -378,8 +383,7 @@ class TakeMeasure(object):
         if not isinstance(newSource, str):
             if newSource is None and self.kind in ['noisefloor',
                                                    'calibration']:
-                self._sourcePos = None
-                return
+                pass
             else:
                 raise TypeError('Source must be a string.')
         # if newSource not in self.MS.outChannels:
@@ -394,17 +398,16 @@ class TakeMeasure(object):
     @receiversPos.setter
     def receiversPos(self, newReceivers):
         if not isinstance(newReceivers, list):
-            if newReceivers is None and self.kind in ['noisefloor']:
-                self._receiversPos = None
-                return
+            if newReceivers is None and self.kind in ['noisefloor',
+                                                      'sourcerecalibration',
+                                                      'calibration']:
+                pass
             else:
                 raise TypeError('Receivers must be a list of strings ' +
-                                'with same number of transducers and itens ' +
-                                ' in ' + self.MS.name + '\'s inChannels ' +
-                                '(e.g. [\'R1\', \'R5\', \'R13\'])')
-        if len(newReceivers) < len(self._MS.inChannels):
+                                'with same itens number as inChSel.')
+        if len(newReceivers) < len(self.inChSel):
             raise ValueError('Receivers\' number of itens must be the ' +
-                             'same as ' + self.MS.name + '\'s inChannels.')
+                             'same as inChSel.')
         for item in newReceivers:
             if item.split('R')[0] != '':
                 raise ValueError(item + 'isn\'t a receiver position. It ' +
@@ -432,8 +435,7 @@ class TakeMeasure(object):
         if not isinstance(newExcitation, str):
             if newExcitation is None and self.kind in ['noisefloor',
                                                        'calibration']:
-                self._excitation = None
-                return
+                pass
             else:
                 raise TypeError('Excitation signal\'s name must be a string.')
         if newExcitation not in self.MS.excitationSignals:
