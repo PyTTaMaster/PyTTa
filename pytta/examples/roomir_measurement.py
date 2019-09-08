@@ -52,6 +52,7 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         # Sinais de excitação
                         excitationSignals=excitationSignals,
                         averages=3,  # Número de médias por medição
+                        pause4Avg=True,  # Pausa entre as médias
                         freqMin=20,  # [Hz]
                         freqMax=20000,  # [Hz]
                         # Dicionário com códigos e canais de saída associados
@@ -77,11 +78,11 @@ takeMeasure = m.TakeMeasure(MS=SM,
                             # Passa objeto de comunicação
                             # com o LabJack U3 + EI1050 probe
                             tempHumid=tempHumid,
-                            kind='sourcerecalibration',
+                            kind='roomir',
                             # Status do canal:
                             # True para Ativado e False para Desativado
                             inChSel=[False,  # canal 1
-                                     True,  # canal 2
+                                     False,  # canal 2
                                      False,  # canal 3
                                      True],  # canal 4
                             # Configuração sala-fonte-receptor
@@ -109,7 +110,7 @@ takeMeasure = m.TakeMeasure(MS=SM,
 takeMeasure.run()
 
 # %% Salva tomada de medição no objeto de dados D e no disco
-takeMeasure.save(D)
+# takeMeasure.save(D)
 
 # %% Carrega dados medidos e setup de medição do arquivo
-SM, D = m.load('med-teste')
+# SM, D = m.load('med-teste')

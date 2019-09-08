@@ -148,6 +148,7 @@ class MeasurementSetup(object):
                  inChannels,
                  outChannels,
                  averages,
+                 pause4Avg,
                  noiseFloorTp,
                  calibrationTp):
         self.measurementKinds = measurementKinds
@@ -158,6 +159,7 @@ class MeasurementSetup(object):
         self.calibrationTp = calibrationTp
         self.excitationSignals = excitationSignals
         self.averages = averages
+        self.pause4Avg = pause4Avg
         self.freqMin = freqMin
         self.freqMax = freqMax
         self.inChannels = MeasurementChList(kind='in')
@@ -217,7 +219,7 @@ class TakeMeasure(object):
         self.outChSel = outChSel
         self.sourcePos = sourcePos
         self.__cfg_channels()
-        self.__cfg_measurement_object
+        self.__cfg_measurement_object()
 
     def __cfg_channels(self):
         # Check for disabled combined channels
@@ -237,16 +239,15 @@ class TakeMeasure(object):
                                              ', channel ' +
                                              str(chNumUnderCheck) +
                                              ', is also enabled')
-        # Check for multiple channels activated during calibration
+        # Look for multiple channels activated during calibration ms kinds
         else:
-            #
-            #  TO DO
-            #
+            if self.inChSel.count(True) != 1:
+                raise ValueError('Only one channel per calibration take!')
             pass
         # Constructing the inChannels list for the current take
         self.inChannels = MeasurementChList(kind='in')
         for idx, chStatus in enumerate(self.inChSel):
-            chNum = self.MS.inChannels.mapping[j]
+            chNum = self.MS.inChannels.mapping[idx]
             if chStatus:
                 self.inChannels.append(self.MS.inChannels[chNum])
         # Getting groups information for reconstructd
@@ -272,8 +273,6 @@ class TakeMeasure(object):
                                      comment='roomir')
         # For miccalibration measurement kind
         if self.kind == 'calibration':
-            if self.inChSel.count(True) != 1:
-                raise ValueError('Only one channel per calibration take!')
             self.measurementObject = \
                 generate.measurement('rec',
                                      lengthDomain='time',
@@ -383,9 +382,9 @@ class TakeMeasure(object):
                 return
             else:
                 raise TypeError('Source must be a string.')
-#        if newSource not in self.MS.outChannels:
-#            raise ValueError(newSource + ' doesn\'t exist in ' +
-#                             self.MS.name + '\'s outChannels.')
+        # if newSource not in self.MS.outChannels:
+        #     raise ValueError(newSource + ' doesn\'t exist in ' +
+        #                      self.MS.name + '\'s outChannels.')
         self._sourcePos = newSource
 
     @property
@@ -456,6 +455,10 @@ class TakeMeasure(object):
             else:
                 self.measuredTake[i].temp, self.measuredTake[i].RH = \
                     (None, None)
+            if self.MS.pause4Avg is True and self.MS.averages-i > 1:
+                input('Paused before next average. {} left. '.format(
+                      self.MS.averages - i - 1) + ' Press any key to ' +
+                      'continue...')
 
     def save(self, dataObj):
         # Desmembra o SignalObj measureTake de 4 canais em 3 SignalObj
