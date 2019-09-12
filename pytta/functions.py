@@ -15,8 +15,6 @@ Functions:
         >>> pytta.write_wav( fileName, signalObject )
         >>> pytta.save(fileName, obj1, ..., objN)
         >>> pytta.load(fileName)
-        >>> pytta.h5save(fileName, obj1, ..., objN)
-        >>> pytta.h5load(fileName)
         >>> pytta.merge( signalObj1, signalObj2, ..., signalObjN )
         >>> pytta.fft_convolve( signalObj1, signalObj2 )
         >>> pytta.find_delay( signalObj1, signalObj2 )
@@ -192,6 +190,40 @@ def peak_time(signal):
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
+    Main save function for .pytta and .hdf5 files.
+
+    The file format is choosed by the extension applied to the fileName. If no
+    extension is provided choose the default file format.
+    """
+    # default file format
+    defaultFormat = '.hdf5'
+    # Checking the choosed file format
+    if fileName.split('.')[-1] == 'hdf5':
+        h5_save(fileName, *PyTTaObjs)
+    elif fileName.split('.')[-1] == 'pytta':
+        pytta_save(fileName, *PyTTaObjs)
+    else:
+        f'File extension must be .hdf5 or .pytta.'
+        f'Applying the default extension: {defaultFormat}.'
+        fileName += defaultFormat
+        save(fileName, *PyTTaObjs)
+
+
+def load(fileName: str):
+    """
+    Main save function for .pytta and .hdf5 files.
+    """
+    if fileName.split('.')[-1] == 'hdf5':
+        output = h5_load(fileName)
+    elif fileName.split('.')[-1] == 'pytta':
+        output = pytta_load(fileName)
+    else:
+        ValueError('pytta.load only works with *.hdf5 or *.pytta files.')
+    return output
+
+
+def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
+    """
     Saves any number of PyTTaObj subclasses' objects to fileName.pytta file.
 
     Just calls .save() method of each class and packs them all into a major
@@ -200,6 +232,8 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
 
     The .pytta extension must not be appended to the fileName
     """
+    if fileName.split('.')[-1] == 'pytta':
+        fileName = fileName.replace('.pytta', '')
     meta = {}
     with zf.ZipFile(fileName + '.pytta', 'w') as zdir:
         for idx, obj in enumerate(PyTTaObjs):
@@ -214,7 +248,7 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     return fileName + '.pytta'
 
 
-def load(fileName: str):
+def pytta_load(fileName: str):
     """
     Loads .pytta files and parses it's types to the correct objects.
     """
@@ -227,7 +261,7 @@ def load(fileName: str):
             zdir.extractall()
             output = __parse_load(meta)
     else:
-        raise ValueError("Load function only works with *.pytta files")
+        raise ValueError("pytta_load function only works with *.pytta files")
     return output
 
 
@@ -300,12 +334,12 @@ def __parse_channels(chDict, chList):
     return chList
 
 
-def h5save(fileName: str, *PyTTaObjs):
+def h5_save(fileName: str, *PyTTaObjs):
     """
     Open an hdf5 file, create groups for each PyTTa object, pass it to
     the own object and it saves itself inside the group.
 
-    >>> pytta.h5save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
     """
     # Checking if filename has .hdf5 extension
     if fileName.split('.')[-1] != 'hdf5':
@@ -329,13 +363,13 @@ def h5save(fileName: str, *PyTTaObjs):
                 # create obj's group
                 ObjGroup = f.create_group(creationName)
                 # save the obj inside its group
-                pobj.h5save(ObjGroup)
+                pobj.h5_save(ObjGroup)
             else:
                 print("Only PyTTa objects can be saved through this" +
                       "function. Skipping object number " + str(idx) + ".")
 
 
-def h5load(fileName: str):
+def h5_load(fileName: str):
     """
     Load an hdf5 file and recriate
     """

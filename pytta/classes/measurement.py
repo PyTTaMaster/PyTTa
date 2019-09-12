@@ -96,7 +96,7 @@ class Measurement(_base.PyTTaObj):
                'outChannels': self.outChannels._to_dict()}
         return out
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file.
         """
@@ -104,7 +104,7 @@ class Measurement(_base.PyTTaObj):
         h5group.attrs['inChannels'] = str(self.inChannels)
         h5group.attrs['outChannels'] = str(self.outChannels)
         h5group.attrs['blocking'] = self.blocking
-        super().h5save(h5group)
+        super().h5_save(h5group)
         pass
 
 # Measurement Properties
@@ -252,7 +252,7 @@ class RecMeasure(Measurement):
         sup['fftDegree'] = self.fftDegree
         return sup
 
-    def save(self, dirname=time.ctime(time.time())):
+    def pytta_save(self, dirname=time.ctime(time.time())):
         dic = self._to_dict()
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
@@ -261,13 +261,13 @@ class RecMeasure(Measurement):
             zdir.write('RecMeasure.json')
         return name
 
-    def h5save(self, h5group, setClass=True):
+    def h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to RecMeasure.
 
-        >>> RecMeasure.h5save(h5group, setClass=True)
+        >>> RecMeasure.h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
@@ -275,7 +275,7 @@ class RecMeasure(Measurement):
         h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
         h5group.attrs['fftDegree'] = _h5.none_parser(self.fftDegree)
         h5group.attrs['timeLength'] = _h5.none_parser(self.timeLength)
-        super().h5save(h5group)
+        super().h5_save(h5group)
         pass
 
 # Rec Properties
@@ -437,11 +437,11 @@ class PlayRecMeasure(Measurement):
         sup['excitationAddress'] = self.excitation._to_dict()
         return sup
 
-    def save(self, dirname=time.ctime(time.time())):
+    def pytta_save(self, dirname=time.ctime(time.time())):
         dic = self._to_dict()
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
-            excit = self.excitation.save('excitation')
+            excit = self.excitation.pytta_save('excitation')
             dic['excitationAddress'] = excit
             zdir.write(excit)
             os.remove(excit)
@@ -451,19 +451,19 @@ class PlayRecMeasure(Measurement):
             os.remove('PlayRecMeasure.json')
         return name
 
-    def h5save(self, h5group, setClass=True):
+    def h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to PlayRecMeasure.
 
-        >>> PlayRecMeasure.h5save(h5group, setClass=True)
+        >>> PlayRecMeasure.h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
             h5group.attrs['class'] = 'PlayRecMeasure'
-        self.excitation.h5save(h5group.create_group('excitation'))
-        super().h5save(h5group)
+        self.excitation.h5_save(h5group.create_group('excitation'))
+        super().h5_save(h5group)
         pass
 
 # PlayRec Properties
@@ -591,11 +591,11 @@ class FRFMeasure(PlayRecMeasure):
                 f'freqMax={self.freqMax!r}, '
                 f'comment={self.comment!r})')
 
-    def save(self, dirname=time.ctime(time.time())):
+    def pytta_save(self, dirname=time.ctime(time.time())):
         dic = self._to_dict()
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
-            excit = self.excitation.save('excitation')
+            excit = self.excitation.pytta_save('excitation')
             dic['excitationAddress'] = excit
             zdir.write(excit)
             os.remove(excit)
@@ -605,13 +605,13 @@ class FRFMeasure(PlayRecMeasure):
             os.remove('FRFMeasure.json')
         return name
 
-    def h5save(self, h5group, setClass=True):
+    def h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.save(...). Use setClass=True if the attribute 'class' must be
+        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to FRFMeasure.
 
-        >>> FRFMeasure.h5save(h5group, setClass=True)
+        >>> FRFMeasure.h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
@@ -620,7 +620,7 @@ class FRFMeasure(PlayRecMeasure):
         h5group.attrs['winType'] = _h5.none_parser(self.winType)
         h5group.attrs['winSize'] = _h5.none_parser(self.winSize)
         h5group.attrs['overlap'] = _h5.none_parser(self.overlap)
-        super().h5save(h5group, setClass=False)
+        super().h5_save(h5group, setClass=False)
         pass
 
     def run(self):

@@ -54,7 +54,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse,\
                           OctFilter, weighting
 from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
-                    save, h5save, load, h5load
+                    save, load
 
 import pytta.rooms as rooms
 import pytta.apps.roomir as roomir
