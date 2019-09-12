@@ -101,8 +101,8 @@ class Measurement(_base.PyTTaObj):
         Saves itself inside a hdf5 group from an already openned file.
         """
         h5group.attrs['device'] = _h5.list_w_int_parser(self.device)
-        h5group.attrs['inChannels'] = str(self.inChannels)
-        h5group.attrs['outChannels'] = str(self.outChannels)
+        h5group.attrs['inChannels'] = repr(self.inChannels)
+        h5group.attrs['outChannels'] = repr(self.outChannels)
         h5group.attrs['blocking'] = self.blocking
         super().h5_save(h5group)
         pass
