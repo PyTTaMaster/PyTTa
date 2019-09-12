@@ -497,10 +497,10 @@ class SignalObj(_base.PyTTaObj):
     def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.h5_save(...).
+        pytta.save(...).
         """
         h5group.attrs['class'] = 'SignalObj'
-        h5group.attrs['channels'] = str(self.channels)
+        h5group.attrs['channels'] = repr(self.channels)
         h5group['timeSignal'] = self.timeSignal
         super().h5_save(h5group)
         pass
