@@ -6,11 +6,16 @@ Created on Tue Jul  2 10:35:05 2019
 @author: mtslazarin
 """
 
-# import pytta
 from pytta.classes._base import ChannelObj, ChannelsList
-from pytta import generate
+from pytta import generate, SignalObj, h5save, h5load
+import time
+import numpy as np
+import h5py
+from os import getcwd, listdir, mkdir
+from os.path import isfile, join, exists
 
 # Dict with the measurementKinds
+# TO DO: add 'inchcalibration', 'outchcalibration'
 measurementKinds = {'roomir': 'PlayRecMeasure',
                     'noisefloor': 'RecMeasure',
                     'miccalibration': 'RecMeasure',
@@ -22,7 +27,8 @@ class MeasurementChList(ChannelsList):
     # Magic methods
 
     def __init__(self, kind, groups={}, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # Initializate the ChannelsList
+        # Rest of initialization
         self.kind = kind
         self.groups = groups
 
@@ -138,6 +144,8 @@ class MeasurementChList(ChannelsList):
 
 class MeasurementSetup(object):
 
+    # Magic methods
+
     def __init__(self,
                  name,
                  samplingRate,
@@ -175,24 +183,123 @@ class MeasurementSetup(object):
             self.outChannels.append(ChannelObj(num=chContents[0],
                                                name=chContents[1],
                                                code=chCode))
+        self.path = getcwd()+'/'+self.name+'/'
+        # Save MeasurementSetup to disc or warn if already exists
+        if not exists(self.path):
+            mkdir(self.path)
+        elif exists(self.path + 'MeasurementSetup.hdf5'):
+            raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
+                                  ' current measurement, ' + self.MS.name +
+                                  ', already exists. Load it instead of '
+                                  'overwriting.')
+        else:
+            # Creating the MeasurementSetup file
+            h5save('MeasurementSetup.hdf5', self)
+
+    def __repr__(self):
+        # TO DO
+        pass
+
+    # Methods
+
+    def h5save(self, h5group):
+        # TO DO
+        pass
 
 
-class Data(object):
+class MeasurementData(object):
+    """
+    Class dedicated to manage in the hard drive the acquired data stored as
+    MeasuredThing objects.
+
+    This class don't need a h5save method, as it saves itself into disc by
+    its nature.
+    """
 
     # Magic methods
 
     def __init__(self, MS):
-        self.raw = {}  # Creates empty dict for raw data
-        for medkind in MS.measurementKinds:
-            # Creates empty lists for each measurement kind
-            self.raw[medkind] = []
-
-    # Properties
+        # MeasurementSetup
+        self.MS = MS
+        self.path = self.MS.path
+        # Save MeasurementData to disc or warn if already exists
+        if exists(self.path + 'MeasurementData.hdf5'):
+            raise FileExistsError('ATTENTION!  MeasurementData for the ' +
+                                  ' current measurement, ' + self.MS.name +
+                                  ', already exists. Load it instead of '
+                                  'overwriting.')
+        else:
+            mkdir(self.path)
+            self.__h5_init()
 
     # Methods
 
-    def getStatus():
+    def __h5_init(self):
+        """
+        Method for initializating a brand new MeasurementData.hdf5 file
+        """
+        # Creating the MeasurementData file
+        with h5py.File(self.path + 'MeasurementData.hdf5', 'w-') as f:
+            # Saving the MeasurementSetup link
+            f['MeasurementSetup'] = h5py.ExternalLink(self.path +
+                                                      'MeasurementSetup' +
+                                                      '.hdf5',
+                                                      '/MeasurementSetup')
+            for msKind in self.MS.measurementKinds:
+                # Creating groups for each measurement kind
+                f.create_group(msKind)
+
+    def save_take(self, MeasureTakeObj):
+        if not MeasureTakeObj.runCheck:
+            raise ValueError('Can\'t save an unacquired MeasuredThing. First' +
+                             'you need to run the measurement through ' +
+                             'TakeMeasure.run().')
+        if MeasureTakeObj.saveCheck:
+            raise ValueError('Can\'t save the this measurement take because ' +
+                             'It has already been saved.')
+        # Iterate over measuredThings
+        for arrayName, measuredThing in MeasureTakeObj.measuredThings.items():
+            fileName = str(measuredThing)
+            # Checking if any measurement with the same configs was take
+            fileName = self.__number_the_file(fileName)
+            # Saving the MeasuredThing to the disc
+            measuredThing.creation_name = fileName
+            h5save(self.path + fileName, measuredThing)
+            # Update the MeasurementData.hdf5 file with the MeasuredThing link
+            with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+                msdThngH5Group = f[measuredThing.kind].create_group(fileName)
+                msdThngH5Group = h5py.ExternalLink(self.path +
+                                                   fileName + '.hdf5',
+                                                   '/' + fileName)
+        MeasureTakeObj.saveCheck = True
+        return
+
+    def __number_the_file(self, fileName):
+        """
+        Search in the measurement folder if exist other take with the same
+        name and rename the current fileName with the a counter at the end.
+        """
+        lasttake = 0
+        myfiles = [f for f in listdir(self.path) if
+                    isfile(join(self.path, f))]
+        for file in myfiles:
+            if fileName in file:
+                newlasttake = file.replace(fileName + '_', '')
+                try:
+                    newlasttake = int(newlasttake.replace('.hdf5', ''))
+                except ValueError:
+                    newlasttake = lasttake
+                if newlasttake > lasttake:
+                    lasttake = newlasttake
+        # Adding the counter to the fileName
+        fileName += '_' + str(lasttake+1)
+        return fileName
+
+    def get_status():
+        # TO DO
         pass
+
+    # Properties
 
 
 class TakeMeasure(object):
@@ -220,6 +327,10 @@ class TakeMeasure(object):
         self.sourcePos = sourcePos
         self.__cfg_channels()
         self.__cfg_measurement_object()
+        self.runCheck = False
+        self.saveCheck = False
+
+    # Methods
 
     def __cfg_channels(self):
         # Check for disabled combined channels
@@ -306,6 +417,83 @@ class TakeMeasure(object):
                                      inChannel=self.inChannels.mapping,
                                      outChannel=self.outChannel.mapping,
                                      comment='sourcerecalibration')
+
+    def run(self):
+        self.measuredTake = []
+        for i in range(0, self.MS.averages):
+            self.measuredTake.append(self.measurementObject.run())
+            # Adquire do LabJack U3 + EI1050 a temperatura e
+            # umidade relativa instantânea
+            if self.tempHumid is not None:
+                self.measuredTake[i].temp, self.measuredTake[i].RH = \
+                    self.tempHumid.read()
+            else:
+                self.measuredTake[i].temp, self.measuredTake[i].RH = \
+                    (None, None)
+            if self.MS.pause4Avg is True and self.MS.averages-i > 1:
+                input('Paused before next average. {} left. '.format(
+                      self.MS.averages - i - 1) + ' Press any key to ' +
+                      'continue...')
+        self.__dismember_take()
+        self.runCheck = True
+
+    def __dismember_take(self):
+        # Dismember the measured SignalObjs into MeasuredThings for each
+        # channel/group in inChSel
+        chIndexCount = 0
+        self.measuredThings = {}
+        # Constructing a MeasuredThing for each element in self.inChSel
+        for idx, code in enumerate(self.inChSel):
+            # Empty list for the timeSignal arrays from each avarage
+            SigObjs = []
+            # Loop over the averages
+            for avg in range(self.MS.averages):
+                # Unpack timeSignal of a group or individual channel
+                if code in self.MS.inChannels.groups:
+                    membCount = len(self.MS.inChannels.groups[code])
+                else:
+                    membCount = 1
+                timeSignal = \
+                    self.measuredTake[avg].timeSignal[:, chIndexCount:
+                                                      chIndexCount +
+                                                      membCount]
+                SigObj = SignalObj(signalArray=timeSignal,
+                                   domain='time',
+                                   samplingRate=self.MS.samplingRate,
+                                   freqMin=self.MS.freqMin,
+                                   freqMax=self.MS.freqMax,
+                                   comment=self.MS.name + '\'s measured ' +
+                                   self.kind)
+                # Copying channels information from the measured SignalObj
+                mapping = self.MS.inChannels.groups[code] if code \
+                    in self.MS.inChannels.groups else \
+                    [self.MS.inChannels[code].num]
+                inChannels = ChannelsList()
+                for chNum in mapping:
+                    inChannels.append(self.inChannels[chNum])
+                SigObj.channels = inChannels
+                # Copying other properties from the measured SignalObj
+                SigObj.timeStamp = self.measuredTake[avg].timeStamp
+                SigObj.temp = self.measuredTake[avg].temp
+                SigObj.RH = self.measuredTake[avg].RH
+                SigObjs.append(SigObj)
+            # Getting the inChannels for the current channel/group
+            inChannels = MeasurementChList(kind='in',
+                                           chList=SigObjs[0].channels)
+            inChannels.copy_groups(self.MS.inChannels)
+            # Constructing the MeasuredThing
+            msdThng = MeasuredThing(kind=self.kind,
+                                    arrayName=code,
+                                    measuredSignals=SigObjs,
+                                    inChannels=inChannels,
+                                    outChannel=self.outChannel,
+                                    position=(self.sourcePos,
+                                              self.receiversPos[idx]),
+                                    excitation=self.excitation)
+            self.measuredThings[code] = msdThng  # Saving to the dict
+            chIndexCount += membCount  # Counter for next channel/group
+
+    # Properties
 
     @property
     def MS(self):
@@ -444,31 +632,6 @@ class TakeMeasure(object):
         self._excitation = newExcitation
         return
 
-    def run(self):
-        self.measuredTake = []
-#        if self.kind == 'newpoint':
-        for i in range(0, self.MS.averages):
-            self.measuredTake.append(self.measurementObject.run())
-            # Adquire do LabJack U3 + EI1050 a temperatura e
-            # umidade relativa instantânea
-            if self.tempHumid is not None:
-                self.measuredTake[i].temp, self.measuredTake[i].RH = \
-                    self.tempHumid.read()
-            else:
-                self.measuredTake[i].temp, self.measuredTake[i].RH = \
-                    (None, None)
-            if self.MS.pause4Avg is True and self.MS.averages-i > 1:
-                input('Paused before next average. {} left. '.format(
-                      self.MS.averages - i - 1) + ' Press any key to ' +
-                      'continue...')
-
-    def save(self, dataObj):
-        # Desmembra o SignalObj measureTake de 4 canais em 3 SignalObj
-        # referentes ao arranjo biauricular em uma posição e ao centro
-        # da cabeça em duas outras posições
-        # TO DO
-        pass
-
 
 class MeasuredThing(object):
 
@@ -489,6 +652,36 @@ class MeasuredThing(object):
         self.measuredSignals = measuredSignals
         self.inChannels = inChannels
         self.outChannel = outChannel
+
+    def __repr__(self):
+        return (f'{self.__class__.__name__}('
+                f'kind={self.kind!r}, '
+                f'arrayName={self.arrayName!r}, '
+                f'measuredSignals={self.measuredSignals!r}, '
+                f'inChannels={self.inChannels!r}, '
+                f'position={self.position!r}, '
+                f'excitation={self.excitation!r}, '
+                f'outChannel={self.outChannel!r})')
+
+    def __str__(self):
+        str = self.kind + '_'  # Kind info
+        if self.kind in ['roomir', 'sourcerecalibration']:
+            str += self.position[0] + '-'  # Source position info
+        if self.kind in ['roomir', 'noisefloor']:
+            str += self.position[1] + '_'  # Receiver position info
+        if self.kind in ['roomir', 'sourcerecalibration']:
+            # outputChannel name info
+            str += self.outChannel._channels[0].code + '-'
+        str += self.arrayName + '_'  # input Channel/group name info
+        if self.kind in ['roomir']:
+            str += self.excitation  # Excitation signal info
+        return str
+
+    # Methods
+
+    def h5save(self, h5group):
+        # TO DO
+        pass
 
 
 class Transducer(object):

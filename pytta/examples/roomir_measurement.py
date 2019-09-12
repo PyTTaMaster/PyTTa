@@ -12,7 +12,6 @@ from pytta.classes import lju3ei1050
 
 # %% Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
-
 # tempHumid = lju3ei1050.main()
 tempHumid = None  # Para testes com LabJack offline
 
@@ -22,9 +21,9 @@ excitationSignals['varredura'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
         freqMin=20,
         freqMax=20000,
-        fftDegree=17,
-        startMargin=0.75,
-        stopMargin=1.5,
+        fftDegree=14,
+        startMargin=0.1,
+        stopMargin=0.1,
         method='logarithmic',
         windowing='hann')
 # Carregando sinal de música
@@ -41,9 +40,9 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         # Utilize pytta.list_devices() para listar
                         # os dispositivos do seu computador.
                         # device=[0, 1],  # PC laza
-                        device=4,  # Saffire Pro 40 laza
+                        # device=4,  # Saffire Pro 40 laza
                         # device=[1, 3], # PC Leo
-                        # device=0, # Firebox laza
+                        device=0,  # Firebox laza
                         # device=[1, 4], # PC laza
                         # [s] tempo de gravação do ruído de fundo
                         noiseFloorTp=5,
@@ -52,14 +51,14 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         # Sinais de excitação
                         excitationSignals=excitationSignals,
                         averages=3,  # Número de médias por medição
-                        pause4Avg=True,  # Pausa entre as médias
+                        pause4Avg=False,  # Pausa entre as médias
                         freqMin=20,  # [Hz]
                         freqMax=20000,  # [Hz]
                         # Dicionário com códigos e canais de saída associados
                         inChannels={'OE': (1, 'Orelha E'),
                                     'OD': (2, 'Orelha D'),
                                     'Mic1': (4, 'Mic 1'),
-                                    'Mic2': (5, 'Mic 2'),
+                                    'Mic2': (3, 'Mic 2'),
                                     'groups': {'HATS': (1, 2)}},
                         # Dicionário com códigos e canais de saída associados
                         outChannels={'O1': (1, 'Dodecaedro 1'),
@@ -67,7 +66,7 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                                      'O3': (3, 'Sistema da sala')})
 
 # %% Cria instância de dados medidos
-# D = m.Data(SM)
+D = m.MeasurementData(SM)
 # D.dummyFill() # Preenche instância de dados com dummy signals
 
 # %% Mostra status da instância de dados medidos
@@ -105,7 +104,8 @@ takeMeasure = m.TakeMeasure(MS=SM,
 takeMeasure.run()
 
 # %% Salva tomada de medição no objeto de dados D e no disco
-# takeMeasure.save(D)
+D.save_take(takeMeasure)
 
 # %% Carrega dados medidos e setup de medição do arquivo
 # SM, D = m.load('med-teste')
+print('fim')
