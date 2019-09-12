@@ -13,6 +13,7 @@ import numpy as np
 import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
+from shutil import rmtree
 
 # Dict with the measurementKinds
 # TO DO: add 'inchcalibration', 'outchcalibration'
@@ -188,10 +189,14 @@ class MeasurementSetup(object):
         if not exists(self.path):
             mkdir(self.path)
         elif exists(self.path + 'MeasurementSetup.hdf5'):
-            raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
-                                  ' current measurement, ' + self.MS.name +
-                                  ', already exists. Load it instead of '
-                                  'overwriting.')
+            # raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
+            #                       ' current measurement, ' + self.name +
+            #                       ', already exists. Load it instead of '
+            #                       'overwriting.')
+            print('Deleting the existant measurement: ' + self.MS.name)
+            rmtree(self.path)
+            mkdir(self.path)
+            self.__h5_init()
         else:
             # Creating the MeasurementSetup file
             h5save('MeasurementSetup.hdf5', self)
@@ -223,13 +228,18 @@ class MeasurementData(object):
         self.MS = MS
         self.path = self.MS.path
         # Save MeasurementData to disc or warn if already exists
-        if exists(self.path + 'MeasurementData.hdf5'):
-            raise FileExistsError('ATTENTION!  MeasurementData for the ' +
-                                  ' current measurement, ' + self.MS.name +
-                                  ', already exists. Load it instead of '
-                                  'overwriting.')
-        else:
+        if not exists(self.path):
             mkdir(self.path)
+        elif exists(self.path + 'MeasurementData.hdf5'):
+            # raise FileExistsError('ATTENTION!  MeasurementData for the ' +
+            #                       ' current measurement, ' + self.MS.name +
+            #                       ', already exists. Load it instead of '
+            #                       'overwriting.')
+            print('Deleting the existant measurement: ' + self.MS.name)
+            rmtree(self.path)
+            mkdir(self.path)
+            self.__h5_init()
+        else:
             self.__h5_init()
 
     # Methods
@@ -281,7 +291,7 @@ class MeasurementData(object):
         """
         lasttake = 0
         myfiles = [f for f in listdir(self.path) if
-                    isfile(join(self.path, f))]
+                   isfile(join(self.path, f))]
         for file in myfiles:
             if fileName in file:
                 newlasttake = file.replace(fileName + '_', '')

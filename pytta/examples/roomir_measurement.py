@@ -40,9 +40,9 @@ SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         # Utilize pytta.list_devices() para listar
                         # os dispositivos do seu computador.
                         # device=[0, 1],  # PC laza
-                        # device=4,  # Saffire Pro 40 laza
+                        device=4,  # Saffire Pro 40 laza
                         # device=[1, 3], # PC Leo
-                        device=0,  # Firebox laza
+                        # device=0,  # Firebox laza
                         # device=[1, 4], # PC laza
                         # [s] tempo de gravação do ruído de fundo
                         noiseFloorTp=5,
