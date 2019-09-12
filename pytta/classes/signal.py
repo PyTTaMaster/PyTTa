@@ -476,7 +476,7 @@ class SignalObj(_base.PyTTaObj):
         out['timeSignalAddress'] = {'timeSignal': self.timeSignal[:]}
         return out
 
-    def save(self, dirname=time.ctime(time.time())):
+    def pytta_save(self, dirname=time.ctime(time.time())):
         mySigObj = self._to_dict()
         with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
             filename = 'timeSignal.mat'
@@ -494,15 +494,15 @@ class SignalObj(_base.PyTTaObj):
             os.remove(filename)
         return dirname + '.pytta'
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.save(...).
+        pytta.h5_save(...).
         """
         h5group.attrs['class'] = 'SignalObj'
         h5group.attrs['channels'] = str(self.channels)
         h5group['timeSignal'] = self.timeSignal
-        super().h5save(h5group)
+        super().h5_save(h5group)
         pass
 
     def __truediv__(self, other):
@@ -802,12 +802,12 @@ class ImpulsiveResponse(_base.PyTTaObj):
         out = {'methodInfo': self.methodInfo}
         return out
 
-    def save(self, dirname=time.ctime(time.time())):
+    def pytta_save(self, dirname=time.ctime(time.time())):
         with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
-            excit = self.excitation.save('excitation')
+            excit = self.excitation.pytta_save('excitation')
             zdir.write(excit)
             os.remove(excit)
-            rec = self.recording.save('recording')
+            rec = self.recording.pytta_save('recording')
             zdir.write(rec)
             os.remove(rec)
             out = self._to_dict()
@@ -819,18 +819,18 @@ class ImpulsiveResponse(_base.PyTTaObj):
             os.remove('ImpulsiveResponse.json')
         return dirname + '.pytta'
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.save(...)
+        pytta.h5_save(...)
         """
         h5group.attrs['class'] = 'ImpulsiveResponse'
         h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
         h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
         h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
         h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
-        self.excitation.h5save(h5group.create_group('excitation'))
-        self.recording.h5save(h5group.create_group('recording'))
+        self.excitation.h5_save(h5group.create_group('excitation'))
+        self.recording.h5_save(h5group.create_group('recording'))
         pass
 
 # Properties

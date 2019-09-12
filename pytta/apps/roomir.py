@@ -7,7 +7,7 @@ Created on Tue Jul  2 10:35:05 2019
 """
 
 from pytta.classes._base import ChannelObj, ChannelsList
-from pytta import generate, SignalObj, h5save, h5load
+from pytta import generate, SignalObj, save
 import time
 import numpy as np
 import h5py
@@ -194,7 +194,7 @@ class MeasurementSetup(object):
                                   'overwriting.')
         else:
             # Creating the MeasurementSetup file
-            h5save('MeasurementSetup.hdf5', self)
+            save('MeasurementSetup.hdf5', self)
 
     def __repr__(self):
         # TO DO
@@ -202,7 +202,7 @@ class MeasurementSetup(object):
 
     # Methods
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         # TO DO
         pass
 
@@ -212,7 +212,7 @@ class MeasurementData(object):
     Class dedicated to manage in the hard drive the acquired data stored as
     MeasuredThing objects.
 
-    This class don't need a h5save method, as it saves itself into disc by
+    This class don't need a h5_save method, as it saves itself into disc by
     its nature.
     """
 
@@ -264,7 +264,7 @@ class MeasurementData(object):
             fileName = self.__number_the_file(fileName)
             # Saving the MeasuredThing to the disc
             measuredThing.creation_name = fileName
-            h5save(self.path + fileName, measuredThing)
+            save(self.path + fileName + '.hdf5', measuredThing)
             # Update the MeasurementData.hdf5 file with the MeasuredThing link
             with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
                 msdThngH5Group = f[measuredThing.kind].create_group(fileName)
@@ -679,7 +679,7 @@ class MeasuredThing(object):
 
     # Methods
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         # TO DO
         pass
 

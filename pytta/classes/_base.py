@@ -186,7 +186,7 @@ class PyTTaObj(RICI):
         sio.savemat(filename, myObjno_, format='5', oned_as='column')
         return
 
-    def h5save(self, h5group):
+    def h5_save(self, h5group):
         h5group.attrs['samplingRate'] = self.samplingRate
         h5group.attrs['freqMin'] = _h5.none_parser(self.freqMin)
         h5group.attrs['freqMax'] = _h5.none_parser(self.freqMax)
