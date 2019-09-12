@@ -7,13 +7,14 @@ Created on Tue Jul  2 10:35:05 2019
 """
 
 from pytta.classes._base import ChannelObj, ChannelsList
-from pytta import generate, SignalObj, save
+from pytta import generate, SignalObj
 import time
 import numpy as np
 import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
 from shutil import rmtree
+import pytta.h5utilities as _h5
 
 # Dict with the measurementKinds
 # TO DO: add 'inchcalibration', 'outchcalibration'
@@ -159,7 +160,9 @@ class MeasurementSetup(object):
                  averages,
                  pause4Avg,
                  noiseFloorTp,
-                 calibrationTp):
+                 calibrationTp,
+                 skipFileInit=False):
+        self.creation_name = 'MeasurementSetup'
         self.measurementKinds = measurementKinds
         self.name = name
         self.samplingRate = samplingRate
@@ -171,35 +174,46 @@ class MeasurementSetup(object):
         self.pause4Avg = pause4Avg
         self.freqMin = freqMin
         self.freqMax = freqMax
-        self.inChannels = MeasurementChList(kind='in')
-        for chCode, chContents in inChannels.items():
-            if chCode == 'groups':
-                self.inChannels.groups = chContents
-            else:
-                self.inChannels.append(ChannelObj(num=chContents[0],
-                                                  name=chContents[1],
-                                                  code=chCode))
-        self.outChannels = MeasurementChList(kind='out')
-        for chCode, chContents in outChannels.items():
-            self.outChannels.append(ChannelObj(num=chContents[0],
-                                               name=chContents[1],
-                                               code=chCode))
+        if isinstance(inChannels, MeasurementChList):
+            self.inChannels = inChannels
+        elif isinstance(inChannels, dict):
+            self.inChannels = MeasurementChList(kind='in')
+            for chCode, chContents in inChannels.items():
+                if chCode == 'groups':
+                    self.inChannels.groups = chContents
+                else:
+                    self.inChannels.append(ChannelObj(num=chContents[0],
+                                                      name=chContents[1],
+                                                      code=chCode))
+        if isinstance(outChannels, MeasurementChList):
+            self.outChannels = outChannels
+        elif isinstance(outChannels, dict):
+            self.outChannels = MeasurementChList(kind='out')
+            for chCode, chContents in outChannels.items():
+                self.outChannels.append(ChannelObj(num=chContents[0],
+                                                   name=chContents[1],
+                                                   code=chCode))
         self.path = getcwd()+'/'+self.name+'/'
+        # Workaround when pytta.load('MeasurementSetup.hdf5') instantiate a
+        # new MeasurementSetup and it's already in disc.
+        if skipFileInit:
+            return
         # Save MeasurementSetup to disc or warn if already exists
         if not exists(self.path):
             mkdir(self.path)
-        elif exists(self.path + 'MeasurementSetup.hdf5'):
+        if exists(self.path + 'MeasurementSetup.hdf5'):
             # raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
             #                       ' current measurement, ' + self.name +
             #                       ', already exists. Load it instead of '
             #                       'overwriting.')
-            print('Deleting the existant measurement: ' + self.MS.name)
+            # Workaround for debugging
+            print('Deleting the existent measurement: ' + self.name)
             rmtree(self.path)
             mkdir(self.path)
-            self.__h5_init()
+            save(self.path + 'MeasurementSetup.hdf5', self)
         else:
             # Creating the MeasurementSetup file
-            save('MeasurementSetup.hdf5', self)
+            save(self.path + 'MeasurementSetup.hdf5', self)
 
     def __repr__(self):
         # TO DO
@@ -208,7 +222,27 @@ class MeasurementSetup(object):
     # Methods
 
     def h5_save(self, h5group):
-        # TO DO
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...).
+        """
+        h5group.attrs['class'] = 'MeasurementSetup'
+        h5group.attrs['name'] = self.name
+        h5group.attrs['samplingRate'] = self.samplingRate
+        h5group.attrs['device'] = _h5.list_w_int_parser(self.device)
+        h5group.attrs['noiseFloorTp'] = self.noiseFloorTp
+        h5group.attrs['calibrationTp'] = self.calibrationTp
+        h5group.attrs['averages'] = self.averages
+        h5group.attrs['pause4Avg'] = self.pause4Avg
+        h5group.attrs['freqMin'] = self.freqMin
+        h5group.attrs['freqMax'] = self.freqMax
+        h5group.attrs['inChannels'] = repr(self.inChannels)
+        h5group.attrs['outChannels'] = repr(self.outChannels)
+        h5group.attrs['path'] = self.path
+        h5group.create_group('excitationSignals')
+        for name, excitationSignal in self.excitationSignals.items():
+            excitationSignal.h5_save(h5group.create_group('excitationSignals' +
+                                                          '/' + name))
         pass
 
 
@@ -230,11 +264,12 @@ class MeasurementData(object):
         # Save MeasurementData to disc or warn if already exists
         if not exists(self.path):
             mkdir(self.path)
-        elif exists(self.path + 'MeasurementData.hdf5'):
+        if exists(self.path + 'MeasurementData.hdf5'):
             # raise FileExistsError('ATTENTION!  MeasurementData for the ' +
             #                       ' current measurement, ' + self.MS.name +
             #                       ', already exists. Load it instead of '
             #                       'overwriting.')
+            # Workaround for debugging
             print('Deleting the existant measurement: ' + self.MS.name)
             rmtree(self.path)
             mkdir(self.path)
@@ -703,3 +738,35 @@ class Transducer(object):
         self.model = model
         self.serial = serial
         self.IR = IR
+
+
+def save(fileName: str, *PyTTaObjs):
+    """
+    Open an hdf5 file, create groups for each PyTTa object, pass it to
+    the own object and it saves itself inside the group.
+
+    >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    """
+    # Checking if filename has .hdf5 extension
+    if fileName.split('.')[-1] != 'hdf5':
+        fileName += '.hdf5'
+    with h5py.File(fileName, 'w') as f:
+        # Dict for counting equal names for correctly renaming
+        objsNameCount = {}
+        for idx, pobj in enumerate(PyTTaObjs):
+            if isinstance(pobj, (MeasuredThing,
+                                 MeasurementSetup)):
+                # Check if creation_name was already used
+                creationName = pobj.creation_name
+                if creationName in objsNameCount:
+                    objsNameCount[creationName] += 1
+                    creationName += '_' + str(objsNameCount[creationName])
+                else:
+                    objsNameCount[creationName] = 1
+                # create obj's group
+                ObjGroup = f.create_group(creationName)
+                # save the obj inside its group
+                pobj.h5_save(ObjGroup)
+            else:
+                print("Only roomir objects can be saved through this" +
+                      "function. Skipping object number " + str(idx) + ".")

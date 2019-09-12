@@ -33,6 +33,8 @@ excitationSignals['musica'] = pytta.read_wav(
 excitationSignals['fala'] = pytta.read_wav(
         'audio/Voice Sabine Short_edited.WAV')
 
+# %% Carrega Setup de medição
+# SM = pytta.load('med-teste/MeasurementSetup.hdf5')['MeasurementSetup']
 # %% Cria novo Setup de Medição
 SM = m.MeasurementSetup(name='med-teste',  # Nome da medição
                         samplingRate=44100,  # [Hz]

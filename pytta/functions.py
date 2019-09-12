@@ -41,6 +41,8 @@ import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
 from pytta.classes._base import ChannelsList, ChannelObj
+from pytta.apps.roomir import MeasurementChList, MeasuredThing, \
+                        MeasurementSetup
 import copy as cp
 import pytta.h5utilities as _h5
 
@@ -533,5 +535,38 @@ def __h5_unpack(ObjGroup):
                             fftDegree=fftDegree,
                             timeLength=timeLength)
         return frfObj
+    elif ObjGroup.attrs['class'] == 'MeasuredThing':
+        # TO DO
+        # return MsdThng
+        pass
+    elif ObjGroup.attrs['class'] == 'MeasurementSetup':
+        name = ObjGroup.attrs['name']
+        samplingRate = ObjGroup.attrs['samplingRate']
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        noiseFloorTp = ObjGroup.attrs['noiseFloorTp']
+        calibrationTp = ObjGroup.attrs['calibrationTp']
+        averages = ObjGroup.attrs['averages']
+        pause4Avg = ObjGroup.attrs['pause4Avg']
+        freqMin = ObjGroup.attrs['freqMin']
+        freqMax = ObjGroup.attrs['freqMax']
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        excitationSignals = {}
+        for sigName, excitationSignal in ObjGroup['excitationSignals'].items():
+            excitationSignals[sigName] = __h5_unpack(excitationSignal)
+        MS = MeasurementSetup(name,
+                              samplingRate,
+                              device,
+                              excitationSignals,
+                              freqMin,
+                              freqMax,
+                              inChannels,
+                              outChannels,
+                              averages,
+                              pause4Avg,
+                              noiseFloorTp,
+                              calibrationTp,
+                              skipFileInit=True)
+        return MS
     else:
         raise TypeError

@@ -16,6 +16,12 @@ h5utilities:
 """
 
 
+def attr_parser(attr):
+    """
+    Parser for all possible transformations for hdf5 data input and output.
+    """
+    pass
+
 def none_parser(attr):
     if attr != 'None' and attr is not None:
         return attr
@@ -23,12 +29,14 @@ def none_parser(attr):
         return None
     elif attr is None:
         return 'None'
+    else:
+        return attr
 
 
 def list_w_int_parser(attr):
     if isinstance(attr, list):
         return str(attr)
-    if isinstance(attr, str):
+    elif isinstance(attr, str):
         if attr[0] == '[' and attr[-1:] == ']':
             # removing '[' and ']'
             newlist = attr.replace('[', '').replace(']', '')
@@ -38,3 +46,5 @@ def list_w_int_parser(attr):
             newlist = newlist.split(' ')
             # constructing new list with ints
             return [int(x) for x in newlist]
+    else:
+        return attr
