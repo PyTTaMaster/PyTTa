@@ -590,9 +590,9 @@ class ChannelsList(object):
             elif type(chList) is ChannelsList:
                 self._channels = chList._channels
             else:
-                raise TypeError('List initializer must be either positive int,\
-                                ChannelObj, a list of positive int or\
-                                ChannelObj.')
+                raise TypeError('List initializer must be either positive ' +
+                                'int, a list of positive int or ' +
+                                'ChannelObj.')
 #        else:
 #            self._channels.append(ChannelObj(1))
         return

@@ -39,8 +39,8 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
-                        #   device=[0, 1],  # PC laza
-                        #   device=4,  # Saffire Pro 40 laza
+                          # device=[0, 1],  # PC laza
+                          # device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
                           device=0,  # Firebox laza
                           # device=[1, 4], # PC laza
@@ -78,12 +78,12 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='roomir',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['Mic1', 'HATS'],
+                              inChSel=['HATS', 'Mic1'],
                               # Configuração sala-fonte-receptor:
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
                               # selecionados
-                              receiversPos=['R1', 'R2'],
+                              receiversPos=['R1','R2'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
                               excitation='varredura',
@@ -93,6 +93,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               outChSel='O1',
                               # Configuração sala-fonte-receptor
                               sourcePos='S1')
+
 # %% Cria nova tomada de medição do ruído de fundo
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
@@ -107,6 +108,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # individuais ou grupos de canais de entrada
                               # selecionados
                               receiversPos=['R1', 'R2'])
+
 # %% Cria nova tomada de medição para calibração do microfone
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação

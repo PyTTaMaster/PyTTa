@@ -445,8 +445,8 @@ class TakeMeasure(object):
                                      samplingRate=self.MS.samplingRate,
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
-                                     device=self.MS.evice,
-                                     inChannel=self.inChannels,
+                                     device=self.MS.device,
+                                     inChannel=self.inChannels.mapping,
                                      comment='noisefloor')
         # For sourcerecalibration measurement kind
         if self.kind == 'sourcerecalibration':
@@ -525,14 +525,19 @@ class TakeMeasure(object):
             inChannels = MeasurementChList(kind='in',
                                            chList=SigObjs[0].channels)
             inChannels.copy_groups(self.MS.inChannels)
+            # Getting the receiver position
+            if self.receiversPos is None:  # It happens for calibrations
+                receiverPos = None
+            else:
+                receiverPos = self.receiversPos[idx]
             # Constructing the MeasuredThing
             msdThng = MeasuredThing(kind=self.kind,
                                     arrayName=code,
                                     measuredSignals=SigObjs,
                                     inChannels=inChannels,
                                     outChannel=self.outChannel,
-                                    position=(self.sourcePos,
-                                              self.receiversPos[idx]),
+                                    sourcePos=self.sourcePos,
+                                    receiverPos=receiverPos,
                                     excitation=self.excitation)
             self.measuredThings[code] = msdThng  # Saving to the dict
             chIndexCount += membCount  # Counter for next channel/group
@@ -589,16 +594,15 @@ class TakeMeasure(object):
 
     @outChSel.setter
     def outChSel(self, newChSelection):
-        if not isinstance(newChSelection, str):
-            if newChSelection is None and self.kind in ['miccalibration',
-                                                        'sourcerecalibration',
-                                                        'noisefloor']:
-                pass
-            else:
-                raise TypeError('outChSel must be a string with a valid ' +
-                                'output channel code listed in '+self.MS.name +
-                                '\'s outChannels.')
-        if newChSelection not in self.MS.outChannels:
+        if newChSelection is None and self.kind in ['miccalibration',
+                                                    'sourcerecalibration',
+                                                    'noisefloor']:
+            pass
+        elif not isinstance(newChSelection, str):
+            raise TypeError('outChSel must be a string with a valid ' +
+                            'output channel code listed in '+self.MS.name +
+                            '\'s outChannels.')
+        elif newChSelection not in self.MS.outChannels:
             raise TypeError('Invalid outChSel code or name. It must be a ' +
                             'valid ' + self.MS.name + '\'s output channel.')
         self._outChSel = newChSelection
@@ -609,12 +613,12 @@ class TakeMeasure(object):
 
     @sourcePos.setter
     def sourcePos(self, newSource):
-        if not isinstance(newSource, str):
-            if newSource is None and self.kind in ['noisefloor',
-                                                   'miccalibration']:
-                pass
-            else:
-                raise TypeError('Source must be a string.')
+        if newSource is None and self.kind in ['noisefloor',
+                                               'miccalibration',
+                                               'sourcerecalibration']:
+            pass
+        elif not isinstance(newSource, str):
+            raise TypeError('Source must be a string.')
         self._sourcePos = newSource
 
     @property
@@ -623,29 +627,29 @@ class TakeMeasure(object):
 
     @receiversPos.setter
     def receiversPos(self, newReceivers):
-        if not isinstance(newReceivers, list):
-            if newReceivers is None and self.kind in ['noisefloor',
-                                                      'sourcerecalibration',
-                                                      'miccalibration']:
-                pass
-            else:
-                raise TypeError('Receivers must be a list of strings ' +
-                                'with same itens number as inChSel.')
-        if len(newReceivers) < len(self.inChSel):
+        if newReceivers is None and self.kind in ['noisefloor',
+                                                  'sourcerecalibration',
+                                                  'miccalibration']:
+            pass
+        elif not isinstance(newReceivers, list):
+            raise TypeError('Receivers must be a list of strings ' +
+                            'with same itens number as inChSel.')
+        elif len(newReceivers) < len(self.inChSel):
             raise ValueError('Receivers\' number of itens must be the ' +
                              'same as inChSel.')
-        for item in newReceivers:
-            if item.split('R')[0] != '':
-                raise ValueError(item + 'isn\'t a receiver position. It ' +
-                                 'must start with \'R\' succeeded by It\'s ' +
-                                 'number (e.g. R1).')
-            else:
-                try:
-                    receiverNumber = int(item.split('R')[1])
-                except ValueError:
-                    raise ValueError(item + 'isn\'t a receiver position ' +
-                                     'code. It must start with \'R\' ' +
-                                     'succeeded by It\'s number (e.g. R1).')
+        else:
+            for item in newReceivers:
+                if item.split('R')[0] != '':
+                    raise ValueError(item + 'isn\'t a receiver position. It ' +
+                                     'must start with \'R\' succeeded by its' +
+                                     ' number (e.g. R1).')
+                else:
+                    try:
+                        receiverNumber = int(item.split('R')[1])
+                    except ValueError:
+                        raise ValueError(item + 'isn\'t a receiver position ' +
+                                         'code. It must start with \'R\' ' +
+                                         'succeeded by its number (e.g. R1).')
         self._receiversPos = newReceivers
         return
 
@@ -661,7 +665,7 @@ class TakeMeasure(object):
                 pass
             elif newExcitation not in self.MS.excitationSignals:
                 raise ValueError('Excitation signal doesn\'t exist in ' +
-                                self.MS.name + '\'s excitationSignals')
+                                 self.MS.name + '\'s excitationSignals')
             else:
                 raise TypeError('Excitation signal\'s name must be a string.')
         self._excitation = newExcitation
@@ -677,12 +681,14 @@ class MeasuredThing(object):
                  arrayName,
                  measuredSignals,
                  inChannels,
-                 position=(None, None),
+                 sourcePos=None,
+                 receiverPos=None,
                  excitation=None,
                  outChannel=None):
         self.kind = kind
         self.arrayName = arrayName
-        self.position = position
+        self.sourcePos = sourcePos
+        self.receiverPos = receiverPos
         self.excitation = excitation
         self.measuredSignals = measuredSignals
         self.inChannels = inChannels
@@ -694,22 +700,22 @@ class MeasuredThing(object):
                 f'arrayName={self.arrayName!r}, '
                 f'measuredSignals={self.measuredSignals!r}, '
                 f'inChannels={self.inChannels!r}, '
-                f'position={self.position!r}, '
+                f'sourcePos={self.sourcePos!r}, '
+                f'receiverPos={self.receiverPos!r}, '
                 f'excitation={self.excitation!r}, '
                 f'outChannel={self.outChannel!r})')
 
     def __str__(self):
         str = self.kind + '_'  # Kind info
-        if self.kind in ['roomir', 'sourcerecalibration']:
-            str += self.position[0] + '-'  # Source position info
-        if self.kind in ['roomir', 'noisefloor']:
-            str += self.position[1] + '_'  # Receiver position info
-        if self.kind in ['roomir', 'sourcerecalibration']:
-            # outputChannel code info
-            str += self.outChannel._channels[0].code + '-'
-        str += self.arrayName + '_'  # input Channel/group code info
         if self.kind in ['roomir']:
-            str += self.excitation  # Excitation signal code info
+            str += self.sourcePos + '-'  # Source position info
+        if self.kind in ['roomir', 'noisefloor']:
+            str += self.receiverPos + '_'  # Receiver position info
+        if self.kind in ['roomir', 'sourcerecalibration']:
+            str += self.outChannel._channels[0].code + '-'  # outCh code info
+        str += self.arrayName  # input Channel/group code info
+        if self.kind in ['roomir']:
+            str += '_' + self.excitation  # Excitation signal code info
         return str
 
     # Methods
@@ -723,7 +729,8 @@ class MeasuredThing(object):
         h5group.attrs['kind'] = self.kind
         h5group.attrs['arrayName'] = self.arrayName
         h5group.attrs['inChannels'] = repr(self.inChannels)
-        h5group.attrs['position'] = _h5.none_parser(self.position)
+        h5group.attrs['sourcePos'] = _h5.none_parser(self.sourcePos)
+        h5group.attrs['receiverPos'] = _h5.none_parser(self.receiverPos)
         h5group.attrs['excitation'] = _h5.none_parser(self.excitation)
         h5group.attrs['outChannel'] = repr(self.outChannel)
         h5group.create_group('measuredSignals')
@@ -737,6 +744,8 @@ def med_load(medname):
     """
     Load a measurement in progress
     """
+    if not exists(medname + '/MeasurementData.hdf5'):
+        raise NameError('{} measurement doens\'t exist.'.format(medname))
     load = h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
     Data = MeasurementData(MS, skipFileInit=True)
@@ -841,7 +850,8 @@ def __h5_unpack(ObjGroup):
         kind = ObjGroup.attrs['kind']
         arrayName = ObjGroup.attrs['arrayName']
         inChannels = eval(ObjGroup.attrs['inChannels'])
-        position = _h5.none_parser(ObjGroup.attrs['position'])
+        sourcePos = _h5.none_parser(ObjGroup.attrs['sourcePos'])
+        receiverPos = _h5.none_parser(ObjGroup.attrs['receiverPos'])
         excitation = _h5.none_parser(ObjGroup.attrs['excitation'])
         outChannel = _h5.none_parser(ObjGroup.attrs['outChannel'])
         if outChannel is not None:
@@ -852,7 +862,8 @@ def __h5_unpack(ObjGroup):
         MsdThng = MeasuredThing(kind=kind,
                                 arrayName=arrayName,
                                 inChannels=inChannels,
-                                position=position,
+                                sourcePos=sourcePos,
+                                receiverPos=receiverPos,
                                 outChannel=outChannel,
                                 excitation=excitation,
                                 measuredSignals=measuredSignals)

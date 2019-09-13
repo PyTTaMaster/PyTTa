@@ -286,7 +286,7 @@ class RecMeasure(Measurement):
     @timeLength.setter
     def timeLength(self, newLength):
         self._timeLength = np.round(newLength, 2)
-        self._numSamples = self.timeLength * self.samplingRate
+        self._numSamples = int(self.timeLength * self.samplingRate)
         self._fftDegree = np.round(np.log2(self.numSamples), 2)
         return
 
@@ -310,7 +310,7 @@ class RecMeasure(Measurement):
         # Record
         recording = sd.rec(frames=self.numSamples,
                            samplerate=self.samplingRate,
-                           mapping=self.inChannels.mapping(),
+                           mapping=self.inChannels.mapping,
                            blocking=self.blocking,
                            device=self.device,
                            latency='low',
