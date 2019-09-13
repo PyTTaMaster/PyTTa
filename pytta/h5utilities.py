@@ -24,11 +24,12 @@ def attr_parser(attr):
 
 
 def none_parser(attr):
-    if attr != 'None' and attr is not None:
-        return attr
-    elif attr == 'None':
-        return None
-    elif attr is None:
+    if isinstance(attr, str):
+        if attr == 'None':
+            return None
+        else:
+            return attr
+    if attr is None:
         return 'None'
     else:
         return attr

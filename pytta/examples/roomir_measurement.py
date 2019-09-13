@@ -33,18 +33,16 @@ excitationSignals['musica'] = pytta.read_wav(
 excitationSignals['fala'] = pytta.read_wav(
         'audio/Voice Sabine Short_edited.WAV')
 
-# %% Carrega Setup de medição
-# SM = pytta.load('med-teste/MeasurementSetup.hdf5')['MeasurementSetup']
 # %% Cria novo Setup de Medição
 MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           samplingRate=44100,  # [Hz]
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
-                          # device=[0, 1],  # PC laza
-                          device=4,  # Saffire Pro 40 laza
+                        #   device=[0, 1],  # PC laza
+                        #   device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                          # device=0,  # Firebox laza
+                          device=0,  # Firebox laza
                           # device=[1, 4], # PC laza
                           # [s] tempo de gravação do ruído de fundo
                           noiseFloorTp=5,
@@ -66,9 +64,10 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           outChannels={'O1': (1, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
                                        'O3': (3, 'Sistema da sala')})
+# %% Initializate Data object, wich manage the measurement files in dics
+D = rmr.MeasurementData(MS)
 
 # %% Mostra status da instância de dados medidos
-D = rmr.MeasurementData(MS)
 # D.getStatus()
 
 # %% Cria nova tomada de medição para uma nova configuração fonte receptor
@@ -77,7 +76,6 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # com o LabJack U3 + EI1050 probe
                               tempHumid=tempHumid,
                               kind='roomir',
-                              # Status do canal:
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
                               inChSel=['Mic1', 'HATS'],
@@ -96,15 +94,48 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Configuração sala-fonte-receptor
                               sourcePos='S1')
 # %% Cria nova tomada de medição do ruído de fundo
+takeMeasure = rmr.TakeMeasure(MS=MS,
+                              # Passa objeto de comunicação
+                              # com o LabJack U3 + EI1050 probe
+                              tempHumid=tempHumid,
+                              kind='noisefloor',
+                              # Lista com códigos de canal individual ou
+                              # códigos de grupo
+                              inChSel=['Mic1', 'HATS'],
+                              # Configuração sala-receptor:
+                              # Lista com as respectivas posições dos canais
+                              # individuais ou grupos de canais de entrada
+                              # selecionados
+                              receiversPos=['R1', 'R2'])
+# %% Cria nova tomada de medição para calibração do microfone
+takeMeasure = rmr.TakeMeasure(MS=MS,
+                              # Passa objeto de comunicação
+                              # com o LabJack U3 + EI1050 probe
+                              tempHumid=tempHumid,
+                              kind='miccalibration',
+                              # Lista com códigos de canal individual ou
+                              # códigos de grupo
+                              inChSel=['Mic1'])
 
-# %% Cria nova tomada de medição para calibração
-
-# %% Nova tomada de medição
+# %% Cria nova tomada de medição para recalibração de fonte
+takeMeasure = rmr.TakeMeasure(MS=MS,
+                              # Passa objeto de comunicação
+                              # com o LabJack U3 + EI1050 probe
+                              tempHumid=tempHumid,
+                              kind='sourcerecalibration',
+                              # Lista com códigos de canal individual ou
+                              # códigos de grupo
+                              inChSel=['Mic1'],
+                              # Escolha do sinal de excitacão
+                              # disponível no Setup de Medição
+                              excitation='varredura',
+                              # Código do canal de saída a ser utilizado.
+                              outChSel='O1')
+# %% Acquire data
 takeMeasure.run()
 
 # %% Salva tomada de medição no objeto de dados D e no disco
 D.save_take(takeMeasure)
 
 # %% Carrega dados medidos e setup de medição do arquivo
-# SM, D = m.load('med-teste')
-print('fim')
+MS, D = rmr.med_load('med-teste')

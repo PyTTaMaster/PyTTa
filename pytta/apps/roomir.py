@@ -162,8 +162,7 @@ class MeasurementSetup(object):
                  averages,
                  pause4Avg,
                  noiseFloorTp,
-                 calibrationTp,
-                 skipFileInit=False):
+                 calibrationTp):
         self.creation_name = 'MeasurementSetup'
         self.measurementKinds = measurementKinds
         self.name = name
@@ -179,26 +178,6 @@ class MeasurementSetup(object):
         self.inChannels = inChannels
         self.outChannels = outChannels
         self.path = getcwd()+'/'+self.name+'/'
-        # Workaround when pytta.load('MeasurementSetup.hdf5') instantiate a
-        # new MeasurementSetup and it's already in disc.
-        # if skipFileInit:
-        #     return
-        # # Save MeasurementSetup to disc or warn if already exists
-        # if not exists(self.path):
-        #     mkdir(self.path)
-        # if exists(self.path + 'MeasurementSetup.hdf5'):
-        #     # raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
-        #     #                       ' current measurement, ' + self.name +
-        #     #                       ', already exists. Load it instead of '
-        #     #                       'overwriting.')
-        #     # Workaround for debugging
-        #     print('Deleting the existent measurement: ' + self.name)
-        #     rmtree(self.path)
-        #     mkdir(self.path)
-        #     h5_save(self.path + 'MeasurementSetup.hdf5', self)
-        # else:
-        #     # Creating the MeasurementSetup file
-        #     save(self.path + 'MeasurementSetup.hdf5', self)
 
     def __repr__(self):
         # TO DO
@@ -223,7 +202,7 @@ class MeasurementSetup(object):
         h5group.attrs['freqMax'] = self.freqMax
         h5group.attrs['inChannels'] = repr(self.inChannels)
         h5group.attrs['outChannels'] = repr(self.outChannels)
-        h5group.attrs['path'] = self.path
+        # h5group.attrs['path'] = self.path
         h5group.create_group('excitationSignals')
         for name, excitationSignal in self.excitationSignals.items():
             excitationSignal.h5_save(h5group.create_group('excitationSignals' +
@@ -277,11 +256,15 @@ class MeasurementData(object):
 
     # Magic methods
 
-    def __init__(self, MS):
+    def __init__(self, MS, skipFileInit=False):
         # MeasurementSetup
         self.MS = MS
         self.path = self.MS.path
-        # Save MeasurementData to disc or warn if already exists
+        # Workaround when roomir.h5_load instantiate a
+        # new MeasurementData and it's already in disc.
+        if skipFileInit:
+            return
+        # MeasurementData.hdf5 initialization
         if not exists(self.path):
             mkdir(self.path)
         if exists(self.path + 'MeasurementData.hdf5'):
@@ -308,9 +291,9 @@ class MeasurementData(object):
             # Saving the MeasurementSetup link
             f.create_group('MeasurementSetup')
             self.MS.h5_save(f['MeasurementSetup'])
-            for msKind in self.MS.measurementKinds:
-                # Creating groups for each measurement kind
-                f.create_group(msKind)
+            # for msKind in self.MS.measurementKinds:
+            #     # Creating groups for each measurement kind
+            #     f.create_group(msKind)
 
     def save_take(self, MeasureTakeObj):
         if not MeasureTakeObj.runCheck:
@@ -330,10 +313,8 @@ class MeasurementData(object):
             h5_save(self.path + fileName + '.hdf5', measuredThing)
             # Update the MeasurementData.hdf5 file with the MeasuredThing link
             with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
-                msdThngH5Group = f[measuredThing.kind].create_group(fileName)
-                msdThngH5Group = h5py.ExternalLink(self.path +
-                                                   fileName + '.hdf5',
-                                                   '/' + fileName)
+                f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
+                                                '/' + fileName)
         MeasureTakeObj.saveCheck = True
         return
 
@@ -397,7 +378,7 @@ class TakeMeasure(object):
 
     def __cfg_channels(self):
         # Check for disabled combined channels
-        if self.kind not in ['miccalibration', 'sourcerecalibration']:
+        if self.kind in ['roomir', 'noisefloor']:
             # Look for grouped channels through the individual channels
             for idx, code in enumerate(self.inChSel):
                 if code not in self.MS.inChannels.groups:
@@ -409,7 +390,7 @@ class TakeMeasure(object):
                                              'individually as it\'s in ' +
                                              group + '\'s group.')
         # Look for groups activated when ms kind is a calibration
-        else:
+        elif self.kind in ['sourcerecalibration', 'miccalibration']:
             for idx, code in enumerate(self.inChSel):
                 if code in self.MS.inChannels.groups:
                     raise ValueError('Groups can\'t be calibrated. Channels ' +
@@ -444,7 +425,7 @@ class TakeMeasure(object):
                                      outChannel=self.outChannel.mapping,
                                      comment='roomir')
         # For miccalibration measurement kind
-        if self.kind == 'calibration':
+        if self.kind == 'miccalibration':
             self.measurementObject = \
                 generate.measurement('rec',
                                      lengthDomain='time',
@@ -454,7 +435,7 @@ class TakeMeasure(object):
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
                                      inChannel=self.inChannels.mapping,
-                                     comment='calibration')
+                                     comment='miccalibration')
         # For noisefloor measurement kind
         if self.kind == 'noisefloor':
             self.measurementObject = \
@@ -592,9 +573,6 @@ class TakeMeasure(object):
         if not isinstance(newChSelection, list):
             raise TypeError('inChSel must be a list with codes of ' +
                             'individual channels and/or groups.')
-        # if len(newChSelection) < len(self._MS.inChannels):
-        #     raise ValueError('inChSel\' number of itens must be the ' +
-        #                      'same as ' + self.MS.name + '\'s inChannels.')
         for item in newChSelection:
             if not isinstance(item, str):
                 raise TypeError('inChSel must be a list with codes of ' +
@@ -612,7 +590,7 @@ class TakeMeasure(object):
     @outChSel.setter
     def outChSel(self, newChSelection):
         if not isinstance(newChSelection, str):
-            if newChSelection is None and self.kind in ['calibration',
+            if newChSelection is None and self.kind in ['miccalibration',
                                                         'sourcerecalibration',
                                                         'noisefloor']:
                 pass
@@ -633,13 +611,10 @@ class TakeMeasure(object):
     def sourcePos(self, newSource):
         if not isinstance(newSource, str):
             if newSource is None and self.kind in ['noisefloor',
-                                                   'calibration']:
+                                                   'miccalibration']:
                 pass
             else:
                 raise TypeError('Source must be a string.')
-        # if newSource not in self.MS.outChannels:
-        #     raise ValueError(newSource + ' doesn\'t exist in ' +
-        #                      self.MS.name + '\'s outChannels.')
         self._sourcePos = newSource
 
     @property
@@ -651,7 +626,7 @@ class TakeMeasure(object):
         if not isinstance(newReceivers, list):
             if newReceivers is None and self.kind in ['noisefloor',
                                                       'sourcerecalibration',
-                                                      'calibration']:
+                                                      'miccalibration']:
                 pass
             else:
                 raise TypeError('Receivers must be a list of strings ' +
@@ -671,9 +646,6 @@ class TakeMeasure(object):
                     raise ValueError(item + 'isn\'t a receiver position ' +
                                      'code. It must start with \'R\' ' +
                                      'succeeded by It\'s number (e.g. R1).')
-#                if receiverNumber > self.MS.receiversNumber:
-#                    raise TypeError('Receiver number out of ' + self.MS.name +
-#                                    '\'s receivers range.')
         self._receiversPos = newReceivers
         return
 
@@ -685,13 +657,13 @@ class TakeMeasure(object):
     def excitation(self, newExcitation):
         if not isinstance(newExcitation, str):
             if newExcitation is None and self.kind in ['noisefloor',
-                                                       'calibration']:
+                                                       'miccalibration']:
                 pass
+            elif newExcitation not in self.MS.excitationSignals:
+                raise ValueError('Excitation signal doesn\'t exist in ' +
+                                self.MS.name + '\'s excitationSignals')
             else:
                 raise TypeError('Excitation signal\'s name must be a string.')
-        if newExcitation not in self.MS.excitationSignals:
-            raise ValueError('Excitation signal doesn\'t exist in ' +
-                             self.MS.name + '\'s excitationSignals')
         self._excitation = newExcitation
         return
 
@@ -761,30 +733,23 @@ class MeasuredThing(object):
         pass
 
 
-class Transducer(object):
-
-    # Magic methods
-
-    def __init__(self, brand, model, serial, IR):
-        self.brand = brand
-        self.model = model
-        self.serial = serial
-        self.IR = IR
-
-
-def med_load(name):
+def med_load(medname):
     """
-    ALALALALLALA
+    Load a measurement in progress
     """
-    return
+    load = h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
+    MS = load['MeasurementSetup']
+    Data = MeasurementData(MS, skipFileInit=True)
+    return MS, Data
 
 
 def h5_save(fileName: str, *PyTTaObjs):
     """
     Open an hdf5 file, create groups for each PyTTa object, pass it to
-    the own object and it saves itself inside the group.
+    the own object that it saves itself inside the group.
 
-    >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    >>> roomir.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+
     """
     # Checking if filename has .hdf5 extension
     if fileName.split('.')[-1] != 'hdf5':
@@ -811,17 +776,49 @@ def h5_save(fileName: str, *PyTTaObjs):
                       "function. Skipping object number " + str(idx) + ".")
 
 
+def h5_load(fileName: str, skip: list = []):
+    """
+    Load a roomir hdf5 file and recreate it's objects
+    """
+    # Checking if the file is an hdf5 file
+    if fileName.split('.')[-1] != 'hdf5':
+        raise ValueError("roomir.h5_load only works with *.hdf5 files")
+    f = h5py.File(fileName, 'r')
+    loadedObjects = {}
+    objCount = 0  # Counter for loaded objects
+    totCount = 0  # Counter for total groups
+    for PyTTaObjName, PyTTaObjGroup in f.items():
+        totCount += 1
+        if PyTTaObjGroup.attrs['class'] in skip:
+            pass
+        else:
+            try:
+                loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
+                objCount += 1
+            except TypeError:
+                print('Skipping hdf5 group named {} as '.format(PyTTaObjName) +
+                      'it isnt a PyTTa object group.')
+    f.close()
+    # Final message
+    plural1 = 's' if objCount > 1 else ''
+    plural2 = 's' if totCount > 1 else ''
+    print('Imported {} PyTTa object-like group'.format(objCount) + plural1 +
+          ' of {} group'.format(totCount) + plural2 +
+          ' inside the hdf5 file.')
+    return loadedObjects
+
+
 def __h5_unpack(ObjGroup):
     if ObjGroup.attrs['class'] == 'MeasurementSetup':
         name = ObjGroup.attrs['name']
-        samplingRate = ObjGroup.attrs['samplingRate']
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        noiseFloorTp = ObjGroup.attrs['noiseFloorTp']
-        calibrationTp = ObjGroup.attrs['calibrationTp']
-        averages = ObjGroup.attrs['averages']
+        samplingRate = int(ObjGroup.attrs['samplingRate'])
+        device = int(_h5.list_w_int_parser(ObjGroup.attrs['device']))
+        noiseFloorTp = float(ObjGroup.attrs['noiseFloorTp'])
+        calibrationTp = float(ObjGroup.attrs['calibrationTp'])
+        averages = int(ObjGroup.attrs['averages'])
         pause4Avg = ObjGroup.attrs['pause4Avg']
-        freqMin = ObjGroup.attrs['freqMin']
-        freqMax = ObjGroup.attrs['freqMax']
+        freqMin = float(ObjGroup.attrs['freqMin'])
+        freqMax = float(ObjGroup.attrs['freqMax'])
         inChannels = eval(ObjGroup.attrs['inChannels'])
         outChannels = eval(ObjGroup.attrs['outChannels'])
         excitationSignals = {}
@@ -839,7 +836,6 @@ def __h5_unpack(ObjGroup):
                               pause4Avg,
                               noiseFloorTp,
                               calibrationTp)
-        #   skipFileInit=True)
         return MS
     elif ObjGroup.attrs['class'] == 'MeasuredThing':
         kind = ObjGroup.attrs['kind']
@@ -857,7 +853,7 @@ def __h5_unpack(ObjGroup):
                                 arrayName=arrayName,
                                 inChannels=inChannels,
                                 position=position,
-                                outChannels=outChannels,
+                                outChannel=outChannel,
                                 excitation=excitation,
                                 measuredSignals=measuredSignals)
         return MsdThng

@@ -371,11 +371,11 @@ def h5_save(fileName: str, *PyTTaObjs):
 
 def h5_load(fileName: str):
     """
-    Load an hdf5 file and recriate
+    Load an hdf5 file and recreate the PyTTa objects.
     """
     # Checking if the file is an hdf5 file
     if fileName.split('.')[-1] != 'hdf5':
-        raise ValueError("h5load function only works with *.hdf5 files")
+        raise ValueError("h5_load function only works with *.hdf5 files")
     f = h5py.File(fileName, 'r')
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
