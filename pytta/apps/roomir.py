@@ -8,13 +8,15 @@ Created on Tue Jul  2 10:35:05 2019
 
 from pytta.classes._base import ChannelObj, ChannelsList
 from pytta import generate, SignalObj
+from pytta.functions import __h5_unpack as pyttah5unpck
+import pytta.h5utilities as _h5
 import time
 import numpy as np
 import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
 from shutil import rmtree
-import pytta.h5utilities as _h5
+
 
 # Dict with the measurementKinds
 # TO DO: add 'inchcalibration', 'outchcalibration'
@@ -174,46 +176,29 @@ class MeasurementSetup(object):
         self.pause4Avg = pause4Avg
         self.freqMin = freqMin
         self.freqMax = freqMax
-        if isinstance(inChannels, MeasurementChList):
-            self.inChannels = inChannels
-        elif isinstance(inChannels, dict):
-            self.inChannels = MeasurementChList(kind='in')
-            for chCode, chContents in inChannels.items():
-                if chCode == 'groups':
-                    self.inChannels.groups = chContents
-                else:
-                    self.inChannels.append(ChannelObj(num=chContents[0],
-                                                      name=chContents[1],
-                                                      code=chCode))
-        if isinstance(outChannels, MeasurementChList):
-            self.outChannels = outChannels
-        elif isinstance(outChannels, dict):
-            self.outChannels = MeasurementChList(kind='out')
-            for chCode, chContents in outChannels.items():
-                self.outChannels.append(ChannelObj(num=chContents[0],
-                                                   name=chContents[1],
-                                                   code=chCode))
+        self.inChannels = inChannels
+        self.outChannels = outChannels
         self.path = getcwd()+'/'+self.name+'/'
         # Workaround when pytta.load('MeasurementSetup.hdf5') instantiate a
         # new MeasurementSetup and it's already in disc.
-        if skipFileInit:
-            return
-        # Save MeasurementSetup to disc or warn if already exists
-        if not exists(self.path):
-            mkdir(self.path)
-        if exists(self.path + 'MeasurementSetup.hdf5'):
-            # raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
-            #                       ' current measurement, ' + self.name +
-            #                       ', already exists. Load it instead of '
-            #                       'overwriting.')
-            # Workaround for debugging
-            print('Deleting the existent measurement: ' + self.name)
-            rmtree(self.path)
-            mkdir(self.path)
-            save(self.path + 'MeasurementSetup.hdf5', self)
-        else:
-            # Creating the MeasurementSetup file
-            save(self.path + 'MeasurementSetup.hdf5', self)
+        # if skipFileInit:
+        #     return
+        # # Save MeasurementSetup to disc or warn if already exists
+        # if not exists(self.path):
+        #     mkdir(self.path)
+        # if exists(self.path + 'MeasurementSetup.hdf5'):
+        #     # raise FileExistsError('ATTENTION!  MeasurementSetup for the ' +
+        #     #                       ' current measurement, ' + self.name +
+        #     #                       ', already exists. Load it instead of '
+        #     #                       'overwriting.')
+        #     # Workaround for debugging
+        #     print('Deleting the existent measurement: ' + self.name)
+        #     rmtree(self.path)
+        #     mkdir(self.path)
+        #     h5_save(self.path + 'MeasurementSetup.hdf5', self)
+        # else:
+        #     # Creating the MeasurementSetup file
+        #     save(self.path + 'MeasurementSetup.hdf5', self)
 
     def __repr__(self):
         # TO DO
@@ -244,6 +229,41 @@ class MeasurementSetup(object):
             excitationSignal.h5_save(h5group.create_group('excitationSignals' +
                                                           '/' + name))
         pass
+
+    # Properties
+
+    @property
+    def inChannels(self):
+        return self._inChannels
+
+    @inChannels.setter
+    def inChannels(self, newInput):
+        if isinstance(newInput, MeasurementChList):
+            self._inChannels = newInput
+        elif isinstance(newInput, dict):
+            self.inChannels = MeasurementChList(kind='in')
+            for chCode, chContents in newInput.items():
+                if chCode == 'groups':
+                    self._inChannels.groups = chContents
+                else:
+                    self._inChannels.append(ChannelObj(num=chContents[0],
+                                                       name=chContents[1],
+                                                       code=chCode))
+
+    @property
+    def outChannels(self):
+        return self._outChannels
+
+    @outChannels.setter
+    def outChannels(self, newInput):
+        if isinstance(newInput, MeasurementChList):
+            self._outChannels = newInput
+        elif isinstance(newInput, dict):
+            self._outChannels = MeasurementChList(kind='out')
+            for chCode, chContents in newInput.items():
+                self._outChannels.append(ChannelObj(num=chContents[0],
+                                                    name=chContents[1],
+                                                    code=chCode))
 
 
 class MeasurementData(object):
@@ -286,10 +306,8 @@ class MeasurementData(object):
         # Creating the MeasurementData file
         with h5py.File(self.path + 'MeasurementData.hdf5', 'w-') as f:
             # Saving the MeasurementSetup link
-            f['MeasurementSetup'] = h5py.ExternalLink(self.path +
-                                                      'MeasurementSetup' +
-                                                      '.hdf5',
-                                                      '/MeasurementSetup')
+            f.create_group('MeasurementSetup')
+            self.MS.h5_save(f['MeasurementSetup'])
             for msKind in self.MS.measurementKinds:
                 # Creating groups for each measurement kind
                 f.create_group(msKind)
@@ -309,7 +327,7 @@ class MeasurementData(object):
             fileName = self.__number_the_file(fileName)
             # Saving the MeasuredThing to the disc
             measuredThing.creation_name = fileName
-            save(self.path + fileName + '.hdf5', measuredThing)
+            h5_save(self.path + fileName + '.hdf5', measuredThing)
             # Update the MeasurementData.hdf5 file with the MeasuredThing link
             with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
                 msdThngH5Group = f[measuredThing.kind].create_group(fileName)
@@ -715,17 +733,31 @@ class MeasuredThing(object):
         if self.kind in ['roomir', 'noisefloor']:
             str += self.position[1] + '_'  # Receiver position info
         if self.kind in ['roomir', 'sourcerecalibration']:
-            # outputChannel name info
+            # outputChannel code info
             str += self.outChannel._channels[0].code + '-'
-        str += self.arrayName + '_'  # input Channel/group name info
+        str += self.arrayName + '_'  # input Channel/group code info
         if self.kind in ['roomir']:
-            str += self.excitation  # Excitation signal info
+            str += self.excitation  # Excitation signal code info
         return str
 
     # Methods
 
     def h5_save(self, h5group):
-        # TO DO
+        """
+        Saves itself inside a hdf5 group from an already openned file via
+        roomir.save(...).
+        """
+        h5group.attrs['class'] = 'MeasuredThing'
+        h5group.attrs['kind'] = self.kind
+        h5group.attrs['arrayName'] = self.arrayName
+        h5group.attrs['inChannels'] = repr(self.inChannels)
+        h5group.attrs['position'] = _h5.none_parser(self.position)
+        h5group.attrs['excitation'] = _h5.none_parser(self.excitation)
+        h5group.attrs['outChannel'] = repr(self.outChannel)
+        h5group.create_group('measuredSignals')
+        for idx, msdSignal in enumerate(self.measuredSignals):
+            msdSignal.h5_save(h5group.create_group('measuredSignals/' +
+                                                   str(idx)))
         pass
 
 
@@ -740,7 +772,14 @@ class Transducer(object):
         self.IR = IR
 
 
-def save(fileName: str, *PyTTaObjs):
+def med_load(name):
+    """
+    ALALALALLALA
+    """
+    return
+
+
+def h5_save(fileName: str, *PyTTaObjs):
     """
     Open an hdf5 file, create groups for each PyTTa object, pass it to
     the own object and it saves itself inside the group.
@@ -770,3 +809,57 @@ def save(fileName: str, *PyTTaObjs):
             else:
                 print("Only roomir objects can be saved through this" +
                       "function. Skipping object number " + str(idx) + ".")
+
+
+def __h5_unpack(ObjGroup):
+    if ObjGroup.attrs['class'] == 'MeasurementSetup':
+        name = ObjGroup.attrs['name']
+        samplingRate = ObjGroup.attrs['samplingRate']
+        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
+        noiseFloorTp = ObjGroup.attrs['noiseFloorTp']
+        calibrationTp = ObjGroup.attrs['calibrationTp']
+        averages = ObjGroup.attrs['averages']
+        pause4Avg = ObjGroup.attrs['pause4Avg']
+        freqMin = ObjGroup.attrs['freqMin']
+        freqMax = ObjGroup.attrs['freqMax']
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        outChannels = eval(ObjGroup.attrs['outChannels'])
+        excitationSignals = {}
+        for sigName, excitationSignal in ObjGroup['excitationSignals'].items():
+            excitationSignals[sigName] = __h5_unpack(excitationSignal)
+        MS = MeasurementSetup(name,
+                              samplingRate,
+                              device,
+                              excitationSignals,
+                              freqMin,
+                              freqMax,
+                              inChannels,
+                              outChannels,
+                              averages,
+                              pause4Avg,
+                              noiseFloorTp,
+                              calibrationTp)
+        #   skipFileInit=True)
+        return MS
+    elif ObjGroup.attrs['class'] == 'MeasuredThing':
+        kind = ObjGroup.attrs['kind']
+        arrayName = ObjGroup.attrs['arrayName']
+        inChannels = eval(ObjGroup.attrs['inChannels'])
+        position = _h5.none_parser(ObjGroup.attrs['position'])
+        excitation = _h5.none_parser(ObjGroup.attrs['excitation'])
+        outChannel = _h5.none_parser(ObjGroup.attrs['outChannel'])
+        if outChannel is not None:
+            outChannel = eval(outChannel)
+        measuredSignals = []
+        for idx, h5MsdSignal in ObjGroup['measuredSignals'].items():
+            measuredSignals.append(__h5_unpack(h5MsdSignal))
+        MsdThng = MeasuredThing(kind=kind,
+                                arrayName=arrayName,
+                                inChannels=inChannels,
+                                position=position,
+                                outChannels=outChannels,
+                                excitation=excitation,
+                                measuredSignals=measuredSignals)
+        return MsdThng
+    else:
+        return pyttah5unpck(ObjGroup)

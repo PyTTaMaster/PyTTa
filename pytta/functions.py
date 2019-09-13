@@ -41,8 +41,6 @@ import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
 from pytta.classes._base import ChannelsList, ChannelObj
-from pytta.apps.roomir import MeasurementChList, MeasuredThing, \
-                        MeasurementSetup
 import copy as cp
 import pytta.h5utilities as _h5
 

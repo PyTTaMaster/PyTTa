@@ -22,6 +22,7 @@ def attr_parser(attr):
     """
     pass
 
+
 def none_parser(attr):
     if attr != 'None' and attr is not None:
         return attr
