@@ -39,10 +39,10 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
-                          # device=[0, 1],  # PC laza
-                          # device=4,  # Saffire Pro 40 laza
+                          #   device=[0, 1],  # PC laza
+                          device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                          device=0,  # Firebox laza
+                          #   device=0,  # Firebox laza
                           # device=[1, 4], # PC laza
                           # [s] tempo de gravação do ruído de fundo
                           noiseFloorTp=5,
@@ -83,7 +83,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
                               # selecionados
-                              receiversPos=['R1','R2'],
+                              receiversPos=['R1', 'R2'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
                               excitation='varredura',
