@@ -57,6 +57,34 @@ def list_devices():
     return sd.query_devices()
 
 
+def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
+    """
+    Returns the power of two value that can be used to calculate the total
+    number of samples of the signal.
+
+        >>> numSamples = 2**fftDegree
+
+    Parameters:
+    ------------
+
+        timeLength (float = 0):
+            Value, in seconds, of the time duration of the signal or
+            recording.
+
+        samplingRate (int = 1):
+            Value, in samples per second, that the data will be captured
+            or emitted.
+
+    Returns:
+    ---------
+
+        fftDegree (float = 0):
+            Power of 2 that can be used to calculate number of samples.
+
+    """
+    return np.log2(timeLength*samplingRate)
+
+
 def read_wav(fileName):
     """
     Reads a wave file into a SignalObj

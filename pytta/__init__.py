@@ -54,7 +54,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse,\
                           OctFilter, weighting
 from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
-                    save, load
+                    save, load, fft_degree
 
 import pytta.rooms as rooms
 import pytta.apps.roomir as roomir
@@ -85,6 +85,7 @@ __all__ = [  # Apps
            'load',
            'h5load',
            'weighting',
+           'fft_degree',
 
            # Classes
            'RecMeasure',

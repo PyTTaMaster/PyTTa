@@ -381,12 +381,24 @@ class PlayRecMeasure(Measurement):
     """
 
     def __init__(self, excitation=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         if excitation is None:
             self._excitation = None
+            super().__init__(*args, **kwargs)
         else:
             self.excitation = excitation
-            self.outChannels = excitation.channels
+            kwargs.pop('freqMin')
+            kwargs.pop('freqMax')
+            super().__init__(*args,
+                             samplingRate=excitation.samplingRate,
+                             freqMin=excitation.freqMin,
+                             freqMax=excitation.freqMax,
+                             fftDegree=excitation.fftDegree,
+                             timeLength=excitation.timeLength,
+                             lengthDomain=excitation.lengthDomain,
+                             numSamples=excitation.numSamples,
+                             **kwargs
+                             )
+            self.outChannel = excitation.channels
         return
 
     def __repr__(self):
@@ -422,11 +434,11 @@ class PlayRecMeasure(Measurement):
         recording = np.squeeze(recording)
         recording = SignalObj(signalArray=recording*self.inChannels.CFlist(),
                               domain='time',
-                              samplingRate=self.samplingRate)
+                              samplingRate=self.samplingRate,
+                              freqMin=self.freqMin,
+                              freqMax=self.freqMax)
         recording.channels = self.inChannels
         recording.timeStamp = timeStamp
-        recording.freqMin = self.freqMin
-        recording.freqMax = self.freqMax
         recording.comment = 'SignalObj from a PlayRec measurement'
         _print_max_level(self.excitation, kind='output')
         _print_max_level(recording, kind='input')
@@ -476,29 +488,29 @@ class PlayRecMeasure(Measurement):
         self._excitation = newSignalObj
         return
 
-    @property
-    def samplingRate(self):
-        return self.excitation._samplingRate
-
-    @property
-    def fftDegree(self):
-        return self.excitation._fftDegree
-
-    @property
-    def timeLength(self):
-        return self.excitation._timeLength
-
-    @property
-    def numSamples(self):
-        return self.excitation._numSamples
-
-    @property
-    def freqMin(self):
-        return self.excitation._freqMin
-
-    @property
-    def freqMax(self):
-        return self.excitation._freqMax
+#    @property
+#    def samplingRate(self):
+#        return self.excitation._samplingRate
+#
+#    @property
+#    def fftDegree(self):
+#        return self.excitation._fftDegree
+#
+#    @property
+#    def timeLength(self):
+#        return self.excitation._timeLength
+#
+#    @property
+#    def numSamples(self):
+#        return self.excitation._numSamples
+#
+#    @property
+#    def freqMin(self):
+#        return self.excitation._freqMin
+#
+#    @property
+#    def freqMax(self):
+#        return self.excitation._freqMax
 
 
 # FRFMeasure class

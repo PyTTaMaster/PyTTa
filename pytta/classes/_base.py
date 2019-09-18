@@ -133,7 +133,7 @@ class PyTTaObj(RICI):
 
     @freqMin.setter
     def freqMin(self, newFreqMin):
-        self._freqMin = round(newFreqMin, 2)
+        self._freqMin = round(newFreqMin/(2**(1/6)), 2)
         return
 
     @property
@@ -142,7 +142,8 @@ class PyTTaObj(RICI):
 
     @freqMax.setter
     def freqMax(self, newFreqMax):
-        self._freqMax = round(newFreqMax, 2)
+        self._freqMax = round(np.min((newFreqMax*(2**(1/6)),
+                                      self.samplingRate//2)), 2)
         return
 
     @property
@@ -410,7 +411,8 @@ class ChannelObj(object):
         return
 
     def calib_press(self, refSignalObj, refPrms, refFreq):
-        Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
+        #Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) #/ (2**(1/2))
+        Prms = refSignalObj.rms()[0]
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
@@ -697,6 +699,12 @@ class ChannelsList(object):
         out = []
         for obj in self._channels:
             out.append(obj.CF)
+        return out
+
+    def dBRefList(self):
+        out = []
+        for obj in self._channels:
+            out.append(obj.dBRef)
         return out
 
     def _to_dict(self):

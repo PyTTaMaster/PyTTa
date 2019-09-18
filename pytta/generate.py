@@ -91,7 +91,8 @@ def sin(Arms=0.5,
         timeLength = 2**(fftDegree)/samplingRate
     t = np.linspace(0, timeLength - (1/samplingRate), samplingRate*timeLength)
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
-    sinSigObj = SignalObj(sin, domain='time', samplingRate=samplingRate)
+    sinSigObj = SignalObj(sin, domain='time', samplingRate=samplingRate,
+                          freqMin=default.freqMin, freqMax=default.freqMax)
     sinSigObj.creation_name = creation_name
     return sinSigObj
 
@@ -148,9 +149,8 @@ def sweep(freqMin=None,
         stopMargin = default.stopMargin
 
     # frequency limits [Hz]
-    freqLimits = np.array([freqMin / (2**(1/6)),
-                           min(freqMax*(2**(1/6)),
-                               samplingRate/2)])
+    freqLimits = {'freqMin': freqMin / (2**(1/6)),
+                  'freqMax': min(freqMax*(2**(1/6)), samplingRate/2)}
     samplingTime = 1/samplingRate  # [s] sampling period
 
     stopSamples = stopMargin*samplingRate
@@ -175,12 +175,12 @@ def sweep(freqMin=None,
     timeVecSweep = np.arange(0, sweepTime, samplingTime)  # [s] time vector
     if timeVecSweep.size > sweepSamples:
         timeVecSweep = timeVecSweep[0:int(sweepSamples)]  # adjust length
-    sweep = 0.8*ss.chirp(timeVecSweep,
-                         freqLimits[0],
-                         sweepTime,
-                         freqLimits[1],
-                         'logarithmic',
-                         phi=-90)  # sweep, time domain
+    sweep = 0.95*ss.chirp(timeVecSweep,
+                          freqLimits['freqMin'],
+                          sweepTime,
+                          freqLimits['freqMax'],
+                          'logarithmic',
+                          phi=-90)  # sweep, time domain
     sweep = __do_sweep_windowing(sweep,
                                  timeVecSweep,
                                  freqLimits,
@@ -196,12 +196,11 @@ def sweep(freqMin=None,
 
     # transforms into a pytta signalObj and sets the correct name
     sweepSignal = SignalObj(signalArray=timeSignal, domain='time',
-                            samplingRate=samplingRate)
+                            samplingRate=samplingRate,
+                            **freqLimits)
+
     sweepSignal.creation_name = creation_name
 
-    # pass on the frequency limits considering the fade in and fade out
-    sweepSignal.freqMin, sweepSignal.freqMax \
-        = freqLimits[0], freqLimits[1]
     return sweepSignal
 
 
@@ -217,9 +216,9 @@ def __do_sweep_windowing(inputSweep,
     """
 
     # frequencies at time instants: freq(t)
-    freqSweep = freqLimits[0]*(
-            (freqLimits[1] / freqLimits[0])**(1/max(timeVecSweep)))\
-        ** timeVecSweep
+    freqSweep = freqLimits['freqMin']*(
+            (freqLimits['freqMax'] / freqLimits['freqMin'])**(
+                    1/max(timeVecSweep))) ** timeVecSweep
 
     # exact sample where the chirp reaches freqMin [Hz]
     freqMinSample = np.where(freqSweep <= freqMin)
