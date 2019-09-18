@@ -301,7 +301,8 @@ class SignalObj(_base.PyTTaObj):
             xlabel = 'Time in s'
         if ylabel is None:
             ylabel = 'Amplitude in {}'
-        ylabel = ylabel.format(self.channels[0].unit)
+        firstCh = self.channels.mapping[0]
+        ylabel = ylabel.format(self.channels[firstCh].unit)
         fig = plt.figure(figsize=(10, 5))
 
         ax = fig.add_axes([0.08, 0.1, 0.8, 0.85], polar=False,
@@ -340,10 +341,11 @@ class SignalObj(_base.PyTTaObj):
         Time domain plotting method
         """
         norm = self.timeSignal/np.max(np.abs(self.timeSignal), axis=0)
+        firstCh = self.channels.mapping[0]
         if xlabel is None:
             xlabel = 'Time in s'
         if ylabel is None:
-            ylabel = 'Magnitude {}'.format(self.channels[0].unit)
+            ylabel = 'Magnitude {}'.format(self.channels[firstCh].unit)
 
         fig = plt.figure(figsize=(10, 5))
 
