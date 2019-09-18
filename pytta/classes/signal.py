@@ -652,6 +652,7 @@ class SignalObj(_base.PyTTaObj):
                         + other._timeSignal
         else:
             result.timeSignal = self._timeSignal + other._timeSignal
+        result.freqMin, result.freqMax = (self.freqMin, self.freqMax)
         return result
 
     def __sub__(self, other):

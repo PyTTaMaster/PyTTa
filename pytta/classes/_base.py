@@ -411,7 +411,7 @@ class ChannelObj(object):
         return
 
     def calib_press(self, refSignalObj, refPrms, refFreq):
-        #Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) #/ (2**(1/2))
+        # Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) #/ (2**(1/2))
         Prms = refSignalObj.rms()[0]
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
