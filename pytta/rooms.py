@@ -259,7 +259,6 @@ def energy_decay_calculation(timeSignal, timeVector, samplingRate, numSamples,
     timeVector = timeVector[:interIdx]
     if lateRT != 0.0:
         C = samplingRate*BGL*lateRT/(6*np.log(10))
-        #print(C)
     else:
         print("Could not estimate C factor for iteration", ch+1)
         C = 0
@@ -293,57 +292,57 @@ def reverberation_time(decay, listEDC, samplingRate, nthOct, **kwargs):
 @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
     first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
-    print(first)
     last = np.where(10*np.log10(energyDecay) >= lowerLim)[0][-1]
-    print(last)
     if last <= first:
         return np.nan
-    #assert last > first
+    # assert last > first
     X = np.ones((last-first, 2))
     X[:, 1] = energyVector[first:last]
     c = np.linalg.lstsq(X, 10*np.log10(energyDecay[first:last]))[0]
     return -60/c[1]
 
 
-def clarity(temp, signalObj, nthOct, **kwargs):
+def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     """
 
     """
-    try:
-        temp = int(temp)*signalObj.samplingRate//1000
-    except ValueError:
-        raise ValueError("The temp parameter must be an integer or a string \
-                         of integers, e.g. (temp='80' | 80).")
-    output = []
-    for ch in range(signalObj.num_channels()):
-        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
-        C = []
-        for bd in range(len(filtResp)):
-            C.append(round(np.sum(filtResp[bd][:temp], axis=0)
-                           / np.sum(filtResp[bd][temp:], axis=0)[0], 2))
-        output.append(C)
-    return output
+#    try:
+#        temp = int(temp)*signalObj.samplingRate//1000
+#    except ValueError:
+#        raise ValueError("The temp parameter must be an integer or a string \
+#                         of integers, e.g. (temp='80' | 80).")
+#    output = []
+#    for ch in range(signalObj.num_channels()):
+#        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
+#        C = []
+#        for bd in range(len(filtResp)):
+#            C.append(round(np.sum(filtResp[bd][:temp], axis=0)
+#                           / np.sum(filtResp[bd][temp:], axis=0)[0], 2))
+#        output.append(C)
+#    return output
+    pass
 
 
-def definition(temp, signalObj, nthOct, **kwargs):
+def definition(temp, signalObj, nthOct, **kwargs):  # TODO
     """
 
     """
-    try:
-        temp = int(temp)*signalObj.samplingRate//1000
-    except ValueError:
-        raise ValueError("The temp parameter must be an integer or a string \
-                         of integers, e.g. (temp='50' | 50).")
-    output = []
-    for ch in range(signalObj.num_channels()):
-        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
-        D = []
-        for bd in range(len(filtResp)):
-            D.append(round(10*np.log10(
-                        np.sum(filtResp[bd][:temp], axis=0)
-                        / np.sum(filtResp[bd][:], axis=0))[0], 2))
-        output.append(D)
-    return output
+#    try:
+#        temp = int(temp)*signalObj.samplingRate//1000
+#    except ValueError:
+#        raise ValueError("The temp parameter must be an integer or a string \
+#                         of integers, e.g. (temp='50' | 50).")
+#    output = []
+#    for ch in range(signalObj.num_channels()):
+#        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
+#        D = []
+#        for bd in range(len(filtResp)):
+#            D.append(round(10*np.log10(
+#                        np.sum(filtResp[bd][:temp], axis=0)
+#                        / np.sum(filtResp[bd][:], axis=0))[0], 2))
+#        output.append(D)
+#    return output
+    pass
 
 
 def analyse(obj, *params, **kwargs):
