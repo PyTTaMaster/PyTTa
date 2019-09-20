@@ -32,7 +32,7 @@ def _filter(signal,
                    refFreq=refFreq,
                    base=base)
     result = of.filter(signal)
-    return result
+    return SignalObj(**result[0])
 
 
 @njit
