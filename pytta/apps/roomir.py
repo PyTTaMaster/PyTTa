@@ -66,14 +66,16 @@ class MeasurementChList(ChannelsList):
         if not isinstance(newComb, dict):
             raise TypeError('groups must be a dict with array name ' +
                             'as key and channel numbers in a tuple as value.')
-        for arrayName, group in newComb.items():
+        for groupName, group in newComb.items():
             if not isinstance(group, tuple):
                 raise TypeError('Groups of channels inside the ' +
                                 'groups dict must be contained by' +
                                 ' a tuple.')
+            else:
                 for chNum in group:
-                    if chNum not in MeasurementChList.mapping:
-                        raise ValueError('Channel number ' + str(chNum) +
+                    if chNum not in self.mapping:
+                        raise ValueError('In group \''+ groupName + 
+                                         '\', InChannel number ' + str(chNum) +
                                          ' isn\'t a valid ' + self.kind +
                                          'put channel.')
         self._groups = newComb
@@ -304,7 +306,7 @@ class MeasurementData(object):
             raise ValueError('Can\'t save the this measurement take because ' +
                              'It has already been saved.')
         # Iterate over measuredThings
-        for arrayName, measuredThing in MeasureTakeObj.measuredThings.items():
+        for measuredThing in MeasureTakeObj.measuredThings.items():
             fileName = str(measuredThing)
             # Checking if any measurement with the same configs was take
             fileName = self.__number_the_file(fileName)
@@ -339,7 +341,7 @@ class MeasurementData(object):
         fileName += '_' + str(lasttake+1)
         return fileName
 
-    def get_status():
+    def get_status(self):
         # TO DO
         pass
 
@@ -380,10 +382,11 @@ class TakeMeasure(object):
         # Check for disabled combined channels
         if self.kind in ['roomir', 'noisefloor']:
             # Look for grouped channels through the individual channels
-            for idx, code in enumerate(self.inChSel):
+            for code in enumerate(self.inChSel):
                 if code not in self.MS.inChannels.groups:
                     chNum = self.MS.inChannels[code].num
                     if self.MS.inChannels.is_grouped(code):
+                            group = self.MS.inChannels.get_group_name(chNum)
                             raise ValueError('Input channel number' +
                                              str(chNum) + ', code \'' + code +
                                              '\' , can\'t be enabled ' +
@@ -391,13 +394,13 @@ class TakeMeasure(object):
                                              group + '\'s group.')
         # Look for groups activated when ms kind is a calibration
         elif self.kind in ['sourcerecalibration', 'miccalibration']:
-            for idx, code in enumerate(self.inChSel):
+            for code in enumerate(self.inChSel):
                 if code in self.MS.inChannels.groups:
                     raise ValueError('Groups can\'t be calibrated. Channels ' +
                                      'must be calibrated individually.')
         # Constructing the inChannels list for the current take
         self.inChannels = MeasurementChList(kind='in')
-        for idx, code in enumerate(self.inChSel):
+        for code in enumerate(self.inChSel):
             if code in self.MS.inChannels.groups:
                 for chNum in self.MS.inChannels.groups[code]:
                     self.inChannels.append(self.MS.inChannels[chNum])
@@ -645,7 +648,7 @@ class TakeMeasure(object):
                                      ' number (e.g. R1).')
                 else:
                     try:
-                        receiverNumber = int(item.split('R')[1])
+                        int(item.split('R')[1])
                     except ValueError:
                         raise ValueError(item + 'isn\'t a receiver position ' +
                                          'code. It must start with \'R\' ' +
@@ -857,7 +860,7 @@ def __h5_unpack(ObjGroup):
         if outChannel is not None:
             outChannel = eval(outChannel)
         measuredSignals = []
-        for idx, h5MsdSignal in ObjGroup['measuredSignals'].items():
+        for h5MsdSignal in ObjGroup['measuredSignals'].items():
             measuredSignals.append(__h5_unpack(h5MsdSignal))
         MsdThng = MeasuredThing(kind=kind,
                                 arrayName=arrayName,

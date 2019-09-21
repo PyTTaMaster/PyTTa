@@ -342,7 +342,7 @@ def __parse_load(className):
 
     elif name == 'Meta':
         out = []
-        for key, val in openJson.items():
+        for val in openJson.items():
             out.append(load(val))
             os.remove(val)
     os.remove(className)
