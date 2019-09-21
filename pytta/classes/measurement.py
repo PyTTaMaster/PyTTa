@@ -409,6 +409,7 @@ class PlayRecMeasure(Measurement):
         return (f'{self.__class__.__name__}('
                 # PlayRecMeasure properties
                 f'excitation={self.excitation!r}, '
+                f'outputAmplification={self.outputAmplification!r}, '
                 # Measurement properties
                 f'device={self.device!r}, '
                 f'inChannels={self.inChannels!r}, '
@@ -608,6 +609,7 @@ class FRFMeasure(PlayRecMeasure):
                 f'overlap={self.overlap!r}, '
                 # PlayRecMeasure properties
                 f'excitation={self.excitation!r}, '
+                f'outputAmplification={self.outputAmplification!r}, '
                 # Measurement properties
                 f'device={self.device!r}, '
                 f'inChannels={self.inChannels!r}, '
