@@ -2,7 +2,7 @@
 # -*-coding = utf-8 -*-
 
 from numpy import array, nan
-#from scipy import io
+#from scipy import io asd
 #from timeit import timeit
 from matplotlib.pyplot import plot, bar
 from pytta.rooms import cumulative_integration, reverberation_time

@@ -41,6 +41,7 @@ import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
 from pytta.classes._base import ChannelsList, ChannelObj
+from pytta.generate import measurement
 import copy as cp
 import pytta.h5utilities as _h5
 
@@ -479,16 +480,17 @@ def __h5_unpack(ObjGroup):
         inChannels = eval(ObjGroup.attrs['inChannels'])
         blocking = ObjGroup.attrs['blocking']
         # Recreating the object
-        rObj = RecMeasure(device=device,
-                          inChannels=inChannels,
-                          blocking=blocking,
-                          samplingRate=samplingRate,
-                          freqMin=freqMin,
-                          freqMax=freqMax,
-                          comment=comment,
-                          lengthDomain=lengthDomain,
-                          fftDegree=fftDegree,
-                          timeLength=timeLength)
+        rObj = measurement(kind='rec',
+                           device=device,
+                           inChannels=inChannels,
+                           blocking=blocking,
+                           samplingRate=samplingRate,
+                           freqMin=freqMin,
+                           freqMax=freqMax,
+                           comment=comment,
+                           lengthDomain=lengthDomain,
+                           fftDegree=fftDegree,
+                           timeLength=timeLength)
         return rObj
 
     elif ObjGroup.attrs['class'] == 'PlayRecMeasure':
@@ -499,7 +501,7 @@ def __h5_unpack(ObjGroup):
         comment = ObjGroup.attrs['comment']
         lengthDomain = ObjGroup.attrs['lengthDomain']
         fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
+        timeLength =ObjGroup.attrs['timeLength']
         # Measurement attrs unpacking
         device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
         inChannels = eval(ObjGroup.attrs['inChannels'])
@@ -507,19 +509,19 @@ def __h5_unpack(ObjGroup):
         blocking = ObjGroup.attrs['blocking']
         # PlayRecMeasure attrs unpacking
         excitation = __h5_unpack(ObjGroup['excitation'])
+        outputAmplification = ObjGroup.attrs['outputAmplification']
         # Recreating the object
-        prObj = PlayRecMeasure(excitation=excitation,
-                               device=device,
-                               inChannels=inChannels,
-                               outChannels=outChannels,
-                               blocking=blocking,
-                               samplingRate=samplingRate,
-                               freqMin=freqMin,
-                               freqMax=freqMax,
-                               comment=comment,
-                               lengthDomain=lengthDomain,
-                               fftDegree=fftDegree,
-                               timeLength=timeLength)
+        prObj = measurement(kind='playrec',
+                            excitation=excitation,
+                            outputAmplification=outputAmplification,
+                            device=device,
+                            inChannels=inChannels,
+                            outChannels=outChannels,
+                            blocking=blocking,
+                            samplingRate=samplingRate,
+                            freqMin=freqMin,
+                            freqMax=freqMax,
+                            comment=comment)
         return prObj
 
     elif ObjGroup.attrs['class'] == 'FRFMeasure':
@@ -538,28 +540,28 @@ def __h5_unpack(ObjGroup):
         blocking = ObjGroup.attrs['blocking']
         # PlayRecMeasure attrs unpacking
         excitation = __h5_unpack(ObjGroup['excitation'])
+        outputAmplification = ObjGroup.attrs['outputAmplification']
         # FRFMeasure attrs unpacking
         method = _h5.none_parser(ObjGroup.attrs['method'])
         winType = _h5.none_parser(ObjGroup.attrs['winType'])
         winSize = _h5.none_parser(ObjGroup.attrs['winSize'])
         overlap = _h5.none_parser(ObjGroup.attrs['overlap'])
         # Recreating the object
-        frfObj = FRFMeasure(method=method,
-                            winType=winType,
-                            winSize=winSize,
-                            overlap=overlap,
-                            excitation=excitation,
-                            device=device,
-                            inChannels=inChannels,
-                            outChannels=outChannels,
-                            blocking=blocking,
-                            samplingRate=samplingRate,
-                            freqMin=freqMin,
-                            freqMax=freqMax,
-                            comment=comment,
-                            lengthDomain=lengthDomain,
-                            fftDegree=fftDegree,
-                            timeLength=timeLength)
+        frfObj = measurement(kind='frf',
+                             method=method,
+                             winType=winType,
+                             winSize=winSize,
+                             overlap=overlap,
+                             excitation=excitation,
+                             outputAmplification=outputAmplification,
+                             device=device,
+                             inChannels=inChannels,
+                             outChannels=outChannels,
+                             blocking=blocking,
+                             samplingRate=samplingRate,
+                             freqMin=freqMin,
+                             freqMax=freqMax,
+                             comment=comment)
         return frfObj
     else:
         raise TypeError

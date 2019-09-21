@@ -339,6 +339,9 @@ class PlayRecMeasure(Measurement):
         * excitation (SignalObj), (SignalObj):
             signal information used to reproduce (playback);
 
+        * outputAmplification (0), (float):
+            Gain in dB applied to the output channels.
+
         * device (system default), (list/int):
             list of input and output devices;
 
@@ -380,7 +383,7 @@ class PlayRecMeasure(Measurement):
             excitation timeLen duration;
     """
 
-    def __init__(self, excitation=None, *args, **kwargs):
+    def __init__(self, excitation=None, outputAmplification=0, *args, **kwargs):
         if excitation is None:
             self._excitation = None
             super().__init__(*args, **kwargs)
@@ -399,6 +402,7 @@ class PlayRecMeasure(Measurement):
                              **kwargs
                              )
             self.outChannel = excitation.channels
+        self.outputAmplification = outputAmplification
         return
 
     def __repr__(self):
@@ -423,7 +427,8 @@ class PlayRecMeasure(Measurement):
         Outputs a signalObj with the recording content
         """
         timeStamp = time.ctime(time.time())
-        recording = sd.playrec(self.excitation.timeSignal,
+        recording = sd.playrec(self.excitation.timeSignal*
+                               self.outputLinearGain,
                                samplerate=self.samplingRate,
                                input_mapping=self.inChannels.mapping,
                                output_mapping=self.outChannels.mapping,
@@ -440,7 +445,7 @@ class PlayRecMeasure(Measurement):
         recording.channels = self.inChannels
         recording.timeStamp = timeStamp
         recording.comment = 'SignalObj from a PlayRec measurement'
-        _print_max_level(self.excitation, kind='output')
+        _print_max_level(self.excitation, kind='output', gain=self.outputLinearGain)
         _print_max_level(recording, kind='input')
         return recording
 
@@ -475,6 +480,7 @@ class PlayRecMeasure(Measurement):
         if setClass is True:
             h5group.attrs['class'] = 'PlayRecMeasure'
         self.excitation.h5_save(h5group.create_group('excitation'))
+        h5group.attrs['outputAmplification'] = self.outputAmplification
         super().h5_save(h5group)
         pass
 
@@ -486,6 +492,16 @@ class PlayRecMeasure(Measurement):
     @excitation.setter
     def excitation(self, newSignalObj):
         self._excitation = newSignalObj
+        return
+
+    @property
+    def outputAmplification(self):
+        return self._outputAmplification
+
+    @outputAmplification.setter
+    def outputAmplification(self, newOutputGain):
+        self._outputAmplification = newOutputGain
+        self.outputLinearGain = 10**(self._outputAmplification/20)
         return
 
 #    @property
@@ -665,29 +681,19 @@ class FRFMeasure(PlayRecMeasure):
 
 
 # Sub functions
-def _print_max_level(sigObj, kind):
-    if kind == 'output':
-        for chIndex in range(sigObj.numChannels):
-            chNum = sigObj.channels.mapping[chIndex]
-            print('max output level (excitation) on channel [{}]: '
-                  .format(chNum) +
-                  '{:.2f} {} - ref.: {} [{}]'
-                  .format(sigObj.max_level()[chIndex],
-                          sigObj.channels[chNum].dBName,
-                          sigObj.channels[chNum].dBRef,
-                          sigObj.channels[chNum].unit))
-            if sigObj.max_level()[chIndex] >= 0:
-                print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
-    if kind == 'input':
-        for chIndex in range(sigObj.numChannels):
-            chNum = sigObj.channels.mapping[chIndex]
-            print('max input level (recording) on channel [{}]: '
-                  .format(chNum) +
-                  '{:.2f} {} - ref.: {} [{}]'
-                  .format(sigObj.max_level()[chIndex],
-                          sigObj.channels[chNum].dBName,
-                          sigObj.channels[chNum].dBRef,
-                          sigObj.channels[chNum].unit))
-            if sigObj.max_level()[chIndex] >= 0:
-                print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
+def _print_max_level(sigObj, kind, gain=1):
+    for chIndex in range(sigObj.numChannels):
+        chNum = sigObj.channels.mapping[chIndex]
+        # Calculating the final level with a linear gain applied
+        linearRmsAmplitude = 10**(sigObj.max_level()[chIndex]/20)
+        finalLevel = 20*np.log10(linearRmsAmplitude*gain)
+        print('max {} level (excitation) on channel [{}]: '
+                .format(kind, chNum) +
+                '{:.2f} {} - ref.: {} [{}]'
+                .format(finalLevel,
+                        sigObj.channels[chNum].dBName,
+                        sigObj.channels[chNum].dBRef,
+                        sigObj.channels[chNum].unit))
+        if sigObj.max_level()[chIndex] >= 0:
+            print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return

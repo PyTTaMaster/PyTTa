@@ -365,7 +365,6 @@ class ChannelObj(object):
                 f'calibCheck={self.calibCheck!r}, '
                 f'coordinates={self.coordinates.point!r}, '
                 f'orientation={self.orientation.point!r})')
-        return
 
     def __mul__(self, other):
         if not isinstance(other, ChannelObj):

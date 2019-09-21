@@ -366,8 +366,8 @@ def measurement(kind='playrec',
                 freqMin=None,
                 freqMax=None,
                 device=None,
-                inChannel=None,
-                outChannel=None,
+                inChannels=None,
+                outChannels=None,
                 *args,
                 **kwargs):
     """
@@ -379,13 +379,14 @@ def measurement(kind='playrec',
                                        [lengthDomain,
                                        fftDegree,
                                        timeLength,
-                                       excitation],
+                                       excitation,
+                                       outputAmplification],
                                        samplingRate,
                                        freqMin,
                                        freqMax,
                                        device,
-                                       inChannel,
-                                       outChannel,
+                                       inChannels,
+                                       outChannels,
                                        comment)
 
     The parameters between brackets are different for each value of the (kind)
@@ -414,19 +415,20 @@ def measurement(kind='playrec',
         - freqMin: [Hz] smallest frequency of interest;
         - freqMax: [Hz] highest frequency of interest;
         - device: audio I/O device to use for recording;
-        - inChannel: list of active channels to record;
+        - inChannels: list of active channels to record;
         - comment: any commentary about the recording.
 
 
     Options for (kind='playrec'):
 
-        - excitation: object of SignalObj class, used for the playback.
+        - excitation: object of SignalObj class, used for the playback;
+        - outputAmplification: output gain in dB;
         - samplingRate: [Hz] sampling frequency of the recording;
         - freqMin: [Hz] smallest frequency of interest;
         - freqMax: [Hz] highest frequency of interest;
         - device: audio I/O device to use for recording;
-        - inChannel: list of active channels to record;
-        - outChannel: list of active channels to send the playback signal, for
+        - inChannels: list of active channels to record;
+        - outChannels: list of active channels to send the playback signal, for
             M channels it is mandatory for the excitation signal to have M
             columns in the timeSignal parameter.
         - comment: any commentary about the recording.
@@ -455,16 +457,16 @@ def measurement(kind='playrec',
         samplingRate = default.samplingRate
     if device is None:
         device = default.device
-    if inChannel is None:
-        inChannel = default.inChannel[:]
-    if outChannel is None:
-        outChannel = default.outChannel[:]
+    if inChannels is None:
+        inChannels = default.inChannel[:]
+    if outChannels is None:
+        outChannels = default.outChannel[:]
 
 # Kind REC
     if kind in ['rec', 'record', 'recording', 'r']:
         recordObj = RecMeasure(samplingRate=samplingRate, freqMin=freqMin,
                                freqMax=freqMax, device=device,
-                               inChannels=inChannel, **kwargs)
+                               inChannels=inChannels, **kwargs)
         if ('lengthDomain' in kwargs) or args:
             if kwargs.get('lengthDomain') == 'time':
                 recordObj.lengthDomain = 'time'
@@ -486,6 +488,11 @@ def measurement(kind='playrec',
 
 # Kind PLAYREC
     elif kind in ['playrec', 'playbackrecord', 'pr']:
+        if 'outputAmplification' in kwargs:
+            outputAmplification = kwargs.get('outputAmplification')
+            kwargs.pop('outputAmplification', None)
+        else:
+            outputAmplification = 0
         if ('excitation' in kwargs.keys()) or args:
             signalIn = kwargs.get('excitation') or args[0]
             kwargs.pop('excitation', None)
@@ -495,9 +502,11 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        playRecObj = PlayRecMeasure(excitation=signalIn, device=device,
-                                    inChannels=inChannel,
-                                    outChannels=outChannel,
+        playRecObj = PlayRecMeasure(excitation=signalIn,
+                                    outputAmplification=outputAmplification,
+                                    device=device,
+                                    inChannels=inChannels,
+                                    outChannels=outChannels,
                                     freqMin=freqMin,
                                     freqMax=freqMax, **kwargs)
         playRecObj.creation_name = creation_name
@@ -505,6 +514,11 @@ def measurement(kind='playrec',
 
 # Kind FRF
     elif kind in ['tf', 'frf', 'transferfunction', 'freqresponse']:
+        if 'outputAmplification' in kwargs:
+            outputAmplification = kwargs.get('outputAmplification')
+            kwargs.pop('outputAmplification', None)
+        else:
+            outputAmplification = 0
         if ('excitation' in kwargs) or args:
             signalIn = kwargs.get('excitation') or args[0]
             kwargs.pop('excitation', None)
@@ -514,9 +528,11 @@ def measurement(kind='playrec',
                              freqMax=freqMax,
                              **kwargs)
 
-        frfObj = FRFMeasure(excitation=signalIn, device=device,
-                            inChannels=inChannel,
-                            outChannels=outChannel,
+        frfObj = FRFMeasure(excitation=signalIn,
+                            outputAmplification=outputAmplification,
+                            device=device,
+                            inChannels=inChannels,
+                            outChannels=outChannels,
                             freqMin=freqMin,
                             freqMax=freqMax, **kwargs)
         frfObj.creation_name = creation_name

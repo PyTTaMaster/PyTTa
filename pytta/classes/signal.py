@@ -232,7 +232,7 @@ class SignalObj(_base.PyTTaObj):
         print('DEPRECATED! This method will be renamed to',
               ':method:``.channelMean()``',
               'Remember to review your code :D')
-        return self.chmean()
+        return self.channelMean()
 
     def channelMean(self):
         """
@@ -869,13 +869,17 @@ class ImpulsiveResponse(_base.PyTTaObj):
         return
 
     def __repr__(self):
+        method=self.methodInfo['method']
+        winType=self.methodInfo['winType']
+        winSize=self.methodInfo['winSize']
+        overlap=self.methodInfo['overlap']
         return (f'{self.__class__.__name__}('
-                f'excitationSignal={self.excitationSignal!r}, '
-                f'recordedSignal={self.recordedSignal!r}, '
-                f'method={self.method!r}, '
-                f'winType={self.winType!r}, '
-                f'winSize={self.winSize!r}, '
-                f'overlap={self.overlap!r})')
+                f'excitationSignal={self.excitation!r}, '
+                f'recordedSignal={self.recording!r}, '
+                f'method={method!r}, '
+                f'winType={winType!r}, '
+                f'winSize={winSize!r}, '
+                f'overlap={overlap!r})')
 
     def _to_dict(self):
         out = {'methodInfo': self.methodInfo}
