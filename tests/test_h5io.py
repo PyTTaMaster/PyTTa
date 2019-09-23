@@ -45,6 +45,9 @@ class TestH5IO(unittest.TestCase):
             # SignalObj.timeSignal
             self.assertSequenceEqual(pobj.timeSignal.tolist(),
                                      savedlst[idx].timeSignal.tolist())
+            # SignalObj.freqSignal
+            self.assertSequenceEqual(pobj.freqSignal.tolist(),
+                                     savedlst[idx].freqSignal.tolist())
             # SignalObj.samplingRate
             self.assertEqual(pobj.samplingRate,
                              savedlst[idx].samplingRate)
