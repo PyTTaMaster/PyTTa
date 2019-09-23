@@ -430,7 +430,7 @@ class SignalObj(_base.PyTTaObj):
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
         fig.legend(loc='center right', fontsize=12)
-        return fig
+        return
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
                          xlabel=None, ylabel=None):
