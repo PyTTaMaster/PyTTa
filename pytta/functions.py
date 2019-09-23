@@ -232,8 +232,8 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     elif fileName.split('.')[-1] == 'pytta':
         pytta_save(fileName, *PyTTaObjs)
     else:
-        f'File extension must be .hdf5 or .pytta.'
-        f'Applying the default extension: {defaultFormat}.'
+        print('File extension must be .hdf5 or .pytta.'
+        'Applying the default extension: {}.'.format(defaultFormat))
         fileName += defaultFormat
         save(fileName, *PyTTaObjs)
 

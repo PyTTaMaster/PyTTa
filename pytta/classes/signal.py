@@ -1143,4 +1143,5 @@ class ImpulsiveResponse(_base.PyTTaObj):
         f, S12 = ss.csd(sig1, sig2, samplingRate, window=windowName,
                         nperseg=numberOfSamples, noverlap=overlapSamples,
                         axis=0)
+        del f
         return S12, S11

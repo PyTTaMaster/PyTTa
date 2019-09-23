@@ -307,6 +307,17 @@ class RecMeasure(Measurement):
         Run method: starts recording during Tmax seconds
         Outputs a signalObj with the recording content
         """
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        for frame, line in traceback.walk_stack(None):
+            varnames = frame.f_code.co_varnames
+            if varnames is ():
+                break
+        creation_file, creation_line, creation_function, \
+            creation_text = \
+            traceback.extract_stack(frame, 1)[0]
+        creation_name = creation_text.split("=")[0].strip()
+
         # Record
         recording = sd.rec(frames=self.numSamples,
                            samplerate=self.samplingRate,
@@ -427,6 +438,17 @@ class PlayRecMeasure(Measurement):
         Starts reproducing the excitation signal and recording at the same time
         Outputs a signalObj with the recording content
         """
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        for frame, line in traceback.walk_stack(None):
+            varnames = frame.f_code.co_varnames
+            if varnames is ():
+                break
+        creation_file, creation_line, creation_function, \
+            creation_text = \
+            traceback.extract_stack(frame, 1)[0]
+        creation_name = creation_text.split("=")[0].strip()
+
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal*
                                self.outputLinearGain,
@@ -696,6 +718,6 @@ def _print_max_level(sigObj, kind, gain=1):
                         sigObj.channels[chNum].dBName,
                         sigObj.channels[chNum].dBRef,
                         sigObj.channels[chNum].unit))
-        if sigObj.max_level()[chIndex] >= 0:
+        if finalLevel >= 0:
             print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
         return
