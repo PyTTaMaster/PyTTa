@@ -116,6 +116,8 @@ def merge(signal1, *signalObjects):
     as a column of the new object
     """
     j = 1
+    freqMin = cp.deepcopy(signal1.freqMin)
+    freqMax = cp.deepcopy(signal1.freqMax)
     comment = cp.deepcopy(signal1.comment)
     channels = cp.deepcopy(signal1.channels)
     timeSignal = cp.deepcopy(signal1.timeSignal)
@@ -136,7 +138,8 @@ def merge(signal1, *signalObjects):
         timeSignal = np.hstack((timeSignal, inObj.timeSignal))
         j += 1
     newSignal = SignalObj(timeSignal, domain='time',
-                          samplingRate=signal1.samplingRate, comment=comment)
+                          samplingRate=signal1.samplingRate,
+                          freqMin=freqMin, freqMax=freqMax, comment=comment)
     channels.conform_to()
     newSignal.channels = channels
     return newSignal
@@ -376,7 +379,11 @@ def h5_save(fileName: str, *PyTTaObjs):
     with h5py.File(fileName, 'w') as f:
         # Dict for counting equal names for correctly renaming
         objsNameCount = {}
+        objCount = 0  # Counter for loaded objects
+        totCount = 0  # Counter for total groups
+    
         for idx, pobj in enumerate(PyTTaObjs):
+            totCount += 1
             if isinstance(pobj, (SignalObj,
                                  ImpulsiveResponse,
                                  RecMeasure,
@@ -393,9 +400,16 @@ def h5_save(fileName: str, *PyTTaObjs):
                 ObjGroup = f.create_group(creationName)
                 # save the obj inside its group
                 pobj.h5_save(ObjGroup)
+                objCount += 1
             else:
                 print("Only PyTTa objects can be saved through this" +
                       "function. Skipping object number " + str(idx) + ".")
+    # Final message
+    plural1 = 's' if objCount > 1 else ''
+    print('Saved {} PyTTa object'.format(objCount) + plural1 +
+        ' of {}'.format(totCount) +
+        ' inside the hdf5 file.')
+    return
 
 
 def h5_load(fileName: str):

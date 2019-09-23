@@ -135,7 +135,13 @@ class SignalObj(_base.PyTTaObj):
         else:
             self.timeSignal = signalArray
             self.lengthDomain = 'time'
-            print('Taking the input as a time domain signal')
+            print('Taking the input as a time domain signal.')
+
+        if self.freqMin is None:
+            self.freqMin = default.freqMin
+        if self.freqMax is None:
+            self.freqMax = default.freqMax
+
         return
 
 # SignalObj Properties
