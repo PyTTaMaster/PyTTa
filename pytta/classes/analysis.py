@@ -1,29 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from pytta.classes.filter import fractional_octave_frequencies as FOF
+import time
 
-from .filter import fractional_octave_frequencies
-
-
-class Result(object):
+class Analysis(object):
     """
     """
-    def __init__(self, vals):
-        self._values = vals
-        pass
 
-    def __repr__(self):
-        return str(self._values)
+    # Magic methods
 
-    def __getitem__(self, key):
-        pass
-
-    def __setitem__(self, key, value):
-        pass
-
-
-class ResultList(object):
-    """
-    """
     def __init__(self, anType=None, freqRange=None):
         self.freqRange = freqRange
         self.anType = anType
@@ -37,6 +22,24 @@ class ResultList(object):
 
     def __repr__(self):
         return str(self)
+
+    def __add__(self, other):
+        # check for min/max bands
+        return
+
+    def __sub__(self, other):
+        # check for min/max bands
+        return
+
+    def __mul__(self, other):
+        # check for min/max bands
+        return
+
+    def __truediv__(self, other):
+        # check for min/max bands
+        return
+
+    # Properties
 
     @property
     def anType(self):
@@ -54,13 +57,29 @@ class ResultList(object):
         return
 
     @property
-    def minFreq(self):
+    def generator(self):
+        """
+        """
+        return self._generator
+
+    @generator.setter
+    def generator(self, new):
+        if type(new) is not str:
+            raise TypeError('generator parameter makes reference to ' +
+                            'the module used to generate the analysis, ' +
+                            'e.g. \'room\', \'building\', and must be ' +
+                            'a str value.')
+        self._generator = new
+        return
+
+    @property
+    def minBand(self):
         """
         """
         return self._freqRange[0]
 
-    @minFreq.setter
-    def minFreq(self, new):
+    @minBand.setter
+    def minBand(self, new):
         if type(new) is not int or type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
@@ -68,13 +87,13 @@ class ResultList(object):
         return
 
     @property
-    def maxFreq(self):
+    def maxBand(self):
         """
         """
         return self._freqRange[-1]
 
-    @maxFreq.setter
-    def maxFreq(self, new):
+    @maxBand.setter
+    def maxBand(self, new):
         if type(new) is not int or type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
@@ -82,35 +101,37 @@ class ResultList(object):
         return
 
     @property
-    def freqRange(self):
+    def bands(self):
         """
         """
         return self._freqRange
 
-    @freqRange.setter
-    def freqRange(self, new):
+    @bands.setter
+    def bands(self, new):
         if type(new) is not list:
             raise TypeError("Frequency range must be a list of int \
                             or a list of float values.")
         self._freqRange = new[:]
         return
 
-    @property
-    def freqAxis(self):
-        return self._freqAxis
+    # Methods
 
-    def get_x_axis(self):
-        pass
+    def _to_dict(self):
+        return
 
-    def plot(self, which, how='bars'):
-        pass
+    def pytta_save(self, dirname=time.ctime(time.time())):
+        return
 
-    def add_attr(self, propName, propVal):
+    def h5_save(self, h5group):
         """
+        Saves itself inside a hdf5 group from an already openned file via
+        pytta.save(...).
         """
-        if len(propVal) < len(self.freqAxis):
-            raise ValueError("This list has " + str(len(self.freqAxis))
-                             + " elements at x axis. New properties must have \
-                             the same number of elements.")
-        setattr(self, propName, propVal)
+        return
+
+    def plot(self):
+        self.plot_bars()
+        return
+
+    def plot_bars(self):
         return
