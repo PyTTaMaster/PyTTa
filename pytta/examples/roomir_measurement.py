@@ -147,3 +147,6 @@ MS, D = rmr.med_load('med-teste')
 
 
 #%%
+
+
+#%%

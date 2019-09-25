@@ -167,19 +167,20 @@ class MeasurementSetup(object):
                  calibrationTp):
         self.creation_name = 'MeasurementSetup'
         self.measurementKinds = measurementKinds
-        self.name = name
-        self.samplingRate = samplingRate
-        self.device = device
-        self.noiseFloorTp = noiseFloorTp
-        self.calibrationTp = calibrationTp
-        self.excitationSignals = excitationSignals
-        self.averages = averages
-        self.pause4Avg = pause4Avg
-        self.freqMin = freqMin
-        self.freqMax = freqMax
+        self._name = name
+        self._samplingRate = samplingRate
+        self._device = device
+        self._noiseFloorTp = noiseFloorTp
+        self._calibrationTp = calibrationTp
+        self._excitationSignals = excitationSignals
+        self._averages = averages
+        self._pause4Avg = pause4Avg
+        self._freqMin = freqMin
+        self._freqMax = freqMax
         self.inChannels = inChannels
         self.outChannels = outChannels
-        self.path = getcwd()+'/'+self.name+'/'
+        self._path = getcwd()+'/'+self.name+'/'
+        self.modified = False
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
@@ -226,6 +227,96 @@ class MeasurementSetup(object):
     # Properties
 
     @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, newName):
+        raise PermissionError('After a measurement initialization its name' +
+                              'can\'t be changed.')
+
+    @property
+    def samplingRate(self):
+        return self._samplingRate
+
+    @samplingRate.setter
+    def samplingRate(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'samplingRate can\'t be changed.')
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'device can\'t be changed.')
+
+    @property
+    def noiseFloorTp(self):
+        return self._noiseFloorTp
+
+    @noiseFloorTp.setter
+    def noiseFloorTp(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'noiseFloorTp can\'t be changed.')
+
+    @property
+    def calibrationTp(self):
+        return self._calibrationTp
+
+    @calibrationTp.setter
+    def calibrationTp(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'calibrationTp can\'t be changed.')
+
+    @property
+    def excitationSignals(self):
+        return self._excitationSignals
+
+    @excitationSignals.setter
+    def excitationSignals(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'excitationSignals can\'t be changed.')
+
+    @property
+    def averages(self):
+        return self._averages
+
+    @averages.setter
+    def averages(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'averages can\'t be changed.')
+
+    @property
+    def pause4Avg(self):
+        return self._pause4Avg
+
+    @pause4Avg.setter
+    def pause4Avg(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'pause4Avg can\'t be changed.')
+
+    @property
+    def freqMin(self):
+        return self._freqMin
+
+    @freqMin.setter
+    def freqMin(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'freqMin can\'t be changed.')
+
+    @property
+    def freqMax(self):
+        return self._freqMax
+
+    @freqMax.setter
+    def freqMax(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'freqMax can\'t be changed.')
+
+    @property
     def inChannels(self):
         return self._inChannels
 
@@ -258,6 +349,14 @@ class MeasurementSetup(object):
                                                     name=chContents[1],
                                                     code=chCode))
 
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'path can\'t be changed.')
 
 class MeasurementData(object):
     """
@@ -282,15 +381,15 @@ class MeasurementData(object):
         if not exists(self.path):
             mkdir(self.path)
         if exists(self.path + 'MeasurementData.hdf5'):
-            # raise FileExistsError('ATTENTION!  MeasurementData for the ' +
-            #                       ' current measurement, ' + self.MS.name +
-            #                       ', already exists. Load it instead of '
-            #                       'overwriting.')
-            # Workaround for debugging
-            print('Deleting the existant measurement: ' + self.MS.name)
-            rmtree(self.path)
-            mkdir(self.path)
-            self.__h5_init()
+            raise FileExistsError('ATTENTION!  MeasurementData for the ' +
+                                  ' current measurement, ' + self.MS.name +
+                                  ', already exists. Load it instead of '
+                                  'overwriting.')
+            # # Workaround for debugging
+            # print('Deleting the existant measurement: ' + self.MS.name)
+            # rmtree(self.path)
+            # mkdir(self.path)
+            # self.__h5_init()
         else:
             self.__h5_init()
 
@@ -302,12 +401,32 @@ class MeasurementData(object):
         """
         # Creating the MeasurementData file
         with h5py.File(self.path + 'MeasurementData.hdf5', 'w-') as f:
-            # Saving the MeasurementSetup link
             f.create_group('MeasurementSetup')
             self.MS.h5_save(f['MeasurementSetup'])
-            # for msKind in self.MS.measurementKinds:
-            #     # Creating groups for each measurement kind
-            #     f.create_group(msKind)
+        return
+    
+    def __h5_update(self):
+        """
+        Method for updating the MeasurementData.hdf5 file if MeasurementSetup
+        was modified.
+        """
+        if self.MS.modified:
+            with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+                # Updating the MeasurementSetup
+                del f['MeasurementSetup']
+                f.create_group('MeasurementSetup')
+                self.MS.h5_save(f['MeasurementSetup'])
+                # Updating the MeasuredThings links
+                # P.S.: Is that needed? Maybe not. Needs review
+                myfiles = [f for f in listdir(self.path) if
+                   isfile(join(self.path, f))]
+                for fileName in myfiles:
+                    if fileName.split('_')[0] in self.MS.measurementKinds:
+                        if fileName.split('.')[0] not in f:
+                            f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
+                                                            '/' + fileName)
+            self.MS.modified = False
+        return
 
     def save_take(self, MeasureTakeObj):
         if not MeasureTakeObj.runCheck:
@@ -330,6 +449,8 @@ class MeasurementData(object):
                 f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
                                                 '/' + fileName)
         MeasureTakeObj.saveCheck = True
+        # Update the measurementData.hdf5
+        self.__h5_update()
         return
 
     def __number_the_file(self, fileName):
@@ -353,12 +474,17 @@ class MeasurementData(object):
         fileName += '_' + str(lasttake+1)
         return fileName
 
-    def get_status(self):
-        # TO DO
-        pass
-
+    def __update_data(self):
+        self._data = {}
+        # ...
+        return
     # Properties
 
+    @property
+    def get(self):
+        self.__update_data()
+        # TO DO
+        return self._data
 
 class TakeMeasure(object):
 
