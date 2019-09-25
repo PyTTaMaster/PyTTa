@@ -182,8 +182,20 @@ class MeasurementSetup(object):
         self.path = getcwd()+'/'+self.name+'/'
 
     def __repr__(self):
-        # TO DO
-        pass
+        return (f'{self.__class__.__name__}('
+            f'name={self.name!r}, '
+            f'samplingRate={self.samplingRate!r}, '
+            f'device={self.device!r}, '
+            f'noiseFloorTp={self.noiseFloorTp!r}, '
+            f'calibrationTp={self.calibrationTp!r}, '
+            f'excitationSignals={self.excitationSignals!r}, '
+            f'averages={self.averages!r}, '
+            f'pause4Avg={self.pause4Avg!r}, '
+            f'freqMin={self.freqMin!r}, '
+            f'freqMax={self.freqMax!r}, '
+            f'inChannels={self.inChannels!r}, '
+            f'outChannels={self.outChannels!r}, '
+            f'path={self.path!r})')
 
     # Methods
 
