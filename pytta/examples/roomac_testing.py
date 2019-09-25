@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*-coding = utf-8 -*-
-
+# %%
 from numpy import array, nan
 #from scipy import io asd
 #from timeit import timeit
@@ -14,12 +14,12 @@ file = 'scene9_RIR_LS1_MP1_Dodecahedron.wav'
 #path = '/home/joaovitor/repositorios/pytta/pytta/examples/RIS/'
 #myload = io.loadmat(path+'RI_mono_2.mat')['MonoRIS2_time']
 #myarr = SignalObj(myload, 'time', 44100)
-
+# %%
 
 myarr = pytta.read_wav(path+file)
 myout = cumulative_integration(myarr, minFreq=20, maxFreq=20000)
 myrt = reverberation_time(20, myout, 44100, 3)
-
+# %%
 myres = array([rt if rt < 10.0 else nan for rt in myrt])
 f = range(len(myres))
 
@@ -37,3 +37,6 @@ plot(f, myres)
 #src = """myres = [rt for rt in myrt]"""
 #
 #print(timeit(stmt=src, setup=setup, number=1, globals=globals()))
+
+
+#%%

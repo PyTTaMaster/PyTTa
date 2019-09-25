@@ -11,7 +11,7 @@ from pytta import roomir as rmr
 from pytta.classes import lju3ei1050
 
 # %% 
-cd pytta/examples/
+# cd pytta/examples/
 # %% Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
 # tempHumid = lju3ei1050.main()

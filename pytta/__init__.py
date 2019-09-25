@@ -51,7 +51,8 @@ default = properties.Default()
 from pytta.classes import SignalObj, ImpulsiveResponse,\
                           RecMeasure, PlayRecMeasure, FRFMeasure,\
                           Streaming,\
-                          OctFilter, weighting
+                          OctFilter, weighting,\
+                          Analysis
 from pytta.functions import read_wav, write_wav, merge, list_devices,\
                     fft_convolve, find_delay, corr_coef, resample, peak_time,\
                     save, load, fft_degree
@@ -81,9 +82,7 @@ __all__ = [  # Apps
            'corr_coef',
            'peak_time',
            'save',
-           'h5save',
            'load',
-           'h5load',
            'weighting',
            'fft_degree',
 
@@ -93,6 +92,7 @@ __all__ = [  # Apps
            'PlayRecMeasure',
            'FRFMeasure',
            'SignalObj',
+           'Analysis',
            'OctFilter',
            'Streaming',
 
