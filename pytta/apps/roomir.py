@@ -872,7 +872,7 @@ def __h5_unpack(ObjGroup):
         if outChannel is not None:
             outChannel = eval(outChannel)
         measuredSignals = []
-        for h5MsdSignal in ObjGroup['measuredSignals'].items():
+        for h5MsdSignal in ObjGroup['measuredSignals'].values():
             measuredSignals.append(__h5_unpack(h5MsdSignal))
         MsdThng = MeasuredThing(kind=kind,
                                 arrayName=arrayName,

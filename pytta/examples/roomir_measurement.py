@@ -144,3 +144,6 @@ D.save_take(takeMeasure)
 
 # %% Carrega dados medidos e setup de medição do arquivo
 MS, D = rmr.med_load('med-teste')
+
+
+#%%
