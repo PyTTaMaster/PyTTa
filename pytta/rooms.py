@@ -144,12 +144,13 @@ def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
     c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
                         )[0]  # rcond=None)[0]
 
-    if (c[1] == 0)[0] or np.isnan(c).any():
+    if (c[1] == 0)[0] or np.isnan(c).any():  # (***) c[0] e c[1] invertidos?
         print("Regression failed, T would be inf.")
         return returnTuple
 
     # 4) preliminary intersection
-    crossingPoint = (10*np.log10(BGL) - c[0]) / c[1]
+    # (***) c[0] e c[1] invertidos? CORRIGIDO
+    crossingPoint = (10*np.log10(BGL) - c[1]) / c[0]
     if (crossingPoint > 2*(timeLength + sampleShift/samplingRate))[0]:
         print("Intersection point greater than signal length.")
         return returnTuple
@@ -173,7 +174,9 @@ def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
     while (np.abs(oldCrossingPoint - crossingPoint) > 0.0001)[0]:
         # 7) estimate background noise level (BGL)
         corrDecay = 10  # arbitrary between 5 and 10 [dB]
+        # (***) 10% da resposta impulsiva inteira, não do averaged vector
         idxLast10Percent = int(len(timeWinData[-len(timeWinData)//10:]))
+        # (***) conferir conta
         cmpr = (crossingPoint - corrDecay/c[1]) * samplingRate / blockSamples
         idx10dBBelowCrossPoint = np.max(np.array([1, int(cmpr[0])]))
         BGL = np.mean(timeWinData[np.min(
@@ -181,7 +184,8 @@ def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
                           idx10dBBelowCrossPoint])):])
 
         # 8) estimate late decay slope
-
+        # (***) o intervalo de avaliação deveria ser estimado utilizando
+        # a última inclinação calculada
         startIdx = idxMax + np.where(10*np.log10(timeWinData[idxMax:])
                                      < 10*(np.log10(BGL)
                                      + dBtoNoise
@@ -200,15 +204,17 @@ def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
         X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
         c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]))[0]
         # , rcond=None)[0]
-
-        if (c[1] >= 0)[0]:
+        
+        # (***) c[0] e c[1] invertidos? CORRIGIDO
+        if (c[0] >= 0)[0]:
             print("Regression did not work, T -> inf. Setting to 0")
-            c[1] = np.inf
+            c[0] = np.inf
             break
 
         # 9) find crosspoint
         oldCrossingPoint = crossingPoint
-        crossingPoint = (10*np.log10(BGL) - c[0]) / c[1]
+        # (***) c[0] e c[1] invertidos? CORRIGIDO
+        crossingPoint = (10*np.log10(BGL) - c[1]) / c[0]
 
         loopCounter += 1
         if loopCounter > 30:
