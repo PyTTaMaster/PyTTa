@@ -142,9 +142,9 @@ class MeasurementChList(ChannelsList):
             for chNum2 in groupMapping:
                 # Getting groups information for reconstructd
                 # inChannels
-                if self[chNum] == mChList[chNum2]:
-                    groups[mChList.get_group_name(chNum)] =\
-                        mChList.get_group_membs(chNum)
+                if self[chNum2] == mChList[chNum2]:
+                    groups[mChList.get_group_name(chNum2)] =\
+                        mChList.get_group_membs(chNum2)
         self.groups = groups
 
 
@@ -318,7 +318,7 @@ class MeasurementData(object):
             raise ValueError('Can\'t save the this measurement take because ' +
                              'It has already been saved.')
         # Iterate over measuredThings
-        for measuredThing in MeasureTakeObj.measuredThings.items():
+        for measuredThing in MeasureTakeObj.measuredThings.values():
             fileName = str(measuredThing)
             # Checking if any measurement with the same configs was take
             fileName = self.__number_the_file(fileName)
@@ -394,7 +394,7 @@ class TakeMeasure(object):
         # Check for disabled combined channels
         if self.kind in ['roomir', 'noisefloor']:
             # Look for grouped channels through the individual channels
-            for code in enumerate(self.inChSel):
+            for code in self.inChSel:
                 if code not in self.MS.inChannels.groups:
                     chNum = self.MS.inChannels[code].num
                     if self.MS.inChannels.is_grouped(code):
@@ -406,13 +406,13 @@ class TakeMeasure(object):
                                              group + '\'s group.')
         # Look for groups activated when ms kind is a calibration
         elif self.kind in ['sourcerecalibration', 'miccalibration']:
-            for code in enumerate(self.inChSel):
+            for code in self.inChSel:
                 if code in self.MS.inChannels.groups:
                     raise ValueError('Groups can\'t be calibrated. Channels ' +
                                      'must be calibrated individually.')
         # Constructing the inChannels list for the current take
         self.inChannels = MeasurementChList(kind='in')
-        for code in enumerate(self.inChSel):
+        for code in self.inChSel:
             if code in self.MS.inChannels.groups:
                 for chNum in self.MS.inChannels.groups[code]:
                     self.inChannels.append(self.MS.inChannels[chNum])
@@ -436,8 +436,8 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
-                                     outChannel=self.outChannel.mapping,
+                                     inChannels=self.inChannels.mapping,
+                                     outChannels=self.outChannel.mapping,
                                      comment='roomir')
         # For miccalibration measurement kind
         if self.kind == 'miccalibration':
@@ -449,7 +449,7 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
+                                     inChannels=self.inChannels.mapping,
                                      comment='miccalibration')
         # For noisefloor measurement kind
         if self.kind == 'noisefloor':
@@ -461,7 +461,7 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
+                                     inChannels=self.inChannels.mapping,
                                      comment='noisefloor')
         # For sourcerecalibration measurement kind
         if self.kind == 'sourcerecalibration':
@@ -473,8 +473,8 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
-                                     outChannel=self.outChannel.mapping,
+                                     inChannels=self.inChannels.mapping,
+                                     outChannels=self.outChannel.mapping,
                                      comment='sourcerecalibration')
 
     def run(self):

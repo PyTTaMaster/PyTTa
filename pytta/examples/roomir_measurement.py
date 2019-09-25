@@ -11,7 +11,7 @@ from pytta import roomir as rmr
 from pytta.classes import lju3ei1050
 
 # %% 
-# cd pytta/examples/
+cd pytta/examples/
 # %% Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
 # tempHumid = lju3ei1050.main()
@@ -61,7 +61,7 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                                       'OD': (2, 'Orelha D'),
                                       'Mic1': (4, 'Mic 1'),
                                       'Mic2': (3, 'Mic 2'),
-                                      'groups': {'HATS': (4, 3)}},
+                                      'groups': {'HATS': (1, 2)}},
                           # Dicionário com códigos e canais de saída associados
                           outChannels={'O1': (1, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
@@ -81,7 +81,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='roomir',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['HATS', 'Mic1', 'OE'],
+                              inChSel=['HATS', 'Mic1'],
                               # Configuração sala-fonte-receptor:
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
