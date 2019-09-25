@@ -373,9 +373,10 @@ class MeasurementData(object):
         # MeasurementSetup
         self.MS = MS
         self.path = self.MS.path
-        # Workaround when roomir.h5_load instantiate a
-        # new MeasurementData and it's already in disc.
+        # Workaround when roomir.h5_load instantiate a new MeasurementData
+        # and it's already in disc. For roomir.load_med purposes.
         if skipFileInit:
+            self.__h5_update_links()
             return
         # MeasurementData.hdf5 initialization
         if not exists(self.path):
@@ -405,28 +406,59 @@ class MeasurementData(object):
             self.MS.h5_save(f['MeasurementSetup'])
         return
     
-    def __h5_update(self):
+    def __h5_update_links(self):
         """
-        Method for updating the MeasurementData.hdf5 file if MeasurementSetup
-        was modified.
+        Method for update MeasurementData.hdf5 with all MeasuredThings in disc.
+        """
+        with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+            # Updating the MeasuredThings links
+            myFiles = [file for file in listdir(self.path) if
+                isfile(join(self.path, file))]
+            # Check if all MeasuredThings files are linked
+            for myFile in myFiles:
+                if myFile.split('_')[0] in self.MS.measurementKinds:
+                    if myFile.split('.')[0] not in f:
+                        f[myFile] = h5py.ExternalLink(myFile + '.hdf5',
+                                                      '/' + myFile)
+            # Check if all MeasuredThings links' files exist
+            for link in list(f):
+                if link + '.hdf5' not in myFiles:
+                    if link != 'MeasurementSetup':
+                        del f[link]
+        return
+
+    def __h5_update_MS(self):
+        """
+        Method for update MeasurementSetup in MeasurementData.hdf5.
         """
         if self.MS.modified:
+            # Updating the MeasurementSetup
             with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
-                # Updating the MeasurementSetup
                 del f['MeasurementSetup']
                 f.create_group('MeasurementSetup')
                 self.MS.h5_save(f['MeasurementSetup'])
-                # Updating the MeasuredThings links
-                # P.S.: Is that needed? Maybe not. Needs review
-                myfiles = [f for f in listdir(self.path) if
-                   isfile(join(self.path, f))]
-                for fileName in myfiles:
-                    if fileName.split('_')[0] in self.MS.measurementKinds:
-                        if fileName.split('.')[0] not in f:
-                            f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
-                                                            '/' + fileName)
-            self.MS.modified = False
+                self.MS.modified = False
         return
+
+    def __h5_link(self, newMeasuredThing=None):
+        """
+        Method for update MeasurementData.hdf5 with a new MeasuredThing hdf5
+        file link.
+        """
+        with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+            # Update the MeasurementData.hdf5 file with the MeasuredThing link
+            if newMeasuredThing is not None:
+                if isinstance(newMeasuredThing, MeasuredThing):
+                        fileName = newMeasuredThing.creation_name
+                        f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
+                                                        '/' + fileName)
+                else:
+                    raise TypeError('Only MeasuredThings can be updated to ' +
+                                    'MeasurementData.hdf5')
+            else:
+                print('Skipping __h5_link as no MeasuredThing was provided.')
+        return
+
 
     def save_take(self, MeasureTakeObj):
         if not MeasureTakeObj.runCheck:
@@ -436,6 +468,8 @@ class MeasurementData(object):
         if MeasureTakeObj.saveCheck:
             raise ValueError('Can\'t save the this measurement take because ' +
                              'It has already been saved.')
+        self.__h5_update_MS()
+        self.__h5_update_links()
         # Iterate over measuredThings
         for measuredThing in MeasureTakeObj.measuredThings.values():
             fileName = str(measuredThing)
@@ -444,13 +478,9 @@ class MeasurementData(object):
             # Saving the MeasuredThing to the disc
             measuredThing.creation_name = fileName
             h5_save(self.path + fileName + '.hdf5', measuredThing)
-            # Update the MeasurementData.hdf5 file with the MeasuredThing link
-            with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
-                f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
-                                                '/' + fileName)
+            # Save the MeasuredThing link to measurementData.hdf5
+            self.__h5_link(measuredThing)
         MeasureTakeObj.saveCheck = True
-        # Update the measurementData.hdf5
-        self.__h5_update()
         return
 
     def __number_the_file(self, fileName):
@@ -478,6 +508,7 @@ class MeasurementData(object):
         self._data = {}
         # ...
         return
+
     # Properties
 
     @property
@@ -887,6 +918,7 @@ def med_load(medname):
     """
     if not exists(medname + '/MeasurementData.hdf5'):
         raise NameError('{} measurement doens\'t exist.'.format(medname))
+    print('Loading the MeasurementSetup from MeasurementData.hdf5.')
     load = h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
     Data = MeasurementData(MS, skipFileInit=True)
@@ -939,15 +971,19 @@ def h5_load(fileName: str, skip: list = []):
     totCount = 0  # Counter for total groups
     for PyTTaObjName, PyTTaObjGroup in f.items():
         totCount += 1
-        if PyTTaObjGroup.attrs['class'] in skip:
-            pass
-        else:
-            try:
-                loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
-                objCount += 1
-            except TypeError:
-                print('Skipping hdf5 group named {} as '.format(PyTTaObjName) +
-                      'it isnt a PyTTa object group.')
+        try:
+            if PyTTaObjGroup.attrs['class'] in skip:
+                pass
+            else:
+                try:
+                    loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
+                    objCount += 1
+                except TypeError:
+                    print('Skipping hdf5 group named {} as '
+                          .format(PyTTaObjName) +
+                          'it isnt a PyTTa object group.')
+        except AttributeError:
+            print('Skipping {} as its link is broken.'.format(PyTTaObjName))
     f.close()
     # Final message
     plural1 = 's' if objCount > 1 else ''
