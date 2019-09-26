@@ -506,16 +506,78 @@ class MeasurementData(object):
 
     def __update_data(self):
         self._data = {}
-        # ...
+        # Empty entries for each measurement kind
+        for mKind in measurementKinds:
+            self._data[mKind] = {}
+        # Get MeasuredThings from disc
+        myFiles = [f for f in listdir(self.path) if
+                   isfile(join(self.path, f))]
+        myFiles.pop(myFiles.index('MeasurementData.hdf5'))
+        # 
+        for file in myFiles:
+            infos = file.split('.')[0].split('_')
+            kind = infos[0]
+            if kind == 'roomir':
+                SR = infos[1].replace('-', '')
+                outCh = infos[2].split('-')[0]
+                inCh = infos[2].split('-')[1]
+                excitation = infos[3]
+                take = int(infos[4])
+                if SR not in self._data[kind]:
+                    self._data[kind][SR] = {}
+
+                if outCh not in self._data[kind][SR]:
+                    self._data[kind][SR][outCh] = {}
+
+                if inCh not in self._data[kind][SR][outCh]:
+                    self._data[kind][SR][outCh][inCh] = {}
+
+                if excitation not in self._data[kind][SR][outCh][inCh]:
+                    self._data[kind][SR][outCh][inCh][excitation] = {}
+
+                self._data[kind][SR][outCh][inCh][excitation][take] = file
+
+            if kind == 'miccalibration':
+                inCh = infos[1]
+                take = int(infos[2])
+                if inCh not in self._data[kind]:
+                    self._data[kind][inCh] = {}
+                self._data[kind][inCh][take] = file
+
+            if kind == 'sourcerecalibration':
+                outCh = infos[1].split('-')[0]
+                inCh = infos[1].split('-')[1]
+                take = int(infos[2])
+                if outCh not in self._data[kind]:
+                    self._data[kind][outCh] = {}
+
+                if inCh not in self._data[kind][outCh]:
+                    self._data[kind][outCh][inCh] = {}
+                self._data[kind][outCh][inCh][take] = file
+
+            if kind == 'noisefloor':
+                SR = infos[1]
+                inCh = infos[2]
+                take = int(infos[3])
+                if SR not in self._data[kind]:
+                    self._data[kind][SR] = {}
+
+                if inCh not in self._data[kind][SR]:
+                    self._data[kind][SR][inCh] = {}
+                self._data[kind][SR][inCh][take] = file
         return
 
     # Properties
 
     @property
-    def get(self):
-        self.__update_data()
+    def get(self, *args):
         # TO DO
-        return self._data
+        self.__update_data()
+        getStr = 'self._data'
+        for arg in args:
+            getStr += '[' + arg + ']'
+        msdThng = h5_load(eval(getStr))
+        return msdThng
 
 class TakeMeasure(object):
 
