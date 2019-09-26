@@ -425,10 +425,18 @@ class SignalObj(_base.PyTTaObj):
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (np.round(20*np.log10(np.min(np.abs(self.freqSignal) /
-                                     self.channels.dBRefList()))) - 5,
-                np.round(20*np.log10(np.max(np.abs(self.freqSignal) /
-                                     self.channels.dBRefList()))) + 5)
+        ylimInf = np.min(np.abs(self.freqSignal) /
+                                    self.channels.dBRefList())
+        ylimSup = np.max(np.abs(self.freqSignal) /
+                                    self.channels.dBRefList())
+
+        if ylimInf == 0:
+            ylimInf = np.mean(np.abs(self.freqSignal) /
+                                     self.channels.dBRefList())*1.1
+        
+        ylim = (np.round(20*np.log10(ylimInf)) - 5,
+                np.round(20*np.log10(ylimSup)) + 5)
+
         ax.set_ylim(ylim)
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
