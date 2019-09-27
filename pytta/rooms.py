@@ -361,9 +361,9 @@ def analyse(obj, *params, **kwargs):
         if 'RT' in prm:
             RTdecay = prm[1]
             RT = reverberation_time(RTdecay, listEDC, samplingRate, **kwargs)
-        if 'C' in prm:
-            Ctemp = prm[1]
-        if 'D' in prm:
-            Dtemp = prm[1]
-    revTimes = [rt for rt in RT]
-    return
+            revTimes = [rt for rt in RT]
+        # if 'C' in prm:
+        #     Ctemp = prm[1]
+        # if 'D' in prm:
+        #     Dtemp = prm[1]
+    return revTimes
