@@ -269,7 +269,7 @@ def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     meta = {}
     with zf.ZipFile(fileName + '.pytta', 'w') as zdir:
         for idx, obj in enumerate(PyTTaObjs):
-            sobj = obj.save('obj' + str(idx))
+            sobj = obj.pytta_save('obj' + str(idx))
             meta['obj' + str(idx)] = sobj
             zdir.write(sobj)
             os.remove(sobj)
@@ -312,8 +312,8 @@ def __parse_load(className):
         os.remove(openJson['timeSignalAddress'])
 
     elif name == 'ImpulsiveResponse':
-        excit = load(openJson['SignalAddress']['excitation'])
-        record = load(openJson['SignalAddress']['recording'])
+        excit = pytta_load(openJson['SignalAddress']['excitation'])
+        record = pytta_load(openJson['SignalAddress']['recording'])
         out = ImpulsiveResponse(excit, record, **openJson['methodInfo'])
         os.remove(openJson['SignalAddress']['excitation'])
         os.remove(openJson['SignalAddress']['recording'])
@@ -328,7 +328,7 @@ def __parse_load(className):
 
     elif name == 'PlayRecMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
-        excit = load(openJson['excitationAddress'])
+        excit = pytta_load(openJson['excitationAddress'])
         out = PlayRecMeasure(excitation=excit,
                              device=openJson['device'], inChannels=inch)
         out.inChannels = __parse_channels(openJson['inChannels'],
@@ -337,7 +337,7 @@ def __parse_load(className):
 
     elif name == 'FRFMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
-        excit = load(openJson['excitationAddress'])
+        excit = pytta_load(openJson['excitationAddress'])
         out = FRFMeasure(excitation=excit, device=openJson['device'],
                          inChannels=inch)
         out.inChannels = __parse_channels(openJson['inChannels'],
@@ -346,8 +346,8 @@ def __parse_load(className):
 
     elif name == 'Meta':
         out = []
-        for val in openJson.items():
-            out.append(load(val))
+        for val in openJson.values():
+            out.append(pytta_load(val))
             os.remove(val)
     os.remove(className)
     return out
