@@ -4,6 +4,7 @@
 # Data files
 *.pkl
 *.mat
+*.pytta
 *.hdf5
 *.wav
 
