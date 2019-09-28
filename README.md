@@ -56,6 +56,7 @@ This will install directly the master branch, which is the most stable and up to
 Our workflow consist on parallel development of submodules, either complementing an existing one, or creating a new.
 Thus, one must create a new branch that points to the development branch. Its name should contain dev- as suffix, named accordingly with the project intent.
 After the new branch is ready and coding finished, we would be glad to receive a pull request.
+Consider reading our CodingGuidelines.
 
 ### Contact
 
