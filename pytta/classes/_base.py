@@ -644,18 +644,20 @@ class ChannelsList(object):
             #         return ch
             try:
                 channel = [ch for ch in self._channels if ch.num == key][0]
-                channel = item
+                self._channels.remove(channel)
+                self._channels.append(item)
             except IndexError:
-                raise IndexError("Channel number not included.")
+                raise IndexError("Channel number not listed.")
         elif isinstance(key, str):
             # for ch in self._channels:
             #     if ch.name == key or ch.code == key:
             #         return ch
             try:
-                channel = [ch for ch in self._channels if ch.name == key][0]
-                channel = item
+                channel = [ch for ch in self._channels if ch.name == key or ch.code == key][0]
+                self._channels.remove(channel)
+                self._channels.append(item)
             except IndexError:
-                raise IndexError("Channel name/code out of range.")
+                raise IndexError("Channel name/code not listed.")
         else:
             raise TypeError("Argument must be a channel number (int) or its name (str)")
         return
