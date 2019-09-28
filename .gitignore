@@ -5,6 +5,7 @@
 *.pkl
 *.mat
 *.hdf5
+*.wav
 
 # All the python stuff
 *.pyc
