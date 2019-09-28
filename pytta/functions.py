@@ -299,7 +299,8 @@ def pytta_load(fileName: str):
 
 def __parse_load(className):
     name = className.split('.')[0]
-    openJson = json.load(open(className, 'r'))
+    jsonFile = open(className, 'r')
+    openJson = json.load(jsonFile)
     if name == 'SignalObj':
         openMat = sio.loadmat(openJson['timeSignalAddress'])
         out = SignalObj(openMat['timeSignal'], domain=openJson['lengthDomain'],
@@ -350,6 +351,7 @@ def __parse_load(className):
             out.append(pytta_load(val))
             os.remove(val)
     os.remove(className)
+    jsonFile.close()
     return out
 
 
