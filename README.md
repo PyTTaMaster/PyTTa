@@ -18,9 +18,9 @@ To begin, one can try:
 
     >>> import pytta
     >>> pytta.list_devices()
-    >>> pytta.Default()
+    >>> pytta.default()
 
-This set of commands will print the available audio I/O devices and the default parameters as they are on the Default class object.
+This set of commands will print the available audio I/O devices and the default parameters as they are on the default class object.
 
 To read everything available on the package, and assuming the use of Spyder IDE, one can press "ctrl+i" with the cursor in front of the module, submodule, class, methods, or function names,
 this will open the help menu with the documentation of the respective item.
@@ -41,7 +41,7 @@ Inside each submodule the user will find instructions on the available tools, an
 - Scipy;
 - Matplotlib;
 - Sounddevice;
-- PyFilterbank.
+- H5py.
 
 ### Installation
 
@@ -51,11 +51,11 @@ The installation can be made through pip, as follows:
 
 This will install directly the master branch, which is the most stable and up to date version on the repository.
 
-### Contributing and Credits
+### Contributing
 
-Our workflow, which may change as we progress with the project, consist on parallel development of submodules, either complementing an existing one, or creating a new.
-Thus, one must create a new branch, named accordingly with the project intent, and that points to the master OR the development branches, as they are intended to merge in the near future.
-After the new branch is ready and coding finished, it stays as a branch for, at maximum, two months untill it is merged to the development branch.
+Our workflow consist on parallel development of submodules, either complementing an existing one, or creating a new.
+Thus, one must create a new branch that points to the development branch. Its name should contain dev- as suffix, named accordingly with the project intent.
+After the new branch is ready and coding finished, we would be glad to receive a pull request.
 
 ### Contact
 
