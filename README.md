@@ -47,7 +47,7 @@ Inside each submodule the user will find instructions on the available tools, an
 
 The installation can be made through pip, as follows:
 
-    >>> pip install pytta
+    >>> pip install pytta-dev
 
 This will install directly the master branch, which is the most stable and up to date version on the repository.
 

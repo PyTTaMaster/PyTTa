@@ -62,7 +62,7 @@ import pytta.apps.roomir as roomir
 import pytta.generate as generate
 import pytta.h5utilities
 
-__version__ = '0.1.0b4'  # package version
+__version__ = '0.1.0b5'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps
@@ -88,10 +88,10 @@ __all__ = [  # Apps
 
            # Classes
            'RecMeasure',
-           'ImpulsiveResponse',
            'PlayRecMeasure',
            'FRFMeasure',
            'SignalObj',
+           'ImpulsiveResponse',
            'Analysis',
            'OctFilter',
            'Streaming',
