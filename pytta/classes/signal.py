@@ -12,8 +12,8 @@ import time
 from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
-import pytta.h5utilities as _h5
-from pytta.classes.filter import fractional_octave_frequencies as FOF
+from pytta import h5utilities as _h5
+from pytta.frequtils import fractional_octave_frequencies as FOF
 
 # filterwarnings("default", category=DeprecationWarning)
 

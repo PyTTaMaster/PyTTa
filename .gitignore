@@ -13,7 +13,6 @@
 *.cpython-*.pyc
 
 # PyTTa compressed file
-*.pytta
 
 # DS
 *.DS_Store
@@ -98,6 +97,9 @@ docs/build/*
 # PyBuilder
 target/
 
+# PyCharm
+.idea/*
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
@@ -117,7 +119,6 @@ celerybeat-schedule
 # Environments
 .env
 .venv
-pytta-env/*
 env/*
 venv/*
 ENV/*

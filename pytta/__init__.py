@@ -42,25 +42,27 @@ documentation.
 """
 
 # Importing .py files as submodules
-import pytta.properties as properties
+from . import frequtils
+from .properties import default
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
-default = properties.Default()
 
-from pytta.classes import SignalObj, ImpulsiveResponse,\
-                          RecMeasure, PlayRecMeasure, FRFMeasure,\
-                          Streaming,\
-                          OctFilter, weighting,\
-                          Analysis
-from pytta.functions import read_wav, write_wav, merge, list_devices,\
-                    fft_convolve, find_delay, corr_coef, resample, peak_time,\
-                    save, load, fft_degree
+from .classes import SignalObj, ImpulsiveResponse,\
+                     RecMeasure, PlayRecMeasure, FRFMeasure,\
+                     Streaming,\
+                     OctFilter, weighting,\
+                     Analysis
 
-import pytta.rooms as rooms
-import pytta.apps.roomir as roomir
-import pytta.generate as generate
-import pytta.h5utilities
+from . import generate
+from . import h5utilities
+from . import rooms
+
+from .functions import read_wav, write_wav, merge, list_devices,\
+                       fft_convolve, find_delay, corr_coef, resample, peak_time,\
+                       save, load, fft_degree
+
+from .apps import roomir
 
 __version__ = '0.1.0b5'  # package version
 
@@ -70,6 +72,8 @@ __all__ = [  # Apps
 
            # Submodules
            'generate',
+           'frequtils',
+           'h5utilities'
 
            # Functions
            'merge',

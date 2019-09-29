@@ -14,7 +14,7 @@ from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
 from scipy import io
 import time
-import pytta.h5utilities as _h5
+from pytta import h5utilities as _h5
 
 
 class PyTTaObj(RICI):
