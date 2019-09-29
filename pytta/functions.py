@@ -40,8 +40,7 @@ import zipfile as zf
 import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure
-from pytta.classes._base import ChannelsList, ChannelObj
-from pytta.generate import measurement
+from pytta.generate import measurement  # TODO: Change to class instantiation.
 import copy as cp
 import pytta.h5utilities as _h5
 
@@ -84,6 +83,7 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
 
     """
     return np.log2(timeLength*samplingRate)
+
 
 
 def read_wav(fileName):
