@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 
 from pytta.classes.filter import fractional_octave_frequencies as FOF
+import matplotlib.pyplot as plt
 import numpy as np
 import time
+
+# Analysis types and its units
+anTypes = {'RT': 's',
+           'C': 'dB',
+           'D': '%',
+           'mixed': '-'}
 
 class Analysis(object):
     """
@@ -13,29 +20,29 @@ class Analysis(object):
     def __init__(self,
                 anType,
                 nthOct,
-                bandMin,
-                bandMax,
+                minBand,
+                maxBand,
                 data,
                 comment='No comments.'):
         self.anType = anType
         self.nthOct = nthOct
-        self.bandMin = bandMin
-        self.bandMax = bandMax
+        self.minBand = minBand
+        self.maxBand = maxBand
         self.data = data
         self.comment = comment
         return
 
     def __str__(self):
         return ('1/{} octave band {} '.format(self.nthOct, self.anType) +
-            'analysis from the {} [Hz] to the '.format(self.bandMin) +
-            '{} [Hz] band.'.format(self.bandMax))
+            'analysis from the {} [Hz] to the '.format(self.minBand) +
+            '{} [Hz] band.'.format(self.maxBand))
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
                 f'anType={self.anType!r}, '
                 f'nthOct={self.nthOct!r}, '
-                f'bandMin={self.bandMin!r}, '
-                f'bandMax={self.bandMax!r}, '
+                f'minBand={self.minBand!r}, '
+                f'maxBand={self.maxBand!r}, '
                 f'data={self.data!r}, '
                 f'comment={self.comment!r})')
 
@@ -44,8 +51,13 @@ class Analysis(object):
         raise NotImplementedError
 
     def __sub__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if other.range != self.range:
+            raise ValueError("Can't subtract! Both Analysis have different " +
+                             "band limits.")
+        result = Analysis(anType='mixed', nthOct=self.nthOct,
+                          minBand=self.minBand, maxBand=self.maxBand,
+                          data=self.data-other.data)
+        return result
 
     def __mul__(self, other):
         # check for min/max bands
@@ -64,12 +76,16 @@ class Analysis(object):
         return self._anType
 
     @anType.setter
-    def anType(self, new):
-        if type(new) is not str:
-            raise TypeError("anType parameter makes reference to the module \
-                             used to generate the analysis, e.g. 'room', \
-                             'building', and must be a str value.")
-        self._anType = new
+    def anType(self, newType):
+        if type(newType) is not str:
+            raise TypeError("anType parameter makes reference to the " +
+                            "calculated parameter, e.g. 'RT' for " +
+                            "reverberation time, and must be a str value.")
+        elif newType not in anTypes:
+            raise ValueError(newType + " type not supported. May be 'RT, " +
+                             "'C' or 'D'.")
+        self.unit = anTypes[newType]
+        self._anType = newType
         return
 
     @property
@@ -88,21 +104,21 @@ class Analysis(object):
                                 "{} to {} bands".format(self.nthOct, new) +
                                 "per octave")
             else:
-                # TO DO: convertion calculation
-                pass
+                raise NotImplementedError('Conversion between different ' +
+                                          'nthOct not implemented yet.')
         else:
             self._nthOct = new
         return
 
 
     @property
-    def bandMin(self):
+    def minBand(self):
         """
         """
         return self._bandMin
 
-    @bandMin.setter
-    def bandMin(self, new):
+    @minBand.setter
+    def minBand(self, new):
         if type(new) is not int and type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
@@ -110,18 +126,22 @@ class Analysis(object):
         return
 
     @property
-    def bandMax(self):
+    def maxBand(self):
         """
         """
         return self._bandMax
 
-    @bandMax.setter
-    def bandMax(self, new):
+    @maxBand.setter
+    def maxBand(self, new):
         if type(new) is not int and type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
         self._bandMax = new
         return
+    
+    @property
+    def range(self):
+        return (self.minBand, self.maxBand)
 
     @property
     def data(self):
@@ -132,20 +152,21 @@ class Analysis(object):
     @data.setter
     def data(self, newData):
         bands = FOF(nthOct=self.nthOct,
-                    minFreq=self.bandMin,
-                    maxFreq=self.bandMax)
-        if not isinstance(newData, list) and not isinstance(newData, np.ndarray):
+                    minFreq=self.minBand,
+                    maxFreq=self.maxBand)
+        if not isinstance(newData, list) and \
+            not isinstance(newData, np.ndarray):
             raise TypeError("'data' must be provided as a list or " +
                             "numpy ndarray.")
         elif len(newData) != len(bands):
             raise ValueError("Provided 'data' has different number of bands " +
                              "then the existant bands betwen " +
-                             "{} and {} [Hz].".format(self.bandMin,
-                                                      self.bandMax))
+                             "{} and {} [Hz].".format(self.minBand,
+                                                      self.maxBand))
         
         # ...
-        self._data = 0
-        self._bands = bands
+        self._data = np.array(newData)
+        self._bands = bands[:,1]
         return
 
     @property
@@ -174,5 +195,38 @@ class Analysis(object):
         self.plot_bars()
         return
 
-    def plot_bars(self):
+    def plot_bars(self, xlabel=None, ylabel=None):
+        """
+        Analysis bar plotting method
+        """
+        if xlabel is None:
+            xlabel = 'Frequency bands [Hz]'
+        if ylabel is None:
+            ylabel = 'Modulus [{}]'
+
+        ylabel = ylabel.format(self.unit)
+
+        fig = plt.figure(figsize=(10, 5))
+
+        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                          projection='rectilinear', xscale='linear')
+        ax.set_snap(True)
+
+        fbar = range(len(self.data))
+
+        ax.bar(fbar, self.data, width=0.75)
+        
+        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+
+        ax.set_xticks(fbar)
+        ax.set_xticklabels(self.bands)
+        ax.set_xlabel(xlabel)
+        
+
+        ylimInf = np.min(self.data) - 0.2
+        ylimSup = np.max(self.data) + 0.2
+        ylim = (ylimInf, ylimSup)
+        ax.set_ylim(ylim)
+        ax.set_ylabel(ylabel)
+        
         return
