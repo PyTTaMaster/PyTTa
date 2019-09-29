@@ -23,8 +23,14 @@ __nominal_frequencies = np.array([
 
 
 def freq_to_band(freq: float, nthOct: int, ref: float, base: int) -> np.ndarray:
-    log = lambda x: np.log(x)/np.log(base)
-    factor = np.log2(base)
+    if base == 10:
+        log = np.log10
+        factor = 3 / 10
+    elif base == 2:
+        log = np.log2
+        factor = 1
+    else:
+        raise ValueError(f"freq_to_band: unknown base value.")
     return np.round(log(freq / ref) * (nthOct / factor))
 
 
