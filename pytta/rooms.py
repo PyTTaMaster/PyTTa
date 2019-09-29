@@ -14,7 +14,7 @@ PyTTa Room Analysis:
 
 import numpy as np
 from numba import njit
-from pytta.classes import SignalObj, OctFilter
+from pytta import SignalObj, OctFilter, Analysis
 
 
 def _filter(signal,
@@ -32,7 +32,7 @@ def _filter(signal,
                    refFreq=refFreq,
                    base=base)
     result = of.filter(signal)
-    return SignalObj(**result[0])
+    return result[0]
 
 
 @njit
@@ -274,7 +274,7 @@ def energy_decay_calculation(timeSignal, timeVector, samplingRate, numSamples,
     return energyDecay, timeVector
 
 
-def reverberation_time(decay, listEDC, samplingRate, nthOct, **kwargs):
+def reverberation_time(decay, listEDC, nthOct, samplingRate):
     """
 
     """
@@ -358,12 +358,17 @@ def analyse(obj, *params, **kwargs):
     samplingRate = obj.samplingRate
     listEDC = cumulative_integration(obj, **kwargs)
     for prm in params:
-        if 'RT' in prm:
-            RTdecay = prm[1]
-            RT = reverberation_time(RTdecay, listEDC, samplingRate, **kwargs)
+        if 'RT' == prm:
+            RTdecay = params[params.index('RT')+1]
+            nthOct = params[params.index('RT')+2]
+            RT = reverberation_time(RTdecay, listEDC, nthOct, samplingRate)
             revTimes = [rt for rt in RT]
+            result = Analysis(anType='RT', nthOct=nthOct,
+                              minBand=kwargs['minFreq'],
+                              maxBand=kwargs['maxFreq'],
+                              data=revTimes)
         # if 'C' in prm:
         #     Ctemp = prm[1]
         # if 'D' in prm:
         #     Dtemp = prm[1]
-    return revTimes
+    return result
