@@ -142,9 +142,9 @@ class MeasurementChList(ChannelsList):
             for chNum2 in groupMapping:
                 # Getting groups information for reconstructd
                 # inChannels
-                if self[chNum] == mChList[chNum2]:
-                    groups[mChList.get_group_name(chNum)] =\
-                        mChList.get_group_membs(chNum)
+                if self[chNum2] == mChList[chNum2]:
+                    groups[mChList.get_group_name(chNum2)] =\
+                        mChList.get_group_membs(chNum2)
         self.groups = groups
 
 
@@ -167,19 +167,20 @@ class MeasurementSetup(object):
                  calibrationTp):
         self.creation_name = 'MeasurementSetup'
         self.measurementKinds = measurementKinds
-        self.name = name
-        self.samplingRate = samplingRate
-        self.device = device
-        self.noiseFloorTp = noiseFloorTp
-        self.calibrationTp = calibrationTp
-        self.excitationSignals = excitationSignals
-        self.averages = averages
-        self.pause4Avg = pause4Avg
-        self.freqMin = freqMin
-        self.freqMax = freqMax
+        self._name = name
+        self._samplingRate = samplingRate
+        self._device = device
+        self._noiseFloorTp = noiseFloorTp
+        self._calibrationTp = calibrationTp
+        self._excitationSignals = excitationSignals
+        self._averages = averages
+        self._pause4Avg = pause4Avg
+        self._freqMin = freqMin
+        self._freqMax = freqMax
         self.inChannels = inChannels
         self.outChannels = outChannels
-        self.path = getcwd()+'/'+self.name+'/'
+        self._path = getcwd()+'/'+self.name+'/'
+        self.modified = False
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
@@ -226,6 +227,96 @@ class MeasurementSetup(object):
     # Properties
 
     @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, newName):
+        raise PermissionError('After a measurement initialization its name' +
+                              'can\'t be changed.')
+
+    @property
+    def samplingRate(self):
+        return self._samplingRate
+
+    @samplingRate.setter
+    def samplingRate(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'samplingRate can\'t be changed.')
+
+    @property
+    def device(self):
+        return self._device
+
+    @device.setter
+    def device(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'device can\'t be changed.')
+
+    @property
+    def noiseFloorTp(self):
+        return self._noiseFloorTp
+
+    @noiseFloorTp.setter
+    def noiseFloorTp(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'noiseFloorTp can\'t be changed.')
+
+    @property
+    def calibrationTp(self):
+        return self._calibrationTp
+
+    @calibrationTp.setter
+    def calibrationTp(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'calibrationTp can\'t be changed.')
+
+    @property
+    def excitationSignals(self):
+        return self._excitationSignals
+
+    @excitationSignals.setter
+    def excitationSignals(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'excitationSignals can\'t be changed.')
+
+    @property
+    def averages(self):
+        return self._averages
+
+    @averages.setter
+    def averages(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'averages can\'t be changed.')
+
+    @property
+    def pause4Avg(self):
+        return self._pause4Avg
+
+    @pause4Avg.setter
+    def pause4Avg(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'pause4Avg can\'t be changed.')
+
+    @property
+    def freqMin(self):
+        return self._freqMin
+
+    @freqMin.setter
+    def freqMin(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'freqMin can\'t be changed.')
+
+    @property
+    def freqMax(self):
+        return self._freqMax
+
+    @freqMax.setter
+    def freqMax(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'freqMax can\'t be changed.')
+
+    @property
     def inChannels(self):
         return self._inChannels
 
@@ -258,6 +349,14 @@ class MeasurementSetup(object):
                                                     name=chContents[1],
                                                     code=chCode))
 
+    @property
+    def path(self):
+        return self._path
+
+    @path.setter
+    def path(self, newValue):
+        raise PermissionError('After a measurement initialization its ' +
+                              'path can\'t be changed.')
 
 class MeasurementData(object):
     """
@@ -274,23 +373,24 @@ class MeasurementData(object):
         # MeasurementSetup
         self.MS = MS
         self.path = self.MS.path
-        # Workaround when roomir.h5_load instantiate a
-        # new MeasurementData and it's already in disc.
+        # Workaround when roomir.h5_load instantiate a new MeasurementData
+        # and it's already in disc. For roomir.load_med purposes.
         if skipFileInit:
+            self.__h5_update_links()
             return
         # MeasurementData.hdf5 initialization
         if not exists(self.path):
             mkdir(self.path)
         if exists(self.path + 'MeasurementData.hdf5'):
-            # raise FileExistsError('ATTENTION!  MeasurementData for the ' +
-            #                       ' current measurement, ' + self.MS.name +
-            #                       ', already exists. Load it instead of '
-            #                       'overwriting.')
-            # Workaround for debugging
-            print('Deleting the existant measurement: ' + self.MS.name)
-            rmtree(self.path)
-            mkdir(self.path)
-            self.__h5_init()
+            raise FileExistsError('ATTENTION!  MeasurementData for the ' +
+                                  ' current measurement, ' + self.MS.name +
+                                  ', already exists. Load it instead of '
+                                  'overwriting.')
+            # # Workaround for debugging
+            # print('Deleting the existant measurement: ' + self.MS.name)
+            # rmtree(self.path)
+            # mkdir(self.path)
+            # self.__h5_init()
         else:
             self.__h5_init()
 
@@ -302,12 +402,63 @@ class MeasurementData(object):
         """
         # Creating the MeasurementData file
         with h5py.File(self.path + 'MeasurementData.hdf5', 'w-') as f:
-            # Saving the MeasurementSetup link
             f.create_group('MeasurementSetup')
             self.MS.h5_save(f['MeasurementSetup'])
-            # for msKind in self.MS.measurementKinds:
-            #     # Creating groups for each measurement kind
-            #     f.create_group(msKind)
+        return
+    
+    def __h5_update_links(self):
+        """
+        Method for update MeasurementData.hdf5 with all MeasuredThings in disc.
+        """
+        with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+            # Updating the MeasuredThings links
+            myFiles = [file for file in listdir(self.path) if
+                isfile(join(self.path, file))]
+            # Check if all MeasuredThings files are linked
+            for myFile in myFiles:
+                if myFile.split('_')[0] in self.MS.measurementKinds:
+                    if myFile.split('.')[0] not in f:
+                        f[myFile] = h5py.ExternalLink(myFile + '.hdf5',
+                                                      '/' + myFile)
+            # Check if all MeasuredThings links' files exist
+            for link in list(f):
+                if link + '.hdf5' not in myFiles:
+                    if link != 'MeasurementSetup':
+                        del f[link]
+        return
+
+    def __h5_update_MS(self):
+        """
+        Method for update MeasurementSetup in MeasurementData.hdf5.
+        """
+        if self.MS.modified:
+            # Updating the MeasurementSetup
+            with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+                del f['MeasurementSetup']
+                f.create_group('MeasurementSetup')
+                self.MS.h5_save(f['MeasurementSetup'])
+                self.MS.modified = False
+        return
+
+    def __h5_link(self, newMeasuredThing=None):
+        """
+        Method for update MeasurementData.hdf5 with a new MeasuredThing hdf5
+        file link.
+        """
+        with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
+            # Update the MeasurementData.hdf5 file with the MeasuredThing link
+            if newMeasuredThing is not None:
+                if isinstance(newMeasuredThing, MeasuredThing):
+                        fileName = newMeasuredThing.creation_name
+                        f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
+                                                        '/' + fileName)
+                else:
+                    raise TypeError('Only MeasuredThings can be updated to ' +
+                                    'MeasurementData.hdf5')
+            else:
+                print('Skipping __h5_link as no MeasuredThing was provided.')
+        return
+
 
     def save_take(self, MeasureTakeObj):
         if not MeasureTakeObj.runCheck:
@@ -317,18 +468,18 @@ class MeasurementData(object):
         if MeasureTakeObj.saveCheck:
             raise ValueError('Can\'t save the this measurement take because ' +
                              'It has already been saved.')
+        self.__h5_update_MS()
+        self.__h5_update_links()
         # Iterate over measuredThings
-        for measuredThing in MeasureTakeObj.measuredThings.items():
+        for measuredThing in MeasureTakeObj.measuredThings.values():
             fileName = str(measuredThing)
             # Checking if any measurement with the same configs was take
             fileName = self.__number_the_file(fileName)
             # Saving the MeasuredThing to the disc
             measuredThing.creation_name = fileName
             h5_save(self.path + fileName + '.hdf5', measuredThing)
-            # Update the MeasurementData.hdf5 file with the MeasuredThing link
-            with h5py.File(self.path + 'MeasurementData.hdf5', 'r+') as f:
-                f[fileName] = h5py.ExternalLink(fileName + '.hdf5',
-                                                '/' + fileName)
+            # Save the MeasuredThing link to measurementData.hdf5
+            self.__h5_link(measuredThing)
         MeasureTakeObj.saveCheck = True
         return
 
@@ -353,12 +504,80 @@ class MeasurementData(object):
         fileName += '_' + str(lasttake+1)
         return fileName
 
-    def get_status(self):
-        # TO DO
-        pass
+    def __update_data(self):
+        self._data = {}
+        # Empty entries for each measurement kind
+        for mKind in measurementKinds:
+            self._data[mKind] = {}
+        # Get MeasuredThings from disc
+        myFiles = [f for f in listdir(self.path) if
+                   isfile(join(self.path, f))]
+        myFiles.pop(myFiles.index('MeasurementData.hdf5'))
+        # 
+        for file in myFiles:
+            infos = file.split('.')[0].split('_')
+            kind = infos[0]
+            if kind == 'roomir':
+                SR = infos[1].replace('-', '')
+                outCh = infos[2].split('-')[0]
+                inCh = infos[2].split('-')[1]
+                excitation = infos[3]
+                take = int(infos[4])
+                if SR not in self._data[kind]:
+                    self._data[kind][SR] = {}
+
+                if outCh not in self._data[kind][SR]:
+                    self._data[kind][SR][outCh] = {}
+
+                if inCh not in self._data[kind][SR][outCh]:
+                    self._data[kind][SR][outCh][inCh] = {}
+
+                if excitation not in self._data[kind][SR][outCh][inCh]:
+                    self._data[kind][SR][outCh][inCh][excitation] = {}
+
+                self._data[kind][SR][outCh][inCh][excitation][take] = file
+
+            if kind == 'miccalibration':
+                inCh = infos[1]
+                take = int(infos[2])
+                if inCh not in self._data[kind]:
+                    self._data[kind][inCh] = {}
+                self._data[kind][inCh][take] = file
+
+            if kind == 'sourcerecalibration':
+                outCh = infos[1].split('-')[0]
+                inCh = infos[1].split('-')[1]
+                take = int(infos[2])
+                if outCh not in self._data[kind]:
+                    self._data[kind][outCh] = {}
+
+                if inCh not in self._data[kind][outCh]:
+                    self._data[kind][outCh][inCh] = {}
+                self._data[kind][outCh][inCh][take] = file
+
+            if kind == 'noisefloor':
+                SR = infos[1]
+                inCh = infos[2]
+                take = int(infos[3])
+                if SR not in self._data[kind]:
+                    self._data[kind][SR] = {}
+
+                if inCh not in self._data[kind][SR]:
+                    self._data[kind][SR][inCh] = {}
+                self._data[kind][SR][inCh][take] = file
+        return
 
     # Properties
 
+    @property
+    def get(self, *args):
+        # TO DO
+        self.__update_data()
+        getStr = 'self._data'
+        for arg in args:
+            getStr += '[' + arg + ']'
+        msdThng = h5_load(eval(getStr))
+        return msdThng
 
 class TakeMeasure(object):
 
@@ -394,7 +613,7 @@ class TakeMeasure(object):
         # Check for disabled combined channels
         if self.kind in ['roomir', 'noisefloor']:
             # Look for grouped channels through the individual channels
-            for code in enumerate(self.inChSel):
+            for code in self.inChSel:
                 if code not in self.MS.inChannels.groups:
                     chNum = self.MS.inChannels[code].num
                     if self.MS.inChannels.is_grouped(code):
@@ -406,13 +625,13 @@ class TakeMeasure(object):
                                              group + '\'s group.')
         # Look for groups activated when ms kind is a calibration
         elif self.kind in ['sourcerecalibration', 'miccalibration']:
-            for code in enumerate(self.inChSel):
+            for code in self.inChSel:
                 if code in self.MS.inChannels.groups:
                     raise ValueError('Groups can\'t be calibrated. Channels ' +
                                      'must be calibrated individually.')
         # Constructing the inChannels list for the current take
         self.inChannels = MeasurementChList(kind='in')
-        for code in enumerate(self.inChSel):
+        for code in self.inChSel:
             if code in self.MS.inChannels.groups:
                 for chNum in self.MS.inChannels.groups[code]:
                     self.inChannels.append(self.MS.inChannels[chNum])
@@ -436,8 +655,8 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
-                                     outChannel=self.outChannel.mapping,
+                                     inChannels=self.inChannels.mapping,
+                                     outChannels=self.outChannel.mapping,
                                      comment='roomir')
         # For miccalibration measurement kind
         if self.kind == 'miccalibration':
@@ -449,7 +668,7 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
+                                     inChannels=self.inChannels.mapping,
                                      comment='miccalibration')
         # For noisefloor measurement kind
         if self.kind == 'noisefloor':
@@ -461,7 +680,7 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
+                                     inChannels=self.inChannels.mapping,
                                      comment='noisefloor')
         # For sourcerecalibration measurement kind
         if self.kind == 'sourcerecalibration':
@@ -473,8 +692,8 @@ class TakeMeasure(object):
                                      freqMin=self.MS.freqMin,
                                      freqMax=self.MS.freqMax,
                                      device=self.MS.device,
-                                     inChannel=self.inChannels.mapping,
-                                     outChannel=self.outChannel.mapping,
+                                     inChannels=self.inChannels.mapping,
+                                     outChannels=self.outChannel.mapping,
                                      comment='sourcerecalibration')
 
     def run(self):
@@ -761,6 +980,7 @@ def med_load(medname):
     """
     if not exists(medname + '/MeasurementData.hdf5'):
         raise NameError('{} measurement doens\'t exist.'.format(medname))
+    print('Loading the MeasurementSetup from MeasurementData.hdf5.')
     load = h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
     Data = MeasurementData(MS, skipFileInit=True)
@@ -813,15 +1033,19 @@ def h5_load(fileName: str, skip: list = []):
     totCount = 0  # Counter for total groups
     for PyTTaObjName, PyTTaObjGroup in f.items():
         totCount += 1
-        if PyTTaObjGroup.attrs['class'] in skip:
-            pass
-        else:
-            try:
-                loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
-                objCount += 1
-            except TypeError:
-                print('Skipping hdf5 group named {} as '.format(PyTTaObjName) +
-                      'it isnt a PyTTa object group.')
+        try:
+            if PyTTaObjGroup.attrs['class'] in skip:
+                pass
+            else:
+                try:
+                    loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
+                    objCount += 1
+                except TypeError:
+                    print('Skipping hdf5 group named {} as '
+                          .format(PyTTaObjName) +
+                          'it isnt a PyTTa object group.')
+        except AttributeError:
+            print('Skipping {} as its link is broken.'.format(PyTTaObjName))
     f.close()
     # Final message
     plural1 = 's' if objCount > 1 else ''
@@ -872,7 +1096,7 @@ def __h5_unpack(ObjGroup):
         if outChannel is not None:
             outChannel = eval(outChannel)
         measuredSignals = []
-        for h5MsdSignal in ObjGroup['measuredSignals'].items():
+        for h5MsdSignal in ObjGroup['measuredSignals'].values():
             measuredSignals.append(__h5_unpack(h5MsdSignal))
         MsdThng = MeasuredThing(kind=kind,
                                 arrayName=arrayName,

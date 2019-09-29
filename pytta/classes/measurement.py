@@ -737,4 +737,4 @@ def _print_max_level(sigObj, kind, gain=1):
                         sigObj.channels[chNum].unit))
         if finalLevel >= 0:
             print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
-        return
+    return
