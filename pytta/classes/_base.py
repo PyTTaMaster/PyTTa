@@ -629,7 +629,8 @@ class ChannelsList(object):
             #     if ch.name == key or ch.code == key:
             #         return ch
             try:
-                channel = [ch for ch in self._channels if ch.name == key][0]
+                channel = [ch for ch in self._channels if ch.name == key or
+                           ch.code == key][0]
             except IndexError:
                 raise IndexError("Channel name/code out of range.")
         else:
