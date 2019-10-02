@@ -43,7 +43,7 @@ import sounddevice as sd
 __default_device = [sd.default.device[0], sd.default.device[1]]
 """ Used only to hold the default audio I/O device at pytta import time"""
 
-default = {'samplingRate': 44100,
+default_ = {'samplingRate': 44100,
            'lengthDomain': 'samples',
            'fftDegree': 18,
            'timeLength': 10,
@@ -137,7 +137,7 @@ class Default(object):
             the __init__() method loads into the class object at import time
         """
 
-        for name, value in default.items():
+        for name, value in default_.items():
             vars(self)['_'+name] = value
 
     def __setattr__(self,name,value):
@@ -251,3 +251,5 @@ class Default(object):
         return self._comment
     
 
+
+default = Default()

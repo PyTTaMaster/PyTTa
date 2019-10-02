@@ -1,0 +1,12 @@
+For now we don't have many rules, but you should consider the subsequent one.
+
+The names should be written as:
+
+    - ClassName;
+    - method_name;
+    - propertyName;
+    - function_name;
+    - variableName;
+    - modulename.
+
+As far as concrete guidelines, just imitate the existing code. Keep things organized.

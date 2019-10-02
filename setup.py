@@ -8,7 +8,6 @@ PyTTa setup file
 
 """
 
-import os
 from setuptools import setup
 
 settings = {
@@ -20,8 +19,8 @@ settings = {
     'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
     'author_email': 'pytta@eac.ufsm.br',
     'license': 'MIT',
-    'install_requires': ['numpy','scipy', 'matplotlib',
-        'sounddevice', 'soundfile', 'h5py'],
+    'install_requires': ['numpy', 'scipy', 'matplotlib',
+        'sounddevice', 'soundfile', 'h5py', 'numba'],
     'packages': ['pytta', 'pytta.classes'],
     'package_dir': {'classes': 'pytta'},
     'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}

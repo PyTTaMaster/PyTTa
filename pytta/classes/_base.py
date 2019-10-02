@@ -12,9 +12,9 @@ Base classes:
 # Importing modules
 from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
-import scipy.io as sio
+from scipy import io
 import time
-import pytta.h5utilities as _h5
+from pytta import h5utilities as _h5
 
 
 class PyTTaObj(RICI):
@@ -184,7 +184,7 @@ class PyTTaObj(RICI):
             if key.find('_') >= 0:
                 key = key.replace('_', '')
             myObjno_[key] = value
-        sio.savemat(filename, myObjno_, format='5', oned_as='column')
+        io.savemat(filename, myObjno_, format='5', oned_as='column')
         return
 
     def h5_save(self, h5group):
@@ -558,12 +558,10 @@ class ChannelObj(object):
 
 class ChannelsList(object):
     """
-    .. class:: ChannelsList(self, chN=0):
+    .. class:: ChannelsList(self, chList: list):
 
         Class to wrap a list of ChannelObj and handle multi-channel SignalObj \
         operations.
-
-        :param int chN: Number of initialized ChannelObj inside the list;
 
         .. attribute:: _channels: List holding each ChannelObj;
 
@@ -582,14 +580,26 @@ class ChannelsList(object):
                 for memb in chList:
                     if type(memb) is ChannelObj:
                         self._channels.append(memb)
+                    elif (type(memb) is int) or (type(memb) is float):
+                        self._channels.append(ChannelObj(int(memb)))
                     else:
-                        self._channels.append(ChannelObj(memb))
+                        raise TypeError("Could not resolve ChannelsList initialization parameters.")
             elif type(chList) is int:
                 self._channels.append(ChannelObj(chList))
             elif type(chList) is ChannelObj:
                 self._channels.append(chList)
             elif type(chList) is ChannelsList:
-                self._channels = chList._channels
+                self._channels = chList._channels.copy()
+                """
+                Added .copy() on ChannelsList initialization;
+                Implies that:
+
+                    >>> chList1 = pytta.ChannelsList(1)
+                    >>> chList2 = pytta.ChannelsList(chList1)
+
+                will make chList2._channels have the same values, and not just
+                pointers, to chList1._channels
+                """
             else:
                 raise TypeError('List initializer must be either positive ' +
                                 'int, a list of positive int or ' +
@@ -607,26 +617,51 @@ class ChannelsList(object):
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            # try:
-            #    return self._channels[key]
-            # except IndexError:
-            #    raise IndexError("Out of range.")
-            for ch in self._channels:
-                if ch.num == key:
-                    return ch
-            raise IndexError("Channel number out of range.")
+            # for ch in self._channels:
+            #     if ch.num == key:
+            #         return ch
+            try:
+                channel = [ch for ch in self._channels if ch.num == key][0]
+            except IndexError:
+                raise IndexError("Channel number not included.")
         elif isinstance(key, str):
-            for ch in self._channels:
-                if ch.name == key or ch.code == key:
-                    return ch
-            raise IndexError("Channel name/code out of range.")
+            # for ch in self._channels:
+            #     if ch.name == key or ch.code == key:
+            #         return ch
+            try:
+                channel = [ch for ch in self._channels if ch.name == key or
+                           ch.code == key][0]
+            except IndexError:
+                raise IndexError("Channel name/code out of range.")
+        else:
+            raise TypeError("Argument must be a channel number (int) or its name (str)")
+        return channel
+
 
     def __setitem__(self, key, item):
-        try:
-            self._channels[key] = item
-            return
-        except IndexError:
-            raise IndexError("Out of range.")
+        if isinstance(key, int):
+            # for ch in self._channels:
+            #     if ch.num == key:
+            #         return ch
+            try:
+                channel = [ch for ch in self._channels if ch.num == key][0]
+                self._channels.remove(channel)
+                self._channels.append(item)
+            except IndexError:
+                raise IndexError("Channel number not listed.")
+        elif isinstance(key, str):
+            # for ch in self._channels:
+            #     if ch.name == key or ch.code == key:
+            #         return ch
+            try:
+                channel = [ch for ch in self._channels if ch.name == key or ch.code == key][0]
+                self._channels.remove(channel)
+                self._channels.append(item)
+            except IndexError:
+                raise IndexError("Channel name/code not listed.")
+        else:
+            raise TypeError("Argument must be a channel number (int) or its name (str)")
+        return
 
     def __mul__(self, otherList):
         if not isinstance(otherList, ChannelsList):
@@ -717,9 +752,11 @@ class ChannelsList(object):
             self._channels.append(newCh)
         return
 
-    def pop(self, Ch):
+    def pop(self, Ch=None):
         if Ch not in range(len(self)):
             raise IndexError('Inexistent Channel index')
+        elif Ch is None:
+            self._channels.pop()
         self._channels.pop(Ch)
         return
 
