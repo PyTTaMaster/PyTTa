@@ -642,7 +642,8 @@ class TakeMeasure(object):
         self.inChannels.copy_groups(self.MS.inChannels)
         # Setting the outChannel for the current take
         self.outChannel = MeasurementChList(kind='out')
-        self.outChannel.append(self.MS.outChannels[self.outChSel])
+        if self.kind in ['roomir', 'sourcerecalibration']:
+            self.outChannel.append(self.MS.outChannels[self.outChSel])
 
     def __cfg_measurement_object(self):
         # For roomir measurement kind
