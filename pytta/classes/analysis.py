@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pytta.classes.filter import fractional_octave_frequencies as FOF
+from math import isnan
 import matplotlib.pyplot as plt
 import numpy as np
 import time
@@ -153,7 +154,9 @@ class Analysis(object):
     def data(self, newData):
         bands = FOF(nthOct=self.nthOct,
                     minFreq=self.minBand,
-                    maxFreq=self.maxBand)
+                    maxFreq=self.maxBand)[:,1]
+        self.minBand = float(bands[0])
+        self.maxBand = float(bands[-1])
         if not isinstance(newData, list) and \
             not isinstance(newData, np.ndarray):
             raise TypeError("'data' must be provided as a list or " +
@@ -166,7 +169,7 @@ class Analysis(object):
         
         # ...
         self._data = np.array(newData)
-        self._bands = bands[:,1]
+        self._bands = bands
         return
 
     @property
@@ -219,14 +222,22 @@ class Analysis(object):
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
         ax.set_xticks(fbar)
-        ax.set_xticklabels(self.bands)
-        ax.set_xlabel(xlabel)
+        xticks = self.bands
+        ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
+                           rotation=45, fontsize=14)
+        ax.set_xlabel(xlabel, fontsize=20)
         
 
-        ylimInf = np.min(self.data) - 0.2
-        ylimSup = np.max(self.data) + 0.2
+        ylimInf = min(self.data) - 0.2
+        ylimSup = max(self.data) + 0.2
         ylim = (ylimInf, ylimSup)
+
         ax.set_ylim(ylim)
-        ax.set_ylabel(ylabel)
+        yticks = np.linspace(*ylim, 11).tolist()
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+                            for tick in yticks], fontsize=14)
+
+        ax.set_ylabel(ylabel, fontsize=20)
         
         return

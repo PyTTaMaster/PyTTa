@@ -13,8 +13,10 @@ PyTTa Room Analysis:
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 from numba import njit
 from pytta import SignalObj, OctFilter, Analysis
+from pytta.classes.filter import fractional_octave_frequencies as FOF
 
 
 def _filter(signal,
@@ -37,29 +39,32 @@ def _filter(signal,
 
 @njit
 def T_level_profile(timeSignal, samplingRate,
-                    numSamples, numChannels, nblocks=None):
+                    numSamples, numChannels, blockSamples=None):
+    """
+    Gets h(t) in octave bands and do the local time averaging in nblocks.
+    Returns h^2_averaged(block).
+    """
     def mean_squared(x):
         return np.mean(x**2)
 
-    if nblocks is None:
-        nblocks = 100
-    samples = int(numSamples//nblocks)
+    if blockSamples is None:
+        blockSamples = 100
+    nblocks = int(numSamples // blockSamples)
     profile = np.zeros((nblocks, numChannels), dtype=np.float32)
     timeStamp = np.zeros((nblocks, 1))
 
     for ch in range(numChannels):
         tmp = timeSignal[:, ch]
         for idx in range(nblocks):
-            profile[idx, ch] = mean_squared(tmp[:samples])
-            timeStamp[idx, 0] = idx*samples/samplingRate
-            tmp = tmp[samples:]
+            profile[idx, ch] = mean_squared(tmp[:blockSamples])
+            timeStamp[idx, 0] = idx*blockSamples/samplingRate
+            tmp = tmp[blockSamples:]
     return profile, timeStamp
 
 
 @njit
 def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     squaredIR = timeSignal**2
-
     # assume the last 10% of the IR is noise, and calculate its noise level
     noiseLevel = np.mean(squaredIR[-int(len(squaredIR)//10):, :])
     # get the maximum of the signal, that is the assumed IR peak
@@ -103,21 +108,21 @@ def T_circular_time_shift(timeSignal, threshold=20):
     # find the first sample where inputSignal level > 20 dB or > bgNoise level
     startSample = T_start_sample_ISO3382(timeSignal, threshold)
     timeSignal = timeSignal[startSample:]
-    return startSample
+    return (timeSignal, startSample)
 
 
 @njit
-def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
+def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                          numChannels, timeLength):
-    returnTuple = (np.float32(0), np.int32(0), np.float32(0))
-    sampleShift = T_circular_time_shift(timeSignal)
+    returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
+    timeSignal, sampleShift = T_circular_time_shift(timeSignal)
     if sampleShift is None:
         return returnTuple
     winTimeLength = 0.03  # 30 ms window
     numSamples -= sampleShift  # discount shifted samples
     numParts = 5  # number of parts per 10 dB decay. N = any([3, 10])
-    dBtoNoise = 10  # stop point 10 dB above first estimated background noise
-    useDynRange = 20  # dynamic range
+    dBtoNoise = 7  # stop point 10 dB above first estimated background noise
+    useDynRange = 15  # dynamic range
 
     # 1) local time average:
     blockSamples = int(winTimeLength * samplingRate)
@@ -125,156 +130,206 @@ def T_Lundeby_correction(timeSignal, samplingRate, numSamples,
                                               numSamples, numChannels,
                                               blockSamples)
 
-    # 2) estimate noise:
-    BGL = np.mean(timeWinData[-int(timeWinData.size/10):])
+    # 2) estimate noise from h^2_averaged(block):
+    bgNoiseLevel = 10 * \
+                   np.log10(
+                            np.mean(timeWinData[-int(timeWinData.size/10):]))
 
     # 3) regression
     startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
     stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
-                                  >= 10*np.log10(BGL) + dBtoNoise)[0][-1]
+                                  >= bgNoiseLevel + dBtoNoise)[0][-1]
     dynRange = 10*np.log10(timeWinData[stopIdx]) \
         - 10*np.log10(timeWinData[startIdx])
     if (stopIdx == startIdx) or (dynRange > -5)[0]:
-        print("SNR too low")
+        print(band, "[Hz] band: SNR too low for the preliminar slope",
+              "calculation.")
         return returnTuple
 
     # X*c = EDC (energy decaying curve)
     X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
     X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
     c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
-                        )[0]  # rcond=None)[0]
+                        rcond=-1)[0]
 
-    if (c[1] == 0)[0] or np.isnan(c).any():  # (***) c[0] e c[1] invertidos?
-        print("Regression failed, T would be inf.")
+    if (c[1] == 0)[0] or np.isnan(c).any(): 
+        print(band, "[Hz] band: regression failed. T would be inf.")
         return returnTuple
 
     # 4) preliminary intersection
-    # (***) c[0] e c[1] invertidos? CORRIGIDO
-    crossingPoint = (10*np.log10(BGL) - c[1]) / c[0]
+    crossingPoint = (bgNoiseLevel - c[0]) / c[1]  # [s]
     if (crossingPoint > 2*(timeLength + sampleShift/samplingRate))[0]:
-        print("Intersection point greater than signal length.")
+        print(band, "[Hz] band: preliminary intersection point between",
+              "bgNoiseLevel and the decay slope greater than signal length.")
         return returnTuple
 
     # 5) new local time interval length
     nBlocksInDecay = numParts * dynRange[0] / -10
 
-    dynRangeTime = 10*np.log10(timeVecWin[stopIdx]) \
-        - 10*np.log10(timeVecWin[startIdx])
+    dynRangeTime = timeVecWin[stopIdx] - timeVecWin[startIdx]
     blockSamples = int(samplingRate * dynRangeTime[0] / nBlocksInDecay)
 
     # 6) average
     timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
                                               numSamples, numChannels,
                                               blockSamples)
-    idxMax = np.argmax(timeWinData)
 
     oldCrossingPoint = 11+crossingPoint  # arbitrary higher value to enter loop
     loopCounter = 0
 
-    while (np.abs(oldCrossingPoint - crossingPoint) > 0.0001)[0]:
+    while (np.abs(oldCrossingPoint - crossingPoint) > 0.001)[0]:
         # 7) estimate background noise level (BGL)
-        corrDecay = 10  # arbitrary between 5 and 10 [dB]
-        # (***) 10% da resposta impulsiva inteira, não do averaged vector
-        idxLast10Percent = int(len(timeWinData[-len(timeWinData)//10:]))
-        # (***) conferir conta
-        cmpr = (crossingPoint - corrDecay/c[1]) * samplingRate / blockSamples
-        idx10dBBelowCrossPoint = np.max(np.array([1, int(cmpr[0])]))
+        bgNoiseMargin = 7
+        idxLast10Percent = int(len(timeWinData)-(len(timeWinData)//10))
+        bgStartTime = crossingPoint - bgNoiseMargin/c[1]
+        if (bgStartTime > timeVecWin[-1:][0])[0]:
+            idx10dBDecayBelowCrossPoint = len(timeVecWin)-1
+        else:
+            idx10dBDecayBelowCrossPoint = \
+                np.where(timeVecWin >= bgStartTime)[0][0]
         BGL = np.mean(timeWinData[np.min(
                 np.array([idxLast10Percent,
-                          idx10dBBelowCrossPoint])):])
+                          idx10dBDecayBelowCrossPoint])):])
+        bgNoiseLevel = 10*np.log10(BGL)
 
         # 8) estimate late decay slope
-        # (***) o intervalo de avaliação deveria ser estimado utilizando
-        # a última inclinação calculada
-        startIdx = idxMax + np.where(10*np.log10(timeWinData[idxMax:])
-                                     < 10*(np.log10(BGL)
-                                     + dBtoNoise
-                                     + useDynRange))[0][0]
-        if startIdx == idxMax:  # where returns empty
+        stopTime = (bgNoiseLevel + dBtoNoise - c[0])/c[1]
+        if (stopTime > timeVecWin[-1])[0]:
+            stopIdx = 0
+        else:
+            stopIdx = int(np.where(timeVecWin >= stopTime)[0][0])
+        
+        startTime = (bgNoiseLevel + dBtoNoise + useDynRange - c[0])/c[1]
+        if (startTime < timeVecWin[0])[0]:
             startIdx = 0
+        else:
+            startIdx = int(np.where(timeVecWin <= startTime)[0][0])
 
-        stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
-                                      >= 10*np.log10(BGL)
-                                      + dBtoNoise)[0][-1]
-        if stopIdx == startIdx:  # where returns empty
-            print("SNR too low, stopping!")
+        lateDynRange = np.abs(10*np.log10(timeWinData[stopIdx]) \
+            - 10*np.log10(timeWinData[startIdx]))
+
+        if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:  # where returns empty
+            print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
+                "low. Skipping!")
+            c[1] = np.inf
             break
 
         X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
         X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
-        c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]))[0]
-        # , rcond=None)[0]
+        c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
+                            rcond=-1)[0]
         
-        # (***) c[0] e c[1] invertidos? CORRIGIDO
-        if (c[0] >= 0)[0]:
-            print("Regression did not work, T -> inf. Setting to 0")
-            c[0] = np.inf
+        if (c[1] >= 0)[0]:
+            print(band, "[Hz] band: regression did not work, T -> inf.",
+                "Setting slope to 0!")
+            c[1] = np.inf
             break
 
         # 9) find crosspoint
         oldCrossingPoint = crossingPoint
-        # (***) c[0] e c[1] invertidos? CORRIGIDO
-        crossingPoint = (10*np.log10(BGL) - c[1]) / c[0]
+        crossingPoint = (bgNoiseLevel - c[0]) / c[1]
 
         loopCounter += 1
         if loopCounter > 30:
-            print("More than 30 iterations on regression, canceling.")
+            print(band, "[Hz] band: more than 30 iterations on regression.",
+                "Canceling!")
             break
 
-    lateRT = -60/c[1]
-    interIdx = crossingPoint * samplingRate
-    return lateRT[0], np.int32(interIdx[0]), BGL
+    interIdx = crossingPoint * samplingRate # [sample]
 
+    return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
-def cumulative_integration(inputSignal, **kwargs):
+def plot_lundeby(band, timeVector, timeSignal,  samplingRate,
+                 lundebyParams):
+    c0, c1, interIdx, BGL = lundebyParams
+    fig = plt.figure(figsize=(10, 5))
+    ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                        projection='rectilinear', xscale='linear')
+    line = c1*timeVector + c0
+    ax.plot(timeVector, 10*np.log10(timeSignal**2),label='IR')
+    ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise')
+    ax.plot(timeVector, line,label='Late slope')
+    ax.axvline(x=interIdx/samplingRate, label='Truncation point')
+    plt.title('{0:.0f} [Hz]'.format(band))
+    ax.legend(loc='upper center', shadow=True, fontsize='x-large')
+
+@njit
+def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamples,
+                             numChannels, timeLength):
+    lundebyParams = \
+        T_Lundeby_correction(band,
+                             timeSignal,
+                             samplingRate,
+                             numSamples,
+                             numChannels,
+                             timeLength)
+    c0, c1, interIdx, BGL = lundebyParams
+    lateRT = -60/c1
+
+    if interIdx == 0:
+        interIdx = -1
+    truncatedTimeSignal = timeSignal[:interIdx, 0]
+    truncatedTimeVector = timeVector[:interIdx]
+
+    if lateRT != 0.0:
+        C = samplingRate*BGL*lateRT/(6*np.log(10))
+        sqrInv = truncatedTimeSignal[::-1]**2
+        energyDecayFull = np.cumsum(sqrInv)[::-1] + C
+        energyDecay = energyDecayFull/energyDecayFull[0]
+    else:
+        print(band, "[Hz] band: could not estimate C factor")
+        C = 0
+        energyDecay = np.zeros(truncatedTimeVector.size)
+    return (energyDecay, truncatedTimeVector, lundebyParams)
+
+def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
     timeSignal = inputSignal.timeSignal[:]
-    T_circular_time_shift(timeSignal)
+    timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+    del sampleShift
     hSignal = SignalObj(timeSignal,
                         inputSignal.lengthDomain,
                         inputSignal.samplingRate)
     hSignal = _filter(hSignal, **kwargs)
+    bands = FOF(nthOct=kwargs['nthOct'],
+                minFreq=kwargs['minFreq'],
+                maxFreq=kwargs['maxFreq'])[:,1]
+    listEDC = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
+        band = bands[ch]
         timeSignal = signal.timeSignal[:]
         timeVector = signal.timeVector[:]
         samplingRate = signal.samplingRate
         numSamples = signal.numSamples
         numChannels = signal.numChannels
         timeLength = signal.timeLength
-        energyDecay, energyVector = energy_decay_calculation(timeSignal,
-                                                             timeVector,
-                                                             samplingRate,
-                                                             numSamples,
-                                                             numChannels,
-                                                             timeLength, ch)
-        yield energyDecay, energyVector
-
+        energyDecay, energyVector, lundebyParams = \
+            energy_decay_calculation(band,
+                                     timeSignal,
+                                     timeVector,
+                                     samplingRate,
+                                     numSamples,
+                                     numChannels,
+                                     timeLength)
+        listEDC.append((energyDecay, energyVector))
+        if plotLundebyResults:  # Placed here because Numba can't handle plots.
+            plot_lundeby(band, timeVector, timeSignal,  samplingRate,
+                        lundebyParams)
+    return listEDC
 
 @njit
-def energy_decay_calculation(timeSignal, timeVector, samplingRate, numSamples,
-                             numChannels, timeLength, ch):
-    lateRT, interIdx, BGL \
-        = T_Lundeby_correction(timeSignal,
-                               samplingRate,
-                               numSamples,
-                               numChannels,
-                               timeLength)
-    if interIdx == 0:
-        interIdx = -1
-    timeSignal = timeSignal[:interIdx, 0]
-    timeVector = timeVector[:interIdx]
-    if lateRT != 0.0:
-        C = samplingRate*BGL*lateRT/(6*np.log(10))
-    else:
-        print("Could not estimate C factor for iteration", ch+1)
-        C = 0
-    sqrInv = timeSignal[::-1]**2
-    energyDecayFull = np.cumsum(sqrInv)[::-1] + C
-    energyDecay = energyDecayFull/energyDecayFull[0]
-    return energyDecay, timeVector
+def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
+    first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
+    last = np.where(10*np.log10(energyDecay) >= lowerLim)[0][-1]
+    if last <= first:
+        return np.nan
+    X = np.ones((last-first, 2))
+    X[:, 1] = energyVector[first:last]
+    c = np.linalg.lstsq(X, 10*np.log10(energyDecay[first:last]), rcond=-1)[0]
+    return -60/c[1]
 
 
-def reverberation_time(decay, listEDC, nthOct, samplingRate):
+def reverberation_time(decay, nthOct, samplingRate, listEDC):
     """
 
     """
@@ -290,23 +345,32 @@ def reverberation_time(decay, listEDC, nthOct, samplingRate):
             raise ValueError("Decay must be either 'EDT' or an integer \
                              corresponding to the amount of energy decayed to \
                              evaluate, e.g. (decay='20' | 20).")
-    for edc, edv in listEDC:
-        RT = reverb_time_regression(edc, edv, y1, y2)
-        yield RT
+    RT = []
+    for ED in listEDC:
+        edc, edv = ED
+        RT.append(reverb_time_regression(edc, edv, y1, y2))
+    return RT
 
+def analyse(obj, *params, plotLundebyResults=False, **kwargs):
+    """
 
-@njit
-def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
-    first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
-    last = np.where(10*np.log10(energyDecay) >= lowerLim)[0][-1]
-    if last <= first:
-        return np.nan
-    # assert last > first
-    X = np.ones((last-first, 2))
-    X[:, 1] = energyVector[first:last]
-    c = np.linalg.lstsq(X, 10*np.log10(energyDecay[first:last]))[0]
-    return -60/c[1]
-
+    """
+    samplingRate = obj.samplingRate
+    listEDC = cumulative_integration(obj, plotLundebyResults, **kwargs)
+    for prm in params:
+        if 'RT' == prm:
+            RTdecay = params[params.index('RT')+1]
+            nthOct = kwargs['nthOct']
+            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
+            result = Analysis(anType='RT', nthOct=nthOct,
+                              minBand=kwargs['minFreq'],
+                              maxBand=kwargs['maxFreq'],
+                              data=RT)
+        # if 'C' in prm:
+        #     Ctemp = prm[1]
+        # if 'D' in prm:
+        #     Dtemp = prm[1]
+    return result
 
 def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     """
@@ -349,26 +413,3 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
 #        output.append(D)
 #    return output
     pass
-
-
-def analyse(obj, *params, **kwargs):
-    """
-
-    """
-    samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(obj, **kwargs)
-    for prm in params:
-        if 'RT' == prm:
-            RTdecay = params[params.index('RT')+1]
-            nthOct = params[params.index('RT')+2]
-            RT = reverberation_time(RTdecay, listEDC, nthOct, samplingRate)
-            revTimes = [rt for rt in RT]
-            result = Analysis(anType='RT', nthOct=nthOct,
-                              minBand=kwargs['minFreq'],
-                              maxBand=kwargs['maxFreq'],
-                              data=revTimes)
-        # if 'C' in prm:
-        #     Ctemp = prm[1]
-        # if 'D' in prm:
-        #     Dtemp = prm[1]
-    return result
