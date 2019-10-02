@@ -73,7 +73,7 @@ __all__ = [  # Apps
            # Submodules
            'generate',
            'frequtils',
-           'h5utilities'
+           'h5utilities',
 
            # Functions
            'merge',
