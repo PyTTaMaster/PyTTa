@@ -11,16 +11,17 @@ Functions:
     ---------------------
 
         >>> pytta.list_devices()
+        >>> pytta.fft_degree( timeLength, samplingRate)
         >>> pytta.read_wav( fileName )
         >>> pytta.write_wav( fileName, signalObject )
-        >>> pytta.save(fileName, obj1, ..., objN)
-        >>> pytta.load(fileName)
         >>> pytta.merge( signalObj1, signalObj2, ..., signalObjN )
         >>> pytta.fft_convolve( signalObj1, signalObj2 )
         >>> pytta.find_delay( signalObj1, signalObj2 )
         >>> pytta.corr_coef( signalObj1, signalObj2 )
         >>> pytta.resample( signalObj, newSamplingRate )
         >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN )
+        >>> pytta.save(fileName, obj1, ..., objN)
+        >>> pytta.load(fileName)
 
 
     For further information, check the function specific documentation.

@@ -7,10 +7,10 @@ import numpy as np
 import time
 
 # Analysis types and its units
-anTypes = {'RT': 's',
-           'C': 'dB',
-           'D': '%',
-           'mixed': '-'}
+anTypes = {'RT': ('s', 'Reverberation time'),
+           'C': ('dB', 'Clarity'),
+           'D': ('%', 'Definition'),
+           'mixed': ('-', 'Mixed')}
 
 class Analysis(object):
     """
@@ -85,7 +85,8 @@ class Analysis(object):
         elif newType not in anTypes:
             raise ValueError(newType + " type not supported. May be 'RT, " +
                              "'C' or 'D'.")
-        self.unit = anTypes[newType]
+        self.unit = anTypes[newType][0]
+        self.anName = anTypes[newType][1]
         self._anType = newType
         return
 
@@ -194,11 +195,11 @@ class Analysis(object):
         """
         return
 
-    def plot(self):
-        self.plot_bars()
+    def plot(self, **kwargs):
+        self.plot_bars(**kwargs)
         return
 
-    def plot_bars(self, xlabel=None, ylabel=None):
+    def plot_bars(self, xlabel=None, ylabel=None, title=None):
         """
         Analysis bar plotting method
         """
@@ -206,12 +207,14 @@ class Analysis(object):
             xlabel = 'Frequency bands [Hz]'
         if ylabel is None:
             ylabel = 'Modulus [{}]'
-
-        ylabel = ylabel.format(self.unit)
+            ylabel = ylabel.format(self.unit)
+        if title is None:
+            title = '{} analysis'
+            title = title.format(self.anName)
 
         fig = plt.figure(figsize=(10, 5))
 
-        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+        ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
                           projection='rectilinear', xscale='linear')
         ax.set_snap(True)
 
@@ -239,5 +242,7 @@ class Analysis(object):
                             for tick in yticks], fontsize=14)
 
         ax.set_ylabel(ylabel, fontsize=20)
+        
+        plt.title(title, fontsize=20)
         
         return
