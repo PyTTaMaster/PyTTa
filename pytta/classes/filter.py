@@ -82,6 +82,44 @@ class OctFilter(object):
             return output
 
 
+
+class AntiAliasingFilter(object):
+    def __init__(self, order, band, samplingrate):
+        self.order = order
+        self.band = band
+        self.samplingRate = samplingrate
+        self.__design()
+        return
+
+    def __design(self):
+        self.sos = np.zeros((self.order, 6))
+        if self.band[1] > 22050:
+            self.band[1] = 22050
+        elif self.band[0] < 12.5:
+            self.band[0] = 12.5
+        self.sos[:, :] = ss.butter(N=self.order, Wn=np.array(self.band), btype='bp', output='sos', fs=self.samplingRate)
+        return
+
+    def filter(self, signalObj):
+        if self.samplingRate != signalObj.samplingRate:
+            raise ValueError("SignalObj must have same sampling\
+                             rate of filter to be filtered.")
+        output = []
+        for ch in range(signalObj.numChannels):
+            filtered = np.zeros((signalObj.numSamples))
+            filtered[:] = ss.sosfilt(self.sos[:, :],
+                                     signalObj.timeSignal[:, ch],
+                                     axis=0).T
+            signalDict = {'signalArray': filtered,
+                          'domain': 'time',
+                          'samplingRate': self.samplingRate,
+                          'freqMin': self.band[0],
+                          'freqMax': self.band[1]}
+            output.append(SignalObj(**signalDict))
+        else:
+            return output
+
+
 #class SPLWeight(object):
 
 k1 = 12194
