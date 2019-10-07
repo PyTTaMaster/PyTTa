@@ -63,8 +63,8 @@ class TestPyttaSave(unittest.TestCase):
         noise = pytta.generate.noise(fftDegree=16, startMargin=0, stopMargin=0)
         noise *= 0.5
         yt = xt + noise
-        IR = pytta.ImpulsiveResponse(excitationSignal=xt,
-                                     recordedSignal=yt,
+        IR = pytta.ImpulsiveResponse(excitation=xt,
+                                     recording=yt,
                                      method='Ht', winType='hann',
                                      winSize=44100*0.1, overlap=0.6,
                                      samplingRate=noise.samplingRate,

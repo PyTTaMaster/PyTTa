@@ -711,7 +711,6 @@ class FRFMeasure(PlayRecMeasure):
         recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
                                              recording,
-                                             # self.coordinates,
                                              self.method,
                                              self.winType,
                                              self.winSize,

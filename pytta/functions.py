@@ -315,11 +315,13 @@ def __parse_load(className):
         os.remove(openJson['timeSignalAddress'])
 
     elif name == 'ImpulsiveResponse':
-        excit = pytta_load(openJson['SignalAddress']['excitation'])
-        record = pytta_load(openJson['SignalAddress']['recording'])
-        out = ImpulsiveResponse(excit, record, **openJson['methodInfo'])
-        os.remove(openJson['SignalAddress']['excitation'])
-        os.remove(openJson['SignalAddress']['recording'])
+        # excit = pytta_load(openJson['SignalAddress']['excitation'])
+        # record = pytta_load(openJson['SignalAddress']['recording'])
+        ir = pytta_load(openJson['SignalAddress']['ir'])
+        out = ImpulsiveResponse(ir=ir, **openJson['methodInfo'])
+        # os.remove(openJson['SignalAddress']['excitation'])
+        # os.remove(openJson['SignalAddress']['recording'])
+        os.remove(openJson['SignalAddress']['ir'])
 
     elif name == 'RecMeasure':
         inch = list(np.arange(len(openJson['inChannels'])))
@@ -470,14 +472,18 @@ def __h5_unpack(ObjGroup):
         return SigObj
 
     elif ObjGroup.attrs['class'] == 'ImpulsiveResponse':
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        recording = __h5_unpack(ObjGroup['recording'])
+        # excitation = __h5_unpack(ObjGroup['excitation'])
+        excitation = None 
+        # recording = __h5_unpack(ObjGroup['recording'])
+        recording = None
+        systemSignal = __h5_unpack(ObjGroup['systemSignal'])
         method = ObjGroup.attrs['method']
         winType = ObjGroup.attrs['winType']
         winSize = ObjGroup.attrs['winSize']
         overlap = ObjGroup.attrs['overlap']
         IR = ImpulsiveResponse(excitation,
                                recording,
+                               systemSignal,
                                method,
                                winType,
                                winSize,

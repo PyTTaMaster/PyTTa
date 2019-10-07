@@ -741,55 +741,27 @@ class SignalObj(_base.PyTTaObj):
 # ImpulsiveResponse class
 class ImpulsiveResponse(_base.PyTTaObj):
     """
-        This class is a container of SignalObj, intended to provide a system's
-        impulsive response along with the excitation signal and the recorded
-        signal used to compute the response.
+        This class is a container of SignalObj, intended to calculate impulsive
+        responses and store them.
 
-        The access to this class is (TODO) provided by the function:
-
-            >>> pytta.get_IR( excitation (SignalOjb), recording (SignalOjb),
-                              coordinates (dict), method (str),
-                              winType (str | tuple), winSize (int),
-                              overlap (float))
-
-        And as an output of the FRFMeasure.run() method:
-
-            >>> myMeas = pytta.generate.measurement('frf')
-            >>> myIR = myMeas.run()
-            >>> type(myIR)
-            classes.ImpulsiveResponse
-
-        The parameter passed down to the function are the same that initialize
-        the class, and are explained as follows:
+        The access to this class is provided by itself and as an output
+        of the FRFMeasure.run() method.
 
         Creation parameters:
         ---------------------
 
-            * excitation (SignalObj):
+            * excitation (SignalObj) (optional)::
                 The signal-like object used as excitation signal on the
-                measurement-like object;
+                measurement-like object. Optional if 'ir' is provided;
 
-            * recording (SignalObj):
-                the recorded signal-like object, obtained directly from the
-                audio interface used on the measurement-like object;
+            * recording (SignalObj) (optional)::
+                The recorded signal-like object, obtained directly from the
+                audio interface used on the measurement-like object. Optional
+                if 'ir' is provided;
 
-            * coordinates (dict):
-                A dict that contains the following keys:
-
-                    * points (list):
-                        A list handled by the get_channels_points(ch) and
-                        set_channels_points(ch, pt) object methods. Must be
-                        organized as [ [x1, y1, z1], [x2, y2, z2], ...] with
-                        x, y and z standing for the distance from the
-                        reference point;
-
-                    * reference (str):
-                        A short description of a place that is considered the
-                        system origin, e.g. 'south-east-floor corner';
-
-                    * unit (str):
-                        The unit in which the points values are taken,
-                        e.g. 'm';
+            * ir (SignalObj) (optional):
+                An calculated impulsive response. Optional if 'excitation' and
+                'recording' are provided;
 
             * method (str):
                 The way that the impulsive response should be computed, accepts
@@ -849,14 +821,6 @@ class ImpulsiveResponse(_base.PyTTaObj):
         Attributes:
         ------------
 
-            * excitation | inputSignal:
-                Both names are valid, returns the excitation signal given as
-                parameter at the object instantiation;
-
-            * recording | outputSignal:
-                Both names are valid, returns the recording signal given as
-                parameter at the object instantiation;
-
             * irSignal | IR | tfSignal | TF | systemSignal:
                 All names are valid, returns the computed impulsive response
                 signal-like object;
@@ -866,20 +830,38 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 "overlap" parameters.
     """
 
-    def __init__(self, excitationSignal, recordedSignal,
+    def __init__(self, excitation=None, recording=None,
+                 ir=None,
                  method='linear', winType=None, winSize=None, overlap=None,
                  *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._excitation = excitationSignal
-        self._recording = recordedSignal
-        self._methodInfo = {'method': method, 'winType': winType,
-                            'winSize': winSize, 'overlap': overlap}
-        self._systemSignal = self._calculate_tf_ir(excitationSignal,
-                                                   recordedSignal,
-                                                   method=method,
-                                                   winType=winType,
-                                                   winSize=winSize,
-                                                   overlap=overlap)
+        # self._excitation = excitationSignal
+        # self._recording = recordedSignal
+        if excitation is None or recording is None:
+            if ir is None:
+                raise ValueError("You may create an ImpulsiveResponse " +
+                                 "passing as parameter the 'excitation' " +
+                                 "and 'recording' signals, or a calculated " +
+                                 "'ir'.")
+            elif not isinstance(ir, SignalObj):
+                raise TypeError("'ir' must a SignalObj ")
+            self._methodInfo = {'method': method, 'winType': winType,
+                                'winSize': winSize, 'overlap': overlap}
+            self._systemSignal = ir
+        if ir is None:
+            if excitation is None or recording is None:
+                raise ValueError("You may create an ImpulsiveResponse " +
+                                 "passing as parameter the 'excitation' " +
+                                 "and 'recording' signals, or a calculated " +
+                                 "'ir'.")   
+            self._methodInfo = {'method': method, 'winType': winType,
+                                'winSize': winSize, 'overlap': overlap}
+            self._systemSignal = self._calculate_tf_ir(excitation,
+                                                       recording,
+                                                       method=method,
+                                                       winType=winType,
+                                                       winSize=winSize,
+                                                       overlap=overlap)
         return
 
     def __repr__(self):
@@ -888,8 +870,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
         winSize=self.methodInfo['winSize']
         overlap=self.methodInfo['overlap']
         return (f'{self.__class__.__name__}('
-                f'excitationSignal={self.excitation!r}, '
-                f'recordedSignal={self.recording!r}, '
+                # f'excitationSignal={self.excitation!r}, '
+                # f'recordedSignal={self.recording!r}, '
                 f'method={method!r}, '
                 f'winType={winType!r}, '
                 f'winSize={winSize!r}, '
@@ -901,15 +883,17 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
     def pytta_save(self, dirname=time.ctime(time.time())):
         with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
-            excit = self.excitation.pytta_save('excitation')
-            zdir.write(excit)
-            os.remove(excit)
-            rec = self.recording.pytta_save('recording')
-            zdir.write(rec)
-            os.remove(rec)
+            # excit = self.excitation.pytta_save('excitation')
+            # zdir.write(excit)
+            # os.remove(excit)
+            # rec = self.recording.pytta_save('recording')
+            # zdir.write(rec)
+            # os.remove(rec)
+            ir = self.systemSignal.pytta_save('ir')
+            zdir.write(ir)
+            os.remove(ir)
             out = self._to_dict()
-            out['SignalAddress'] = {'excitation': excit,
-                                    'recording': rec}
+            out['SignalAddress'] = {'ir': ir}
             with open('ImpulsiveResponse.json', 'w') as f:
                 json.dump(out, f, indent=4)
             zdir.write('ImpulsiveResponse.json')
@@ -926,26 +910,12 @@ class ImpulsiveResponse(_base.PyTTaObj):
         h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
         h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
         h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
-        self.excitation.h5_save(h5group.create_group('excitation'))
-        self.recording.h5_save(h5group.create_group('recording'))
+        # self.excitation.h5_save(h5group.create_group('excitation'))
+        # self.recording.h5_save(h5group.create_group('recording'))
+        self.systemSignal.h5_save(h5group.create_group('systemSignal'))
         pass
 
 # Properties
-    @property
-    def excitation(self):
-        return self._excitation
-
-    @property
-    def inputSignal(self):
-        return self._excitation
-
-    @property
-    def recording(self):
-        return self._recording
-
-    @property
-    def outputSignal(self):
-        return self._recording
 
     @property
     def irSignal(self):
