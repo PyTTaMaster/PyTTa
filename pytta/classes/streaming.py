@@ -24,6 +24,7 @@ class Recorder(object):
         self.recQueue = Queue(self.numSamples//16)
         self.switch = Event()
         self.counter = int()
+        self.last_status = None
         self.recData = np.empty((int(np.ceil(self.samplingRate/8)), self.numChannels),
                                 dtype='float32')
         return
@@ -92,7 +93,8 @@ class Recorder(object):
                     self.recData[self.recCount:self.numSamples, :] = data[:dif, :]
                 else:
                     self.recData[self.recCount:self.recCount+frames, :] = data[:, :]
-                self.monitor_callback(data, frames, times, status)
+                if self.monitor_callback:
+                    self.monitor_callback(data, frames, times, status)
             except Empty:
                 if self.last_status is sd.CallbackStop:
                     break
