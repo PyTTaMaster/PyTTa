@@ -21,12 +21,13 @@ class Recorder(object):
         self.numChannels = msmnt.numInChannels
         self.device = msmnt.device
         self.dataType = 'float32'
+        self.recCount = int()
         self.recQueue = Queue(self.numSamples//16)
         self.switch = Event()
         self.counter = int()
         self.last_status = None
-        self.recData = np.empty((int(np.ceil(self.samplingRate/8)), self.numChannels),
-                                dtype='float32')
+        self.recData = np.empty((self.numSamples, self.numChannels),
+                                dtype=self.dataType)
         return
 
     def __enter__(self):
@@ -43,7 +44,7 @@ class Recorder(object):
             return
         elif func is True:
             self.monitor_callback = self.stdout_print_spl
-            self.dummyData = np.empty((32 * np.ceil(self.samplingRate / 8 / 32),
+            self.dummyData = np.empty((int(32 * np.ceil(self.samplingRate / 8 / 32)),
                                        self.numChannels),
                                       dtype='float32')
             self.dummyCounter = int()
@@ -54,11 +55,11 @@ class Recorder(object):
         return
 
     def stdout_print_spl(self, data: np.ndarray, frames: int,
-                         currentTime: str, status: sd.CallbackFlags):
+                         status: sd.CallbackFlags):
         if status:
-            print(currentTime, ':', status)
+            print(status)
         if self.dummyCounter >= frames*np.ceil(self.samplingRate/8/frames):
-            print("SPL:", (np.mean(data**2, axis=0))**0.5)
+            print("SPL:", 20*np.log10((np.mean(data**2, axis=0))**0.5))
         else:
             self.dummyData[self.dummyCounter:frames+self.dummyCounter, :] = data[:]
             self.dummyCounter += frames
@@ -69,7 +70,12 @@ class Recorder(object):
         """
         TODO
         """
-        self.recQueue.put_nowait([indata, frames, times.currentTime, status])
+        try:
+            self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
+            self.recCount += frames
+        except IndexError:
+            self.recData[self.recCount:, :] = indata[:self.numSamples-self.recCount, :]
+        self.recQueue.put_nowait([indata, frames, status])
         self.counter += frames
         if self.counter >= self.numSamples:
             raise sd.CallbackStop
@@ -77,24 +83,18 @@ class Recorder(object):
 
     def parallel_loop(self):
         while not self.switch.is_set():
-            self.recCount=0
             if self.switch.is_set():
                 break
             else:
                 continue
         while self.switch.is_set():
             try:
-                data, frames, times, status = self.recQueue.get_nowait()
+                data, frames, status = self.recQueue.get_nowait()
                 if status:
                    self.last_status = status
                    print(status)
-                if self.recCount+frames > self.numSamples:
-                    dif = self.recCount+frames-self.numSamples
-                    self.recData[self.recCount:self.numSamples, :] = data[:dif, :]
-                else:
-                    self.recData[self.recCount:self.recCount+frames, :] = data[:, :]
                 if self.monitor_callback:
-                    self.monitor_callback(data, frames, times, status)
+                    self.monitor_callback(data, frames, status)
             except Empty:
                 if self.last_status is sd.CallbackStop:
                     break
