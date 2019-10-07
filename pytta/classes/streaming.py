@@ -24,7 +24,7 @@ class Recorder(object):
         self.recQueue = Queue(self.numSamples//16)
         self.switch = Event()
         self.counter = int()
-        self.recData = np.empty((np.ceil(self.samplingRate/8), self.numChannels),
+        self.recData = np.empty((int(np.ceil(self.samplingRate/8)), self.numChannels),
                                 dtype='float32')
         return
 
@@ -53,9 +53,9 @@ class Recorder(object):
         return
 
     def stdout_print_spl(self, data: np.ndarray, frames: int,
-                         times: 'PaCallbackTimeInfo', status: sd.CallbackFlags):
+                         currentTime: str, status: sd.CallbackFlags):
         if status:
-            print(times.currentTime, status)
+            print(currentTime, ':', status)
         if self.dummyCounter >= frames*np.ceil(self.samplingRate/8/frames):
             print("SPL:", (np.mean(data**2, axis=0))**0.5)
         else:
@@ -68,7 +68,7 @@ class Recorder(object):
         """
         TODO
         """
-        self.recQueue.put_nowait([indata, frames, times, status])
+        self.recQueue.put_nowait([indata, frames, times.currentTime, status])
         self.counter += frames
         if self.counter >= self.numSamples:
             raise sd.CallbackStop
