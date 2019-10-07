@@ -4,14 +4,14 @@ import numpy as np
 import sounddevice as sd
 from multiprocessing import Queue, Process, Event
 from queue import Empty, Full
-from typing import Optional, List, Callable, Union
+from typing import Optional, List, Callable, Union, Generic
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj
 from pytta.classes.measurement import Measurement, RecMeasure
 
 
 # Recording obj class
-class PyTTaRecorder(object):
+class Recorder(object):
     """
 
     """
@@ -19,6 +19,7 @@ class PyTTaRecorder(object):
         self.samplingRate = msmnt.samplingRate
         self.numSamples = msmnt.numSamples
         self.numChannels = msmnt.numInChannels
+        self.device = msmnt.device
         self.dataType = 'float32'
         self.recQueue = Queue(self.numSamples//16)
         self.switch = Event()
@@ -26,6 +27,15 @@ class PyTTaRecorder(object):
         self.recData = np.empty((np.ceil(self.samplingRate/8), self.numChannels),
                                 dtype='float32')
         return
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_tb:
+            raise exc_val
+        else:
+            return
 
     def set_monitoring(self, func: Union[Callable, bool]):
         if func is False:
@@ -42,23 +52,53 @@ class PyTTaRecorder(object):
             raise ValueError("Could not set the monitoring function.")
         return
 
-    def stdout_print_spl(self, data, frames, times, status):
-        if self.dummyCounter >= 32*np.ceil(self.samplingRate/8/32):
+    def stdout_print_spl(self, data: np.ndarray, frames: int,
+                         times: 'PaCallbackTimeInfo', status: sd.CallbackFlags):
+        if status:
+            print(times.currentTime, status)
+        if self.dummyCounter >= frames*np.ceil(self.samplingRate/8/frames):
             print("SPL:", (np.mean(data**2, axis=0))**0.5)
         else:
-            self.dummyData = np.append(self.dummyData, data, axis=0)
+            self.dummyData[self.dummyCounter:frames+self.dummyCounter, :] = data[:]
             self.dummyCounter += frames
-        del times, status
         return
 
-    def stream_callback(self, indata, frames, times, status):
+    def stream_callback(self, indata: np.ndarray, frames: int,
+                        times: type, status: sd.CallbackFlags):
+        """
+        TODO
+        """
         self.recQueue.put_nowait([indata, frames, times, status])
         self.counter += frames
         if self.counter >= self.numSamples:
             raise sd.CallbackStop
-        else:
-            return
+        return
 
+    def parallel_loop(self):
+        while not self.switch.is_set():
+            self.recCount=0
+            if self.switch.is_set():
+                break
+            else:
+                continue
+        while self.switch.is_set():
+            try:
+                data, frames, times, status = self.recQueue.get_nowait()
+                if status:
+                   self.last_status = status
+                   print(status)
+                if self.recCount+frames > self.numSamples:
+                    dif = self.recCount+frames-self.numSamples
+                    self.recData[self.recCount:self.numSamples, :] = data[:dif, :]
+                else:
+                    self.recData[self.recCount:self.recCount+frames, :] = data[:, :]
+                self.monitor_callback(data, frames, times, status)
+            except Empty:
+                if self.last_status is sd.CallbackStop:
+                    break
+                else:
+                    continue
+        return
 
     def run(self):
         with sd.InputStream(samplerate=self.samplingRate,
@@ -68,7 +108,7 @@ class PyTTaRecorder(object):
                             dtype=self.dataType,
                             latency='low',
                             callback=self.stream_callback) as stream:
-            Parallel = Process(target=self.monitor_loop)
+            Parallel = Process(target=self.parallel_loop)
             Parallel.start()
             self.switch.set()
             stream.start()
@@ -77,8 +117,9 @@ class PyTTaRecorder(object):
                     break
                 else:
                     continue
-            Parallel.terminate()
+            stream.stop()
             self.switch.clear()
+            Parallel.terminate()
             stream.close()
         return
 
