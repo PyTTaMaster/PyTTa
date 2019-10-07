@@ -10,7 +10,7 @@ import pytta
 from pytta import roomir as rmr
 from pytta.classes import lju3ei1050
 # %%
-cd pytta/examples/
+path = 'pytta/examples/'
 
 # %%
 # Cria objeto para stream de dados com o LabJack U3 com o sensor
@@ -31,10 +31,10 @@ excitationSignals['varredura'] = pytta.generate.sweep(
         windowing='hann')
 # Carregando sinal de música
 excitationSignals['musica'] = pytta.read_wav(
-        'audio/Piano Over the rainbow Mic2 SHORT_edited.wav')
+        path + 'audio/Piano Over the rainbow Mic2 SHORT_edited.wav')
 # Carregando sinal de fala
 excitationSignals['fala'] = pytta.read_wav(
-        'audio/Voice Sabine Short_edited.WAV')
+        path + 'audio/Voice Sabine Short_edited.WAV')
 
 # %% Cria novo Setup de Medição
 MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
@@ -43,9 +43,9 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
                           #   device=[0, 1],  # PC laza
-                          #   device=4,  # Saffire Pro 40 laza
+                            device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                          device=0,  # Firebox laza
+                        #   device=0,  # Firebox laza
                           # device=[1, 4], # PC laza
                           # [s] tempo de gravação do ruído de fundo
                           noiseFloorTp=5,

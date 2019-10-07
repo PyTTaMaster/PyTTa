@@ -165,22 +165,24 @@ class MeasurementSetup(object):
                  pause4Avg,
                  noiseFloorTp,
                  calibrationTp):
+        self.initing = True
         self.creation_name = 'MeasurementSetup'
         self.measurementKinds = measurementKinds
-        self._name = name
-        self._samplingRate = samplingRate
-        self._device = device
-        self._noiseFloorTp = noiseFloorTp
-        self._calibrationTp = calibrationTp
-        self._excitationSignals = excitationSignals
-        self._averages = averages
-        self._pause4Avg = pause4Avg
-        self._freqMin = freqMin
-        self._freqMax = freqMax
+        self.name = name
+        self.samplingRate = samplingRate
+        self.device = device
+        self.noiseFloorTp = noiseFloorTp
+        self.calibrationTp = calibrationTp
+        self.excitationSignals = excitationSignals
+        self.averages = averages
+        self.pause4Avg = pause4Avg
+        self.freqMin = freqMin
+        self.freqMax = freqMax
         self.inChannels = inChannels
         self.outChannels = outChannels
-        self._path = getcwd()+'/'+self.name+'/'
+        self.path = getcwd()+'/'+self.name+'/'
         self.modified = False
+        self.initing = False
 
     def __repr__(self):
         return (f'{self.__class__.__name__}('
@@ -231,9 +233,11 @@ class MeasurementSetup(object):
         return self._name
 
     @name.setter
-    def name(self, newName):
-        raise PermissionError('After a measurement initialization its name' +
-                              'can\'t be changed.')
+    def name(self, newValue):
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its name' +
+                                  'can\'t be changed.')
+        self._name = newValue
 
     @property
     def samplingRate(self):
@@ -241,8 +245,10 @@ class MeasurementSetup(object):
 
     @samplingRate.setter
     def samplingRate(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'samplingRate can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'samplingRate can\'t be changed.')
+        self._samplingRate = newValue
 
     @property
     def device(self):
@@ -250,8 +256,10 @@ class MeasurementSetup(object):
 
     @device.setter
     def device(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'device can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'device can\'t be changed.')
+        self._device = newValue
 
     @property
     def noiseFloorTp(self):
@@ -259,8 +267,10 @@ class MeasurementSetup(object):
 
     @noiseFloorTp.setter
     def noiseFloorTp(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'noiseFloorTp can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'noiseFloorTp can\'t be changed.')
+        self._noiseFloorTp = newValue
 
     @property
     def calibrationTp(self):
@@ -268,8 +278,10 @@ class MeasurementSetup(object):
 
     @calibrationTp.setter
     def calibrationTp(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'calibrationTp can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'calibrationTp can\'t be changed.')
+        self._calibrationTp = newValue
 
     @property
     def excitationSignals(self):
@@ -277,17 +289,20 @@ class MeasurementSetup(object):
 
     @excitationSignals.setter
     def excitationSignals(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'excitationSignals can\'t be changed.')
-
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'excitationSignals can\'t be changed.')
+        self._excitationSignals = newValue
     @property
     def averages(self):
         return self._averages
 
     @averages.setter
     def averages(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'averages can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'averages can\'t be changed.')
+        self._averages = newValue
 
     @property
     def pause4Avg(self):
@@ -295,8 +310,8 @@ class MeasurementSetup(object):
 
     @pause4Avg.setter
     def pause4Avg(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'pause4Avg can\'t be changed.')
+        self._pause4Avg = newValue
+        self.modified = True
 
     @property
     def freqMin(self):
@@ -304,8 +319,10 @@ class MeasurementSetup(object):
 
     @freqMin.setter
     def freqMin(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'freqMin can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'freqMin can\'t be changed.')
+        self._freqMin = newValue
 
     @property
     def freqMax(self):
@@ -313,8 +330,10 @@ class MeasurementSetup(object):
 
     @freqMax.setter
     def freqMax(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'freqMax can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'freqMax can\'t be changed.')
+        self._freqMax = newValue
 
     @property
     def inChannels(self):
@@ -322,10 +341,13 @@ class MeasurementSetup(object):
 
     @inChannels.setter
     def inChannels(self, newInput):
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'inChannels can\'t be changed.')
         if isinstance(newInput, MeasurementChList):
             self._inChannels = newInput
         elif isinstance(newInput, dict):
-            self.inChannels = MeasurementChList(kind='in')
+            self._inChannels = MeasurementChList(kind='in')
             for chCode, chContents in newInput.items():
                 if chCode == 'groups':
                     self._inChannels.groups = chContents
@@ -340,6 +362,9 @@ class MeasurementSetup(object):
 
     @outChannels.setter
     def outChannels(self, newInput):
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'outChannels can\'t be changed.')
         if isinstance(newInput, MeasurementChList):
             self._outChannels = newInput
         elif isinstance(newInput, dict):
@@ -355,8 +380,10 @@ class MeasurementSetup(object):
 
     @path.setter
     def path(self, newValue):
-        raise PermissionError('After a measurement initialization its ' +
-                              'path can\'t be changed.')
+        if not self.initing:
+            raise PermissionError('After a measurement initialization its ' +
+                                  'path can\'t be changed.')
+        self._path = newValue
 
 class MeasurementData(object):
     """
