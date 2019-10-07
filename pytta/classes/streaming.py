@@ -10,107 +10,145 @@ from pytta.classes.signal import SignalObj
 from pytta.classes.measurement import Measurement, RecMeasure
 
 
-class DoomyDoode(object):
-    """
-    Doomy Doode:
-    -------------
-
-        Dummy (duh!) class for simple default methods
-    """
-    def __init__(self):
-        self.dummyData = np.empty((int(32 * np.ceil(self.samplingRate / 8 / 32)),
-                                   self.numChannels),
-                                  dtype='float32')
-        self.dummyCounter = int()
-        return
-
-    def stdout_print_spl(self, data: np.ndarray, frames: int,
-                             status: sd.CallbackFlags):
-        if status:
-            print(status)
-        if self.dummyCounter >= int(frames * np.ceil(self.samplingRate / 8 / 32)):
-            print("SPL:", 20 * np.log10((np.mean(data ** 2, axis=0)) ** 0.5))
-            self.dummyCounter = 0
-        else:
-            self.dummyData[self.dummyCounter:frames + self.dummyCounter, :] = data[:]
-            self.dummyCounter += frames
-        return
-
-
-doomsy = DoomyDoode()
-
-
 # Recording obj class
 class Recorder(object):
     """
+    Recorder:
+    ----------
 
+        Provides a recorder object that executes, in a parallel process some function
+        with the incoming data.
     """
-    def __init__(self, msmnt: Measurement, datatype: str='float32'):
-        self.samplingRate = msmnt.samplingRate
-        self.numSamples = msmnt.numSamples
-        self.numChannels = msmnt.numInChannels
-        self.device = msmnt.device
-        self.dataType = datatype
-        self.recCount = int()
-        self.recQueue = Queue(self.numSamples//16)
-        self.switch = Event()
-        self.counter = int()
-        self.last_status = None
-        self.recData = np.empty((self.numSamples, self.numChannels),
-                                dtype=self.dataType)
+    def __init__(self, msmnt: Measurement,
+                 datatype: str='float32',
+                 blocksize: int=32):
+        """
+
+        :param msmnt: PyTTa Measurement-like object.
+        :type msmnt: pytta.RecMeasure
+        :param datatype: string with the data type name
+        :type datatype: str
+        :param blocksize: number of frames reads on each call of the stream callback
+        :type blocksize: int
+        """
+        self.samplingRate = msmnt.samplingRate  # registers samples per second
+        self.numSamples = msmnt.numSamples  # registers total amount of samples recorded
+        self.numChannels = msmnt.numInChannels  # register number of channels to be recorded
+        self.device = msmnt.device  # registers device identification
+        self.dataType = datatype  # registers data type
+        self.blocksize = blocksize  # registers blocksize
+        self.switch = Event()  # instantiates a multiprocessing Event object
+        self.monitor = Event()
+        """
+        Essentially, the Event object is a boolean state. It can be
+        `.set()` : Internally defines it to be True;
+        `.clear()` : Internally defines it to be False;
+        `.is_set()` : Check if it is True (only after call to `.set()`)
+        """
+        self.last_status = None  # will register last status passed by stream
+        self.recCount = int()  # registers number of frames recorded
+        self.recQueue = Queue(self.numSamples//16)  # instantiates a multiprocessing Queue
+        """
+        A Queue is First In First Out (FIFO) container object. Data can be stored in it
+        and be retrieved in the same order as it has been put. It can
+        `.put()` : Add data to Queue
+        `.put_nowait()` : Add data to Queue without waiting for memlocks
+        `.get()` : Retrieve data from Queue
+        `.get_nowait()` : Retrieves data from Queue without waiting for memlocks   
+        """
+        self.recData = np.empty((self.numSamples,
+                                 self.numChannels),
+                                dtype=self.dataType)  # allocates memory for data as numpy array
         return
 
     def __enter__(self):
+        """
+        Provides context functionality, e.g.
+
+            >>> with Recorder(msmnt) as rec:  <-- called here
+            ...     rec.set_monitoring(somefunc)
+            ...     rec.run()
+
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Provides context functionality, e.g.
+
+            >>> with Recorder(msmnt) as rec:
+            ...     rec.set_monitoring(somefunc)
+            ...     rec.run()
+            ...                                 <-- called here
+            >>>
+        """
         if exc_tb:
             raise exc_val
         else:
             return
 
-    def set_monitoring(self, func: Union[Callable, bool]):
+    def set_monitoring(self, func: Callable):
+        """
+        Set up the function used as monitor. It must have the following declaration:
+
+            def monitor_callback(data: np.ndarray,
+                                 frames: int,
+                                 status: sd.CallbackFlags)
+
+        It will be called from within a parallel process that the Recorder starts and
+        terminates during it's .run() call.
+
+        :param func:
+        :type func: Callable
+        """
         if func is False:
+            self.monitor.clear()
             return
-        elif func is True:
-            self.monitor_callback = doomsy.stdout_print_spl
         elif isinstance(func, Callable):
             self.monitor_callback = func
+            self.monitor.set()
         else:
-            raise ValueError("Could not set the monitoring function.")
+            raise ValueError("The monitoring argument must be a callable:",
+                             "a function or a method.")
         return
 
     def stream_callback(self, indata: np.ndarray, frames: int,
                         times: type, status: sd.CallbackFlags):
         """
-        TODO
+        This method will be called from the stream, as stated on sounddevice's documentation.
         """
         try:
             self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
-            self.recCount += frames
         except IndexError:
             self.recData[self.recCount:, :] = indata[:self.numSamples-self.recCount, :]
-        self.recQueue.put_nowait([indata, frames, status])
-        self.counter += frames
-        if self.counter >= self.numSamples:
+        if self.monitor:
+            self.recQueue.put_nowait([indata, frames, status])
+        self.recCount += frames
+        if self.recCount >= self.numSamples:
             raise sd.CallbackStop
         return
 
     def parallel_loop(self):
-        while not self.switch.is_set():
-            if self.switch.is_set():
+        """
+        This function is the parallel process' loop, that is responsible for getting
+        the data from queue and passing it to the monitor function, if there is one.
+
+        :return:
+        :rtype:
+        """
+        while not self.switch.is_set():  # this loop waits for the switch to be turned
+            if self.switch.is_set():     # on before continuing
                 break
             else:
                 continue
-        while self.switch.is_set():
-            try:
-                data, frames, status = self.recQueue.get_nowait()
-                if status:
-                   self.last_status = status
-                   print(status)
-                if self.monitor_callback:
-                    self.monitor_callback(data, frames, status)
-            except Empty:
+        while self.switch.is_set():  # this loop tries to read from the queue, after
+            try:                     # call to switch.set()
+                data, frames, status = self.recQueue.get_nowait()  # get from queue
+                if status:   # check any status
+                    self.last_status = status
+                    print(status)  # prints status to stdout, for checking
+                self.monitor_callback(data, frames, status)  # calls for monitoring function
+            except Empty:  # if queue has no data, checks if callback is stopped
                 if self.last_status is sd.CallbackStop:
                     break
                 else:
@@ -118,15 +156,26 @@ class Recorder(object):
         return
 
     def run(self):
+        """
+        Instantiates a sounddevice.InputStream and calls for a parallel process
+        if any monitoring is set up.
+        Then turn on the switch Event, and starts the stream.
+        Waits for it to finish, unset the event
+        And terminates the process
+
+        :return:
+        :rtype:
+        """
         with sd.InputStream(samplerate=self.samplingRate,
-                            blocksize=32,
+                            blocksize=self.blocksize,
                             device=self.device,
                             channels=self.numChannels,
                             dtype=self.dataType,
                             latency='low',
                             callback=self.stream_callback) as stream:
-            Parallel = Process(target=self.parallel_loop)
-            Parallel.start()
+            if self.monitor:
+                Parallel = Process(target=self.parallel_loop)
+                Parallel.start()
             self.switch.set()
             stream.start()
             while stream.active:
@@ -134,9 +183,10 @@ class Recorder(object):
                     break
                 else:
                     continue
-            stream.stop()
+            stream.stop()  # just to be sure...
             self.switch.clear()
-            Parallel.terminate()
+            if self.monitor:
+                Parallel.terminate()
             stream.close()
         return
 
