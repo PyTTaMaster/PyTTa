@@ -12,3 +12,4 @@ if __name__ == "__main__":
                            freqMin=20, freqMax=20e3)
 
     signal.plot_time()
+    signal.plot_freq()

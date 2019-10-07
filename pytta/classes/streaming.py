@@ -58,8 +58,9 @@ class Recorder(object):
                          status: sd.CallbackFlags):
         if status:
             print(status)
-        if self.dummyCounter >= frames*np.ceil(self.samplingRate/8/frames):
+        if self.dummyCounter >= 5536:
             print("SPL:", 20*np.log10((np.mean(data**2, axis=0))**0.5))
+            self.dummyCounter = 0
         else:
             self.dummyData[self.dummyCounter:frames+self.dummyCounter, :] = data[:]
             self.dummyCounter += frames
