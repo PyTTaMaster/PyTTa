@@ -567,17 +567,36 @@ class MeasurementData(object):
                 self._data[kind][SR][inCh][take] = file
         return
 
-    # Properties
-
-    @property
     def get(self, *args):
-        # TO DO
-        self.__update_data()
-        getStr = 'self._data'
-        for arg in args:
-            getStr += '[' + arg + ']'
-        msdThng = h5_load(eval(getStr))
-        return msdThng
+        """
+        Get the MeasuredThings that match with the provided arguments.
+
+            >>> MeasurementData.get('roomir', 'Mic1', ...)
+
+        """
+
+        # Get MeasuredThings from disc
+        myFiles = [f for f in listdir(self.path) if
+                   isfile(join(self.path, f))]
+        myFiles.pop(myFiles.index('MeasurementData.hdf5'))
+
+        # Filtering files with the provided tags
+        filteredFiles = []
+        for fileName in myFiles:
+            append = True
+            for arg in args:
+                if arg not in fileName:
+                    append = False
+            if append:
+                filteredFiles.append(fileName)
+
+        # Retrieving the MeasuredThings
+        msdThngs = []
+        for fileName in filteredFiles:
+            loadedThing = h5_load(self.path + fileName)
+            msdThngs.append(loadedThing[fileName.split('.')[0]])
+
+        return msdThngs
 
 class TakeMeasure(object):
 

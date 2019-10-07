@@ -146,5 +146,7 @@ D.save_take(takeMeasure)
 # %% Carrega dados medidos e setup de medição do arquivo
 MS, D = rmr.med_load('med-teste')
 
+# %% Carrega coisas medidas de acordo com as tags fornecidas
+D.get('Mic1')
 
-#%%
+# %%
