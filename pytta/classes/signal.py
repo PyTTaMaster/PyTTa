@@ -937,27 +937,27 @@ class ImpulsiveResponse(_base.PyTTaObj):
     def systemSignal(self):
         return self._systemSignal
 
-    @property
-    def coordinates(self):
-        excoords = []
-        for chIndex in range(self.excitation.numChannels):
-            excoords.append(self.excitation.channels[chIndex].coordinates)
-        incoords = []
-        for chIndex in range(self.inputSignal.numChannels):
-            incoords.append(self.inputSignal.channels[chIndex].coordinates)
-        coords = {'excitation': excoords, 'inputSignal': incoords}
-        return coords
+    # @property
+    # def coordinates(self):
+    #     excoords = []
+    #     for chIndex in range(self.excitation.numChannels):
+    #         excoords.append(self.excitation.channels[chIndex].coordinates)
+    #     incoords = []
+    #     for chIndex in range(self.inputSignal.numChannels):
+    #         incoords.append(self.inputSignal.channels[chIndex].coordinates)
+    #     coords = {'excitation': excoords, 'inputSignal': incoords}
+    #     return coords
 
-    @property
-    def orientation(self):
-        exori = []
-        for chIndex in range(self.excitation.numChannels):
-            exori.append(self.excitation.channels[chIndex].orientation)
-        inori = []
-        for chIndex in range(self.inputSignal.numChannels):
-            inori.append(self.inputSignal.channels[chIndex].orientation)
-        oris = {'excitation': exori, 'inputSignal': inori}
-        return oris
+    # @property
+    # def orientation(self):
+    #     exori = []
+    #     for chIndex in range(self.excitation.numChannels):
+    #         exori.append(self.excitation.channels[chIndex].orientation)
+    #     inori = []
+    #     for chIndex in range(self.inputSignal.numChannels):
+    #         inori.append(self.inputSignal.channels[chIndex].orientation)
+    #     oris = {'excitation': exori, 'inputSignal': inori}
+    #     return oris
 
     @property
     def methodInfo(self):

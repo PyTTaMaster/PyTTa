@@ -473,21 +473,19 @@ def __h5_unpack(ObjGroup):
 
     elif ObjGroup.attrs['class'] == 'ImpulsiveResponse':
         # excitation = __h5_unpack(ObjGroup['excitation'])
-        excitation = None 
         # recording = __h5_unpack(ObjGroup['recording'])
-        recording = None
         systemSignal = __h5_unpack(ObjGroup['systemSignal'])
         method = ObjGroup.attrs['method']
         winType = ObjGroup.attrs['winType']
         winSize = ObjGroup.attrs['winSize']
         overlap = ObjGroup.attrs['overlap']
-        IR = ImpulsiveResponse(excitation,
-                               recording,
-                               systemSignal,
-                               method,
-                               winType,
-                               winSize,
-                               overlap)
+        IR = ImpulsiveResponse(excitation=None,
+                               recording=None,
+                               ir=systemSignal,
+                               method=method,
+                               winType=winType,
+                               winSize=winSize,
+                               overlap=overlap)
         return IR
 
     elif ObjGroup.attrs['class'] == 'RecMeasure':
