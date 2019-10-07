@@ -2,10 +2,88 @@
 
 import numpy as np
 import sounddevice as sd
-from typing import Optional, List
+from multiprocessing import Queue, Process, Event
+from queue import Empty, Full
+from typing import Optional, List, Callable, Union
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj
-from pytta.classes.measurement import RecMeasure
+from pytta.classes.measurement import Measurement, RecMeasure
+
+
+# Recording obj class
+class PyTTaRecorder(object):
+    """
+
+    """
+    def __init__(self, msmnt: Measurement):
+        self.samplingRate = msmnt.samplingRate
+        self.numSamples = msmnt.numSamples
+        self.numChannels = msmnt.numInChannels
+        self.dataType = 'float32'
+        self.recQueue = Queue(self.numSamples//16)
+        self.switch = Event()
+        self.counter = int()
+        self.recData = np.empty((np.ceil(self.samplingRate/8), self.numChannels),
+                                dtype='float32')
+        return
+
+    def set_monitoring(self, func: Union[Callable, bool]):
+        if func is False:
+            return
+        elif func is True:
+            self.monitor_callback = self.stdout_print_spl
+            self.dummyData = np.empty((32 * np.ceil(self.samplingRate / 8 / 32),
+                                       self.numChannels),
+                                      dtype='float32')
+            self.dummyCounter = int()
+        elif isinstance(func, Callable):
+            self.monitor_callback = func
+        else:
+            raise ValueError("Could not set the monitoring function.")
+        return
+
+    def stdout_print_spl(self, data, frames, times, status):
+        if self.dummyCounter >= 32*np.ceil(self.samplingRate/8/32):
+            print("SPL:", (np.mean(data**2, axis=0))**0.5)
+        else:
+            self.dummyData = np.append(self.dummyData, data, axis=0)
+            self.dummyCounter += frames
+        del times, status
+        return
+
+    def stream_callback(self, indata, frames, times, status):
+        self.recQueue.put_nowait([indata, frames, times, status])
+        self.counter += frames
+        if self.counter >= self.numSamples:
+            raise sd.CallbackStop
+        else:
+            return
+
+
+    def run(self):
+        with sd.InputStream(samplerate=self.samplingRate,
+                            blocksize=32,
+                            device=self.device,
+                            channels=self.numChannels,
+                            dtype=self.dataType,
+                            latency='low',
+                            callback=self.stream_callback) as stream:
+            Parallel = Process(target=self.monitor_loop)
+            Parallel.start()
+            self.switch.set()
+            stream.start()
+            while stream.active:
+                if stream.stopped:
+                    break
+                else:
+                    continue
+            Parallel.terminate()
+            self.switch.clear()
+            stream.close()
+        return
+
+
+
 
 # Streaming class
 class Streaming(_base.PyTTaObj):
