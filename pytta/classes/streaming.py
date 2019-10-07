@@ -10,17 +10,47 @@ from pytta.classes.signal import SignalObj
 from pytta.classes.measurement import Measurement, RecMeasure
 
 
+class DoomyDoode(object):
+    """
+    Doomy Doode:
+    -------------
+
+        Dummy (duh!) class for simple default methods
+    """
+    def __init__(self):
+        self.dummyData = np.empty((int(32 * np.ceil(self.samplingRate / 8 / 32)),
+                                   self.numChannels),
+                                  dtype='float32')
+        self.dummyCounter = int()
+        return
+
+    def stdout_print_spl(self, data: np.ndarray, frames: int,
+                             status: sd.CallbackFlags):
+        if status:
+            print(status)
+        if self.dummyCounter >= int(frames * np.ceil(self.samplingRate / 8 / 32)):
+            print("SPL:", 20 * np.log10((np.mean(data ** 2, axis=0)) ** 0.5))
+            self.dummyCounter = 0
+        else:
+            self.dummyData[self.dummyCounter:frames + self.dummyCounter, :] = data[:]
+            self.dummyCounter += frames
+        return
+
+
+doomsy = DoomyDoode()
+
+
 # Recording obj class
 class Recorder(object):
     """
 
     """
-    def __init__(self, msmnt: Measurement):
+    def __init__(self, msmnt: Measurement, datatype: str='float32'):
         self.samplingRate = msmnt.samplingRate
         self.numSamples = msmnt.numSamples
         self.numChannels = msmnt.numInChannels
         self.device = msmnt.device
-        self.dataType = 'float32'
+        self.dataType = datatype
         self.recCount = int()
         self.recQueue = Queue(self.numSamples//16)
         self.switch = Event()
@@ -43,27 +73,11 @@ class Recorder(object):
         if func is False:
             return
         elif func is True:
-            self.monitor_callback = self.stdout_print_spl
-            self.dummyData = np.empty((int(32 * np.ceil(self.samplingRate / 8 / 32)),
-                                       self.numChannels),
-                                      dtype='float32')
-            self.dummyCounter = int()
+            self.monitor_callback = doomsy.stdout_print_spl
         elif isinstance(func, Callable):
             self.monitor_callback = func
         else:
             raise ValueError("Could not set the monitoring function.")
-        return
-
-    def stdout_print_spl(self, data: np.ndarray, frames: int,
-                         status: sd.CallbackFlags):
-        if status:
-            print(status)
-        if self.dummyCounter >= 5536:
-            print("SPL:", 20*np.log10((np.mean(data**2, axis=0))**0.5))
-            self.dummyCounter = 0
-        else:
-            self.dummyData[self.dummyCounter:frames+self.dummyCounter, :] = data[:]
-            self.dummyCounter += frames
         return
 
     def stream_callback(self, indata: np.ndarray, frames: int,
@@ -125,8 +139,6 @@ class Recorder(object):
             Parallel.terminate()
             stream.close()
         return
-
-
 
 
 # Streaming class
