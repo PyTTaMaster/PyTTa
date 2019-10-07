@@ -11,10 +11,6 @@ path = pytta.__path__[0] + '/examples/RIS/'
 file = 'scene9_RIR_LS1_MP1_Dodecahedron.wav'
 myarr = pytta.read_wav(path+file)
 
-#path = '/home/joaovitor/repositorios/pytta/pytta/examples/RIS/'
-#myload = io.loadmat(path+'RI_mono_2.mat')['MonoRIS2_time']
-#myarr = SignalObj(myload, 'time', 44100)
-
 # %% Analyse
 an = pytta.rooms.analyse(myarr, 'RT', 20, nthOct=3, minFreq=60, maxFreq=20000,
                         plotLundebyResults=False)
