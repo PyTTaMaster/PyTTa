@@ -14,6 +14,8 @@ class DoomyDoode(object):
     -------------
 
         Dummy (duh!) class for simple default methods
+        Can change the printing rate by changing the numSamples parameter.
+        Changing the `integ` key is an option. 
     """
     def __init__(self, samplingrate, numchannels, blocksize):
         self.blocksize = blocksize
@@ -28,11 +30,13 @@ class DoomyDoode(object):
         self.dummyCounter = int()
         return
 
-    def stdout_print_spl(self, data: np.ndarray, frames: int,
+    def stdout_print_dbfs(self, data: np.ndarray, frames: int,
                              status: sd.CallbackFlags):
         """
-        Standard output print sound pressure level:
-        --------------------------------------------
+        Standard output print sound full scale level:
+        ----------------------------------------------
+
+            Prints the Full Scale level in decibel of the incoming sound at every 125 ms
 
         :param data: the audio data from opened stream
         :type data: numpy.ndarray
@@ -61,16 +65,17 @@ class DoomyDoode(object):
 
 if __name__ == "__main__":
     from pytta import generate, Recorder, SignalObj
-    recmeasure = generate.measurement('rec')
-    doomsy = DoomyDoode(recmeasure.samplingRate,
+    recmeasure = generate.measurement('rec')  # generates a default RecMeasure object
+    doomsy = DoomyDoode(recmeasure.samplingRate,  # Generates a DoomyDoode instance
                         recmeasure.numInChannels,
                         32)  # blocksize
 
-    with Recorder(recmeasure, 'float32', 32) as rec:
-        rec.set_monitoring(doomsy.stdout_print_spl)
-        rec.run()
+    with Recorder(recmeasure, 'float32', 32) as rec:  # Creates context with Recorder object
+        rec.set_monitoring(doomsy.stdout_print_dbfs)  # Sets the monitor function
+        rec.run()    # start to record
         signal = SignalObj(rec.recData, 'time', rec.samplingRate,
-                           freqMin=20, freqMax=20e3)
+                           freqMin=20, freqMax=20e3)  # make the recording into a SignalObj
 
+    # Visualization
     signal.plot_time()
     signal.plot_freq()
