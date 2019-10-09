@@ -694,15 +694,19 @@ class ChannelsList(object):
                 if len(self) != len(otherList):
                     raise ValueError("Both ChannelsList-like objects must \
                                      have the same number of channels.")
-                newChList = ChannelsList([self[index]/otherList[index]
-                                          for index in range(len(self))])
+                
+                newChList = ChannelsList([self[self.mapping[idx]]/
+                                          otherList[otherList.mapping[idx]]
+                                          for idx in range(len(self))])
             else:
-                newChList = ChannelsList([self[index]/otherList[0]
-                                          for index in range(len(self))])
+                newChList = ChannelsList([self[self.mapping[idx]]/
+                                          otherList[otherList.mapping[0]]
+                                          for idx in range(len(self))])
         else:
             if len(otherList) > 1:
-                newChList = ChannelsList([self[0]/otherList[index]
-                                          for index in range(len(otherList))])
+                newChList = ChannelsList([self[self.mapping[0]]/
+                                          otherList[otherList.mapping[idx]]
+                                          for idx in range(len(otherList))])
             else:
                 newChList = ChannelsList([self._channels[0] /
                                           otherList._channels[0]])
