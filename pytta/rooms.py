@@ -263,7 +263,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamp
                              numSamples,
                              numChannels,
                              timeLength)
-    c0, c1, interIdx, BGL = lundebyParams
+    _, c1, interIdx, BGL = lundebyParams
     lateRT = -60/c1
 
     if interIdx == 0:
