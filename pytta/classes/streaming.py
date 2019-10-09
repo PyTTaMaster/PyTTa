@@ -4,195 +4,14 @@ import numpy as np
 import sounddevice as sd
 from multiprocessing import Queue, Process, Event
 from queue import Empty, Full
-from typing import Optional, List, Callable, Union, Generic
-from pytta.classes import _base
+from typing import Optional, List, Callable, Union, Type
+from pytta.classes._base import PyTTaObj, ChannelObj, CoordinateObj, ChannelsList
 from pytta.classes.signal import SignalObj
 from pytta.classes.measurement import Measurement, RecMeasure
 
 
-# Recording obj class
-class Recorder(object):
-    """
-    Recorder:
-    ----------
-
-        Provides a recorder object that executes, in a parallel process some function
-        with the incoming data.
-    """
-    def __init__(self, msmnt: Measurement,
-                 datatype: str='float32',
-                 blocksize: int=32):
-        """
-
-        :param msmnt: PyTTa Measurement-like object.
-        :type msmnt: pytta.RecMeasure
-        :param datatype: string with the data type name
-        :type datatype: str
-        :param blocksize: number of frames reads on each call of the stream callback
-        :type blocksize: int
-        """
-        self.samplingRate = msmnt.samplingRate  # registers samples per second
-        self.numSamples = msmnt.numSamples  # registers total amount of samples recorded
-        self.numChannels = msmnt.numInChannels  # register number of channels to be recorded
-        self.device = msmnt.device  # registers device identification
-        self.dataType = datatype  # registers data type
-        self.blocksize = blocksize  # registers blocksize
-        self.switch = Event()  # instantiates a multiprocessing Event object
-        self.monitor = Event()
-        """
-        Essentially, the Event object is a boolean state. It can be
-        `.set()` : Internally defines it to be True;
-        `.clear()` : Internally defines it to be False;
-        `.is_set()` : Check if it is True (only after call to `.set()`)
-        """
-        self.last_status = None  # will register last status passed by stream
-        self.recCount = int()  # registers number of frames recorded
-        self.recQueue = Queue(self.numSamples//16)  # instantiates a multiprocessing Queue
-        """
-        A Queue is First In First Out (FIFO) container object. Data can be stored in it
-        and be retrieved in the same order as it has been put. It can
-        `.put()` : Add data to Queue
-        `.put_nowait()` : Add data to Queue without waiting for memlocks
-        `.get()` : Retrieve data from Queue
-        `.get_nowait()` : Retrieves data from Queue without waiting for memlocks   
-        """
-        self.recData = np.empty((self.numSamples,
-                                 self.numChannels),
-                                dtype=self.dataType)  # allocates memory for data as numpy array
-        return
-
-    def __enter__(self):
-        """
-        Provides context functionality, e.g.
-
-            >>> with Recorder(msmnt) as rec:  <-- called here
-            ...     rec.set_monitoring(somefunc)
-            ...     rec.run()
-
-        """
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Provides context functionality, e.g.
-
-            >>> with Recorder(msmnt) as rec:
-            ...     rec.set_monitoring(somefunc)
-            ...     rec.run()
-            ...                                 <-- called here
-            >>>
-        """
-        if exc_tb:
-            raise exc_val
-        else:
-            return
-
-    def set_monitoring(self, func: Callable):
-        """
-        Set up the function used as monitor. It must have the following declaration:
-
-            def monitor_callback(data: np.ndarray,
-                                 frames: int,
-                                 status: sd.CallbackFlags)
-
-        It will be called from within a parallel process that the Recorder starts and
-        terminates during it's .run() call.
-
-        :param func:
-        :type func: Callable
-        """
-        if func is False:
-            self.monitor.clear()
-            return
-        elif isinstance(func, Callable):
-            self.monitor_callback = func
-            self.monitor.set()
-        else:
-            raise ValueError("The monitoring argument must be a callable:",
-                             "a function or a method.")
-        return
-
-    def stream_callback(self, indata: np.ndarray, frames: int,
-                        times: type, status: sd.CallbackFlags):
-        """
-        This method will be called from the stream, as stated on sounddevice's documentation.
-        """
-        try:
-            self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
-        except IndexError:
-            self.recData[self.recCount:, :] = indata[:self.numSamples-self.recCount, :]
-        if self.monitor:
-            self.recQueue.put_nowait([indata, frames, status])
-        self.recCount += frames
-        if self.recCount >= self.numSamples:
-            raise sd.CallbackStop
-        return
-
-    def parallel_loop(self):
-        """
-        This function is the parallel process' loop, that is responsible for getting
-        the data from queue and passing it to the monitor function, if there is one.
-
-        :return:
-        :rtype:
-        """
-        while not self.switch.is_set():  # this loop waits for the switch to be turned
-            if self.switch.is_set():     # on before continuing
-                break
-            else:
-                continue
-        while self.switch.is_set():  # this loop tries to read from the queue, after
-            try:                     # call to switch.set()
-                data, frames, status = self.recQueue.get_nowait()  # get from queue
-                if status:   # check any status
-                    self.last_status = status
-                    print(status)  # prints status to stdout, for checking
-                self.monitor_callback(data, frames, status)  # calls for monitoring function
-            except Empty:  # if queue has no data, checks if callback is stopped
-                if self.last_status is sd.CallbackStop:
-                    break
-                else:
-                    continue
-        return
-
-    def run(self):
-        """
-        Instantiates a sounddevice.InputStream and calls for a parallel process
-        if any monitoring is set up.
-        Then turn on the switch Event, and starts the stream.
-        Waits for it to finish, unset the event
-        And terminates the process
-
-        :return:
-        :rtype:
-        """
-        with sd.InputStream(samplerate=self.samplingRate,
-                            blocksize=self.blocksize,
-                            device=self.device,
-                            channels=self.numChannels,
-                            dtype=self.dataType,
-                            latency='low',
-                            callback=self.stream_callback) as stream:
-            if self.monitor:
-                Parallel = Process(target=self.parallel_loop)
-                Parallel.start()
-            self.switch.set()
-            stream.start()
-            while stream.active:
-                if stream.stopped:
-                    break
-                else:
-                    continue
-            stream.stop()  # just to be sure...
-            self.switch.clear()
-            if self.monitor:
-                Parallel.terminate()
-            stream.close()
-        return
-
-
 # Streaming class
-class Streaming(_base.PyTTaObj):
+class Streaming(PyTTaObj):
     """
     Wrapper class for SoundDevice stream-like classes. This is intended for
     applications where both measurement and analysis signal must be handled
@@ -323,145 +142,200 @@ class Streaming(_base.PyTTaObj):
             It\'s parameters are the same as the previous methods.
     """
 
-    def __init__(self,
-                 device: List[int] = None,
-                 integration: float = None,
-                 samplingRate: int = None,
-                 inChannels: Optional[List[_base.ChannelObj]] = None,
-                 outChannels: Optional[List[_base.ChannelObj]] = None,
+    def __init__(self, IO: str,
+                 msmnt: Measurement,
+                 datatype: str='float32',
+                 blocksize: int=64,
                  duration: Optional[float] = None,
-                 excitationData: Optional[np.ndarray] = None,
-                 callback: Optional[callable] = None,
+                 monitor_callback: Optional[Callable] = None,
                  *args, **kwargs):
+        """
+
+        :param msmnt: PyTTa Measurement-like object.
+        :type msmnt: pytta.RecMeasure
+        :param datatype: string with the data type name
+        :type datatype: str
+        :param blocksize: number of frames reads on each call of the stream callback
+        :type blocksize: int
+        """
         super().__init__(*args, **kwargs)
-        self._set_channels(inChannels, outChannels, excitationData)
+        self._IO = IO
+        self._samplingRate = msmnt.samplingRate  # registers samples per second
+        self._numSamples = msmnt.numSamples  # registers total amount of samples recorded
+        self._dataType = datatype  # registers data type
+        self._blockSize = blocksize  # registers blocksize
         if duration is not None:
-            self._durationInSamples = int(duration*samplingRate)
+            self._durationInSamples = int(duration*msmnt.samplingRate)
         else:
             self._durationInSamples = None
-        self._inChannels = inChannels
-        self._outChannels = outChannels
-        self._samplingRate = samplingRate
-        self._integration = integration
-        self._blockSize = int(self.integration * self.samplingRate)
         self._duration = duration
-        self._device = device
-        self.__kount = 0
-        self.callback = callback
-        self._call_for_stream(self.callback)
+        self._device = msmnt.device
+        self.switch = Event()  # instantiates a multiprocessing Event object
+        self.monitor = Event()
+        """
+        Essentially, the Event object is a boolean state. It can be
+        `.set()` : Internally defines it to be True;
+        `.clear()` : Internally defines it to be False;
+        `.is_set()` : Check if it is True (only after call to `.set()`)
+
+        This Event, from multiprocessing library, can be checked from different
+        processes simultaneously.
+        """
+        self.lastStatus = None  # will register last status passed by stream
+        self.queue = Queue(self.numSamples // 16)  # instantiates a multiprocessing Queue
+        """
+        A Queue is First In First Out (FIFO) container object. Data can be stored in it
+        and be retrieved in the same order as it has been put. It can
+        `.put()` : Add data to Queue
+        `.put_nowait()` : Add data to Queue without waiting for memlocks
+        `.get()` : Retrieve data from Queue
+        `.get_nowait()` : Retrieves data from Queue without waiting for memlocks
+
+        This Queue, from multiprocessing library, can be checked from different
+        processes simultaneously.
+        """
+        self.set_io_properties(msmnt)
         return
 
-    def _set_channels(self, inputs, outputs, data):
-        if inputs is not None:
-            self._inData = np.zeros((1, len(inputs)))
+    def __enter__(self):
+        """
+        Provides context functionality, the `with` keyword, e.g.
+
+            >>> with Recorder(Measurement) as rec:  # <-- called here
+            ...     rec.set_monitoring(Callable)
+            ...     rec.run()
+            ...
+            >>>
+
+        """
+        return self
+
+    def __exit__(self, exc_type: Type, exc_val: Exception, exc_tb: Type):
+        """
+        Provides context functionality, the `with` keyword, e.g.
+
+            >>> with Streaming('play', Measurement) as strm:
+            ...     strm.set_monitoring(Callable)
+            ...     strm.run()
+            ...                             # <-- called here
+            >>>
+        """
+        if exc_tb:
+            raise exc_val
         else:
-            self._inData = None
-        if outputs is not None:
-            try:
-                self._outData = data[:]
-            except TypeError:
-                raise TypeError("If outChannels is provided, an \
-                                excitationData must be entered as well.")
+            return
+
+    def set_io_properties(self, msmnt):
+        if 'I' in self.IO:
+            self.recCount = int()
+            self.inChannels = msmnt.inChannels
+            self.recData = np.empty((self.numSamples,
+                                     self.numInChannels),
+                                    dtype=self.dataType)  # allocates memory for data as numpy array
+        if 'O' in self.IO:
+            self.playCount = int()
+            self.outChannels = msmnt.outChannels
+            playData = msmnt.excitation.timeSignal.copy()  # copies excitation signal
+            self.playData = self.play_data_adjust(playData) # adjust in blocks of blocksize samples
+        return
+
+    def play_data_adjust(self, playdata):
+        len = playdata.shape[0]
+        chn = playdata.shape[1]
+        bs = self.blockSize
+        nchunks = int(np.ceil(len / bs))
+        array = np.empty((nchunks, bs, chn), dtype='float32')
+        for c in range(chn):
+            for n in range(nchunks):
+                array[n, :, c] = playdata[n * bs:(n + 1) * bs, c]
+        return array
+
+    def set_monitoring(self, func: Callable):
+        """
+        Set up the function used as monitor. It must have the following declaration:
+
+            def monitor_callback(data: np.ndarray,
+                                 frames: int,
+                                 status: sd.CallbackFlags)
+
+        It will be called from within a parallel process that the Recorder starts and
+        terminates during it's .run() call.
+
+        :param func:
+        :type func: Callable
+        """
+        if func is False:
+            self.monitor.clear()
+        elif isinstance(func, Callable):
+            self.monitor_callback = func
+            self.monitor.set()
         else:
-            self._outData = None
+            raise ValueError("The monitoring argument must be a callable:",
+                             "a function or a method.")
         return
 
-    def _call_for_stream(self, IOcallback=None):
-        if self.outChannels is not None and self.inChannels is not None:
-            if IOcallback is None:
-                IOcallback = self.__IOcallback
-            self._stream = sd.Stream(self.samplingRate,
-                                     self.blockSize,
-                                     self.device,
-                                     [len(self.inChannels),
-                                      len(self.outChannels)],
-                                     dtype='float32',
-                                     latency='low',
-                                     callback=IOcallback)
-        elif self.outChannels is not None and self.inChannels is None:
-            if IOcallback is None:
-                IOcallback = self.__Ocallback
-            self._stream = sd.OutputStream(self.samplingRate,
-                                           self.blockSize,
-                                           self.device,
-                                           len(self.outChannels),
-                                           dtype='float32',
-                                           latency='low',
-                                           callback=IOcallback)
-        elif self.outChannels is None and self.inChannels is not None:
-            if IOcallback is None:
-                IOcallback = self.__Icallback
-            self._stream = sd.InputStream(self.samplingRate,
-                                          self.blockSize,
-                                          self.device,
-                                          len(self.inChannels),
-                                          dtype='float32',
-                                          latency='low',
-                                          callback=IOcallback)
-        else:
-            raise ValueError("At least one channel list, either inChannels\
-                             or outChannels must be supplied.")
+    def parallel_loop(self):
+        """
+        This function is the parallel process' loop, that is responsible for getting
+        the data from queue and passing it to the monitor function, if there is one.
+
+        :return:
+        :rtype:
+        """
+        while not self.switch.is_set():  # this loop waits for the switch to be turned
+            if self.switch.is_set():     # on before continuing
+                break
+            else:
+                continue
+        while self.switch.is_set():  # this loop tries to read from the queue, after
+            try:                     # call to switch.set()
+                data, frames, status = self.queue.get_nowait()  # get from queue
+                if status:   # check any status
+                    self.lastStatus = status
+                    print(status)  # prints status to stdout, for checking
+                self.monitor_callback(data, frames, status)  # calls for monitoring function
+            except Empty:  # if queue has no data
+                if self.lastStatus is sd.CallbackStop  \
+                        or self.lastStatus is sd.CallbackAbort:
+                    # checks if callback is stopped or aborted
+                    break  # then breaks the loop
+                else: # else, try to run again.
+                    continue
         return
 
-    def __Icallback(self, Idata, frames, time, status):
-        self.inData = np.append(self.inData[:]*self.inChannels.CFlist(),
-                                Idata, axis=0)
-        if self.durationInSamples is None:
-            pass
-        elif self.inData.shape[0] >= self.durationInSamples:
-            self.__timeout()
-        return
+    def runner(self, StreamType: Type, stream_callback):
+        """
+        Instantiates a sounddevice.InputStream and calls for a parallel process
+        if any monitoring is set up.
+        Then turn on the switch Event, and starts the stream.
+        Waits for it to finish, unset the event
+        And terminates the process
 
-    def __Ocallback(self, Odata, frames, time, status):
-        try:
-            Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
-            self.kn = self.kn + frames
-        except ValueError:
-            olen = len(self.outData[self.kn:])
-            Odata[:olen, :] = self.outData[self.kn:, :]
-            Odata.fill(0)
-            self.__timeout()
-        return
-
-    def __IOcallback(self, Idata, Odata, frames, time, status):
-        self.inData = np.append(self.inData[:]*self.inChannels.CFlist(),
-                                Idata, axis=0)
-        try:
-            Odata[:, :] = self.outData[self.kn:self.kn+frames, :]
-            self.kn = self.kn + frames
-        except ValueError:
-            olen = len(self.outData[self.kn:self.kn+frames])
-            Odata[:olen, :] = self.outData[self.kn:, :]
-            Odata.fill(0)
-            self.__timeout()
-        return
-
-    def __timeout(self):
-        self.stop()
-        self._call_for_stream(self.callback)
-        self.kn = 0
-        if self.inData is not None:
-            self.inData = self.inData[1:, :]
-        return
-
-    def getSignal(self):
-        signal = SignalObj(self.inData, 'time', self.samplingRate)
-        return signal
-
-    def reset(self):
-        self.set_channels(self.inChannels, self.outChannels, self.outData)
-        return
-
-    def start(self):
-        self.stream.start()
-        return
-
-    def stop(self):
-        self.stream.stop()
-        return
-
-    def close(self):
-        self.stream.close()
+        :return:
+        :rtype:
+        """
+        with StreamType(samplerate=self.samplingRate,
+                        blocksize=self.blockSize,
+                        device=self.device,
+                        channels=self.numChannels,
+                        dtype=self.dataType,
+                        latency='low',
+                        callback=stream_callback) as stream:
+            if self.monitor:
+                Parallel = Process(target=self.parallel_loop)
+                Parallel.start()
+            self.switch.set()
+            stream.start()
+            while stream.active:
+                if stream.stopped:
+                    break
+                else:
+                    continue
+            stream.stop()  # just to be sure...
+            self.switch.clear()
+            if self.monitor:
+                Parallel.terminate()
+            stream.close()
         return
 
     def calib_pressure(self, chIndex, refPrms=1.00, refFreq=1000):
@@ -487,7 +361,6 @@ class Streaming(_base.PyTTaObj):
                 the reference sine frequency provided by the acoustic
                 calibrator;
         """
-	
         refSignalObj = RecMeasure(lengthDomain='time',
                                   timeLength=5,
                                   samplingRate=self.samplingRate,
@@ -501,53 +374,20 @@ class Streaming(_base.PyTTaObj):
         return
 
     @property
-    def stream(self):
-        return self._stream
-
-    @property
-    def active(self):
-        return self.stream.active
-
-    @property
-    def stopped(self):
-        return self.stream.stopped
-
-    @property
-    def closed(self):
-        return self.stream.closed
+    def IO(self):
+        return self._IO
 
     @property
     def device(self):
         return self._device
 
     @property
-    def inChannels(self):
-        return self._inChannels
-
-    @property
-    def inData(self):
-        return self._inData
-
-    @inData.setter
-    def inData(self, data):
-        self._inData = data
-        return
-
-    @property
-    def outChannels(self):
-        return self._outChannels
-
-    @property
-    def outData(self):
-        return self._outData
-
-    @property
-    def integration(self):
-        return self._integration
-
-    @property
     def blockSize(self):
         return self._blockSize
+
+    @property
+    def dataType(self):
+        return self._dataType
 
     @property
     def duration(self):
@@ -558,10 +398,162 @@ class Streaming(_base.PyTTaObj):
         return self._durationInSamples
 
     @property
-    def kn(self):
-        return self.__kount
+    def numInChannels(self):
+        return len(self.inChannels)
 
-    @kn.setter
-    def kn(self, nk):
-        self.__kount = nk
+    @property
+    def numOutChannels(self):
+        return len(self.outChannels)
+
+    @property
+    def numChannels(self):
+        if self.IO == 'I':
+            return self.numInChannels
+        elif self.IO == 'O':
+            return self.numOutChannels
+        elif self.IO == 'IO':
+            return self.numInChannels, self.numOutChannels
+
+
+# Recording obj class
+class Recorder(Streaming):
+    """
+    Recorder:
+    ----------
+
+        Provides a recorder object that executes, in a parallel process some function
+        with the incoming data.
+    """
+    def __init__(self, msmnt: Measurement,
+                 datatype: str='float32',
+                 blocksize: int=32,
+                 duration: Optional[float] = None,
+                 *args, **kwargs):
+        """
+
+        :param msmnt: PyTTa Measurement-like object.
+        :type msmnt: pytta.RecMeasure
+        :param datatype: string with the data type name
+        :type datatype: str
+        :param blocksize: number of frames reads on each call of the stream callback
+        :type blocksize: int
+        """
+        super().__init__('I', msmnt, datatype, blocksize, *args, **kwargs)
+        return
+
+    def stream_callback(self, indata: np.ndarray, frames: int,
+                        times: type, status: sd.CallbackFlags):
+        """
+        This method will be called from the stream, as stated on sounddevice's documentation.
+        """
+        try:
+            self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
+        except IndexError:
+            self.recData[self.recCount:, :] = indata[:self.numSamples-self.recCount, :]
+        except ValueError:
+            pass
+        if self.monitor:
+            self.queue.put_nowait([indata, frames, status])
+        self.recCount += frames
+        if self.recCount >= self.numSamples:
+            raise sd.CallbackStop
+        return
+
+    def retrieve(self):
+        signal = SignalObj(self.recData, 'time', self.samplingRate,
+                           freqMin=20, freqMax=20e3)
+        return signal
+
+    def run(self):
+        self.runner(sd.InputStream, self.stream_callback)
+        return
+
+# Playback obj class
+class Player(Streaming):
+    """
+    Recorder:
+    ----------
+
+        Provides a recorder object that executes, in a parallel process some function
+        with the incoming data.
+    """
+    def __init__(self, msmnt: Measurement,
+                 datatype: str='float32',
+                 blocksize: int=32,
+                 *args, **kwargs):
+        """
+
+        :param msmnt: PyTTa Measurement-like object.
+        :type msmnt: pytta.RecMeasure
+        :param datatype: string with the data type name
+        :type datatype: str
+        :param blocksize: number of frames reads on each call of the stream callback
+        :type blocksize: int
+        """
+        super().__init__('O', msmnt, datatype, blocksize, *args, **kwargs)
+        return
+
+    def stream_callback(self, outdata: np.ndarray, frames: int,
+                        times: type, status: sd.CallbackFlags):
+        """
+        This method will be called from the stream, as stated on sounddevice's documentation.
+        """
+        try:
+            outdata[:, :] = self.playData[self.playCount, :, :]
+            self.playCount += 1
+            if self.monitor:
+                self.queue.put_nowait([outdata, frames, status])
+        except IndexError:
+            raise sd.CallbackStop
+        return
+
+    def run(self):
+        """
+        Instantiates a sounddevice.InputStream and calls for a parallel process
+        if any monitoring is set up.
+        Then turn on the switch Event, and starts the stream.
+        Waits for it to finish, unset the event
+        And terminates the process
+
+        :return:
+        :rtype:
+        """
+        self.runner(sd.OutputStream, self.stream_callback)
+        return
+
+
+class PlaybackRecorder(Streaming):
+    """
+    ...
+    """
+    def __init__(self, msmnt: Measurement,
+                 datatype: str = 'float32',
+                 blocksize: int = 64):
+        super().__init__('IO', msmnt, datatype, blocksize)
+        return
+
+    def stream_callback(self, indata, outdata, frames, time, status):
+        try:
+            try:
+                self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
+            except IndexError:
+                self.recData[self.recCount:, :] = indata[:self.numSamples - self.recCount, :]
+            except ValueError:
+                pass
+            outdata[:, :] = self.playData[self.playCount, :, :]
+            self.playCount += 1
+            if self.monitor:
+                self.queue.put_nowait([outdata, frames, status])
+            self.recCount += frames
+        except IndexError:
+            raise sd.CallbackStop
+        return
+
+    def retrieve(self):
+        signal = SignalObj(self.recData, 'time', self.samplingRate,
+                           freqMin=20, freqMax=20e3)
+        return signal
+
+    def run(self):
+        self.runner(sd.Stream, self.stream_callback)
         return
