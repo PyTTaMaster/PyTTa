@@ -29,13 +29,18 @@ class DoomyDoode(object):
                               * np.ceil(self.samplingRate \
                                         / self.integ['fast'] \
                                         / self.blocksize))
-        self.dummyData = np.empty((self.numSamples, self.numChannels),
+        self.dummyDataIn = np.empty((self.numSamples, self.numChannels),
                                   dtype='float32')
+        self.dummyDataOut = np.empty((self.numSamples, self.numChannels),
+                                    dtype='float32')
+
         self.dummyCounter = int()
         return
 
-    def stdout_print_dbfs(self, data: np.ndarray, frames: int,
-                             status: sd.CallbackFlags):
+    def stdout_print_dbfs(self, indata: np.ndarray,
+                          outdata: np.ndarray,
+                          frames: int,
+                          status: sd.CallbackFlags):
         """
         Standard output print sound full scale level:
         ----------------------------------------------
@@ -58,12 +63,16 @@ class DoomyDoode(object):
             print(status)
         elif frames != self.blocksize:
             raise ValueError("Doomsy's blocksize shoulds bee equals to streamsy's")
-        if self.dummyCounter >= self.numSamples:
-            print("SPL:", 20 * np.log10((np.mean(data ** 2, axis=0)) ** 0.5))
-            self.dummyCounter = 0
-        else:
-            self.dummyData[self.dummyCounter:frames + self.dummyCounter, :] = data[:]
+        try:
+            self.dummyDataIn[self.dummyCounter:frames + self.dummyCounter, :] \
+                = indata[:] if indata is not None else 0.0
+            self.dummyDataOut[self.dummyCounter:frames + self.dummyCounter, :] \
+                = outdata[:] if outdata is not None else 0.0
             self.dummyCounter += frames
+        except ValueError:
+            print("SPL:", 20 * np.log10((np.mean(self.dummyDataIn ** 2, axis=0)) ** 0.5),
+                  20 * np.log10((np.mean(self.dummyDataOut ** 2, axis=0)) ** 0.5))
+            self.dummyCounter = 0
         return
 
 def rec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
@@ -98,18 +107,23 @@ def playrec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
 
 if __name__ == "__main__":
     from pytta import generate, Recorder, SignalObj
-    measure = generate.measurement()  # generates a default RecMeasure object
+
+    bs = 32
+
+    measure = generate.measurement(device=0)  # generates a default RecMeasure object
     doomsy = DoomyDoode(measure.samplingRate,  # Generates a DoomyDoode instance
                         measure.numInChannels,
-                        64)  # blocksize
-    signal1 = rec(msmnt=measure, monitor=doomsy.stdout_print_dbfs, bs=64)
+                        bs)  # blocksize
+
+    signal1 = rec(msmnt=measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
+
     measure.excitation = signal1
-    play(measure, monitor=doomsy.stdout_print_dbfs, bs=64)
+    play(measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
     # Visualization
     signal1.plot_time()
     signal1.plot_freq()
 
-    signal2 = playrec(monitor=doomsy.stdout_print_dbfs, bs=64)
+    signal2 = playrec(monitor=doomsy.stdout_print_dbfs, bs=bs)
     signal2.plot_time()
     signal2.plot_freq()
 

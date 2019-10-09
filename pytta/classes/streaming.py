@@ -227,16 +227,13 @@ class Streaming(PyTTaObj):
 
     def set_io_properties(self, msmnt):
         if 'I' in self.IO:
-            self.recCount = int()
             self.inChannels = msmnt.inChannels
-            self.recData = np.empty((self.numSamples,
-                                     self.numInChannels),
-                                    dtype=self.dataType)  # allocates memory for data as numpy array
+            self.recData = self.rec_data_adjust(self.numSamples, self.numInChannels)
         if 'O' in self.IO:
-            self.playCount = int()
             self.outChannels = msmnt.outChannels
-            playData = msmnt.excitation.timeSignal.copy()  # copies excitation signal
-            self.playData = self.play_data_adjust(playData) # adjust in blocks of blocksize samples
+            self.playData = self.play_data_adjust(
+                    msmnt.excitation.timeSignal.copy()) # adjust in blocks of blocksize samples
+        self.count = int()
         return
 
     def play_data_adjust(self, playdata):
@@ -250,7 +247,14 @@ class Streaming(PyTTaObj):
                 array[n, :, c] = playdata[n * bs:(n + 1) * bs, c]
         return array
 
-    def set_monitoring(self, func: Callable):
+    def rec_data_adjust(self, nsamples, nchannels):
+        bs = self.blockSize
+        nchunks = int(np.ceil(nsamples / bs))
+        array = np.empty((nchunks, bs, nchannels), dtype='float32')
+        return array
+
+
+    def set_monitoring(self, func: Union[Callable, bool] = False):
         """
         Set up the function used as monitor. It must have the following declaration:
 
@@ -289,11 +293,14 @@ class Streaming(PyTTaObj):
                 continue
         while self.switch.is_set():  # this loop tries to read from the queue, after
             try:                     # call to switch.set()
-                data, frames, status = self.queue.get_nowait()  # get from queue
+                readonly = self.queue.get_nowait()   # get from queue
+                input = readonly[0] if 'I' in self.IO else None
+                output = readonly[1] if 'O' in self.IO else None
+                frames, status = readonly[-2:]
                 if status:   # check any status
                     self.lastStatus = status
                     print(status)  # prints status to stdout, for checking
-                self.monitor_callback(data, frames, status)  # calls for monitoring function
+                self.monitor_callback(input, output, frames, status)  # calls for monitoring function
             except Empty:  # if queue has no data
                 if self.lastStatus is sd.CallbackStop  \
                         or self.lastStatus is sd.CallbackAbort:
@@ -446,21 +453,18 @@ class Recorder(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        try:
-            self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
-        except IndexError:
-            self.recData[self.recCount:, :] = indata[:self.numSamples-self.recCount, :]
-        except ValueError:
-            pass
+        self.recData[self.count, :, :] = indata[:]
+        self.count += 1
         if self.monitor:
-            self.queue.put_nowait([indata, frames, status])
-        self.recCount += frames
-        if self.recCount >= self.numSamples:
+            self.queue.put_nowait([indata, None, frames, status])
+        if self.count == self.recData.shape[0]:
             raise sd.CallbackStop
         return
 
     def retrieve(self):
-        signal = SignalObj(self.recData, 'time', self.samplingRate,
+        arr = self.recData.reshape((self.numSamples, self.numInChannels))
+        assert arr.ndim == 2
+        signal = SignalObj(arr, 'time', self.samplingRate,
                            freqMin=20, freqMax=20e3)
         return signal
 
@@ -498,12 +502,11 @@ class Player(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        try:
-            outdata[:, :] = self.playData[self.playCount, :, :]
-            self.playCount += 1
-            if self.monitor:
-                self.queue.put_nowait([outdata, frames, status])
-        except IndexError:
+        outdata[:] = self.playData[self.count, :, :]
+        self.count += 1
+        if self.monitor:
+            self.queue.put_nowait([None, outdata, frames, status])
+        if self.count == self.playData.shape[0]:
             raise sd.CallbackStop
         return
 
@@ -533,24 +536,19 @@ class PlaybackRecorder(Streaming):
         return
 
     def stream_callback(self, indata, outdata, frames, time, status):
-        try:
-            try:
-                self.recData[self.recCount:self.recCount + frames, :] = indata[:, :]
-            except IndexError:
-                self.recData[self.recCount:, :] = indata[:self.numSamples - self.recCount, :]
-            except ValueError:
-                pass
-            outdata[:, :] = self.playData[self.playCount, :, :]
-            self.playCount += 1
-            if self.monitor:
-                self.queue.put_nowait([outdata, frames, status])
-            self.recCount += frames
-        except IndexError:
+        outdata[:] = self.playData[self.count, :, :]
+        self.recData[self.count, :, :] = indata[:]
+        self.count += 1
+        if self.monitor:
+            self.queue.put_nowait([indata, outdata, frames, status])
+        if self.count*frames >= self.numSamples:
             raise sd.CallbackStop
         return
 
     def retrieve(self):
-        signal = SignalObj(self.recData, 'time', self.samplingRate,
+        arr = self.recData.reshape((self.numSamples, self.numInChannels))
+        assert arr.ndim == 2
+        signal = SignalObj(arr, 'time', self.samplingRate,
                            freqMin=20, freqMax=20e3)
         return signal
 
