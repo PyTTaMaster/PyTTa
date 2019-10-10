@@ -338,6 +338,70 @@ class TestH5IO(unittest.TestCase):
                 self.assertEqual(pobj.comment,
                                 savedlst[idx].comment)
 
+    def test_h5save_analysis(self):
+        """
+        Analysis hdf5 save test.
+        """
+        anType = 'RT'
+        anType2 = 'mixed'
+        nthOct = 3
+        nthOct2 = 1
+        minBand = 60
+        minBand2 = 70
+        maxBand = 20000
+        maxBand2 = 16000
+        data = [2.0226, 1.7139, 1.4615,
+               1.7127, 1.0890, 1.5395, 1.2965, 1.9011, 1.9835, 2.1028,
+               2.1225, 1.9030, 1.9064, 2.0137, 1.8834, 1.6736, 1.5220,
+               1.5677, 1.6691, 1.4698, 1.2754, 0.9378, 0.6863, 0.4889,
+               0.3776, 0.3113]
+        data2 = [2.0226,
+                1.7127, 1.2965, 2.1028,
+                1.9064, 1.6736, 1.6691, 0.9378,
+                0.3776]
+        comment = 'Testaaano carai'
+        comment2 = 'Testano memo'
+
+        an = pytta.Analysis(anType=anType,
+                            nthOct=nthOct,
+                            minBand=minBand,
+                            maxBand=maxBand,
+                            data=data,
+                            comment=comment)
+
+        an2 = pytta.Analysis(anType=anType2,
+                            nthOct=nthOct2,
+                            minBand=minBand2,
+                            maxBand=maxBand2,
+                            data=data2,
+                            comment=comment2)
+
+        savedlst = [an, an2]
+
+        pytta.save(self.filename, an, an2)
+
+        a = pytta.load(self.filename)
+
+        loadedlst = [a[pyttaobj] for pyttaobj in a]
+
+        for idx, pobj in enumerate(loadedlst):
+            self.assertEqual(pobj.anType,
+                            savedlst[idx].anType)
+
+            self.assertEqual(pobj.nthOct,
+                            savedlst[idx].nthOct)
+
+            self.assertEqual(pobj.minBand,
+                            savedlst[idx].minBand)
+            
+            self.assertEqual(pobj.maxBand,
+                            savedlst[idx].maxBand)
+
+            self.assertEqual(pobj.comment,
+                            savedlst[idx].comment)
+
+            self.assertEqual(pobj.data.tolist(),
+                                savedlst[idx].data.tolist())
 
 if __name__ == '__main__':
     unittest.main()

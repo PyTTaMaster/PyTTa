@@ -182,17 +182,24 @@ class Analysis(object):
 
     # Methods
 
-    def _to_dict(self):
-        return
+    # def _to_dict(self):
+    #     return
 
-    def pytta_save(self, dirname=time.ctime(time.time())):
-        return
+    # def pytta_save(self, dirname=time.ctime(time.time())):
+    #     return
 
     def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
         pytta.save(...).
         """
+        h5group.attrs['class'] = 'Analysis'
+        h5group.attrs['anType'] = self.anType
+        h5group.attrs['nthOct'] = self.nthOct
+        h5group.attrs['minBand'] = self.minBand
+        h5group.attrs['maxBand'] = self.maxBand
+        h5group.attrs['comment'] = self.comment
+        h5group['data'] = self.data
         return
 
     def plot(self, **kwargs):

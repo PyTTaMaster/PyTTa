@@ -40,7 +40,8 @@ import scipy.fftpack as sfft
 import zipfile as zf
 import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
-                    RecMeasure, PlayRecMeasure, FRFMeasure
+                    RecMeasure, PlayRecMeasure, FRFMeasure, \
+                    Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
 import copy as cp
@@ -577,5 +578,24 @@ def __h5_unpack(ObjGroup):
                              freqMax=freqMax,
                              comment=comment)
         return frfObj
+
+    elif ObjGroup.attrs['class'] == 'Analysis':
+        # Analysis attrs unpacking
+        anType = ObjGroup.attrs['anType']
+        nthOct = ObjGroup.attrs['nthOct']
+        minBand = ObjGroup.attrs['minBand']
+        maxBand = ObjGroup.attrs['maxBand']
+        comment = ObjGroup.attrs['comment']
+        # Analysis data unpacking
+        data = np.array(ObjGroup['data'])
+        # Recreating the object
+        anObject = Analysis(anType=anType,
+                            nthOct=nthOct,
+                            minBand=minBand,
+                            maxBand=maxBand,
+                            data=data,
+                            comment=comment)
+        return anObject
+
     else:
         raise TypeError
