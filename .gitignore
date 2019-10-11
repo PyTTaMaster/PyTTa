@@ -1,3 +1,9 @@
+#
+*.hdf5
+*.pytta
+*.wav
+.vscode/*
+
 # All the python stuff
 *.pyc
 *.cpython-*.pyc
