@@ -11,7 +11,7 @@ PyTTa setup file
 from setuptools import setup
 
 settings = {
-    'name': 'PyTTa-dev',
+    'name': 'PyTTa',
     'version': '0.1.0b5',
     'description': 'Signal processing tools for acoustics and vibrations in ' +
         'python, development package.',
