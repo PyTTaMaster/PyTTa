@@ -315,12 +315,8 @@ def __parse_load(className):
         os.remove(openJson['timeSignalAddress'])
 
     elif name == 'ImpulsiveResponse':
-        # excit = pytta_load(openJson['SignalAddress']['excitation'])
-        # record = pytta_load(openJson['SignalAddress']['recording'])
         ir = pytta_load(openJson['SignalAddress']['ir'])
         out = ImpulsiveResponse(ir=ir, **openJson['methodInfo'])
-        # os.remove(openJson['SignalAddress']['excitation'])
-        # os.remove(openJson['SignalAddress']['recording'])
         os.remove(openJson['SignalAddress']['ir'])
 
     elif name == 'RecMeasure':
@@ -472,20 +468,16 @@ def __h5_unpack(ObjGroup):
         return SigObj
 
     elif ObjGroup.attrs['class'] == 'ImpulsiveResponse':
-        # excitation = __h5_unpack(ObjGroup['excitation'])
-        # recording = __h5_unpack(ObjGroup['recording'])
         systemSignal = __h5_unpack(ObjGroup['systemSignal'])
         method = ObjGroup.attrs['method']
         winType = ObjGroup.attrs['winType']
         winSize = ObjGroup.attrs['winSize']
         overlap = ObjGroup.attrs['overlap']
-        IR = ImpulsiveResponse(excitation=None,
-                               recording=None,
-                               ir=systemSignal,
-                               method=method,
+        IR = ImpulsiveResponse(method=method,
                                winType=winType,
                                winSize=winSize,
-                               overlap=overlap)
+                               overlap=overlap,
+                               ir=systemSignal)
         return IR
 
     elif ObjGroup.attrs['class'] == 'RecMeasure':

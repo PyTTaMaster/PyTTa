@@ -79,7 +79,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
                               tempHumid=tempHumid,
-                              kind='roomir',
+                              kind='roomres',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
                               inChSel=['HATS', 'Mic1'],
@@ -121,7 +121,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='miccalibration',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['Mic1'])
+                              inChSel=['OE'])
 
 # %% Cria nova tomada de medição para recalibração de fonte
 takeMeasure = rmr.TakeMeasure(MS=MS,
@@ -147,6 +147,15 @@ D.save_take(takeMeasure)
 MS, D = rmr.med_load('med-teste')
 
 # %% Carrega coisas medidas de acordo com as tags fornecidas
-D.get('Mic1')
+a = D.get('roomres', 'HATS')
 
 # %%
+a = D.get('roomir')
+
+# %%
+b = D.calculate_ir(a, skipSave=False)
+
+#%%
+
+
+#%%

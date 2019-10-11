@@ -406,8 +406,10 @@ class PlayRecMeasure(Measurement):
             super().__init__(*args, **kwargs)
         else:
             self.excitation = excitation
-            kwargs.pop('freqMin')
-            kwargs.pop('freqMax')
+            if 'freqMin' in kwargs:
+                kwargs.pop('freqMin')
+            if 'freqMax' in kwargs:
+                kwargs.pop('freqMax')
             super().__init__(*args,
                              samplingRate=excitation.samplingRate,
                              freqMin=excitation.freqMin,
@@ -416,8 +418,7 @@ class PlayRecMeasure(Measurement):
                              timeLength=excitation.timeLength,
                              lengthDomain=excitation.lengthDomain,
                              numSamples=excitation.numSamples,
-                             **kwargs
-                             )
+                             **kwargs)
             self.outChannel = excitation.channels
         self.outputAmplification = outputAmplification
         return

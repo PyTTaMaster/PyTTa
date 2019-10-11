@@ -93,6 +93,9 @@ class SignalObj(_base.PyTTaObj):
         * plot_time():
             generates the signal's historic graphic;
 
+        * plot_time_dB():
+            generates the signal's historic graphic in dB;
+
         * plot_freq():
             generates the signal's spectre graphic;
 
@@ -389,14 +392,10 @@ class SignalObj(_base.PyTTaObj):
         """
         Frequency domain dB plotting method
         """
-        firstCh = self.channels.mapping[0]
-        unitData = '[{} ref.: {} {}]'.format(self.channels[firstCh].dBName,
-                                             self.channels[firstCh].dBRef,
-                                             self.channels[firstCh].unit)
         if xlabel is None:
             xlabel = 'Frequency in Hz'
         if ylabel is None:
-            ylabel = 'Magnitude {}'.format(unitData)
+            ylabel = 'Magnitude'
 
         fig = plt.figure(figsize=(10, 5))
 
@@ -405,6 +404,9 @@ class SignalObj(_base.PyTTaObj):
         ax.set_snap(True)
         for chIndex in range(0, self.numChannels):
             chNum = self.channels.mapping[chIndex]
+            unitData = '[{} ref.: {} {}]'.format(self.channels[chNum].dBName,
+                                                 self.channels[chNum].dBRef,
+                                                 self.channels[chNum].unit)
             if smooth:
                 Signal = ss.savgol_filter(np.squeeze(np.abs(
                          self.freqSignal[:, chIndex])),
@@ -616,7 +618,7 @@ class SignalObj(_base.PyTTaObj):
                 result_freqSignal = np.zeros(self.freqSignal.shape,
                                              dtype=np.complex_)
                 for channel in range(other.numChannels):
-                    result.freqSignal[:, channel] = \
+                    result_freqSignal[:, channel] = \
                         self.freqSignal[:, channel] \
                         / other.freqSignal[:, channel]
                 result.freqSignal = result_freqSignal
@@ -759,10 +761,6 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 audio interface used on the measurement-like object. Optional
                 if 'ir' is provided;
 
-            * ir (SignalObj) (optional):
-                An calculated impulsive response. Optional if 'excitation' and
-                'recording' are provided;
-
             * method (str):
                 The way that the impulsive response should be computed, accepts
                 "linear", "H1", "H2" and "Ht" as values:
@@ -815,6 +813,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 function to compute the power spectral density, (only for
                 method ="H1", method="H2" and method="Ht").
 
+            * ir (SignalObj) (optional):
+                An calculated impulsive response. Optional if 'excitation' and
+                'recording' are provided;
 
         The class's attribute are described next:
 
@@ -828,15 +829,24 @@ class ImpulsiveResponse(_base.PyTTaObj):
             * methodInfo:
                 Returns a dict with the "method", "winType", "winSize" and
                 "overlap" parameters.
+
+        Methods:
+        ------------
+
+        * plot_time():
+            generates the systemSignal historic graphic;
+
+        * plot_time_dB():
+            generates the systemSignal historic graphic in dB;
+
+        * plot_freq():
+            generates the systemSignal spectral magnitude graphic;
     """
 
     def __init__(self, excitation=None, recording=None,
-                 ir=None,
                  method='linear', winType=None, winSize=None, overlap=None,
-                 *args, **kwargs):
+                 ir=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # self._excitation = excitationSignal
-        # self._recording = recordedSignal
         if excitation is None or recording is None:
             if ir is None:
                 raise ValueError("You may create an ImpulsiveResponse " +
@@ -870,25 +880,16 @@ class ImpulsiveResponse(_base.PyTTaObj):
         winSize=self.methodInfo['winSize']
         overlap=self.methodInfo['overlap']
         return (f'{self.__class__.__name__}('
-                # f'excitationSignal={self.excitation!r}, '
-                # f'recordedSignal={self.recording!r}, '
                 f'method={method!r}, '
                 f'winType={winType!r}, '
                 f'winSize={winSize!r}, '
-                f'overlap={overlap!r})')
+                f'overlap={overlap!r}, '
+                f'ir={self.systemSignal!r}')
 
-    def _to_dict(self):
-        out = {'methodInfo': self.methodInfo}
-        return out
+    # Methods
 
     def pytta_save(self, dirname=time.ctime(time.time())):
         with zipfile.ZipFile(dirname + '.pytta', 'w') as zdir:
-            # excit = self.excitation.pytta_save('excitation')
-            # zdir.write(excit)
-            # os.remove(excit)
-            # rec = self.recording.pytta_save('recording')
-            # zdir.write(rec)
-            # os.remove(rec)
             ir = self.systemSignal.pytta_save('ir')
             zdir.write(ir)
             os.remove(ir)
@@ -910,10 +911,17 @@ class ImpulsiveResponse(_base.PyTTaObj):
         h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
         h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
         h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
-        # self.excitation.h5_save(h5group.create_group('excitation'))
-        # self.recording.h5_save(h5group.create_group('recording'))
         self.systemSignal.h5_save(h5group.create_group('systemSignal'))
         pass
+
+    def plot_time(self, *args, **kwargs):
+        self.systemSignal.plot_time(*args, **kwargs)
+
+    def plot_time_dB(self, *args, **kwargs):
+        self.systemSignal.plot_time_dB(*args, **kwargs)
+
+    def plot_freq(self, *args, **kwargs):
+        self.systemSignal.plot_freq(*args, **kwargs)
 
 # Properties
 
@@ -937,33 +945,16 @@ class ImpulsiveResponse(_base.PyTTaObj):
     def systemSignal(self):
         return self._systemSignal
 
-    # @property
-    # def coordinates(self):
-    #     excoords = []
-    #     for chIndex in range(self.excitation.numChannels):
-    #         excoords.append(self.excitation.channels[chIndex].coordinates)
-    #     incoords = []
-    #     for chIndex in range(self.inputSignal.numChannels):
-    #         incoords.append(self.inputSignal.channels[chIndex].coordinates)
-    #     coords = {'excitation': excoords, 'inputSignal': incoords}
-    #     return coords
-
-    # @property
-    # def orientation(self):
-    #     exori = []
-    #     for chIndex in range(self.excitation.numChannels):
-    #         exori.append(self.excitation.channels[chIndex].orientation)
-    #     inori = []
-    #     for chIndex in range(self.inputSignal.numChannels):
-    #         inori.append(self.inputSignal.channels[chIndex].orientation)
-    #     oris = {'excitation': exori, 'inputSignal': inori}
-    #     return oris
-
     @property
     def methodInfo(self):
         return self._methodInfo
 
-# Private methods
+    # Private methods
+
+    def _to_dict(self):
+        out = {'methodInfo': self.methodInfo}
+        return out
+
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                          winType=None, winSize=None, overlap=None):
         if type(inputSignal) is not type(outputSignal):
