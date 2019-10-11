@@ -27,12 +27,12 @@ Classes:
 
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 from pytta.classes.measurement import RecMeasure, PlayRecMeasure, FRFMeasure
-from pytta.classes.streaming import Streaming
+from pytta.classes.streaming import Streaming, Recorder
 from pytta.classes.filter import OctFilter, weighting
 from pytta.classes.analysis import Analysis
 
 __all__ = ['SignalObj', 'ImpulsiveResponse',
            'RecMeasure', 'PlayRecMeasure', 'FRFMeasure',
-           'Streaming',
+           'Streaming', 'Recorder',
            'OctFilter', 'weighting',
            'Analysis']

@@ -50,7 +50,7 @@ from .properties import default
 
 from .classes import SignalObj, ImpulsiveResponse,\
                      RecMeasure, PlayRecMeasure, FRFMeasure,\
-                     Streaming,\
+                     Streaming, Recorder,\
                      OctFilter, weighting,\
                      Analysis
 
@@ -99,6 +99,7 @@ __all__ = [  # Apps
            'Analysis',
            'OctFilter',
            'Streaming',
+           'Recorder',
 
            # Objects
            'default']

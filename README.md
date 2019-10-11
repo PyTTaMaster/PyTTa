@@ -1,6 +1,6 @@
 ## PyTTa - Python in Technical Acoustics
 
-The project began as an effort to create audio, acoustics and vibrational data acquiring and analysis toolbox to a free cost level, high end results, combining the passion for programming with the expertise in acoustics and vibration of the Acoustics Engineers from the Federal University of Santa Maria.
+The project began as an effort to create audio, acoustics and vibrational data acquiring and analysis toolbox to a free cost level, high-end results, combining the passion for programming with the expertise in acoustics and vibration of the Acoustics Engineers from the Federal University of Santa Maria.
 
 We are students, teachers, engineers, passionates and inquiring people, on the first steps of a journey throughout the Python path to bring Acoustics to the Open Seas, Open Sources and Open World!
 
@@ -12,7 +12,7 @@ as Numpy, Scipy, Matplotlib and PyPI (pip) which is used to install Sounddevice 
 ### Documentation
 
 This package aims to be an easy interface between acoustician and vibrational engineers in the use of Python for study, engineering or any other ends that it may suite.
-From import to each function and attribute we wrote a little documentation that may be useful for understanding everything available, and what is just a mean to an end.
+From import to each function and attribute we wrote a little documentation that may be useful for understanding everything available, and what is just a means to an end.
 
 To begin, one can try:
 
@@ -31,9 +31,9 @@ this will open the help menu with the documentation of the respective item.
     >>> pytta.functions|
     >>> pytta.classes|
 
-The | represents the cursor position to press "ctrl+i" in order to use the Spyder help widget.
+The | represents the cursor position to press "ctrl+i" to use the Spyder help widget.
 
-Inside each submodule the user will find instructions on the available tools, and how to access them.
+Inside each submodule, the user will find instructions on the available tools, and how to access them.
 
 ### Dependencies
 
@@ -41,20 +41,31 @@ Inside each submodule the user will find instructions on the available tools, an
 - Scipy;
 - Matplotlib;
 - Sounddevice;
-- H5py.
+- Soundfile;
+- H5py;
+- Numba.
 
 ### Installation
 
 The installation can be made through pip, as follows:
 
-    >>> pip install pytta-dev
+    >>> pip install pytta
 
-This will install directly the master branch, which is the most stable and up to date version on the repository.
+This will install directly the most stable and up to date version on the repository.
 
-### Contributing
+If you want to check the most up to date beta version, please get the development branch source code, clone our repository to your local git, or even install it from pip, as follows:
 
-Our workflow consist on parallel development of submodules, either complementing an existing one, or creating a new.
-Thus, one must create a new branch that points to the development branch. Its name should contain dev- as suffix, named accordingly with the project intent.
+    >>> pip install git+https://github.com/pyttamaster/pytta@development
+
+
+### Contributing as a user
+
+Using the toolbox you are already contributing. If you experience any bugs, have any suggestion or idea, have anything to say about it, please consider sending us a message.
+
+### Contributing as a developer
+
+Our workflow consists of parallel development of submodules, either complementing an existing one or creating a new.
+Thus, one must create a new branch that points to the development branch. Its name should contain dev- as the suffix, named accordingly with the project intent.
 After the new branch is ready and coding finished, we would be glad to receive a pull request.
 Consider reading our CodingGuidelines.
 
