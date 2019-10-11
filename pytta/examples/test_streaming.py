@@ -116,6 +116,7 @@ if __name__ == "__main__":
                         bs)  # blocksize
 
     signal1 = rec(msmnt=measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
+    signal1 = rec(msmnt=measure, monitor=None, bs=bs)
 
     measure.excitation = signal1
     play(measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
