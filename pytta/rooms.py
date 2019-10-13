@@ -15,7 +15,7 @@ PyTTa Room Analysis:
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
-from pytta import SignalObj, OctFilter, Analysis
+from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 
 
@@ -352,11 +352,56 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
     return RT
 
 def analyse(obj, *params, plotLundebyResults=False, **kwargs):
-    """
+    """analyse
+    
+    Receives an one channel SignalObj or ImpulsiveResponse and calculate the
+    room acoustic parameters especified in the positional input arguments.
 
+    :param obj: one channel impulsive response
+    :type obj: SignalObj or ImpulsiveResponse
+
+    Input parameters for reverberation time, 'RT':
+        :param RTdecay: decay interval for RT calculation. e.g. 20
+        :type RTdecay: int
+
+    Input parameters for reverberation time, 'C':
+        TODO
+
+    Input parameters for reverberation time, 'D':
+        TODO
+
+    Input parameters for reverberation time, 'G':
+        TODO
+    
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+
+    :param plotLundebyResults: plot the Lundeby correction parameters, defaults
+    to False
+    :type plotLundebyResults: bool, optional
+    
+    :return: return an Analysis object with the calculated parameter
+    :rtype: Analysis
     """
+    if not isinstance(obj, SignalObj) and not isinstance(obj,
+                                                         ImpulsiveResponse):
+        raise TypeError("'obj' must be an one channel SignalObj or " +
+                        "ImpulsiveResponse.")
+    if isinstance(obj, ImpulsiveResponse):
+        SigObj = obj.systemSignal
+    else:
+        SigObj = obj
+    
+    if obj.numChannels > 1:
+        raise TypeError("'obj' can't contain more than one channel.")
     samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(obj, plotLundebyResults, **kwargs)
+    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
     for prm in params:
         if 'RT' == prm:
             RTdecay = params[params.index('RT')+1]
