@@ -3,6 +3,7 @@
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 from math import isnan
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import numpy as np
 import time
 
@@ -219,6 +220,8 @@ class Analysis(object):
             title = '{} analysis'
             title = title.format(self.anName)
 
+
+        
         fig = plt.figure(figsize=(10, 5))
 
         ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
@@ -227,7 +230,23 @@ class Analysis(object):
 
         fbar = range(len(self.data))
 
-        ax.bar(fbar, self.data, width=0.75)
+        negativeCounter = 0
+        for value in self.data:
+            if value < 0:
+                negativeCounter += 1
+
+        if negativeCounter > len(self.data)//2:
+            minval = np.amin(self.data)
+            minval += np.sign(minval)
+            ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75)
+        else:
+            ax.bar(fbar, self.data, width=0.75)
+            minval = 0
+        
+        ylimInf = min(-minval + self.data) - 0.2
+        ylimSup = max(-minval + self.data) + 0.2
+        ylim = (ylimInf, ylimSup)
+        ax.set_ylim(ylim)
         
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
@@ -236,19 +255,15 @@ class Analysis(object):
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
-        
 
-        ylimInf = min(self.data) - 0.2
-        ylimSup = max(self.data) + 0.2
-        ylim = (ylimInf, ylimSup)
-
-        ax.set_ylim(ylim)
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
+        yticklabels = yticks + minval
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
+                            for tick in yticklabels], fontsize=14)
 
         ax.set_ylabel(ylabel, fontsize=20)
+            
         
         plt.title(title, fontsize=20)
         
