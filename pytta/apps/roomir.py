@@ -302,10 +302,10 @@ class MeasurementSetup(object):
 
     @averages.setter
     def averages(self, newValue):
-        if not self.initing:
-            raise PermissionError('After a measurement initialization its ' +
-                                  'averages can\'t be changed.')
+        if not isinstance(newValue, int):
+            raise TypeError("'averages' type must be int.")
         self._averages = newValue
+        self.modified = True
 
     @property
     def pause4Avg(self):
@@ -662,7 +662,7 @@ class MeasurementData(object):
             excitation = self.MS.excitationSignals[msdThng.excitation]
             # Calculate the IRs
             IRs = []
-            for avg in range(self.MS.averages):
+            for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
                 IR = ImpulsiveResponse(excitation=excitation,
                                        recording=msdThng.measuredSignals[avg])
@@ -1131,6 +1131,10 @@ class MeasuredThing(object):
         except IndexError:
             numChannels = 1
         return numChannels
+
+    @property
+    def averages(self):
+        return len(self.measuredSignals)
 
 def med_load(medname):
     """med_load
