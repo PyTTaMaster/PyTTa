@@ -256,11 +256,11 @@ class Analysis(object):
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
+        yticks = np.linspace(*ylim, 11)
+        ax.set_yticks(yticks.tolist())
         yticklabels = yticks + minval
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticklabels], fontsize=14)
+                            for tick in yticklabels.tolist()], fontsize=14)
 
         ax.set_ylabel(ylabel, fontsize=20)
             
