@@ -351,28 +351,15 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
         RT.append(reverb_time_regression(edc, edv, y1, y2))
     return RT
 
-def analyse(obj, *params, plotLundebyResults=False, **kwargs):
-    """analyse
+
+def G_Lpe(IR, nthOct, minFreq, maxFreq):
+    """G_Lpe 
     
-    Receives an one channel SignalObj or ImpulsiveResponse and calculate the
-    room acoustic parameters especified in the positional input arguments.
-
-    :param obj: one channel impulsive response
-    :type obj: SignalObj or ImpulsiveResponse
-
-    Input parameters for reverberation time, 'RT':
-        :param RTdecay: decay interval for RT calculation. e.g. 20
-        :type RTdecay: int
-
-    Input parameters for reverberation time, 'C':
-        TODO
-
-    Input parameters for reverberation time, 'D':
-        TODO
-
-    Input parameters for reverberation time, 'G':
-        TODO
+    Calculates the energy level from the room impulsive response.
     
+    :param IR: one channel impulsive response
+    :type IR: ImpulsiveResponse
+
     :param nthOct: number of fractions per octave
     :type nthOct: int
 
@@ -382,40 +369,92 @@ def analyse(obj, *params, plotLundebyResults=False, **kwargs):
     :param maxFreq: analysis superior frequency limit
     :type maxFreq: float
 
-    :param plotLundebyResults: plot the Lundeby correction parameters, defaults
-    to False
-    :type plotLundebyResults: bool, optional
-    
-    :return: return an Analysis object with the calculated parameter
+    :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
-    if not isinstance(obj, SignalObj) and not isinstance(obj,
-                                                         ImpulsiveResponse):
-        raise TypeError("'obj' must be an one channel SignalObj or " +
-                        "ImpulsiveResponse.")
-    if isinstance(obj, ImpulsiveResponse):
-        SigObj = obj.systemSignal
-    else:
-        SigObj = obj
+    firstChNum = IR.systemSignal.channels.mapping[0]
+    if not IR.systemSignal.channels[firstChNum].calibCheck:
+        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+    SigObj = IR.systemSignal
+    hSignal = SignalObj(SigObj.timeSignal[:,0],
+                        SigObj.lengthDomain,
+                        SigObj.samplingRate)
+    hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
+                      maxFreq=maxFreq)
+    bands = FOF(nthOct=nthOct,
+                minFreq=minFreq,
+                maxFreq=maxFreq)[:,1]
+    Lpe = []
+    for chIndex in range(hSignal.numChannels):
+        Lpe.append(
+            10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
+                                 x=hSignal.timeVector)))
+    LpeAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                       maxBand=float(bands[-1]), data=Lpe,
+                       comment='h**2 energy level')
+    return LpeAnal
+
+
+def G_Lps(IR, nthOct, minFreq, maxFreq):
+    """G_Lps 
     
-    if obj.numChannels > 1:
-        raise TypeError("'obj' can't contain more than one channel.")
-    samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
-    for prm in params:
-        if 'RT' == prm:
-            RTdecay = params[params.index('RT')+1]
-            nthOct = kwargs['nthOct']
-            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
-            result = Analysis(anType='RT', nthOct=nthOct,
-                              minBand=kwargs['minFreq'],
-                              maxBand=kwargs['maxFreq'],
-                              data=RT)
-        # if 'C' in prm:
-        #     Ctemp = prm[1]
-        # if 'D' in prm:
-        #     Dtemp = prm[1]
-    return result
+    Calculates the recalibration level correction for both in-situ and
+    reverberation chamber calibration.
+
+    During the recalibration: source height and mic heigth must be >= 1 [m], while
+    the distance between source and mic must be <= 1 [m].
+    
+    :param IR: one channel impulsive response
+    :type IR: ImpulsiveResponse
+
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+    
+    :return: Analysis object with the calculated parameter
+    :rtype: Analysis
+    """
+    firstChNum = IR.systemSignal.channels.mapping[0]
+    if not IR.systemSignal.channels[firstChNum].calibCheck:
+        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+    SigObj = IR.systemSignal
+    # Windowing the IR
+    dBtoOnSet = 20
+    dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
+    windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
+    windowLength = 0.0032 # [s]
+    windowEnd = windowStart + int(windowLength*SigObj.samplingRate)
+
+    hSignal = SignalObj(SigObj.timeSignal[windowStart:windowEnd,0],
+                        SigObj.lengthDomain,
+                        SigObj.samplingRate)
+    hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
+                      maxFreq=maxFreq)
+    bands = FOF(nthOct=nthOct,
+                minFreq=minFreq,
+                maxFreq=maxFreq)[:,1]
+    Lps = []
+    for chIndex in range(hSignal.numChannels):
+        Lps.append(
+            10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
+                                 x=hSignal.timeVector)))
+    LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                            maxBand=float(bands[-1]), data=Lps,
+                            comment='Source recalibration method IR')
+    return LpsAnal
+
+
+def strength_factor(Lpe, Lpe_RevCh, V_RevCh, T_RevCh, Lps_Calib, Lps_Meas):
+    S0 = 1 # [m2]
+    G = Lpe - Lpe_RevCh - 10*np.log10(0.16 * V_RevCh / (S0 * T_RevCh)) + 37 \
+        + Lps_Calib - Lps_Meas
+    return G
+
 
 def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     """
@@ -458,3 +497,71 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
 #        output.append(D)
 #    return output
     pass
+
+
+def analyse(obj, *params, plotLundebyResults=False, **kwargs):
+    """analyse
+    
+    Receives an one channel SignalObj or ImpulsiveResponse and calculate the
+    room acoustic parameters especified in the positional input arguments.
+
+    :param obj: one channel impulsive response
+    :type obj: SignalObj or ImpulsiveResponse
+
+    Input parameters for reverberation time, 'RT':
+        :param RTdecay: decay interval for RT calculation. e.g. 20
+        :type RTdecay: int
+
+    Input parameters for clarity, 'C':
+        TODO
+
+    Input parameters for definition, 'D':
+        TODO
+
+    Input parameters for strength factor, 'G':
+        TODO
+    
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+
+    :param plotLundebyResults: plot the Lundeby correction parameters, defaults
+    to False
+    :type plotLundebyResults: bool, optional
+    
+    :return: Analysis object with the calculated parameter
+    :rtype: Analysis
+    """
+    if not isinstance(obj, SignalObj) and not isinstance(obj,
+                                                         ImpulsiveResponse):
+        raise TypeError("'obj' must be an one channel SignalObj or " +
+                        "ImpulsiveResponse.")
+    if isinstance(obj, ImpulsiveResponse):
+        SigObj = obj.systemSignal
+    else:
+        SigObj = obj
+    
+    if obj.numChannels > 1:
+        raise TypeError("'obj' can't contain more than one channel.")
+    samplingRate = obj.samplingRate
+    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
+    for prm in params:
+        if 'RT' == prm:
+            RTdecay = params[params.index('RT')+1]
+            nthOct = kwargs['nthOct']
+            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
+            result = Analysis(anType='RT', nthOct=nthOct,
+                              minBand=kwargs['minFreq'],
+                              maxBand=kwargs['maxFreq'],
+                              data=RT)
+        # if 'C' in prm:
+        #     Ctemp = prm[1]
+        # if 'D' in prm:
+        #     Dtemp = prm[1]
+    return result
+

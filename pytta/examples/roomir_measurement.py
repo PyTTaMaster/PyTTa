@@ -28,9 +28,9 @@ excitationSignals['varredura'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
         freqMin=20,
         freqMax=20000,
-        fftDegree=14,
+        fftDegree=17,
         startMargin=0.1,
-        stopMargin=0.1,
+        stopMargin=1.5,
         method='logarithmic',
         windowing='hann')
 # Carregando sinal de música
@@ -66,11 +66,11 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           freqMin=20,  # [Hz]
                           freqMax=20000,  # [Hz]
                           # Dicionário com códigos e canais de saída associados
-                          inChannels={'OE': (1, 'Orelha E'),
-                                      'OD': (2, 'Orelha D'),
-                                      'Mic1': (4, 'Mic 1'),
-                                      'Mic2': (3, 'Mic 2'),
-                                      'groups': {'HATS': (1, 2)}},
+                          inChannels={'OE': (4, 'Orelha E'),
+                                      'OD': (3, 'Orelha D'),
+                                      'Mic1': (1, 'Mic 1'),
+                                      'Mic2': (2, 'Mic 2'),
+                                      'groups': {'HATS': (4, 3)}},
                           # Dicionário com códigos e canais de saída associados
                           outChannels={'O1': (1, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
@@ -88,12 +88,14 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='roomres',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['HATS', 'Mic1'],
+                        #       inChSel=['HATS', 'Mic1'],
+                              inChSel=['Mic1'],
                               # Configuração sala-fonte-receptor:
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
                               # selecionados
-                              receiversPos=['R1', 'R2', 'R1'],
+                        #       receiversPos=['R1', 'R2', 'R1'],
+                              receiversPos=['R1'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
                               excitation='varredura',
@@ -127,7 +129,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='miccalibration',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['OE'])
+                              inChSel=['Mic1'])
 
 # %% Cria nova tomada de medição para recalibração de fonte
 takeMeasure = rmr.TakeMeasure(MS=MS,
@@ -142,7 +144,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # disponível no Setup de Medição
                               excitation='varredura',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O1')
+                              outChSel='O2')
 # %% Inicia tomada de medição/aquisição de dados
 takeMeasure.run()
 
@@ -151,16 +153,18 @@ D.save_take(takeMeasure)
 
 # %% Carrega um dicionário com MeasuredThings de acordo com as tags fornecidas
 # e faz algum processamento
-a = D.get('roomres', 'HATS')
-msdThing = a['roomres_S1-R1_O1-HATS_varredura_1']
+a = D.get('roomres', 'Mic1')
+msdThing = a['roomres_S1-R1_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
+msdThing.measuredSignals[0].plot_freq()
 
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco (vide 
 # parâmetro skipSave)
-a = D.get('roomres')
-b = D.calculate_ir(a, calibrationTake=1, skipCalibration=False, skipSave=True)
+a = D.get('sourcerecalibration', 'Mic1')
+b = D.calculate_ir(a, calibrationTake=1, skipCalibration=False, skipSave=False)
 for IR in b.values():
         IR.measuredSignals[0].plot_time()
+        IR.measuredSignals[0].plot_freq()
 
 # %% Formas alternativas de carregar dados na memória
 # %% Carrega MS e todas as MeasuredThings
