@@ -103,6 +103,8 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # excitation='musica',
                               # Código do canal de saída a ser utilizado.
                               outChSel='O1',
+                              # Ganho na saída
+                              outputAmplification=-6, # [dB]
                               # Configuração sala-fonte-receptor
                               sourcePos='S1')
 
@@ -144,7 +146,9 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # disponível no Setup de Medição
                               excitation='varredura',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O2')
+                              outChSel='O2',
+                              # Ganho na saída
+                              outputAmplification=-6) # [dB]
 # %% Inicia tomada de medição/aquisição de dados
 takeMeasure.run()
 
@@ -162,8 +166,9 @@ msdThing.measuredSignals[0].plot_freq()
 # parâmetro skipSave)
 a = D.get('sourcerecalibration', 'Mic1')
 b = D.calculate_ir(a, calibrationTake=1, skipCalibration=False, skipSave=False)
-for IR in b.values():
-        IR.measuredSignals[0].plot_time()
+for name, IR in b.items():
+        print(name)
+        # IR.measuredSignals[0].plot_time()
         IR.measuredSignals[0].plot_freq()
 
 # %% Formas alternativas de carregar dados na memória

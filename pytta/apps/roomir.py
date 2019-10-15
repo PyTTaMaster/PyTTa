@@ -16,6 +16,7 @@ import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
 from shutil import rmtree
+import copy as cp
 
 
 # Dict with the measurementKinds
@@ -659,12 +660,21 @@ class MeasurementData(object):
                       "'sourcerecalibration' kind.")
                 continue
             kind = msdThng.kind
-            excitation = self.MS.excitationSignals[msdThng.excitation]
+            origExcitationTimeSig = \
+                cp.deepcopy(self.MS.excitationSignals[msdThng.excitation].
+                    timeSignal)
+            origExctSamplingRate = \
+                self.MS.excitationSignals[msdThng.excitation].samplingRate
+            timeSigWGain = origExcitationTimeSig*msdThng.outputLinearGain
+            excitationWGain = SignalObj(signalArray=timeSigWGain,
+                                        domain='time',
+                                        samplingRate=origExctSamplingRate)
+
             # Calculate the IRs
             IRs = []
             for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
-                IR = ImpulsiveResponse(excitation=excitation,
+                IR = ImpulsiveResponse(excitation=excitationWGain,
                                        recording=msdThng.measuredSignals[avg])
                 # Copying channel names and codes
                 for idx, chNum in \
@@ -689,7 +699,9 @@ class MeasurementData(object):
                                   "'{}'. Skipping ".format(chName) +
                                   "calibration in this channel.")
                             continue
-                        calib = calibThngs[calibrationTake-1].measuredSignals[1]
+                        calib = calibThngs[calibrationTake-1]. \
+                            measuredSignals[calibThngs[calibrationTake-1].
+                                averages//2]
                         IR.systemSignal.calib_pressure(ch, calib, 1, 1000)
                 IRs.append(IR)
 
@@ -706,7 +718,9 @@ class MeasurementData(object):
                                       excitation=msdThng.excitation,
                                       measuredSignals=IRs,
                                       inChannels=msdThng.inChannels,
-                                      outChannel=msdThng.outChannel)
+                                      outChannel=msdThng.outChannel,
+                                      outputAmplification=msdThng.
+                                        outputAmplification)
             # Saving  
             fileName = msdThngName
             # Number the file checking if any measurement with the same configs
@@ -737,6 +751,7 @@ class TakeMeasure(object):
                  receiversPos=None,
                  excitation=None,
                  outChSel=None,
+                 outputAmplification=0,
                  sourcePos=None):
         self.MS = MS
         self.tempHumid = tempHumid
@@ -747,6 +762,7 @@ class TakeMeasure(object):
         self.receiversPos = receiversPos
         self.excitation = excitation
         self.outChSel = outChSel
+        self.outputAmplification = outputAmplification
         self.sourcePos = sourcePos
         self.__cfg_channels()
         self.__cfg_measurement_object()
@@ -804,6 +820,8 @@ class TakeMeasure(object):
                                      device=self.MS.device,
                                      inChannels=self.inChannels.mapping,
                                      outChannels=self.outChannel.mapping,
+                                     outputAmplification=
+                                        self.outputAmplification,
                                      comment='roomres')
         # For miccalibration measurement kind
         if self.kind == 'miccalibration':
@@ -841,6 +859,8 @@ class TakeMeasure(object):
                                      device=self.MS.device,
                                      inChannels=self.inChannels.mapping,
                                      outChannels=self.outChannel.mapping,
+                                     outputAmplification=
+                                        self.outputAmplification,
                                      comment='sourcerecalibration')
 
     def run(self):
@@ -917,6 +937,8 @@ class TakeMeasure(object):
                                     measuredSignals=SigObjs,
                                     inChannels=inChannels,
                                     outChannel=self.outChannel,
+                                    outputAmplification=
+                                        self.outputAmplification,
                                     sourcePos=self.sourcePos,
                                     receiverPos=receiverPos,
                                     excitation=self.excitation)
@@ -987,6 +1009,17 @@ class TakeMeasure(object):
             raise TypeError('Invalid outChSel code or name. It must be a ' +
                             'valid ' + self.MS.name + '\'s output channel.')
         self._outChSel = newChSelection
+
+    @property
+    def outputAmplification(self):
+        return self._outputAmplification
+
+    @outputAmplification.setter
+    def outputAmplification(self, newOutputGain):
+        if not isinstance(newOutputGain, (float, int)):
+            raise TypeError("'outputAmplification must be float or int.")
+        self._outputAmplification = newOutputGain
+        return
 
     @property
     def sourcePos(self):
@@ -1065,7 +1098,8 @@ class MeasuredThing(object):
                  sourcePos=None,
                  receiverPos=None,
                  excitation=None,
-                 outChannel=None):
+                 outChannel=None,
+                 outputAmplification=0):
         self.kind = kind
         self.arrayName = arrayName
         self.sourcePos = sourcePos
@@ -1074,6 +1108,7 @@ class MeasuredThing(object):
         self.measuredSignals = measuredSignals
         self.inChannels = inChannels
         self.outChannel = outChannel
+        self.outputAmplification = outputAmplification
 
     # Magic methods
 
@@ -1086,7 +1121,8 @@ class MeasuredThing(object):
                 f'sourcePos={self.sourcePos!r}, '
                 f'receiverPos={self.receiverPos!r}, '
                 f'excitation={self.excitation!r}, '
-                f'outChannel={self.outChannel!r})')
+                f'outChannel={self.outChannel!r}, '
+                f'outputAmplification={self.outputAmplification!r})')
 
     def __str__(self):
         str = self.kind + '_'  # Kind info
@@ -1116,6 +1152,7 @@ class MeasuredThing(object):
         h5group.attrs['receiverPos'] = _h5.none_parser(self.receiverPos)
         h5group.attrs['excitation'] = _h5.none_parser(self.excitation)
         h5group.attrs['outChannel'] = repr(self.outChannel)
+        h5group.attrs['outputAmplification'] = self.outputAmplification
         h5group.create_group('measuredSignals')
         for idx, msdSignal in enumerate(self.measuredSignals):
             msdSignal.h5_save(h5group.create_group('measuredSignals/' +
@@ -1132,9 +1169,14 @@ class MeasuredThing(object):
             numChannels = 1
         return numChannels
 
+
     @property
     def averages(self):
         return len(self.measuredSignals)
+
+    @property
+    def outputLinearGain(self):
+        return 10**(self.outputAmplification/20)
 
 def med_load(medname):
     """med_load
@@ -1284,6 +1326,11 @@ def __h5_unpack(ObjGroup):
         receiverPos = _h5.none_parser(ObjGroup.attrs['receiverPos'])
         excitation = _h5.none_parser(ObjGroup.attrs['excitation'])
         outChannel = _h5.none_parser(ObjGroup.attrs['outChannel'])
+        # Added with an if for compatibilitie issues
+        if 'outputAmplification' in ObjGroup.attrs:
+            outputAmplification = ObjGroup.attrs['outputAmplification']
+        else:
+            outputAmplification = 0
         if outChannel is not None:
             outChannel = eval(outChannel)
         measuredSignals = []
@@ -1296,7 +1343,8 @@ def __h5_unpack(ObjGroup):
                                 receiverPos=receiverPos,
                                 outChannel=outChannel,
                                 excitation=excitation,
-                                measuredSignals=measuredSignals)
+                                measuredSignals=measuredSignals,
+                                outputAmplification=outputAmplification)
         return MsdThng
     else:
         return pyttah5unpck(ObjGroup)
