@@ -3,9 +3,10 @@
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 from math import isnan
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
 import numpy as np
 import time
+import locale
+
 
 # Analysis types and its units
 anTypes = {'RT': ('s', 'Reverberation time'),
@@ -49,25 +50,72 @@ class Analysis(object):
                 f'comment={self.comment!r})')
 
     def __add__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have " +
+                                "different band limits.")
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data+other.data)
+        elif isinstance(other, (int, float)):
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data+other)
+        else:
+            raise TypeError("Analysys can only be operated with int, float, " +
+                            "or Analysis types.")
+        return result
 
     def __sub__(self, other):
-        if other.range != self.range:
-            raise ValueError("Can't subtract! Both Analysis have different " +
-                             "band limits.")
-        result = Analysis(anType='mixed', nthOct=self.nthOct,
-                          minBand=self.minBand, maxBand=self.maxBand,
-                          data=self.data-other.data)
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have " +
+                                "different band limits.")
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data-other.data)
+        elif isinstance(other, (int, float)):
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data-other)
+        else:
+            raise TypeError("Analysys can only be operated with int, float, " +
+                            "or Analysis types.")
         return result
 
     def __mul__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have " +
+                                "different band limits.")
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data*other.data)
+        elif isinstance(other, (int, float)):
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data*other)
+        else:
+            raise TypeError("Analysys can only be operated with int, float, " +
+                            "or Analysis types.")
+        return result
 
     def __truediv__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have " +
+                                "different band limits.")
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data/other.data)
+        elif isinstance(other, (int, float)):
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data/other)
+        else:
+            raise TypeError("Analysys can only be operated with int, float, " +
+                            "or Analysis types.")
+        return result
 
     # Properties
 
@@ -207,10 +255,18 @@ class Analysis(object):
         self.plot_bars(**kwargs)
         return
 
-    def plot_bars(self, xlabel=None, ylabel=None, title=None):
+    def plot_bars(self, xlabel=None, ylabel=None, title=None, decimalSep=','):
         """
         Analysis bar plotting method
         """
+        if decimalSep == ',':
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        elif decimalSep =='.':
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+        else:
+            raise ValueError("'decimalSep' must be the string '.' or ','.")
         if xlabel is None:
             xlabel = 'Frequency bands [Hz]'
         if ylabel is None:
