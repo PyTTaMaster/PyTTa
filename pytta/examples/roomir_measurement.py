@@ -9,7 +9,7 @@ Created on Sun Jun 23 15:08:25 2019
 import pytta
 from pytta import roomir as rmr
 import os
-# from pytta.classes import lju3ei1050 # Comunicação c/ o LabJack U3 + EI1050
+from pytta.classes import lju3ei1050 # Comunicação c/ o LabJack U3 + EI1050
 
 # %% Muda o current working directory do Python para a pasta onde este script
 # se encontra
@@ -19,8 +19,8 @@ os.chdir(cwd)
 # %%
 # Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
-# tempHumid = lju3ei1050.main()
-tempHumid = None  # Para testes com LabJack offline
+tempHumid = lju3ei1050.main()
+# tempHumid = None  # Para testes com LabJack offline
 
 # %% Carrega sinais de excitação e cria dicionário para o setup da medição
 excitationSignals = {}
@@ -52,16 +52,16 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
                           #   device=[0, 1],  # PC laza
-                          device=4,  # Saffire Pro 40 laza
+                        #   device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                          # device=0,  # Firebox laza
+                          device=0,  # Firebox laza
                           # [s] tempo de gravação do ruído de fundo
                           noiseFloorTp=5,
                           # [s] tempo de gravação do sinal de calibração
                           calibrationTp=2,
                           # Sinais de excitação
                           excitationSignals=excitationSignals,
-                          averages=3,  # Número de médias por medição
+                          averages=2,  # Número de médias por medição
                           pause4Avg=False,  # Pausa entre as médias
                           freqMin=20,  # [Hz]
                           freqMax=20000,  # [Hz]
@@ -102,9 +102,9 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # excitation='fala',
                               # excitation='musica',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O1',
+                              outChSel='O2',
                               # Ganho na saída
-                              outputAmplification=-6, # [dB]
+                              outputAmplification=-3, # [dB]
                               # Configuração sala-fonte-receptor
                               sourcePos='S1')
 
@@ -116,12 +116,14 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='noisefloor',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                              inChSel=['Mic1', 'HATS'],
+                        #       inChSel=['Mic1', 'HATS'],
+                              inChSel=['Mic1'],
                               # Configuração sala-receptor:
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
                               # selecionados
-                              receiversPos=['R1', 'R2'])
+                        #       receiversPos=['R1', 'R2'])
+                              receiversPos=['R1'])
 
 # %% Cria nova tomada de medição para calibração do microfone
 takeMeasure = rmr.TakeMeasure(MS=MS,

@@ -717,6 +717,8 @@ class MeasurementData(object):
                                       receiverPos=msdThng.receiverPos,
                                       excitation=msdThng.excitation,
                                       measuredSignals=IRs,
+                                      tempHumids=msdThng.tempHumids,
+                                      timeStamps=msdThng.timeStamps,
                                       inChannels=msdThng.inChannels,
                                       outChannel=msdThng.outChannel,
                                       outputAmplification=msdThng.
@@ -755,8 +757,6 @@ class TakeMeasure(object):
                  sourcePos=None):
         self.MS = MS
         self.tempHumid = tempHumid
-        if self.tempHumid is not None:
-            self.tempHumid.start()
         self.kind = kind
         self.inChSel = inChSel
         self.receiversPos = receiversPos
@@ -865,6 +865,8 @@ class TakeMeasure(object):
 
     def run(self):
         self.measuredTake = []
+        if self.tempHumid is not None:
+            self.tempHumid.start()
         for i in range(0, self.MS.averages):
             self.measuredTake.append(self.measurementObject.run())
             # Adquire do LabJack U3 + EI1050 a temperatura e
@@ -874,11 +876,13 @@ class TakeMeasure(object):
                     self.tempHumid.read()
             else:
                 self.measuredTake[i].temp, self.measuredTake[i].RH = \
-                    (None, None)
+                    (0, 0)
             if self.MS.pause4Avg is True and self.MS.averages-i > 1:
                 input('Paused before next average. {} left. '.format(
                       self.MS.averages - i - 1) + ' Press any key to ' +
                       'continue...')
+        if self.tempHumid is not None:
+            self.tempHumid.stop()
         self.__dismember_take()
         self.runCheck = True
 
@@ -891,6 +895,10 @@ class TakeMeasure(object):
         for idx, code in enumerate(self.inChSel):
             # Empty list for the timeSignal arrays from each avarage
             SigObjs = []
+            # Empty list for the temperature and rel. humidity from each avg
+            tempHumids = []
+            # Empty list for the timeStamps
+            timeStamps = []
             # Loop over the averages
             for avg in range(self.MS.averages):
                 # Unpack timeSignal of a group or individual channel
@@ -918,9 +926,9 @@ class TakeMeasure(object):
                     inChannels.append(self.inChannels[chNum])
                 SigObj.channels = inChannels
                 # Copying other properties from the measured SignalObj
-                SigObj.timeStamp = self.measuredTake[avg].timeStamp
-                SigObj.temp = self.measuredTake[avg].temp
-                SigObj.RH = self.measuredTake[avg].RH
+                timeStamps.append(self.measuredTake[avg].timeStamp)
+                tempHumids.append((self.measuredTake[avg].temp,
+                                   self.measuredTake[avg].RH))
                 SigObjs.append(SigObj)
             # Getting the inChannels for the current channel/group
             inChannels = MeasurementChList(kind='in',
@@ -935,6 +943,8 @@ class TakeMeasure(object):
             msdThng = MeasuredThing(kind=self.kind,
                                     arrayName=code,
                                     measuredSignals=SigObjs,
+                                    timeStamps=timeStamps,
+                                    tempHumids=tempHumids,
                                     inChannels=inChannels,
                                     outChannel=self.outChannel,
                                     outputAmplification=
@@ -1091,10 +1101,12 @@ class MeasuredThing(object):
     # Magic methods
 
     def __init__(self,
-                 kind,
-                 arrayName,
-                 measuredSignals,
-                 inChannels,
+                 kind='',
+                 arrayName='',
+                 measuredSignals=[],
+                 timeStamps=[], # with default because compatibilitie issues
+                 tempHumids=[],  # with default because compatibilitie issues
+                 inChannels=None,
                  sourcePos=None,
                  receiverPos=None,
                  excitation=None,
@@ -1106,6 +1118,8 @@ class MeasuredThing(object):
         self.receiverPos = receiverPos
         self.excitation = excitation
         self.measuredSignals = measuredSignals
+        self.timeStamps = timeStamps
+        self.tempHumids = tempHumids
         self.inChannels = inChannels
         self.outChannel = outChannel
         self.outputAmplification = outputAmplification
@@ -1117,6 +1131,8 @@ class MeasuredThing(object):
                 f'kind={self.kind!r}, '
                 f'arrayName={self.arrayName!r}, '
                 f'measuredSignals={self.measuredSignals!r}, '
+                f'timeStamps={self.timeStamps!r}, '
+                f'tempHumids={self.tempHumids!r}, '
                 f'inChannels={self.inChannels!r}, '
                 f'sourcePos={self.sourcePos!r}, '
                 f'receiverPos={self.receiverPos!r}, '
@@ -1153,6 +1169,8 @@ class MeasuredThing(object):
         h5group.attrs['excitation'] = _h5.none_parser(self.excitation)
         h5group.attrs['outChannel'] = repr(self.outChannel)
         h5group.attrs['outputAmplification'] = self.outputAmplification
+        h5group.attrs['timeStamps'] = self.timeStamps
+        h5group['tempHumids'] = self.tempHumids
         h5group.create_group('measuredSignals')
         for idx, msdSignal in enumerate(self.measuredSignals):
             msdSignal.h5_save(h5group.create_group('measuredSignals/' +
@@ -1331,6 +1349,14 @@ def __h5_unpack(ObjGroup):
             outputAmplification = ObjGroup.attrs['outputAmplification']
         else:
             outputAmplification = 0
+        if 'tempHumids' in ObjGroup:
+            tempHumids = [tuple(arr) for arr in list(ObjGroup['tempHumids'])]
+        else:
+            tempHumids = []
+        if 'timeStamps' in ObjGroup.attrs:
+            timeStamps = list(ObjGroup.attrs['timeStamps'])
+        else:
+            timeStamps = []
         if outChannel is not None:
             outChannel = eval(outChannel)
         measuredSignals = []
@@ -1344,6 +1370,8 @@ def __h5_unpack(ObjGroup):
                                 outChannel=outChannel,
                                 excitation=excitation,
                                 measuredSignals=measuredSignals,
+                                tempHumids=tempHumids,
+                                timeStamps=timeStamps,
                                 outputAmplification=outputAmplification)
         return MsdThng
     else:
