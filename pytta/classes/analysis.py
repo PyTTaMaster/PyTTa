@@ -12,6 +12,7 @@ import locale
 anTypes = {'RT': ('s', 'Reverberation time'),
            'C': ('dB', 'Clarity'),
            'D': ('%', 'Definition'),
+           'L': ('dB', 'Level'),
            'mixed': ('-', 'Mixed')}
 
 class Analysis(object):
@@ -51,36 +52,90 @@ class Analysis(object):
 
     def __add__(self, other):
         if isinstance(other, Analysis):
-            if other.range != self.range:
-                raise ValueError("Can't subtract! Both Analysis have " +
-                                "different band limits.")
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data+other.data)
+            if self.anType == 'L':
+                if other.range != self.range:
+                    raise ValueError("Can't subtract! Both Analysis have" +
+                                     " different band limits.")
+                if other.anType == 'L':
+                    data = []
+                    for idx, value in enumerate(self.data):
+                        d = 10*np.log10(10**(value/10) +
+                                        10**(other.data[idx]/10))
+                        data.append(d)
+                    anType = 'L'
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = self.data + other.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = self.data + other.data
+                anType = 'mixed'
         elif isinstance(other, (int, float)):
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data+other)
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) + 10**(other/10))
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = self.data - other
+                anType = 'mixed'
         else:
-            raise TypeError("Analysys can only be operated with int, float, " +
-                            "or Analysis types.")
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
         return result
 
     def __sub__(self, other):
         if isinstance(other, Analysis):
-            if other.range != self.range:
-                raise ValueError("Can't subtract! Both Analysis have " +
-                                "different band limits.")
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data-other.data)
+            if self.anType == 'L':
+                if other.range != self.range:
+                    raise ValueError("Can't subtract! Both Analysis have" +
+                                     " different band limits.")
+                if other.anType == 'L':
+                    data = []
+                    for idx, value in enumerate(self.data):
+                        d = 10*np.log10(10**(value/10) -
+                                        10**(other.data[idx]/10))
+                        data.append(d)
+                    anType = 'L'
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = self.data - other.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = self.data - other.data
+                anType = 'mixed'
         elif isinstance(other, (int, float)):
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data-other)
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) - 10**(other/10))
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = self.data - other
+                anType = 'mixed'
         else:
-            raise TypeError("Analysys can only be operated with int, float, " +
-                            "or Analysis types.")
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
         return result
 
     def __mul__(self, other):
