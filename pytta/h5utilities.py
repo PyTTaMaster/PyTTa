@@ -15,12 +15,36 @@ h5utilities:
     For further information, check the function specific documentation.
 """
 
+import numpy as np
 
 def attr_parser(attr):
     """
     Parser for all possible transformations for hdf5 data input and output.
     """
-    pass
+    attr = int_parser(attr)
+    attr = float_parser(attr)
+    attr = none_parser(attr)
+    return attr
+
+
+def int_parser(attr):
+    if isinstance(attr, (np.int16,
+                         np.int32,
+                         np.int64,
+                         np.int,
+                         np.int0)):
+        return int(attr)
+    else:
+        return attr
+
+def float_parser(attr):
+    if isinstance(attr, (np.float,
+                        np.float16,
+                        np.float32,
+                        np.float64)):
+        return float(attr)
+    else:
+        return attr
 
 
 def none_parser(attr):
