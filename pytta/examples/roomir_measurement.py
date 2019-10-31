@@ -19,8 +19,8 @@ os.chdir(cwd)
 # %%
 # Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
-tempHumid = lju3ei1050.main()
-# tempHumid = None  # Para testes com LabJack offline
+# tempHumid = lju3ei1050.main()
+tempHumid = None  # Para testes com LabJack offline
 
 # %% Carrega sinais de excitação e cria dicionário para o setup da medição
 excitationSignals = {}
@@ -52,9 +52,9 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
                           #   device=[0, 1],  # PC laza
-                        #   device=4,  # Saffire Pro 40 laza
+                          device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                          device=0,  # Firebox laza
+                        #   device=0,  # Firebox laza
                           # [s] tempo de gravação do ruído de fundo
                           noiseFloorTp=5,
                           # [s] tempo de gravação do sinal de calibração
@@ -164,9 +164,18 @@ msdThing = a['roomres_S1-R1_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
 msdThing.measuredSignals[0].plot_freq()
 
+# %% Calcula respostas ao sinal de excitação calibradas e salva em disco (vide 
+# parâmetro skipSave)
+a = D.get('roomres', 'Mic1')
+b = D.calibrate_res(a, calibrationTake=1, skipSave=False)
+for name, res in b.items():
+        print(name)
+        # res.measuredSignals[0].plot_time()
+        res.measuredSignals[0].plot_freq()
+
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco (vide 
 # parâmetro skipSave)
-a = D.get('sourcerecalibration', 'Mic1')
+a = D.get('roomres', 'Mic1')
 b = D.calculate_ir(a, calibrationTake=1, skipCalibration=False, skipSave=False)
 for name, IR in b.items():
         print(name)
