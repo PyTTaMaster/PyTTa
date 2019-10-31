@@ -356,6 +356,10 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq):
     """G_Lpe 
     
     Calculates the energy level from the room impulsive response.
+
+    Reference:
+        Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
+        SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
     
     :param IR: one channel impulsive response
     :type IR: ImpulsiveResponse
@@ -398,11 +402,16 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq):
 def G_Lps(IR, nthOct, minFreq, maxFreq):
     """G_Lps 
     
-    Calculates the recalibration level correction for both in-situ and
-    reverberation chamber calibration.
+    Calculates the recalibration level, for both in-situ and
+    reverberation chamber. Lps is applyied for G calculation.
 
-    During the recalibration: source height and mic heigth must be >= 1 [m], while
-    the distance between source and mic must be <= 1 [m].
+    During the recalibration: source height and mic heigth must be >= 1 [m], 
+    while the distance between source and mic must be <= 1 [m]. The distances
+    must be the same for in-situ and reverberation chamber measurements.
+
+    Reference:
+        Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
+        SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
     
     :param IR: one channel impulsive response
     :type IR: ImpulsiveResponse
@@ -449,7 +458,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     return LpsAnal
 
 
-def strength_factor(Lpe, Lpe_RevCh, V_RevCh, T_RevCh, Lps_Calib, Lps_Meas):
+def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     S0 = 1 # [m2]
     G = Lpe - Lpe_RevCh - 10*np.log10(0.16 * V_RevCh / (S0 * T_RevCh)) + 37 \
         + Lps_Calib - Lps_Meas
