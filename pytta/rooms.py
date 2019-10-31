@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 from numba import njit
 from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.classes.filter import fractional_octave_frequencies as FOF
+import traceback
 
 
 def _filter(signal,
@@ -376,6 +377,22 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq):
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
     firstChNum = IR.systemSignal.channels.mapping[0]
     if not IR.systemSignal.channels[firstChNum].calibCheck:
         raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
@@ -396,6 +413,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq):
     LpeAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
                        maxBand=float(bands[-1]), data=Lpe,
                        comment='h**2 energy level')
+    LpeAnal.creation_name = creation_name
     return LpeAnal
 
 
@@ -428,6 +446,22 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
     firstChNum = IR.systemSignal.channels.mapping[0]
     if not IR.systemSignal.channels[firstChNum].calibCheck:
         raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
@@ -455,13 +489,14 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
                             maxBand=float(bands[-1]), data=Lps,
                             comment='Source recalibration method IR')
+    LpsAnal.creation_name = creation_name
     return LpsAnal
 
 
 def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     S0 = 1 # [m2]
-    G = Lpe - Lpe_RevCh - 10*np.log10(0.16 * V_RevCh / (S0 * T_RevCh)) + 37 \
-        + Lps_Calib - Lps_Meas
+    G = Lpe - Lpe_revCh - 10*np.log10(0.16 * V_revCh / (S0 * T_revCh)) + 37 \
+        + Lps_revCh - Lps_inSitu
     return G
 
 

@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 
+from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 from math import isnan
 import matplotlib.pyplot as plt
 import numpy as np
 import time
 import locale
+from pytta import h5utilities as _h5
 
 
 # Analysis types and its units
@@ -15,7 +17,7 @@ anTypes = {'RT': ('s', 'Reverberation time'),
            'L': ('dB', 'Level'),
            'mixed': ('-', 'Mixed')}
 
-class Analysis(object):
+class Analysis(RICI):
     """
     """
 
@@ -27,13 +29,20 @@ class Analysis(object):
                 minBand,
                 maxBand,
                 data,
-                comment='No comments.'):
+                comment='No comments.',
+                xlabel=None,
+                ylabel=None,
+                title=None):
         self.anType = anType
         self.nthOct = nthOct
         self.minBand = minBand
         self.maxBand = maxBand
         self.data = data
         self.comment = comment
+        # Plot infos memory
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.title = title
         return
 
     def __str__(self):
@@ -345,6 +354,9 @@ class Analysis(object):
         h5group.attrs['minBand'] = self.minBand
         h5group.attrs['maxBand'] = self.maxBand
         h5group.attrs['comment'] = self.comment
+        h5group.attrs['xlabel'] = _h5.none_parser(self.xlabel)
+        h5group.attrs['ylabel'] = _h5.none_parser(self.ylabel)
+        h5group.attrs['title'] = _h5.none_parser(self.title)
         h5group['data'] = self.data
         return
 
@@ -352,7 +364,8 @@ class Analysis(object):
         self.plot_bars(**kwargs)
         return
 
-    def plot_bars(self, xlabel=None, ylabel=None, title=None, decimalSep=','):
+    def plot_bars(self, xlabel=None, ylabel=None,
+                  title=None, decimalSep=','):
         """
         Analysis bar plotting method
         """
@@ -364,16 +377,32 @@ class Analysis(object):
             plt.rcParams['axes.formatter.use_locale'] = False
         else:
             raise ValueError("'decimalSep' must be the string '.' or ','.")
+
         if xlabel is None:
-            xlabel = 'Frequency bands [Hz]'
+            if self.xlabel is None:
+                xlabel = 'Frequency bands [Hz]'
+            else:
+                xlabel = self.xlabel
+        else:
+            self.xlabel = xlabel
+        
         if ylabel is None:
-            ylabel = 'Modulus [{}]'
-            ylabel = ylabel.format(self.unit)
+            if self.ylabel is None:
+                ylabel = 'Modulus [{}]'
+                ylabel = ylabel.format(self.unit)
+            else:
+                ylabel = self.ylabel
+        else:
+            self.ylabel = ylabel
+        
         if title is None:
-            title = '{} analysis'
-            title = title.format(self.anName)
-
-
+            if self.title is None:
+                title = '{} analysis'
+                title = title.format(self.anName)
+            else:
+                title = self.title
+        else:
+            self.title = title
         
         fig = plt.figure(figsize=(10, 5))
 
