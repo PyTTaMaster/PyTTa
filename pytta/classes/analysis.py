@@ -14,6 +14,7 @@ from pytta import h5utilities as _h5
 anTypes = {'RT': ('s', 'Reverberation time'),
            'C': ('dB', 'Clarity'),
            'D': ('%', 'Definition'),
+           'G': ('dB', 'Strength factor'),
            'L': ('dB', 'Level'),
            'mixed': ('-', 'Mixed')}
 
@@ -33,6 +34,7 @@ class Analysis(RICI):
                 xlabel=None,
                 ylabel=None,
                 title=None):
+        super().__init__()
         self.anType = anType
         self.nthOct = nthOct
         self.minBand = minBand
@@ -164,34 +166,50 @@ class Analysis(RICI):
                             "or Analysis types.")
         return result
 
-    def __truediv__(self, other):
-        # if isinstance(other, Analysis):
-        #     if other.range != self.range:
-        #         raise ValueError("Can't subtract! Both Analysis have " +
-        #                         "different band limits.")
-        #     result = Analysis(anType='mixed', nthOct=self.nthOct,
-        #                     minBand=self.minBand, maxBand=self.maxBand,
-        #                     data=self.data/other.data)
-        # elif isinstance(other, (int, float)):
-        #     result = Analysis(anType='mixed', nthOct=self.nthOct,
-        #                     minBand=self.minBand, maxBand=self.maxBand,
-        #                     data=self.data/other)
-        # else:
-        #     raise TypeError("Analysys can only be operated with int, float, " +
-        #                     "or Analysis types.")
-        # return result
+    def __rtruediv__(self, other):
         if isinstance(other, Analysis):
             if self.anType == 'L':
                 if other.range != self.range:
                     raise ValueError("Can't divide! Both Analysis have" +
                                      " different band limits.")
-                # if other.anType == 'L':
-                #     data = []
-                #     for idx, value in enumerate(self.data):
-                #         d = 10*np.log10(10**(value/10) /
-                #                         10**(other.data[idx]/10))
-                #         data.append(d)
-                #     anType = 'L'
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = other.data / self.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = other.data / self.data   
+                anType = 'mixed'
+        elif isinstance(other, (int, float)):
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) / other)
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = other / self.data
+                anType = 'mixed'
+        else:
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
+        return result
+        
+
+    def __truediv__(self, other):
+        if isinstance(other, Analysis):
+            if self.anType == 'L':
+                if other.range != self.range:
+                    raise ValueError("Can't divide! Both Analysis have" +
+                                     " different band limits.")
                 elif other.anType in ['mixed', 'C', 'D', 'RT']:
                     data = self.data / other.data
                     anType = 'mixed'
@@ -424,9 +442,30 @@ class Analysis(RICI):
         else:
             ax.bar(fbar, self.data, width=0.75)
             minval = 0
+
+        limData = -minval + self.data
+        limData = [value for value in limData if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        if ylimInf > 0 and ylimInf - 0.3 < 0 or \
+            ylimInf < 0 and ylimInf + 0.3 > 0:
+            ylimInf = 0
+        elif ylimInf == 0:
+            pass
+        else:
+            ylimInf -= margin
         
-        ylimInf = min(-minval + self.data) - 0.2
-        ylimSup = max(-minval + self.data) + 0.2
+        ylimSup = np.nanmax(limData)
+        if ylimSup > 0 and ylimSup - 0.3 < 0 or \
+            ylimSup < 0 and ylimSup + 0.3 > 0:
+            ylimSup = 0
+        elif ylimSup == 0:
+            pass
+        else:
+            ylimSup += margin
+        
+        # ylimInf = 0 if np.nanmin(limData) == 0 else np.nanmin(limData) - 0.2
         ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
         
