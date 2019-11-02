@@ -413,7 +413,7 @@ def h5_save(fileName: str, *PyTTaObjs):
     print('Saved {} PyTTa object'.format(objCount) + plural1 +
         ' of {}'.format(totCount) +
         ' inside the hdf5 file.')
-    return
+    return fileName
 
 
 def h5_load(fileName: str):

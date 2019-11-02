@@ -77,9 +77,9 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
                              max_idx > int(0.9*squaredIR.shape[0])])
     # less than 20dB SNR or in the "noisy" part
     if idxNoShift.any():
-        print('noiseLevelCheck: The SNR too bad or \
-              this is not an impulse response.')
-        return
+        print("noiseLevelCheck: The SNR too bad or this is not an " +
+              "impulse response.")
+        return 0
 
     # find the first sample that lies under the given threshold
     threshold = abs(threshold)
@@ -212,7 +212,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:  # where returns empty
             print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
                 "low. Skipping!")
-            c[1] = np.inf
+            # c[1] = np.inf
+            c[1] = 0
             break
 
         X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
@@ -223,7 +224,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         if (c[1] >= 0)[0]:
             print(band, "[Hz] band: regression did not work, T -> inf.",
                 "Setting slope to 0!")
-            c[1] = np.inf
+            # c[1] = np.inf
+            c[1] = 0
             break
 
         # 9) find crosspoint
@@ -265,7 +267,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamp
                              numChannels,
                              timeLength)
     _, c1, interIdx, BGL = lundebyParams
-    lateRT = -60/c1
+    lateRT = -60/c1 if c1 != 0 else 0
 
     if interIdx == 0:
         interIdx = -1
@@ -320,10 +322,13 @@ def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
 
 @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
+    if not np.any(energyDecay):
+        return 0
     first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
     last = np.where(10*np.log10(energyDecay) >= lowerLim)[0][-1]
     if last <= first:
-        return np.nan
+        # return np.nan
+        return 0
     X = np.ones((last-first, 2))
     X[:, 1] = energyVector[first:last]
     c = np.linalg.lstsq(X, 10*np.log10(energyDecay[first:last]), rcond=-1)[0]
@@ -495,8 +500,24 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
 
 def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     S0 = 1 # [m2]
-    G = Lpe - Lpe_revCh - 10*np.log10(0.16 * V_revCh / (S0 * T_revCh)) + 37 \
+
+    bands = T_revCh.bands
+    nthOct = T_revCh.nthOct
+    terms = []
+    for bandData in T_revCh.data:
+        if bandData == 0:
+            terms.append(0)
+        else:
+            term = (V_revCh * 0.16) / (bandData * S0)
+            terms.append(term)
+    terms = [10*np.log10(term) if term != 0 else 0 for term in terms]
+
+    revChTerm = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                            maxBand=float(bands[-1]), data=terms)
+
+    G = Lpe - Lpe_revCh - revChTerm + 37 \
         + Lps_revCh - Lps_inSitu
+    G.anType = 'G'
     return G
 
 
@@ -581,6 +602,22 @@ def analyse(obj, *params, plotLundebyResults=False, **kwargs):
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
     if not isinstance(obj, SignalObj) and not isinstance(obj,
                                                          ImpulsiveResponse):
         raise TypeError("'obj' must be an one channel SignalObj or " +
@@ -603,9 +640,9 @@ def analyse(obj, *params, plotLundebyResults=False, **kwargs):
                               minBand=kwargs['minFreq'],
                               maxBand=kwargs['maxFreq'],
                               data=RT)
+            result.creation_name = creation_name
         # if 'C' in prm:
         #     Ctemp = prm[1]
         # if 'D' in prm:
         #     Dtemp = prm[1]
     return result
-

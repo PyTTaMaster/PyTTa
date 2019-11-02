@@ -15,6 +15,7 @@ PyTTa ISO3741 Analysis:
 from pytta import SignalObj, OctFilter, Analysis
 import numpy as np
 from pytta.classes.filter import fractional_octave_frequencies as FOF
+import traceback
 
 def _filter(signal,
             order: int = 4,
@@ -43,6 +44,22 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
     reverberation chamber's good isolation.
 
     """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
@@ -73,5 +90,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
     for L in Leqs:
         Leq =  L + Leq
     Lp_ST = Leq / len(sigObjList)
+    Lp_ST.anType = 'mixed'
     Lp_ST.unit = 'dB'
+    Lp_ST.creation_name = creation_name
     return Lp_ST
