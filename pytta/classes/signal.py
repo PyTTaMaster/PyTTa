@@ -343,7 +343,7 @@ class SignalObj(_base.PyTTaObj):
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
         fig.legend(loc='center right', fontsize=12)
-        return
+        return fig
 
     def plot_time_dB(self, xlabel=None, ylabel=None):
         """
@@ -386,7 +386,7 @@ class SignalObj(_base.PyTTaObj):
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
         fig.legend(loc='center right', fontsize=12)
-        return
+        return fig
 
     def plot_freq(self, smooth=False, xlabel=None, ylabel=None):
         """
@@ -446,7 +446,7 @@ class SignalObj(_base.PyTTaObj):
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
         fig.legend(loc='center right', fontsize=12)
-        return
+        return fig
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
                          xlabel=None, ylabel=None):
@@ -491,7 +491,7 @@ class SignalObj(_base.PyTTaObj):
         cbar.ax.tick_params(labelsize=12)
         cbar.ax.set_ylabel('Magnitude {}'.format(unitData),
                            fontsize=20)
-        return
+        return fig
 
     def calib_voltage(self, chIndex, refSignalObj, refVrms=1, refFreq=1000):
         """
