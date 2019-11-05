@@ -379,8 +379,7 @@ class Analysis(RICI):
         return
 
     def plot(self, **kwargs):
-        self.plot_bars(**kwargs)
-        return
+        return self.plot_bars(**kwargs)
 
     def plot_bars(self, xlabel=None, ylabel=None,
                   title=None, decimalSep=','):
@@ -439,6 +438,7 @@ class Analysis(RICI):
             minval = np.amin(self.data)
             minval += np.sign(minval)
             ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75)
+
         else:
             ax.bar(fbar, self.data, width=0.75)
             minval = 0
@@ -448,8 +448,10 @@ class Analysis(RICI):
         margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
     
         ylimInf = np.nanmin(limData)
-        if ylimInf > 0 and ylimInf - 0.3 < 0 or \
-            ylimInf < 0 and ylimInf + 0.3 > 0:
+        # if ylimInf > 0 and ylimInf - 0.3 < 0 or \
+        #     ylimInf < 0 and ylimInf + 0.3 > 0:
+        if ylimInf > 0 and ylimInf - ylimInf*0.9 < 0 or \
+            ylimInf < 0 and ylimInf + ylimInf*1.1 > 0:
             ylimInf = 0
         elif ylimInf == 0:
             pass
@@ -457,8 +459,10 @@ class Analysis(RICI):
             ylimInf -= margin
         
         ylimSup = np.nanmax(limData)
-        if ylimSup > 0 and ylimSup - 0.3 < 0 or \
-            ylimSup < 0 and ylimSup + 0.3 > 0:
+        # if ylimSup > 0 and ylimSup - 0.3 < 0 or \
+        #     ylimSup < 0 and ylimSup + 0.3 > 0:
+        if ylimSup > 0 and ylimSup - ylimSup*0.9 < 0 or \
+            ylimSup < 0 and ylimSup + ylimSup*1.1 > 0:
             ylimSup = 0
         elif ylimSup == 0:
             pass
@@ -488,4 +492,4 @@ class Analysis(RICI):
         
         plt.title(title, fontsize=20)
         
-        return
+        return fig

@@ -24,7 +24,7 @@ class InstanceCreationError(Exception):
 
 class RememberInstanceCreationInfo:
     def __init__(self):
-        for frame, line in traceback.walk_stack(None):
+        for frame, _ in traceback.walk_stack(None):
             varnames = frame.f_code.co_varnames
             if varnames is ():
                 break
