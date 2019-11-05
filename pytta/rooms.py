@@ -15,8 +15,9 @@ PyTTa Room Analysis:
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
-from pytta import SignalObj, OctFilter, Analysis
+from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.classes.filter import fractional_octave_frequencies as FOF
+import traceback
 
 
 def _filter(signal,
@@ -76,9 +77,9 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
                              max_idx > int(0.9*squaredIR.shape[0])])
     # less than 20dB SNR or in the "noisy" part
     if idxNoShift.any():
-        print('noiseLevelCheck: The SNR too bad or \
-              this is not an impulse response.')
-        return
+        print("noiseLevelCheck: The SNR too bad or this is not an " +
+              "impulse response.")
+        return 0
 
     # find the first sample that lies under the given threshold
     threshold = abs(threshold)
@@ -211,7 +212,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:  # where returns empty
             print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
                 "low. Skipping!")
-            c[1] = np.inf
+            # c[1] = np.inf
+            c[1] = 0
             break
 
         X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
@@ -222,7 +224,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         if (c[1] >= 0)[0]:
             print(band, "[Hz] band: regression did not work, T -> inf.",
                 "Setting slope to 0!")
-            c[1] = np.inf
+            # c[1] = np.inf
+            c[1] = 0
             break
 
         # 9) find crosspoint
@@ -264,7 +267,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamp
                              numChannels,
                              timeLength)
     _, c1, interIdx, BGL = lundebyParams
-    lateRT = -60/c1
+    lateRT = -60/c1 if c1 != 0 else 0
 
     if interIdx == 0:
         interIdx = -1
@@ -319,10 +322,13 @@ def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
 
 @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
+    if not np.any(energyDecay):
+        return 0
     first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
     last = np.where(10*np.log10(energyDecay) >= lowerLim)[0][-1]
     if last <= first:
-        return np.nan
+        # return np.nan
+        return 0
     X = np.ones((last-first, 2))
     X[:, 1] = energyVector[first:last]
     c = np.linalg.lstsq(X, 10*np.log10(energyDecay[first:last]), rcond=-1)[0]
@@ -351,26 +357,169 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
         RT.append(reverb_time_regression(edc, edv, y1, y2))
     return RT
 
-def analyse(obj, *params, plotLundebyResults=False, **kwargs):
-    """
 
+def G_Lpe(IR, nthOct, minFreq, maxFreq):
+    """G_Lpe 
+    
+    Calculates the energy level from the room impulsive response.
+
+    Reference:
+        Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
+        SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
+    
+    :param IR: one channel impulsive response
+    :type IR: ImpulsiveResponse
+
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+
+    :return: Analysis object with the calculated parameter
+    :rtype: Analysis
     """
-    samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(obj, plotLundebyResults, **kwargs)
-    for prm in params:
-        if 'RT' == prm:
-            RTdecay = params[params.index('RT')+1]
-            nthOct = kwargs['nthOct']
-            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
-            result = Analysis(anType='RT', nthOct=nthOct,
-                              minBand=kwargs['minFreq'],
-                              maxBand=kwargs['maxFreq'],
-                              data=RT)
-        # if 'C' in prm:
-        #     Ctemp = prm[1]
-        # if 'D' in prm:
-        #     Dtemp = prm[1]
-    return result
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
+    firstChNum = IR.systemSignal.channels.mapping[0]
+    if not IR.systemSignal.channels[firstChNum].calibCheck:
+        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+    SigObj = IR.systemSignal
+    hSignal = SignalObj(SigObj.timeSignal[:,0],
+                        SigObj.lengthDomain,
+                        SigObj.samplingRate)
+    hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
+                      maxFreq=maxFreq)
+    bands = FOF(nthOct=nthOct,
+                minFreq=minFreq,
+                maxFreq=maxFreq)[:,1]
+    Lpe = []
+    for chIndex in range(hSignal.numChannels):
+        Lpe.append(
+            10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
+                                 x=hSignal.timeVector)))
+    LpeAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                       maxBand=float(bands[-1]), data=Lpe,
+                       comment='h**2 energy level')
+    LpeAnal.creation_name = creation_name
+    return LpeAnal
+
+
+def G_Lps(IR, nthOct, minFreq, maxFreq):
+    """G_Lps 
+    
+    Calculates the recalibration level, for both in-situ and
+    reverberation chamber. Lps is applyied for G calculation.
+
+    During the recalibration: source height and mic heigth must be >= 1 [m], 
+    while the distance between source and mic must be <= 1 [m]. The distances
+    must be the same for in-situ and reverberation chamber measurements.
+
+    Reference:
+        Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
+        SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
+    
+    :param IR: one channel impulsive response
+    :type IR: ImpulsiveResponse
+
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+    
+    :return: Analysis object with the calculated parameter
+    :rtype: Analysis
+    """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
+    firstChNum = IR.systemSignal.channels.mapping[0]
+    if not IR.systemSignal.channels[firstChNum].calibCheck:
+        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+    SigObj = IR.systemSignal
+    # Windowing the IR
+    dBtoOnSet = 20
+    dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
+    windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
+    windowLength = 0.0032 # [s]
+    windowEnd = windowStart + int(windowLength*SigObj.samplingRate)
+
+    hSignal = SignalObj(SigObj.timeSignal[windowStart:windowEnd,0],
+                        SigObj.lengthDomain,
+                        SigObj.samplingRate)
+    hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
+                      maxFreq=maxFreq)
+    bands = FOF(nthOct=nthOct,
+                minFreq=minFreq,
+                maxFreq=maxFreq)[:,1]
+    Lps = []
+    for chIndex in range(hSignal.numChannels):
+        Lps.append(
+            10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
+                                 x=hSignal.timeVector)))
+    LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                            maxBand=float(bands[-1]), data=Lps,
+                            comment='Source recalibration method IR')
+    LpsAnal.creation_name = creation_name
+    return LpsAnal
+
+
+def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
+    S0 = 1 # [m2]
+
+    bands = T_revCh.bands
+    nthOct = T_revCh.nthOct
+    terms = []
+    for bandData in T_revCh.data:
+        if bandData == 0:
+            terms.append(0)
+        else:
+            term = (V_revCh * 0.16) / (bandData * S0)
+            terms.append(term)
+    terms = [10*np.log10(term) if term != 0 else 0 for term in terms]
+
+    revChTerm = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
+                            maxBand=float(bands[-1]), data=terms)
+
+    G = Lpe - Lpe_revCh - revChTerm + 37 \
+        + Lps_revCh - Lps_inSitu
+    G.anType = 'G'
+    return G
+
 
 def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     """
@@ -413,3 +562,87 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
 #        output.append(D)
 #    return output
     pass
+
+
+def analyse(obj, *params, plotLundebyResults=False, **kwargs):
+    """analyse
+    
+    Receives an one channel SignalObj or ImpulsiveResponse and calculate the
+    room acoustic parameters especified in the positional input arguments.
+
+    :param obj: one channel impulsive response
+    :type obj: SignalObj or ImpulsiveResponse
+
+    Input parameters for reverberation time, 'RT':
+        :param RTdecay: decay interval for RT calculation. e.g. 20
+        :type RTdecay: int
+
+    Input parameters for clarity, 'C':
+        TODO
+
+    Input parameters for definition, 'D':
+        TODO
+
+    Input parameters for strength factor, 'G':
+        TODO
+    
+    :param nthOct: number of fractions per octave
+    :type nthOct: int
+
+    :param minFreq: analysis inferior frequency limit
+    :type minFreq: float
+
+    :param maxFreq: analysis superior frequency limit
+    :type maxFreq: float
+
+    :param plotLundebyResults: plot the Lundeby correction parameters, defaults
+    to False
+    :type plotLundebyResults: bool, optional
+    
+    :return: Analysis object with the calculated parameter
+    :rtype: Analysis
+    """
+    # Code snippet to guarantee that generated object name is
+    # the declared at global scope
+    # for frame, line in traceback.walk_stack(None):
+    for framenline in traceback.walk_stack(None):
+        # varnames = frame.f_code.co_varnames
+        varnames = framenline[0].f_code.co_varnames
+        if varnames is ():
+            break
+    # creation_file, creation_line, creation_function, \
+    #     creation_text = \
+    extracted_text = \
+        traceback.extract_stack(framenline[0], 1)[0]
+        # traceback.extract_stack(frame, 1)[0]
+    # creation_name = creation_text.split("=")[0].strip()
+    creation_name = extracted_text[3].split("=")[0].strip()
+
+    if not isinstance(obj, SignalObj) and not isinstance(obj,
+                                                         ImpulsiveResponse):
+        raise TypeError("'obj' must be an one channel SignalObj or " +
+                        "ImpulsiveResponse.")
+    if isinstance(obj, ImpulsiveResponse):
+        SigObj = obj.systemSignal
+    else:
+        SigObj = obj
+    
+    if obj.numChannels > 1:
+        raise TypeError("'obj' can't contain more than one channel.")
+    samplingRate = obj.samplingRate
+    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
+    for prm in params:
+        if 'RT' == prm:
+            RTdecay = params[params.index('RT')+1]
+            nthOct = kwargs['nthOct']
+            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
+            result = Analysis(anType='RT', nthOct=nthOct,
+                              minBand=kwargs['minFreq'],
+                              maxBand=kwargs['maxFreq'],
+                              data=RT)
+            result.creation_name = creation_name
+        # if 'C' in prm:
+        #     Ctemp = prm[1]
+        # if 'D' in prm:
+        #     Dtemp = prm[1]
+    return result

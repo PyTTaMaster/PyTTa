@@ -1,18 +1,24 @@
 # -*- coding: utf-8 -*-
 
+from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 from math import isnan
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import locale
+from pytta import h5utilities as _h5
+
 
 # Analysis types and its units
 anTypes = {'RT': ('s', 'Reverberation time'),
            'C': ('dB', 'Clarity'),
            'D': ('%', 'Definition'),
+           'G': ('dB', 'Strength factor'),
+           'L': ('dB', 'Level'),
            'mixed': ('-', 'Mixed')}
 
-class Analysis(object):
+class Analysis(RICI):
     """
     """
 
@@ -24,13 +30,21 @@ class Analysis(object):
                 minBand,
                 maxBand,
                 data,
-                comment='No comments.'):
+                comment='No comments.',
+                xlabel=None,
+                ylabel=None,
+                title=None):
+        super().__init__()
         self.anType = anType
         self.nthOct = nthOct
         self.minBand = minBand
         self.maxBand = maxBand
         self.data = data
         self.comment = comment
+        # Plot infos memory
+        self.xlabel = xlabel
+        self.ylabel = ylabel
+        self.title = title
         return
 
     def __str__(self):
@@ -48,25 +62,184 @@ class Analysis(object):
                 f'comment={self.comment!r})')
 
     def __add__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have" +
+                                    " different band limits.")
+            if self.anType == 'L':
+                if other.anType == 'L':
+                    data = []
+                    for idx, value in enumerate(self.data):
+                        d = 10*np.log10(10**(value/10) +
+                                        10**(other.data[idx]/10))
+                        data.append(d)
+                    anType = 'L'
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = self.data + other.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = self.data + other.data
+                anType = 'mixed'
+        elif isinstance(other, (int, float)):
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) + 10**(other/10))
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = self.data - other
+                anType = 'mixed'
+        else:
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
+        return result
 
     def __sub__(self, other):
-        if other.range != self.range:
-            raise ValueError("Can't subtract! Both Analysis have different " +
-                             "band limits.")
-        result = Analysis(anType='mixed', nthOct=self.nthOct,
-                          minBand=self.minBand, maxBand=self.maxBand,
-                          data=self.data-other.data)
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have" +
+                                    " different band limits.")
+            if self.anType == 'L':
+                if other.anType == 'L':
+                    data = []
+                    for idx, value in enumerate(self.data):
+                        d = 10*np.log10(10**(value/10) -
+                                        10**(other.data[idx]/10))
+                        data.append(d)
+                    anType = 'L'
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = self.data - other.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = self.data - other.data
+                anType = 'mixed'
+        elif isinstance(other, (int, float)):
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) - 10**(other/10))
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = self.data - other
+                anType = 'mixed'
+        else:
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
         return result
 
     def __mul__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if other.range != self.range:
+                raise ValueError("Can't subtract! Both Analysis have " +
+                                "different band limits.")
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data*other.data)
+        elif isinstance(other, (int, float)):
+            result = Analysis(anType='mixed', nthOct=self.nthOct,
+                            minBand=self.minBand, maxBand=self.maxBand,
+                            data=self.data*other)
+        else:
+            raise TypeError("Analysys can only be operated with int, float, " +
+                            "or Analysis types.")
+        return result
+
+    def __rtruediv__(self, other):
+        if isinstance(other, Analysis):
+            if self.anType == 'L':
+                if other.range != self.range:
+                    raise ValueError("Can't divide! Both Analysis have" +
+                                     " different band limits.")
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = other.data / self.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = other.data / self.data   
+                anType = 'mixed'
+        elif isinstance(other, (int, float)):
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) / other)
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = other / self.data
+                anType = 'mixed'
+        else:
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
+        return result
+        
 
     def __truediv__(self, other):
-        # check for min/max bands
-        raise NotImplementedError
+        if isinstance(other, Analysis):
+            if self.anType == 'L':
+                if other.range != self.range:
+                    raise ValueError("Can't divide! Both Analysis have" +
+                                     " different band limits.")
+                elif other.anType in ['mixed', 'C', 'D', 'RT']:
+                    data = self.data / other.data
+                    anType = 'mixed'
+                else: 
+                    raise NotImplementedError("Operation not implemented " +
+                                              "for Analysis types " +
+                                              anTypes[self.anType][1] +
+                                              " and " +
+                                              anTypes[other.anType][1] + 
+                                              ".")
+            else:
+                data = self.data / other.data
+                anType = 'mixed'
+        elif isinstance(other, (int, float)):
+            if self.anType == 'L':
+                data = [10*np.log10(10**(dt/10) / other)
+                        for dt in self.data]
+                anType = 'L'
+            else:
+                data = self.data / other
+                anType = 'mixed'
+        else:
+            raise NotImplementedError("Operation not implemented between " +
+                                      "Analysis and {}".format(type(other)) +
+                                      "types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data)
+
+        return result
 
     # Properties
 
@@ -182,36 +355,72 @@ class Analysis(object):
 
     # Methods
 
-    def _to_dict(self):
-        return
+    # def _to_dict(self):
+    #     return
 
-    def pytta_save(self, dirname=time.ctime(time.time())):
-        return
+    # def pytta_save(self, dirname=time.ctime(time.time())):
+    #     return
 
     def h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
         pytta.save(...).
         """
+        h5group.attrs['class'] = 'Analysis'
+        h5group.attrs['anType'] = self.anType
+        h5group.attrs['nthOct'] = self.nthOct
+        h5group.attrs['minBand'] = self.minBand
+        h5group.attrs['maxBand'] = self.maxBand
+        h5group.attrs['comment'] = self.comment
+        h5group.attrs['xlabel'] = _h5.none_parser(self.xlabel)
+        h5group.attrs['ylabel'] = _h5.none_parser(self.ylabel)
+        h5group.attrs['title'] = _h5.none_parser(self.title)
+        h5group['data'] = self.data
         return
 
     def plot(self, **kwargs):
-        self.plot_bars(**kwargs)
-        return
+        return self.plot_bars(**kwargs)
 
-    def plot_bars(self, xlabel=None, ylabel=None, title=None):
+    def plot_bars(self, xlabel=None, ylabel=None,
+                  title=None, decimalSep=','):
         """
         Analysis bar plotting method
         """
-        if xlabel is None:
-            xlabel = 'Frequency bands [Hz]'
-        if ylabel is None:
-            ylabel = 'Modulus [{}]'
-            ylabel = ylabel.format(self.unit)
-        if title is None:
-            title = '{} analysis'
-            title = title.format(self.anName)
+        if decimalSep == ',':
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        elif decimalSep =='.':
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+        else:
+            raise ValueError("'decimalSep' must be the string '.' or ','.")
 
+        if xlabel is None:
+            if self.xlabel is None:
+                xlabel = 'Frequency bands [Hz]'
+            else:
+                xlabel = self.xlabel
+        else:
+            self.xlabel = xlabel
+        
+        if ylabel is None:
+            if self.ylabel is None:
+                ylabel = 'Modulus [{}]'
+                ylabel = ylabel.format(self.unit)
+            else:
+                ylabel = self.ylabel
+        else:
+            self.ylabel = ylabel
+        
+        if title is None:
+            if self.title is None:
+                title = '{} analysis'
+                title = title.format(self.anName)
+            else:
+                title = self.title
+        else:
+            self.title = title
+        
         fig = plt.figure(figsize=(10, 5))
 
         ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
@@ -220,7 +429,49 @@ class Analysis(object):
 
         fbar = range(len(self.data))
 
-        ax.bar(fbar, self.data, width=0.75)
+        negativeCounter = 0
+        for value in self.data:
+            if value < 0:
+                negativeCounter += 1
+
+        if negativeCounter > len(self.data)//2:
+            minval = np.amin(self.data)
+            minval += np.sign(minval)
+            ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75)
+
+        else:
+            ax.bar(fbar, self.data, width=0.75)
+            minval = 0
+
+        limData = -minval + self.data
+        limData = [value for value in limData if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        # if ylimInf > 0 and ylimInf - 0.3 < 0 or \
+        #     ylimInf < 0 and ylimInf + 0.3 > 0:
+        if ylimInf > 0 and ylimInf - ylimInf*0.9 < 0 or \
+            ylimInf < 0 and ylimInf + ylimInf*1.1 > 0:
+            ylimInf = 0
+        elif ylimInf == 0:
+            pass
+        else:
+            ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        # if ylimSup > 0 and ylimSup - 0.3 < 0 or \
+        #     ylimSup < 0 and ylimSup + 0.3 > 0:
+        if ylimSup > 0 and ylimSup - ylimSup*0.9 < 0 or \
+            ylimSup < 0 and ylimSup + ylimSup*1.1 > 0:
+            ylimSup = 0
+        elif ylimSup == 0:
+            pass
+        else:
+            ylimSup += margin
+        
+        # ylimInf = 0 if np.nanmin(limData) == 0 else np.nanmin(limData) - 0.2
+        ylim = (ylimInf, ylimSup)
+        ax.set_ylim(ylim)
         
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
@@ -229,20 +480,16 @@ class Analysis(object):
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
-        
 
-        ylimInf = min(self.data) - 0.2
-        ylimSup = max(self.data) + 0.2
-        ylim = (ylimInf, ylimSup)
-
-        ax.set_ylim(ylim)
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
+        yticks = np.linspace(*ylim, 11)
+        ax.set_yticks(yticks.tolist())
+        yticklabels = yticks + minval
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
+                            for tick in yticklabels.tolist()], fontsize=14)
 
         ax.set_ylabel(ylabel, fontsize=20)
+            
         
         plt.title(title, fontsize=20)
         
-        return
+        return fig

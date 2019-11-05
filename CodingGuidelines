@@ -1,6 +1,6 @@
 For now we don't have many rules, but you should consider the subsequent one.
 
-The names should be written as:
+The names in the code should be written as:
 
     - ClassName;
     - method_name;
@@ -8,5 +8,14 @@ The names should be written as:
     - function_name;
     - variableName;
     - modulename.
+
+The commit messages must carry some suffix. This way, in the future, we can use this to generate release notes. They are:
+
+    Annotation  Description             Exemple git commit
+    [INTERNAL]  used for internal stuff git commit -m "[INTERNAL] update .gitignore"
+    [FIX]       contains bugfix         git commit -m "[FIX] SignalObj.__truediv__ bug fix"
+    [FEATURE]   contains new feature    git commit -m "[FEATURE] introduced Analysis"
+    [DOC]       contains documentation  git commit -m "[DOC] introduced Analysis documentation"
+
 
 As far as concrete guidelines, just imitate the existing code. Keep things organized.

@@ -40,7 +40,8 @@ import scipy.fftpack as sfft
 import zipfile as zf
 import h5py
 from pytta.classes import SignalObj, ImpulsiveResponse, \
-                    RecMeasure, PlayRecMeasure, FRFMeasure
+                    RecMeasure, PlayRecMeasure, FRFMeasure, \
+                    Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
 import copy as cp
@@ -390,7 +391,8 @@ def h5_save(fileName: str, *PyTTaObjs):
                                  ImpulsiveResponse,
                                  RecMeasure,
                                  PlayRecMeasure,
-                                 FRFMeasure)):
+                                 FRFMeasure,
+                                 Analysis)):
                 # Check if creation_name was already used
                 creationName = pobj.creation_name
                 if creationName in objsNameCount:
@@ -411,7 +413,7 @@ def h5_save(fileName: str, *PyTTaObjs):
     print('Saved {} PyTTa object'.format(objCount) + plural1 +
         ' of {}'.format(totCount) +
         ' inside the hdf5 file.')
-    return
+    return fileName
 
 
 def h5_load(fileName: str):
@@ -430,7 +432,7 @@ def h5_load(fileName: str):
         try:
             loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
             objCount += 1
-        except TypeError:
+        except NotImplementedError:
             print('Skipping hdf5 group named {} as it '.format(PyTTaObjName) +
                   'isnt an PyTTa object group.')
     f.close()
@@ -577,5 +579,30 @@ def __h5_unpack(ObjGroup):
                              freqMax=freqMax,
                              comment=comment)
         return frfObj
+
+    elif ObjGroup.attrs['class'] == 'Analysis':
+        # Analysis attrs unpacking
+        anType = _h5.attr_parser(ObjGroup.attrs['anType'])
+        nthOct = _h5.attr_parser(ObjGroup.attrs['nthOct'])
+        minBand = _h5.attr_parser(ObjGroup.attrs['minBand'])
+        maxBand = _h5.attr_parser(ObjGroup.attrs['maxBand'])
+        comment = _h5.attr_parser(ObjGroup.attrs['comment'])
+        xlabel = _h5.attr_parser(ObjGroup.attrs['xlabel'])
+        ylabel = _h5.attr_parser(ObjGroup.attrs['ylabel'])
+        title = _h5.attr_parser(ObjGroup.attrs['title'])
+        # Analysis data unpacking
+        data = np.array(ObjGroup['data'])
+        # Recreating the object
+        anObject = Analysis(anType=anType,
+                            nthOct=nthOct,
+                            minBand=minBand,
+                            maxBand=maxBand,
+                            data=data,
+                            comment=comment,
+                            xlabel=xlabel,
+                            ylabel=ylabel,
+                            title=title)
+        return anObject
+
     else:
-        raise TypeError
+        raise NotImplementedError
