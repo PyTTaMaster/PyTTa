@@ -98,6 +98,9 @@ class SignalObj(_base.PyTTaObj):
 
         * plot_freq():
             generates the signal's spectre graphic;
+        
+        * plot_spectrogram():
+            generates the signal's spectrogram graphic;
 
         * calib_voltage(refSignalObj,refVrms,refFreq):
             voltage calibration from an input SignalObj;
@@ -450,6 +453,21 @@ class SignalObj(_base.PyTTaObj):
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
                          xlabel=None, ylabel=None):
+        """plot_spectrogram plots the spectrum time history
+        
+        :param window: window type for the time slicing, defaults to 'hann'
+        :type window: str, optional
+        :param winSize: window size in samples, defaults to 1024
+        :type winSize: int, optional
+        :param overlap: window overlap in %, defaults to 0.5
+        :type overlap: float, optional
+        :param xlabel: x axis label, defaults to None
+        :type xlabel: str, optional
+        :param ylabel: y axis label, defaults to None
+        :type ylabel: str, optional
+        :return: figure
+        :rtype: matplotlib.figure.Figure
+        """
         firstCh = self.channels.mapping[0]
         unitData = '[{} ref.: {} {}]'.format(self.channels[firstCh].dBName,
                                              self.channels[firstCh].dBRef,
