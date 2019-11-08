@@ -337,8 +337,8 @@ class SignalObj(_base.PyTTaObj):
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (1.05 * np.min(self.timeSignal*self.channels.CFlist()),
-                1.05 * np.max(self.timeSignal*self.channels.CFlist()))
+        ylim = (1.05 * np.min(self.timeSignal),
+                1.05 * np.max(self.timeSignal))
         ax.set_ylim(ylim)
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
@@ -352,7 +352,6 @@ class SignalObj(_base.PyTTaObj):
         """
         Time domain plotting method
         """
-        norm = self.timeSignal/np.max(np.abs(self.timeSignal), axis=0)
         firstCh = self.channels.mapping[0]
         if xlabel is None:
             xlabel = 'Time in s'
@@ -364,13 +363,39 @@ class SignalObj(_base.PyTTaObj):
         ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
                           projection='rectilinear')
         ax.set_snap(True)
+
+        dBSignal = np.abs(self.timeSignal) / \
+            self.channels.dBRefList()
+        dBSignal = 20*np.log10(dBSignal)
+
+        margin = 0
+        infYLim = 1000000
+        supYLim = -1000000
         for chIndex in range(self.numChannels):
             chNum = self.channels.mapping[chIndex]
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    10*np.log10(norm[:, chIndex]**2),
+                    dBSignal[:, chIndex],
                     label=label)
+            newInfYLim = np.nanmin(np.abs(self.timeSignal[:, chIndex])) / \
+                self.channels[chNum].dBRef
+            newInfYLim = 20*np.log10(newInfYLim)
+
+            if newInfYLim < infYLim:
+                infYLim = newInfYLim
+
+            newSupYLim = np.nanmax(np.abs(self.timeSignal[:, chIndex])) / \
+                self.channels[chNum].dBRef
+            newSupYLim = 20*np.log10(newSupYLim)
+
+            if newSupYLim > supYLim:
+                supYLim = newSupYLim
+
+            newMargin = (supYLim - infYLim)/20
+            if newMargin > margin:
+                margin = newMargin
+
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
         xlim = (self.timeVector[0], self.timeVector[-1])
@@ -381,7 +406,9 @@ class SignalObj(_base.PyTTaObj):
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (-100, 2)
+        
+        ylim = (infYLim - margin,
+                supYLim + margin)
         ax.set_ylim(ylim)
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
