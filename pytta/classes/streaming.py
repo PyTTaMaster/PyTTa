@@ -2,8 +2,8 @@
 
 import numpy as np
 import sounddevice as sd
-from multiprocessing import Queue, Process, Event
-from queue import Empty, Full
+from multiprocessing import Event, Queue
+from queue import Empty
 from typing import Optional, List, Callable, Union, Type
 from pytta.classes._base import PyTTaObj, ChannelObj, CoordinateObj, ChannelsList
 from pytta.classes.signal import SignalObj
@@ -145,9 +145,9 @@ class Streaming(PyTTaObj):
     def __init__(self, IO: str,
                  msmnt: Measurement,
                  datatype: str='float32',
-                 blocksize: int=64,
+                 blocksize: int=1024,
                  duration: Optional[float] = None,
-                 monitor_callback: Optional[Callable] = None,
+                 monitor_callback: Optional[Union[Callable, bool]] = False,
                  *args, **kwargs):
         """
 
@@ -194,6 +194,7 @@ class Streaming(PyTTaObj):
         This Queue, from multiprocessing library, can be checked from different
         processes simultaneously.
         """
+        self.set_monitoring(monitor_callback)
         self.set_io_properties(msmnt)
         return
 
@@ -328,20 +329,30 @@ class Streaming(PyTTaObj):
                         dtype=self.dataType,
                         latency='low',
                         callback=stream_callback) as stream:
-            if self.monitor:
-                Parallel = Process(target=self.parallel_loop)
-                Parallel.start()
             self.switch.set()
             stream.start()
             while stream.active:
-                if stream.stopped:
-                    break
+                if self.monitor:
+                    try:  # call to switch.set()
+                        readonly = self.queue.get_nowait()  # get from queue
+                        input = readonly[0] if 'I' in self.IO else None
+                        output = readonly[1] if 'O' in self.IO else None
+                        frames, status = readonly[-2:]
+                        if status:  # check any status
+                            self.lastStatus = status
+                            print(status)  # prints status to stdout, for checking
+                        self.monitor_callback(input, output, frames, status)  # calls for monitoring function
+                    except Empty:  # if queue has no data
+                        if self.lastStatus is sd.CallbackStop \
+                                or self.lastStatus is sd.CallbackAbort:
+                            # checks if callback is stopped or aborted
+                            break  # then breaks the loop
+                        else:  # else, try to run again.
+                            continue
                 else:
-                    continue
+                     continue
             stream.stop()  # just to be sure...
             self.switch.clear()
-            if self.monitor:
-                Parallel.terminate()
             stream.close()
         return
 
