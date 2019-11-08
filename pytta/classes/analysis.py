@@ -93,7 +93,7 @@ class Analysis(RICI):
                         for dt in self.data]
                 anType = 'L'
             else:
-                data = self.data - other
+                data = self.data + other
                 anType = 'mixed'
         else:
             raise NotImplementedError("Operation not implemented between " +
