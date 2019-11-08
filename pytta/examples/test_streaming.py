@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from sys import stdout
 import numpy as np
 import sounddevice as sd
 from pytta.classes.measurement import Measurement
@@ -107,15 +106,15 @@ def playrec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
 
 
 if __name__ == "__main__":
-    from pytta import generate, Recorder, SignalObj
+    from pytta import generate, list_devices
 
-    bs = 512
+    bs = 1024
 
-    measure = generate.measurement(device=0)  # generates a default RecMeasure object
+    measure = generate.measurement(device=2)  # generates a default RecMeasure object
     doomsy = DoomyDoode(measure.samplingRate,  # Generates a DoomyDoode instance
                         measure.numInChannels,
                         bs)  # blocksize
 
-    signal = playrec(monitor=doomsy.stdout_print_dbfs, bs=bs)
+    signal = playrec(measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
     signal.plot_time()
     signal.plot_freq()
