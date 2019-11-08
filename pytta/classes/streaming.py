@@ -170,7 +170,6 @@ class Streaming(PyTTaObj):
             self._durationInSamples = None
         self._duration = duration
         self._device = msmnt.device
-        self.switch = Event()  # instantiates a multiprocessing Event object
         self.monitor = Event()
         """
         Essentially, the Event object is a boolean state. It can be
@@ -254,7 +253,6 @@ class Streaming(PyTTaObj):
         array = np.empty((nchunks, bs, nchannels), dtype='float32')
         return array
 
-
     def set_monitoring(self, func: Union[Callable, bool] = False):
         """
         Set up the function used as monitor. It must have the following declaration:
@@ -279,38 +277,6 @@ class Streaming(PyTTaObj):
                              "a function or a method.")
         return
 
-    def parallel_loop(self):
-        """
-        This function is the parallel process' loop, that is responsible for getting
-        the data from queue and passing it to the monitor function, if there is one.
-
-        :return:
-        :rtype:
-        """
-        while not self.switch.is_set():  # this loop waits for the switch to be turned
-            if self.switch.is_set():     # on before continuing
-                break
-            else:
-                continue
-        while self.switch.is_set():  # this loop tries to read from the queue, after
-            try:                     # call to switch.set()
-                readonly = self.queue.get_nowait()   # get from queue
-                input = readonly[0] if 'I' in self.IO else None
-                output = readonly[1] if 'O' in self.IO else None
-                frames, status = readonly[-2:]
-                if status:   # check any status
-                    self.lastStatus = status
-                    print(status)  # prints status to stdout, for checking
-                self.monitor_callback(input, output, frames, status)  # calls for monitoring function
-            except Empty:  # if queue has no data
-                if self.lastStatus is sd.CallbackStop  \
-                        or self.lastStatus is sd.CallbackAbort:
-                    # checks if callback is stopped or aborted
-                    break  # then breaks the loop
-                else: # else, try to run again.
-                    continue
-        return
-
     def runner(self, StreamType: Type, stream_callback):
         """
         Instantiates a sounddevice.InputStream and calls for a parallel process
@@ -329,7 +295,6 @@ class Streaming(PyTTaObj):
                         dtype=self.dataType,
                         latency='low',
                         callback=stream_callback) as stream:
-            self.switch.set()
             stream.start()
             while stream.active:
                 if self.monitor:
@@ -351,8 +316,6 @@ class Streaming(PyTTaObj):
                             continue
                 else:
                      continue
-            stream.stop()  # just to be sure...
-            self.switch.clear()
             stream.close()
         return
 
