@@ -448,28 +448,11 @@ class Analysis(RICI):
         margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
     
         ylimInf = np.nanmin(limData)
-        # if ylimInf > 0 and ylimInf - 0.3 < 0 or \
-        #     ylimInf < 0 and ylimInf + 0.3 > 0:
-        if ylimInf > 0 and ylimInf - ylimInf*0.9 < 0 or \
-            ylimInf < 0 and ylimInf + ylimInf*1.1 > 0:
-            ylimInf = 0
-        elif ylimInf == 0:
-            pass
-        else:
-            ylimInf -= margin
+        ylimInf -= margin
         
         ylimSup = np.nanmax(limData)
-        # if ylimSup > 0 and ylimSup - 0.3 < 0 or \
-        #     ylimSup < 0 and ylimSup + 0.3 > 0:
-        if ylimSup > 0 and ylimSup - ylimSup*0.9 < 0 or \
-            ylimSup < 0 and ylimSup + ylimSup*1.1 > 0:
-            ylimSup = 0
-        elif ylimSup == 0:
-            pass
-        else:
-            ylimSup += margin
+        ylimSup += margin
         
-        # ylimInf = 0 if np.nanmin(limData) == 0 else np.nanmin(limData) - 0.2
         ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
         

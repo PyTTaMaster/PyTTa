@@ -7,6 +7,7 @@ Created on Tue Jul  2 10:35:05 2019
 """
 
 from pytta.classes._base import ChannelObj, ChannelsList
+from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse
 from pytta.functions import __h5_unpack as pyttah5unpck
 import pytta.h5utilities as _h5
@@ -24,7 +25,8 @@ import copy as cp
 measurementKinds = {'roomres': 'PlayRecMeasure',
                     'noisefloor': 'RecMeasure',
                     'miccalibration': 'RecMeasure',
-                    'sourcerecalibration': 'PlayRecMeasure'}
+                    'sourcerecalibration': 'PlayRecMeasure',
+                    'channelcalibration': 'PlayRecMeasure'}
 
 
 class MeasurementChList(ChannelsList):
@@ -546,68 +548,68 @@ class MeasurementData(object):
         fileName += '_' + str(lasttake+1)
         return fileName
 
-    def __update_data(self):
-        self._data = {}
-        # Empty entries for each measurement kind
-        for mKind in measurementKinds:
-            self._data[mKind] = {}
-        # Get MeasuredThings from disc
-        myFiles = [f for f in listdir(self.path) if
-                   isfile(join(self.path, f))]
-        myFiles.pop(myFiles.index('MeasurementData.hdf5'))
-        # 
-        for file in myFiles:
-            infos = file.split('.')[0].split('_')
-            kind = infos[0]
-            if kind == 'roomres':
-                SR = infos[1].replace('-', '')
-                outCh = infos[2].split('-')[0]
-                inCh = infos[2].split('-')[1]
-                excitation = infos[3]
-                take = int(infos[4])
-                if SR not in self._data[kind]:
-                    self._data[kind][SR] = {}
+    # def __update_data(self):
+    #     self._data = {}
+    #     # Empty entries for each measurement kind
+    #     for mKind in measurementKinds:
+    #         self._data[mKind] = {}
+    #     # Get MeasuredThings from disc
+    #     myFiles = [f for f in listdir(self.path) if
+    #                isfile(join(self.path, f))]
+    #     myFiles.pop(myFiles.index('MeasurementData.hdf5'))
+    #     # 
+    #     for file in myFiles:
+    #         infos = file.split('.')[0].split('_')
+    #         kind = infos[0]
+    #         if kind == 'roomres':
+    #             SR = infos[1].replace('-', '')
+    #             outCh = infos[2].split('-')[0]
+    #             inCh = infos[2].split('-')[1]
+    #             excitation = infos[3]
+    #             take = int(infos[4])
+    #             if SR not in self._data[kind]:
+    #                 self._data[kind][SR] = {}
 
-                if outCh not in self._data[kind][SR]:
-                    self._data[kind][SR][outCh] = {}
+    #             if outCh not in self._data[kind][SR]:
+    #                 self._data[kind][SR][outCh] = {}
 
-                if inCh not in self._data[kind][SR][outCh]:
-                    self._data[kind][SR][outCh][inCh] = {}
+    #             if inCh not in self._data[kind][SR][outCh]:
+    #                 self._data[kind][SR][outCh][inCh] = {}
 
-                if excitation not in self._data[kind][SR][outCh][inCh]:
-                    self._data[kind][SR][outCh][inCh][excitation] = {}
+    #             if excitation not in self._data[kind][SR][outCh][inCh]:
+    #                 self._data[kind][SR][outCh][inCh][excitation] = {}
 
-                self._data[kind][SR][outCh][inCh][excitation][take] = file
+    #             self._data[kind][SR][outCh][inCh][excitation][take] = file
 
-            if kind == 'miccalibration':
-                inCh = infos[1]
-                take = int(infos[2])
-                if inCh not in self._data[kind]:
-                    self._data[kind][inCh] = {}
-                self._data[kind][inCh][take] = file
+    #         if kind == 'miccalibration':
+    #             inCh = infos[1]
+    #             take = int(infos[2])
+    #             if inCh not in self._data[kind]:
+    #                 self._data[kind][inCh] = {}
+    #             self._data[kind][inCh][take] = file
 
-            if kind == 'sourcerecalibration':
-                outCh = infos[1].split('-')[0]
-                inCh = infos[1].split('-')[1]
-                take = int(infos[2])
-                if outCh not in self._data[kind]:
-                    self._data[kind][outCh] = {}
+    #         if kind == 'sourcerecalibration':
+    #             outCh = infos[1].split('-')[0]
+    #             inCh = infos[1].split('-')[1]
+    #             take = int(infos[2])
+    #             if outCh not in self._data[kind]:
+    #                 self._data[kind][outCh] = {}
 
-                if inCh not in self._data[kind][outCh]:
-                    self._data[kind][outCh][inCh] = {}
-                self._data[kind][outCh][inCh][take] = file
+    #             if inCh not in self._data[kind][outCh]:
+    #                 self._data[kind][outCh][inCh] = {}
+    #             self._data[kind][outCh][inCh][take] = file
 
-            if kind == 'noisefloor':
-                SR = infos[1]
-                inCh = infos[2]
-                take = int(infos[3])
-                if SR not in self._data[kind]:
-                    self._data[kind][SR] = {}
+    #         if kind == 'noisefloor':
+    #             SR = infos[1]
+    #             inCh = infos[2]
+    #             take = int(infos[3])
+    #             if SR not in self._data[kind]:
+    #                 self._data[kind][SR] = {}
 
-                if inCh not in self._data[kind][SR]:
-                    self._data[kind][SR][inCh] = {}
-                self._data[kind][SR][inCh][take] = file
-        return
+    #             if inCh not in self._data[kind][SR]:
+    #                 self._data[kind][SR][inCh] = {}
+    #             self._data[kind][SR][inCh][take] = file
+    #     return
 
     def get(self, *args, skipMsgs=False):
         """
@@ -646,7 +648,11 @@ class MeasurementData(object):
             print('Done.')
         return msdThngs
 
-    def calculate_ir(self, getDict, calibrationTake=1, skipCalibration=False,
+    def calculate_ir(self, getDict,
+                     calibrationTake=1,
+                     skipIndCalibration=False,
+                     skipChCalibration=False,
+                     skipEdgesFiltering=False,
                      skipSave=False):
         """
         Gets a dict of roomres or sourcerecalibration generated by the
@@ -661,10 +667,12 @@ class MeasurementData(object):
             if not isinstance(msdThng, MeasuredThing):
                 raise TypeError("'roomir.calc_ir' only works with " +
                                 "MeasuredThing objects.")
-            elif msdThng.kind not in ['roomres', 'sourcerecalibration']:
+            elif msdThng.kind not in ['roomres',
+                                      'sourcerecalibration',
+                                      'channelcalibration']:
                 print("-- Impulsive responses can only be calculated " + 
-                      "from a MeasuredThing of 'roomres' or " +
-                      "'sourcerecalibration' kind.")
+                      "from a MeasuredThing of 'roomres', " +
+                      "'sourcerecalibration' or 'channelcalibration' kind.")
                 continue
             
             # Getting the excitation signal
@@ -681,10 +689,109 @@ class MeasurementData(object):
 
             # Calculate the IRs
             IRs = []
+
+            if kind in ['channelcalibration']:
+                skipIndCalibration = True
+                skipChCalibration = True
+                print("- Skipping calibrations as it's a " +
+                        "channel calibration IR.")
+
             for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
                 IR = ImpulsiveResponse(excitation=excitationWGain,
                                        recording=msdThng.measuredSignals[avg])
+
+                # Apply calibrations for each channel
+                
+                for ch in range(msdThng.numChannels):
+                    inChCode = msdThng.inChannels.codes[ch]
+                    outChCode = msdThng.outChannel.codes[0]
+
+                    # Discounting input/output channel response
+                    if not skipChCalibration:
+                        print("-- Applying the channel calibration on" +
+                                " '{}' channel.".format(inChCode))
+                        # Get the channelcalibir signal
+                        chCalibThngs = [calib for calib in 
+                                        self.get('channelcalibir',
+                                                    inChCode,
+                                                    outChCode,
+                                                    skipMsgs=True).values()]
+                        if len(chCalibThngs) == 0:
+                            print("--- No channelcalibir found for input/" +
+                                    "output channels " +
+                                    "'{}/{}'. ".format(inChCode,outChCode) +
+                                    "Skipping channel calibration in this " +
+                                    "channel.")
+                        else:
+                            # Geting the bypass IR
+                            chCalibThng = chCalibThngs[calibrationTake-1]
+                            chCalibIR = chCalibThng.measuredSignals[
+                                            chCalibThng.averages//2]. \
+                                                systemSignal
+                            # Normalization
+                            # chCalibIR.plot_freq()
+                            
+                            # Normalize with the average spectrum magnitude
+                            # from freqMin to freqMax
+                            # startIdx = \
+                            #     np.where(IR.systemSignal.freqVector >
+                            #              self.MS.freqMin)[0][0]
+                            # endIdx = \
+                            #     np.where(IR.systemSignal.freqVector <
+                            #              self.MS.freqMax)[0][-1]
+                            # normalizeSlice = \
+                            #     chCalibIR._freqSignal[startIdx:endIdx]
+                            # chCalibIR.freqSignal = chCalibIR._freqSignal / \
+                            #     float(np.mean(np.abs(normalizeSlice)))
+
+                            # Normalize with 1000.00 [Hz] spectrum magnitude
+                            idx1k = \
+                                np.where(chCalibIR.freqVector>=1000)[0][0]
+                            chCalibIR.freqSignal = chCalibIR._freqSignal / \
+                                float(np.abs(chCalibIR.freqSignal[idx1k]))
+
+                            # Deconvolution 
+                            IR._systemSignal = IR.systemSignal / \
+                                                chCalibIR
+                            
+                            # Edges filtering
+                            if not skipEdgesFiltering:
+                                band = [self.MS.freqMin, self.MS.freqMax]
+
+                                filter = AntiAliasingFilter(order=4,
+                                                band=band,
+                                                samplingRate=
+                                                    self.MS.samplingRate)
+                                
+                                IR._systemSignal = filter. \
+                                    filter(IR._systemSignal)[0]
+                            # chCalibIR.plot_freq()
+                    else:
+                        print("-- Skipping the channel calibration on" +
+                                " '{}' channel.".format(inChCode))
+
+                    if not skipIndCalibration:
+                        print("-- Applying the input indirect calibration on" +
+                                " '{}' channel.".format(inChCode))
+                        # Applying input indirect calibration
+                        # Get the miccalibration signal
+                        calibThngs = [calib for calib in 
+                                        self.get('miccalibration', inChCode,
+                                                skipMsgs=True).values()]
+                        if len(calibThngs) == 0:
+                            print("--- No miccalibration found for channel " +
+                                    "'{}'. Skipping ".format(inChCode) +
+                                    "calibration in this channel.")
+                        else:
+                            calib = calibThngs[calibrationTake-1]. \
+                                measuredSignals[calibThngs[calibrationTake-1].
+                                    averages//2]
+                            IR.systemSignal.calib_pressure(ch, calib, 1, 1000)
+                    else:
+                        print("-- Skipping the input indirect calibration on" +
+                                " '{}' channel.".format(inChCode))
+
                 # Copying channel names and codes
                 for idx, chNum in \
                     enumerate(IR.systemSignal.channels.mapping):
@@ -693,25 +800,6 @@ class MeasurementData(object):
                     IR.systemSignal.channels[chNum].code = \
                         msdThng.inChannels.codes[idx]
 
-                # Apply calibration for each channel
-                if not skipCalibration:
-                    for ch in range(msdThng.numChannels):
-                        # Get the miccalibration signal
-                        chName = msdThng.inChannels.codes[ch]
-                        print("-- Applying the input calibration on " +
-                              "'{}' channel.".format(chName))
-                        calibThngs = [calib for calib in 
-                                      self.get('miccalibration', chName,
-                                               skipMsgs=True).values()]
-                        if len(calibThngs) == 0:
-                            print("--- No miccalibration found for channel " +
-                                  "'{}'. Skipping ".format(chName) +
-                                  "calibration in this channel.")
-                            continue
-                        calib = calibThngs[calibrationTake-1]. \
-                            measuredSignals[calibThngs[calibrationTake-1].
-                                averages//2]
-                        IR.systemSignal.calib_pressure(ch, calib, 1, 1000)
                 IRs.append(IR)
 
             # Construct the MeasuredThing
@@ -720,6 +808,8 @@ class MeasurementData(object):
                 newKind = 'roomir'
             elif kind == 'sourcerecalibration':
                 newKind = 'recalibir'
+            elif kind == 'channelcalibration':
+                newKind = 'channelcalibir'
             IRMsdThng = MeasuredThing(kind=newKind,
                                       arrayName=msdThng.arrayName,
                                       sourcePos=msdThng.sourcePos,
@@ -763,7 +853,7 @@ class MeasurementData(object):
             if not isinstance(msdThng, MeasuredThing):
                 raise TypeError("'roomir.calibrate_res' only works with " +
                                 "MeasuredThing objects.")
-            elif msdThng.kind not in ['roomres']:
+            elif msdThng.kind not in ['roomres', 'noisefloor']:
                 print("-- Calibrated room response can only be calculated " + 
                       "from a MeasuredThing of 'roomres' " +
                       "kind.")
@@ -800,15 +890,15 @@ class MeasurementData(object):
                 
                 for ch in range(msdThng.numChannels):
                     # Get the miccalibration signal
-                    chName = msdThng.inChannels.codes[ch]
+                    inChCode = msdThng.inChannels.codes[ch]
                     print("-- Applying the input calibration on " +
-                            "'{}' channel.".format(chName))
+                            "'{}' channel.".format(inChCode))
                     calibThngs = [calib for calib in 
-                                    self.get('miccalibration', chName,
+                                    self.get('miccalibration', inChCode,
                                             skipMsgs=True).values()]
                     if len(calibThngs) == 0:
                         print("--- No miccalibration found for channel " +
-                                "'{}'. Skipping ".format(chName) +
+                                "'{}'. Skipping ".format(inChCode) +
                                 "calibration in this channel.")
                         continue
                     calib = calibThngs[calibrationTake-1]. \
@@ -822,6 +912,8 @@ class MeasurementData(object):
             print('- Constructing the new MeasuredThing.')
             if kind == 'roomres':
                 newKind = 'calibrated-roomres'
+            if kind == 'noisefloor':
+                newKind = 'calibrated-noisefloor'
 
             CalibMsdThng = MeasuredThing(kind=newKind,
                                       arrayName=msdThng.arrayName,
@@ -898,7 +990,9 @@ class TakeMeasure(object):
                                              'individually as it\'s in ' +
                                              group + '\'s group.')
         # Look for groups activated when ms kind is a calibration
-        elif self.kind in ['sourcerecalibration', 'miccalibration']:
+        elif self.kind in ['sourcerecalibration',
+                           'miccalibration',
+                           'channelcalibration']:
             for code in self.inChSel:
                 if code in self.MS.inChannels.groups:
                     raise ValueError('Groups can\'t be calibrated. Channels ' +
@@ -916,7 +1010,9 @@ class TakeMeasure(object):
         self.inChannels.copy_groups(self.MS.inChannels)
         # Setting the outChannel for the current take
         self.outChannel = MeasurementChList(kind='out')
-        if self.kind in ['roomres', 'sourcerecalibration']:
+        if self.kind in ['roomres',
+                         'sourcerecalibration',
+                         'channelcalibration']:
             self.outChannel.append(self.MS.outChannels[self.outChSel])
 
     def __cfg_measurement_object(self):
@@ -974,6 +1070,21 @@ class TakeMeasure(object):
                                      outputAmplification=
                                         self.outputAmplification,
                                      comment='sourcerecalibration')
+        # For sourcerecalibration measurement kind
+        if self.kind == 'channelcalibration':
+            self.measurementObject = \
+                generate.measurement('playrec',
+                                     excitation=self.MS.
+                                     excitationSignals[self.excitation],
+                                     samplingRate=self.MS.samplingRate,
+                                     freqMin=self.MS.freqMin,
+                                     freqMax=self.MS.freqMax,
+                                     device=self.MS.device,
+                                     inChannels=self.inChannels.mapping,
+                                     outChannels=self.outChannel.mapping,
+                                     outputAmplification=
+                                        self.outputAmplification,
+                                     comment='channelcalibration')
 
     def run(self):
         if self.runCheck:
@@ -1123,7 +1234,6 @@ class TakeMeasure(object):
     @outChSel.setter
     def outChSel(self, newChSelection):
         if newChSelection is None and self.kind in ['miccalibration',
-                                                    'sourcerecalibration',
                                                     'noisefloor']:
             pass
         elif not isinstance(newChSelection, str):
@@ -1154,7 +1264,8 @@ class TakeMeasure(object):
     def sourcePos(self, newSource):
         if newSource is None and self.kind in ['noisefloor',
                                                'miccalibration',
-                                               'sourcerecalibration']:
+                                               'sourcerecalibration',
+                                               'channelcalibration']:
             pass
         elif not isinstance(newSource, str):
             raise TypeError('Source must be a string.')
@@ -1168,7 +1279,8 @@ class TakeMeasure(object):
     def receiversPos(self, newReceivers):
         if newReceivers is None and self.kind in ['noisefloor',
                                                   'sourcerecalibration',
-                                                  'miccalibration']:
+                                                  'miccalibration',
+                                                  'channelcalibration']:
             pass
         elif not isinstance(newReceivers, list):
             raise TypeError('Receivers must be a list of strings ' +
@@ -1261,10 +1373,14 @@ class MeasuredThing(object):
             str += self.sourcePos + '-'  # Source position info
         if self.kind in ['roomres', 'roomir', 'noisefloor']:
             str += self.receiverPos + '_'  # Receiver position info
-        if self.kind in ['roomres', 'roomir', 'sourcerecalibration', 'recalibir']:
+        if self.kind in ['roomres', 'roomir',
+                         'sourcerecalibration', 'recalibir',
+                         'channelcalibration', 'channelcalibir']:
             str += self.outChannel._channels[0].code + '-'  # outCh code info
         str += self.arrayName  # input Channel/group code info
-        if self.kind in ['roomres', 'roomir']:
+        if self.kind in ['roomres', 'roomir',
+                         'sourcerecalibration', 'recalibir',
+                         'channelcalibration', 'channelcalibir']:
             str += '_' + self.excitation  # Excitation signal code info
         return str
 

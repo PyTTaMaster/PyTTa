@@ -32,7 +32,8 @@ excitationSignals['varredura'] = pytta.generate.sweep(
         startMargin=0.1,
         stopMargin=1.5,
         method='logarithmic',
-        windowing='hann')
+        windowing='hann',
+        samplingRate=48000)
 # Carregando sinal de música
 excitationSignals['musica'] = pytta.read_wav(
         'audio/Piano Over the rainbow Mic2 SHORT_edited.wav')
@@ -47,7 +48,7 @@ MS, D = rmr.med_load('med-teste')
 # %% Cria novo setup de medição e inicializa objeto de dados, que gerencia o
 # MeasurementSetup e os dados da medição em disco
 MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
-                          samplingRate=44100,  # [Hz]
+                          samplingRate=48000,  # [Hz]
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
@@ -68,17 +69,14 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Dicionário com códigos e canais de saída associados
                           inChannels={'OE': (4, 'Orelha E'),
                                       'OD': (3, 'Orelha D'),
-                                      'Mic1': (1, 'Mic 1'),
+                                      'Mic1': (5, 'Mic 1'),
                                       'Mic2': (2, 'Mic 2'),
                                       'groups': {'HATS': (4, 3)}},
                           # Dicionário com códigos e canais de saída associados
-                          outChannels={'O1': (1, 'Dodecaedro 1'),
+                          outChannels={'O1': (3, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
-                                       'O3': (3, 'Sistema da sala')})
+                                       'O3': (4, 'Sistema da sala')})
 D = rmr.MeasurementData(MS)
-
-# %% Mostra status da instância de dados medidos
-# D.getStatus()
 
 # %% Cria nova tomada de medição
 takeMeasure = rmr.TakeMeasure(MS=MS,
@@ -102,7 +100,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # excitation='fala',
                               # excitation='musica',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O2',
+                              outChSel='O1',
                               # Ganho na saída
                               outputAmplification=-3, # [dB]
                               # Configuração sala-fonte-receptor
@@ -151,6 +149,23 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               outChSel='O2',
                               # Ganho na saída
                               outputAmplification=-6) # [dB]
+
+# %% Cria nova tomada de medição para calibração de canal
+takeMeasure = rmr.TakeMeasure(MS=MS,
+                              # Passa objeto de comunicação
+                              # com o LabJack U3 + EI1050 probe
+                              tempHumid=tempHumid,
+                              kind='channelcalibration',
+                              # Lista com códigos de canal individual ou
+                              # códigos de grupo
+                              inChSel=['Mic1'],
+                              # Escolha do sinal de excitacão
+                              # disponível no Setup de Medição
+                              excitation='varredura',
+                              # Código do canal de saída a ser utilizado.
+                              outChSel='O1',
+                              # Ganho na saída
+                              outputAmplification=-25) # [dB]
 # %% Inicia tomada de medição/aquisição de dados
 takeMeasure.run()
 
@@ -159,8 +174,9 @@ D.save_take(takeMeasure)
 
 # %% Carrega um dicionário com MeasuredThings de acordo com as tags fornecidas
 # e faz algum processamento
-a = D.get('roomres', 'Mic1')
-msdThing = a['roomres_S1-R1_O1-Mic1_varredura_1']
+a = D.get('channelcalibir', 'Mic1')
+# msdThing = a['roomres_S1-R1_O1-Mic1_varredura_1']
+msdThing = a['channelcalibir_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
 msdThing.measuredSignals[0].plot_freq()
 
@@ -176,11 +192,16 @@ for name, res in b.items():
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco (vide 
 # parâmetro skipSave)
 a = D.get('roomres', 'Mic1')
-b = D.calculate_ir(a, calibrationTake=1, skipCalibration=False, skipSave=False)
+b = D.calculate_ir(a,
+                   calibrationTake=1,
+                   skipIndCalibration=False,
+                   skipChCalibration=False,
+                   skipEdgesFiltering=True, # NOT WORKING PROPERLY!
+                   skipSave=False)
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
-        IR.measuredSignals[0].plot_freq()
+        prot = IR.measuredSignals[0].plot_freq()
 
 # %% Formas alternativas de carregar dados na memória
 # %% Carrega MS e todas as MeasuredThings

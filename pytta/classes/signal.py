@@ -421,25 +421,42 @@ class SignalObj(_base.PyTTaObj):
 
         xlim = (self.freqMin, self.freqMax)
         ax.set_xlim(xlim)
+        
         xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylimInf = np.min(np.abs(self.freqSignal) /
-                                    self.channels.dBRefList())
-        ylimSup = np.max(np.abs(self.freqSignal) /
-                                    self.channels.dBRefList())
+        # ylimInf = np.min(np.abs(self.freqSignal) /
+        #                             self.channels.dBRefList())
+        # ylimSup = np.max(np.abs(self.freqSignal) /
+        #                             self.channels.dBRefList())
 
-        if ylimInf == 0:
-            ylimInf = np.mean(np.abs(self.freqSignal) /
-                                     self.channels.dBRefList())*1.1
+        # if ylimInf == 0:
+        #     ylimInf = np.mean(np.abs(self.freqSignal) /
+        #                              self.channels.dBRefList())*1.1
         
-        ylim = (np.round(20*np.log10(ylimInf)) - 5,
-                np.round(20*np.log10(ylimSup)) + 5)
+        # ylim = (np.round(20*np.log10(ylimInf)) - 5,
+        #         np.round(20*np.log10(ylimSup)) + 5)
 
+        # ax.set_ylim(ylim)
+        
+
+        limData = 20*np.log10(np.abs(self.freqSignal) /
+                                     self.channels.dBRefList())
+        limData = [value for value in limData.flatten() if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+        
+        ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -601,38 +618,47 @@ class SignalObj(_base.PyTTaObj):
     def __truediv__(self, other):
         """
         Frequency domain division method
+
+        For deconvolution divide by a SignalObj.
+        For gain operation divide by a number.
+
         """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(np.zeros(self.timeSignal.shape),
-                           samplingRate=self.samplingRate,
-                           freqMin=self.freqMin, freqMax=self.freqMax)
-        result.channels = self.channels
-        if self.numChannels > 1:
-            if other.numChannels > 1:
-                if other.numChannels != self.numChannels:
-                    raise ValueError("Both signal-like objects must have the \
-                                     same number of channels.")
-                result_freqSignal = np.zeros(self.freqSignal.shape,
-                                             dtype=np.complex_)
-                for channel in range(other.numChannels):
-                    result_freqSignal[:, channel] = \
-                        self.freqSignal[:, channel] \
-                        / other.freqSignal[:, channel]
-                result.freqSignal = result_freqSignal
+        if type(other) == type(self):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=self.samplingRate,
+                            freqMin=self.freqMin, freqMax=self.freqMax)
+            result.channels = self.channels
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have the \
+                                        same number of channels.")
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(other.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            / other.freqSignal[:, channel]
+                    result.freqSignal = result_freqSignal
+                else:
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(self.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            / other.freqSignal[:, 0]
+                    result.freqSignal = result_freqSignal
             else:
-                result_freqSignal = np.zeros(self.freqSignal.shape,
-                                             dtype=np.complex_)
-                for channel in range(self.numChannels):
-                    result_freqSignal[:, channel] = \
-                        self.freqSignal[:, channel] \
-                        / other.freqSignal[:, 0]
-                result.freqSignal = result_freqSignal
+                result.freqSignal = self.freqSignal / other.freqSignal
+            result.channels = self.channels / other.channels
+        elif type(other) == float or type(other) == int:
+            self.timeSignal = self.timeSignal / other
+            result = self
         else:
-            result.freqSignal = self.freqSignal / other.freqSignal
-        result.channels = self.channels / other.channels
+            raise TypeError("A SignalObj can operate with other alike or a " +
+                            "number in case of a gain operation.")
         return result
 
     def __mul__(self, other):
