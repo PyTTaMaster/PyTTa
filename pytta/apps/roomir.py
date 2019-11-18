@@ -13,6 +13,7 @@ from pytta.functions import __h5_unpack as pyttah5unpck
 import pytta.h5utilities as _h5
 import time
 import numpy as np
+from scipy import interpolate
 import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
@@ -166,7 +167,9 @@ class MeasurementSetup(object):
                  freqMin,
                  freqMax,
                  inChannels,
+                 inCompensations,
                  outChannels,
+                 outCompensations,
                  averages,
                  pause4Avg,
                  noiseFloorTp,
@@ -185,7 +188,9 @@ class MeasurementSetup(object):
         self.freqMin = freqMin
         self.freqMax = freqMax
         self.inChannels = inChannels
+        self.inCompensations = inCompensations
         self.outChannels = outChannels
+        self.outCompensations = outCompensations
         self.path = getcwd()+'/'+self.name+'/'
         self.modified = False
         self.initing = False
@@ -226,6 +231,19 @@ class MeasurementSetup(object):
         h5group.attrs['inChannels'] = repr(self.inChannels)
         h5group.attrs['outChannels'] = repr(self.outChannels)
         # h5group.attrs['path'] = self.path
+
+        h5group.create_group('inCompensations')
+        for chCode, comp in self.inCompensations.items():
+            h5group.create_group('inCompensations/' + chCode)
+            h5group['inCompensations/' + chCode + '/freq'] = comp[0]
+            h5group['inCompensations/' + chCode + '/dBmag'] = comp[1]
+
+        h5group.create_group('outCompensations')
+        for chCode, comp in self.outCompensations.items():
+            h5group.create_group('outCompensations/' + chCode)
+            h5group['outCompensations/' + chCode + '/freq'] = comp[0]
+            h5group['outCompensations/' + chCode + '/dBmag'] = comp[1]
+
         h5group.create_group('excitationSignals')
         for name, excitationSignal in self.excitationSignals.items():
             excitationSignal.h5_save(h5group.create_group('excitationSignals' +
@@ -363,6 +381,34 @@ class MeasurementSetup(object):
                                                        code=chCode))
 
     @property
+    def inCompensations(self):
+        return self._inCompensations
+    
+    @inCompensations.setter
+    def inCompensations(self, newComps):
+        # if not self.initing:
+        #     raise PermissionError('After a measurement initialization its ' +
+        #                           'inCompensations can\'t be changed.')
+        if isinstance(newComps, dict):
+            for chCode, comp in newComps.items():
+                if chCode not in self.inChannels.codes:
+                    raise NameError("Channel code '{}' in ".format(chCode) +
+                                    "inCompensations isn't a valid input " +
+                                    "transducer.")
+                if not isinstance(comp, tuple):
+                    raise TypeError("inCompensations must be a dict with " +
+                            "channel codes as keys and a tuple containing " +
+                            "the compensation in dB and the frequency vector" +
+                            " as values. Empty dict for no compensation.")
+            self._inCompensations = newComps
+            self.modified = True
+        else:
+            raise TypeError("inCompensations must be a dict with channel " + 
+                            "codes as keys and a tuple containing the " +
+                            "compensation in dB and the frequency vector as " +
+                            "values. Empty dict for no compensation.")
+
+    @property
     def outChannels(self):
         return self._outChannels
 
@@ -379,6 +425,34 @@ class MeasurementSetup(object):
                 self._outChannels.append(ChannelObj(num=chContents[0],
                                                     name=chContents[1],
                                                     code=chCode))
+
+    @property
+    def outCompensations(self):
+        return self._outCompensations
+    
+    @outCompensations.setter
+    def outCompensations(self, newComps):
+        # if not self.initing:
+        #     raise PermissionError('After a measurement initialization its ' +
+        #                           'inCompensations can\'t be changed.')
+        if isinstance(newComps, dict):
+            for chCode, comp in newComps.items():
+                if chCode not in self.outChannels.codes:
+                    raise NameError("Channel code '{}' in ".format(chCode) +
+                                    "outCompensations isn't a valid output " +
+                                    "transducer.")
+                if not isinstance(comp, tuple):
+                    raise TypeError("outCompensations must be a dict with " +
+                            "channel codes as keys and a tuple containing " +
+                            "the compensation in dB and the frequency vector" +
+                            " as values. Empty dict for no compensation.")
+            self._outCompensations = newComps
+            self.modified = True
+        else:
+            raise TypeError("outCompensations must be a dict with channel " + 
+                            "codes as keys and a tuple containing the " +
+                            "compensation in dB and the frequency vector as " +
+                            "values. Empty dict for no compensation.")
 
     @property
     def path(self):
@@ -650,9 +724,11 @@ class MeasurementData(object):
 
     def calculate_ir(self, getDict,
                      calibrationTake=1,
-                     skipIndCalibration=False,
-                     skipChCalibration=False,
+                     skipInCompensation=False,
+                     skipOutCompensation=False,
                      skipEdgesFiltering=False,
+                     skipBypCalibration=False,
+                     skipIndCalibration=False,
                      skipSave=False):
         """
         Gets a dict of roomres or sourcerecalibration generated by the
@@ -692,24 +768,138 @@ class MeasurementData(object):
 
             if kind in ['channelcalibration']:
                 skipIndCalibration = True
-                skipChCalibration = True
+                skipBypCalibration = True
+                skipInCompensation = True
+                skipOutCompensation = True
                 print("- Skipping calibrations as it's a " +
                         "channel calibration IR.")
 
             for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
-                IR = ImpulsiveResponse(excitation=excitationWGain,
-                                       recording=msdThng.measuredSignals[avg])
 
-                # Apply calibrations for each channel
-                
-                for ch in range(msdThng.numChannels):
-                    inChCode = msdThng.inChannels.codes[ch]
+                recording = msdThng.measuredSignals[avg]
+
+                # Apply compensation for input transducer
+                for chIndex in range(msdThng.numChannels):
+                    inChCode = msdThng.inChannels.codes[chIndex]
+                    if not skipInCompensation:
+                        print("-- Applying compensation for the input " +
+                                "transducer '{}'.".format(inChCode))
+                        if inChCode not in self.MS.inCompensations:
+                            print("--- No compensation found for input " +
+                                    "channel " +
+                                    "'{}'. ".format(inChCode) +
+                                    "Skipping compensation on this " +
+                                    "channel.")
+                        else:
+                            roomResFreqVector = recording.freqVector
+                            roomResFreqSignal = recording.freqSignal[:,chIndex]
+                            roomResdBMag = \
+                                20*np.log10(np.abs(roomResFreqSignal))
+                            transSensFreq = \
+                                self.MS.inCompensations[inChCode][0]
+                            transSensdBMag = \
+                                self.MS.inCompensations[inChCode][1]
+                            interp_func = \
+                                interpolate.interp1d(transSensFreq,
+                                                     transSensdBMag,
+                                                     fill_value= \
+                                                        (transSensdBMag[0],
+                                                        transSensdBMag[-1]),
+                                                     bounds_error=False)
+                            interpTransSensdBMag = \
+                                interp_func(roomResFreqVector)
+                            correctedRoomResdBMag = \
+                                roomResdBMag - interpTransSensdBMag
+                            correctedRoomResFreqSignal = \
+                                10**(correctedRoomResdBMag/20)
+                            r = correctedRoomResFreqSignal
+                            teta = np.angle(roomResFreqSignal)
+                            correctedRoomResFreqSignal = \
+                                r*np.cos(teta) + r*np.sin(teta)*1j
+                            recording.freqSignal[:,chIndex] = \
+                                correctedRoomResFreqSignal
+                    else:
+                        print("-- Skipping input transducer compensation " +
+                              "on '{}' channel.".format(inChCode))
+
+                # Apply compensation for output transducer
+                outChCode = msdThng.outChannel.codes[0]
+                if not skipOutCompensation:
+                    print("-- Applying compensation for the output " +
+                            "transducer '{}'.".format(outChCode))
+                    if outChCode not in self.MS.outCompensations:
+                        print("--- No compensation found for output " +
+                                "channel " +
+                                "'{}'. ".format(outChCode) +
+                                "Skipping compensation on this " +
+                                "channel.")
+                    else:
+                        excitFreqVector = \
+                            excitationWGain.freqVector
+                        excitFreqSignal = \
+                            excitationWGain.freqSignal[:,0]
+                        excitdBMag = \
+                            20*np.log10(np.abs(excitFreqSignal))
+                        transSensFreq = \
+                            self.MS.outCompensations[outChCode][0]
+                        transSensdBMag = \
+                            self.MS.outCompensations[outChCode][1]
+                        interp_func = \
+                            interpolate.interp1d(transSensFreq,
+                                                 transSensdBMag,
+                                                 fill_value= \
+                                                    (transSensdBMag[0],
+                                                    transSensdBMag[-1]),
+                                                 bounds_error=False)
+                        interpTransSensdBMag = \
+                            interp_func(excitFreqVector)
+                        correctedExcitdBMag = \
+                            excitdBMag - interpTransSensdBMag
+                        correctedExcitFreqSignal = \
+                            10**(correctedExcitdBMag/20)
+                        r = correctedExcitFreqSignal
+                        teta = np.angle(excitFreqSignal)
+                        correctedExcitFreqSignal = \
+                            r*np.cos(teta) + r*np.sin(teta)*1j
+                        excitationWGain.freqSignal[:,0] = \
+                            correctedExcitFreqSignal
+                else:
+                    print("-- Skipping output transducer compensation " +
+                            "on '{}' channel.".format(outChCode))
+
+                # Applying edges filtering
+                if not skipEdgesFiltering:
+                    band = [self.MS.freqMin, self.MS.freqMax]
+                    filter = AntiAliasingFilter(order=6,
+                                    band=band,
+                                    samplingRate=
+                                        self.MS.samplingRate)
+                    filterOutput = filter. \
+                        filter(recording)
+
+                    newTimeSignal = np.zeros(recording.timeSignal.shape,
+                                             dtype=np.float32)
+
+                    for chIndex in range(msdThng.numChannels):
+                        inChCode = msdThng.inChannels.codes[chIndex]
+                        print("-- Applying edges filtering on" +
+                                " '{}' channel.".format(inChCode))
+                        newTimeSignal[:, chIndex] = \
+                            filterOutput[chIndex].timeSignal[:,0]
+                    
+                    recording.timeSignal = newTimeSignal
+
+                IR = ImpulsiveResponse(excitation=excitationWGain,
+                                       recording=recording)
+
+                # Applying bypass calibration to in/out channel
+                for chIndex in range(msdThng.numChannels):
+                    inChCode = msdThng.inChannels.codes[chIndex]
                     outChCode = msdThng.outChannel.codes[0]
 
-                    # Discounting input/output channel response
-                    if not skipChCalibration:
-                        print("-- Applying the channel calibration on" +
+                    if not skipBypCalibration:
+                        print("-- Applying the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the channelcalibir signal
                         chCalibThngs = [calib for calib in 
@@ -721,29 +911,14 @@ class MeasurementData(object):
                             print("--- No channelcalibir found for input/" +
                                     "output channels " +
                                     "'{}/{}'. ".format(inChCode,outChCode) +
-                                    "Skipping channel calibration in this " +
-                                    "channel.")
+                                    "Skipping channel calibration on this " +
+                                    "channels.")
                         else:
                             # Geting the bypass IR
                             chCalibThng = chCalibThngs[calibrationTake-1]
                             chCalibIR = chCalibThng.measuredSignals[
                                             chCalibThng.averages//2]. \
                                                 systemSignal
-                            # Normalization
-                            # chCalibIR.plot_freq()
-                            
-                            # Normalize with the average spectrum magnitude
-                            # from freqMin to freqMax
-                            # startIdx = \
-                            #     np.where(IR.systemSignal.freqVector >
-                            #              self.MS.freqMin)[0][0]
-                            # endIdx = \
-                            #     np.where(IR.systemSignal.freqVector <
-                            #              self.MS.freqMax)[0][-1]
-                            # normalizeSlice = \
-                            #     chCalibIR._freqSignal[startIdx:endIdx]
-                            # chCalibIR.freqSignal = chCalibIR._freqSignal / \
-                            #     float(np.mean(np.abs(normalizeSlice)))
 
                             # Normalize with 1000.00 [Hz] spectrum magnitude
                             idx1k = \
@@ -755,26 +930,19 @@ class MeasurementData(object):
                             IR._systemSignal = IR.systemSignal / \
                                                 chCalibIR
                             
-                            # Edges filtering
-                            if not skipEdgesFiltering:
-                                band = [self.MS.freqMin, self.MS.freqMax]
-
-                                filter = AntiAliasingFilter(order=4,
-                                                band=band,
-                                                samplingRate=
-                                                    self.MS.samplingRate)
-                                
-                                IR._systemSignal = filter. \
-                                    filter(IR._systemSignal)[0]
                             # chCalibIR.plot_freq()
                     else:
-                        print("-- Skipping the channel calibration on" +
+                        print("-- Skipping the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
+
+                # Applying input indirect calibration
+                for chIndex in range(msdThng.numChannels):
+                    inChCode = msdThng.inChannels.codes[chIndex]
+                    outChCode = msdThng.outChannel.codes[0]
 
                     if not skipIndCalibration:
                         print("-- Applying the input indirect calibration on" +
                                 " '{}' channel.".format(inChCode))
-                        # Applying input indirect calibration
                         # Get the miccalibration signal
                         calibThngs = [calib for calib in 
                                         self.get('miccalibration', inChCode,
@@ -787,10 +955,32 @@ class MeasurementData(object):
                             calib = calibThngs[calibrationTake-1]. \
                                 measuredSignals[calibThngs[calibrationTake-1].
                                     averages//2]
-                            IR.systemSignal.calib_pressure(ch, calib, 1, 1000)
+                            IR.systemSignal.calib_pressure(chIndex, calib, 1, 1000)
                     else:
                         print("-- Skipping the input indirect calibration on" +
                                 " '{}' channel.".format(inChCode))
+
+                # # Applying edges filtering
+                # if not skipEdgesFiltering:
+                #     band = [self.MS.freqMin, self.MS.freqMax]
+                #     filter = AntiAliasingFilter(order=4,
+                #                     band=band,
+                #                     samplingRate=
+                #                         self.MS.samplingRate)
+                #     filterOutput = filter. \
+                #         filter(IR._systemSignal)
+
+                #     newTimeSignal = np.zeros(IR.systemSignal.timeSignal.shape,
+                #                              dtype=np.float32)
+
+                #     for chIndex in range(msdThng.numChannels):
+                #         inChCode = msdThng.inChannels.codes[chIndex]
+                #         print("-- Applying edges filtering on" +
+                #                 " '{}' channel.".format(inChCode))
+                #         newTimeSignal[:, chIndex] = \
+                #             filterOutput[chIndex].timeSignal[:,0]
+                    
+                #     IR._systemSignal.timeSignal = newTimeSignal
 
                 # Copying channel names and codes
                 for idx, chNum in \
@@ -888,9 +1078,9 @@ class MeasurementData(object):
 
                 # Apply calibration for each channel
                 
-                for ch in range(msdThng.numChannels):
+                for chIndex in range(msdThng.numChannels):
                     # Get the miccalibration signal
-                    inChCode = msdThng.inChannels.codes[ch]
+                    inChCode = msdThng.inChannels.codes[chIndex]
                     print("-- Applying the input calibration on " +
                             "'{}' channel.".format(inChCode))
                     calibThngs = [calib for calib in 
@@ -904,7 +1094,7 @@ class MeasurementData(object):
                     calib = calibThngs[calibrationTake-1]. \
                         measuredSignals[calibThngs[calibrationTake-1].
                             averages//2]
-                    SigObj.calib_pressure(ch, calib, 1, 1000)
+                    SigObj.calib_pressure(chIndex, calib, 1, 1000)
 
                 SigObjs.append(SigObj)
 
@@ -1554,6 +1744,16 @@ def __h5_unpack(ObjGroup):
         excitationSignals = {}
         for sigName, excitationSignal in ObjGroup['excitationSignals'].items():
             excitationSignals[sigName] = __h5_unpack(excitationSignal)
+        inCompensations = {}
+        if 'inCompensations' in ObjGroup:
+            for chCode, group in ObjGroup['inCompensations'].items():
+                inCompensations[chCode] = (np.array(group['freq']),
+                                           np.array(group['dBmag']))
+        outCompensations = {}
+        if 'outCompensations' in ObjGroup:
+            for chCode, group in ObjGroup['outCompensations'].items():
+                outCompensations[chCode] = (np.array(group['freq']),
+                                            np.array(group['dBmag']))
         MS = MeasurementSetup(name,
                               samplingRate,
                               device,
@@ -1561,7 +1761,9 @@ def __h5_unpack(ObjGroup):
                               freqMin,
                               freqMax,
                               inChannels,
+                              inCompensations,
                               outChannels,
+                              outCompensations,
                               averages,
                               pause4Avg,
                               noiseFloorTp,

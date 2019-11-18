@@ -302,14 +302,15 @@ class SignalObj(_base.PyTTaObj):
                 mapping=outChannels, **kwargs)
         return
 
-    def plot_time(self, xlabel=None, ylabel=None):
+    def plot_time(self, xlabel=None, ylabel=None,
+                  ylim=None, xlim=None):
         """
         Time domain plotting method
         """
         if xlabel is None:
-            xlabel = 'Time in s'
+            xlabel = 'Time [s]'
         if ylabel is None:
-            ylabel = 'Amplitude in {}'
+            ylabel = 'Amplitude [{}]'
         firstCh = self.channels.mapping[0]
         ylabel = ylabel.format(self.channels[firstCh].unit)
         fig = plt.figure(figsize=(10, 5))
@@ -322,21 +323,35 @@ class SignalObj(_base.PyTTaObj):
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    self.timeSignal[:, chIndex]*self.channels[chNum].CF,
+                    self.timeSignal[:, chIndex],
                     label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.timeVector[0], self.timeVector[-1])
+        if xlim is None:
+            xlim = (self.timeVector[0], self.timeVector[-1])
         ax.set_xlim(xlim)
+        
         xticks = np.linspace(*xlim, 11).tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (1.05 * np.min(self.timeSignal*self.channels.CFlist()),
-                1.05 * np.max(self.timeSignal*self.channels.CFlist()))
+        limData = self.timeSignal
+        # limData = [value for value in limData.flatten() if not np.isinf(value)]
+        limData[np.isinf(limData)] = 0
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -345,16 +360,15 @@ class SignalObj(_base.PyTTaObj):
         fig.legend(loc='center right', fontsize=12)
         return fig
 
-    def plot_time_dB(self, xlabel=None, ylabel=None):
+    def plot_time_dB(self, xlabel=None, ylabel=None,
+                     ylim=None, xlim=None):
         """
         Time domain plotting method
         """
-        norm = self.timeSignal/np.max(np.abs(self.timeSignal), axis=0)
-        firstCh = self.channels.mapping[0]
         if xlabel is None:
-            xlabel = 'Time in s'
+            xlabel = 'Time [s]'
         if ylabel is None:
-            ylabel = 'Magnitude {}'.format(self.channels[firstCh].unit)
+            ylabel = 'Magnitude [dB]'
 
         fig = plt.figure(figsize=(10, 5))
 
@@ -366,20 +380,36 @@ class SignalObj(_base.PyTTaObj):
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    10*np.log10(norm[:, chIndex]**2),
+                    10*np.log10(self.timeSignal[:, chIndex]**2 /
+                                (self.channels[chNum].dBRef**2)),
                     label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.timeVector[0], self.timeVector[-1])
+        if xlim is None:
+            xlim = (self.timeVector[0], self.timeVector[-1])
         ax.set_xlim(xlim)
+
         xticks = np.linspace(*xlim, 11).tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (-100, 2)
+        limData = 10*np.log10(self.timeSignal**2/
+                              (np.array(self.channels.dBRefList())**2))
+        limData = [value for value in limData.flatten() if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -388,14 +418,15 @@ class SignalObj(_base.PyTTaObj):
         fig.legend(loc='center right', fontsize=12)
         return fig
 
-    def plot_freq(self, smooth=False, xlabel=None, ylabel=None):
+    def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
+                  ylim=None, xlim=None):
         """
         Frequency domain dB plotting method
         """
         if xlabel is None:
-            xlabel = 'Frequency in Hz'
+            xlabel = 'Frequency [Hz]'
         if ylabel is None:
-            ylabel = 'Magnitude'
+            ylabel = 'Magnitude [dB]'
 
         fig = plt.figure(figsize=(10, 5))
 
@@ -419,7 +450,9 @@ class SignalObj(_base.PyTTaObj):
             ax.semilogx(self.freqVector, dBSignal, label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.freqMin, self.freqMax)
+        if xlim is None:
+            xlim = (self.freqMin, self.freqMax)
+
         ax.set_xlim(xlim)
         
         xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
@@ -427,24 +460,14 @@ class SignalObj(_base.PyTTaObj):
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
-
-        # ylimInf = np.min(np.abs(self.freqSignal) /
-        #                             self.channels.dBRefList())
-        # ylimSup = np.max(np.abs(self.freqSignal) /
-        #                             self.channels.dBRefList())
-
-        # if ylimInf == 0:
-        #     ylimInf = np.mean(np.abs(self.freqSignal) /
-        #                              self.channels.dBRefList())*1.1
         
-        # ylim = (np.round(20*np.log10(ylimInf)) - 5,
-        #         np.round(20*np.log10(ylimSup)) + 5)
+        freqMinIdx = np.where(self.freqVector > self.freqMin)[0][0]
+        freqMaxIdx = np.where(self.freqVector < self.freqMax)[0][-1]
 
-        # ax.set_ylim(ylim)
-        
+        limData = \
+            20*np.log10(np.abs(self.freqSignal[freqMinIdx:freqMaxIdx, :]) /
+                        self.channels.dBRefList())
 
-        limData = 20*np.log10(np.abs(self.freqSignal) /
-                                     self.channels.dBRefList())
         limData = [value for value in limData.flatten() if not np.isinf(value)]
         margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
     
@@ -454,7 +477,8 @@ class SignalObj(_base.PyTTaObj):
         ylimSup = np.nanmax(limData)
         ylimSup += margin
         
-        ylim = (ylimInf, ylimSup)
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
 
         yticks = np.linspace(*ylim, 11).tolist()
@@ -641,6 +665,7 @@ class SignalObj(_base.PyTTaObj):
                         result_freqSignal[:, channel] = \
                             self.freqSignal[:, channel] \
                             / other.freqSignal[:, channel]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
                     result.freqSignal = result_freqSignal
                 else:
                     result_freqSignal = np.zeros(self.freqSignal.shape,
@@ -649,9 +674,12 @@ class SignalObj(_base.PyTTaObj):
                         result_freqSignal[:, channel] = \
                             self.freqSignal[:, channel] \
                             / other.freqSignal[:, 0]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
                     result.freqSignal = result_freqSignal
             else:
-                result.freqSignal = self.freqSignal / other.freqSignal
+                result_freqSignal = self.freqSignal / other.freqSignal
+                result_freqSignal[np.isinf(result_freqSignal)] = 0
+                result.freqSignal = result_freqSignal
             result.channels = self.channels / other.channels
         elif type(other) == float or type(other) == int:
             self.timeSignal = self.timeSignal / other
