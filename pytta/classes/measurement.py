@@ -628,13 +628,14 @@ class FRFMeasure(PlayRecMeasure):
                  #               'reference': 'south-west-floor corner',
                  #               'unit': 'm'},
                  method='linear', winType=None, winSize=None,
-                 overlap=None, *args, **kwargs):
+                 overlap=None, regularization=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.coordinates = coordinates
         self.method = method
         self.winType = winType
         self.winSize = winSize
         self.overlap = overlap
+        self.regularization = regularization
         return
 
     def __repr__(self):
@@ -717,7 +718,8 @@ class FRFMeasure(PlayRecMeasure):
                                              self.method,
                                              self.winType,
                                              self.winSize,
-                                             self.overlap)
+                                             self.overlap,
+                                             self.regularization)
         transferfunction.timeStamp = recording.timeStamp
         transferfunction.creation_name = creation_name
         return transferfunction

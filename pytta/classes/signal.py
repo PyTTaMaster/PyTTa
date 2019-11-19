@@ -693,36 +693,84 @@ class SignalObj(_base.PyTTaObj):
         """
         Gain apply method/FFT convolution (to do)
         """
-        if type(other) != float and type(other) != int:
-            raise TypeError("Gain must be float or int")
-        self.timeSignal *= other
-        return self
+        # if type(other) != float and type(other) != int:
+        #     raise TypeError("Gain must be float or int")
+        # self.timeSignal *= other
+        # return self
+
+        if type(other) == type(self):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=self.samplingRate,
+                            freqMin=self.freqMin, freqMax=self.freqMax)
+            result.channels = self.channels
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have the \
+                                        same number of channels.")
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(other.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            * other.freqSignal[:, channel]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
+                else:
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(self.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            * other.freqSignal[:, 0]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
+            else:
+                result_freqSignal = self.freqSignal * other.freqSignal
+                result_freqSignal[np.isinf(result_freqSignal)] = 0
+                result.freqSignal = result_freqSignal
+            result.channels = self.channels * other.channels
+        elif type(other) == float or type(other) == int:
+            self.timeSignal = self.timeSignal * other
+            result = self
+        else:
+            raise TypeError("A SignalObj can operate with other alike or a " +
+                            "number in case of a gain operation.")
+        return result
 
     def __add__(self, other):
         """
         Time domain addition method
         """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
         result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
-        if self.numChannels > 1:
-            if other.numChannels > 1:
-                if other.numChannels != self.numChannels:
-                    raise ValueError("Both signal-like objects must have\
-                                     the same number of channels.")
-                for channel in range(other.numChannels):
-                    result.timeSignal = self._timeSignal[:, channel]\
-                        + other._timeSignal[:, channel]
+        if isinstance(other, SignalObj):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have\
+                                        the same number of channels.")
+                    for channel in range(other.numChannels):
+                        result.timeSignal = self._timeSignal[:, channel]\
+                            + other._timeSignal[:, channel]
+                else:
+                    for channel in range(other.numChannels):
+                        result.timeSignal = self._timeSignal[:, channel]\
+                            + other._timeSignal
             else:
-                for channel in range(other.numChannels):
-                    result.timeSignal = self._timeSignal[:, channel]\
-                        + other._timeSignal
+                result.timeSignal = self._timeSignal + other._timeSignal
+        elif isinstance(other, (float, int)):
+            result.timeSignal = self._timeSignal + other
         else:
-            result.timeSignal = self._timeSignal + other._timeSignal
+            raise TypeError("A SignalObj can only operate with other alike, " +
+                            "int, or float.")
+
         result.freqMin, result.freqMax = (self.freqMin, self.freqMax)
+        result._channels = self.channels
         return result
 
     def __sub__(self, other):
@@ -899,7 +947,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
     def __init__(self, excitation=None, recording=None,
                  method='linear', winType=None, winSize=None, overlap=None,
-                 ir=None, *args, **kwargs):
+                 regularization=True, ir=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if excitation is None or recording is None:
             if ir is None:
@@ -925,7 +973,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                        method=method,
                                                        winType=winType,
                                                        winSize=winSize,
-                                                       overlap=overlap)
+                                                       overlap=overlap,
+                                                       regularization=
+                                                        regularization)
         return
 
     def __repr__(self):
@@ -1010,7 +1060,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
         return out
 
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
-                         winType=None, winSize=None, overlap=None):
+                         winType=None, winSize=None, overlap=None,
+                         regularization=False):
         if type(inputSignal) is not type(outputSignal):
             raise TypeError("Only signal-like objects can become an \
                             Impulsive Response.")
@@ -1018,7 +1069,34 @@ class ImpulsiveResponse(_base.PyTTaObj):
             raise ValueError("Both signal-like objects must have the same\
                              sampling rate.")
         if method == 'linear':
-            result = outputSignal / inputSignal
+            if regularization:
+                data = inputSignal.freqSignal
+                freqVector = inputSignal.freqVector
+                b = data * 0 + 10**(-200/20) # inside signal freq range
+                a = data * 0 + 1 # outinside signal freq range
+                minFreq = np.max([inputSignal.freqMin, outputSignal.freqMin])
+                maxFreq = np.min([inputSignal.freqMax, outputSignal.freqMax])
+                # Calculate epsilon
+                eps = self._crossfade_spectruns(a, b,
+                                               [minFreq/np.sqrt(2),
+                                                minFreq],
+                                                freqVector)
+                if maxFreq < np.min([maxFreq*np.sqrt(2),
+                                    inputSignal.samplingRate/2]):
+                    eps = self._crossfade_spectruns(eps, a,
+                                                    [maxFreq,
+                                                    maxFreq*np.sqrt(2)],
+                                                    freqVector)
+                eps = \
+                    eps \
+                        * float(np.max(np.abs(outputSignal.freqSignal)))**2 \
+                            * 1/2
+                C = np.conj(data) / \
+                    (np.conj(data)*data + eps)
+                C = SignalObj(C,'freq',inputSignal.samplingRate)
+                result = outputSignal * C
+            else:
+                result = outputSignal / inputSignal
 
         elif method == 'H1':
             if winType is None:
@@ -1163,6 +1241,39 @@ class ImpulsiveResponse(_base.PyTTaObj):
         result.freqMax = outputSignal.freqMax
         result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()
+
+    def _crossfade_spectruns(self, a, b, freqLims, freqVector):
+        f0 = freqLims[0]
+        f1 = freqLims[1]
+        f0idx = np.where(freqVector >= f0)[0][0]
+        f1idx = np.where(freqVector <= f1)[0][-1]
+        totalSamples = a.shape[0]
+        xsamples = f1idx - f0idx
+        win = ss.hanning(2*xsamples)
+
+        rightWin = win[xsamples-1:-1]
+        fullRightWin = np.concatenate((np.ones(f0idx),
+                                       rightWin,
+                                       np.zeros(totalSamples-len(rightWin)-f0idx)))
+
+        leftWin = win[0:xsamples]
+        fullLeftWin = np.concatenate((np.zeros(f0idx),
+                                       leftWin,
+                                       np.ones(totalSamples-len(leftWin)-f0idx)))
+
+        aFreqSignal = np.zeros(a.shape, dtype=np.complex_)
+        bFreqSignal = np.zeros(b.shape, dtype=np.complex_)
+        
+        for chIndex in range(a.shape[1]):
+            aFreqSignal[:,chIndex] = a[:,chIndex] * fullRightWin
+            bFreqSignal[:,chIndex] = b[:,chIndex] * fullLeftWin
+        
+        a = aFreqSignal
+        b = bFreqSignal
+
+        result = a + b
+
+        return result
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):
