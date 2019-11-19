@@ -726,8 +726,8 @@ class MeasurementData(object):
                      calibrationTake=1,
                      skipInCompensation=False,
                      skipOutCompensation=False,
-                     skipEdgesFiltering=False,
                      skipBypCalibration=False,
+                     skipRegularization=False,
                      skipIndCalibration=False,
                      skipSave=False):
         """
@@ -780,9 +780,11 @@ class MeasurementData(object):
                 recording = msdThng.measuredSignals[avg]
 
                 # Apply compensation for input transducer
-                for chIndex in range(msdThng.numChannels):
-                    inChCode = msdThng.inChannels.codes[chIndex]
-                    if not skipInCompensation:
+                if not skipInCompensation:
+                    newFreqSignal = np.zeros(recording.freqSignal.shape,
+                                            dtype=np.complex64)
+                    for chIndex in range(msdThng.numChannels):
+                        inChCode = msdThng.inChannels.codes[chIndex]
                         print("-- Applying compensation for the input " +
                                 "transducer '{}'.".format(inChCode))
                         if inChCode not in self.MS.inCompensations:
@@ -817,15 +819,15 @@ class MeasurementData(object):
                             teta = np.angle(roomResFreqSignal)
                             correctedRoomResFreqSignal = \
                                 r*np.cos(teta) + r*np.sin(teta)*1j
-                            recording.freqSignal[:,chIndex] = \
+                            newFreqSignal[:,chIndex] = \
                                 correctedRoomResFreqSignal
-                    else:
-                        print("-- Skipping input transducer compensation " +
-                              "on '{}' channel.".format(inChCode))
+                    recording.freqSignal = newFreqSignal
+                else:
+                    print("-- Skipping input transducer compensation.")
 
                 # Apply compensation for output transducer
-                outChCode = msdThng.outChannel.codes[0]
                 if not skipOutCompensation:
+                    outChCode = msdThng.outChannel.codes[0]
                     print("-- Applying compensation for the output " +
                             "transducer '{}'.".format(outChCode))
                     if outChCode not in self.MS.outCompensations:
@@ -862,43 +864,29 @@ class MeasurementData(object):
                         teta = np.angle(excitFreqSignal)
                         correctedExcitFreqSignal = \
                             r*np.cos(teta) + r*np.sin(teta)*1j
-                        excitationWGain.freqSignal[:,0] = \
+                        excitationWGain.freqSignal = \
                             correctedExcitFreqSignal
                 else:
-                    print("-- Skipping output transducer compensation " +
-                            "on '{}' channel.".format(outChCode))
+                    print("-- Skipping output transducer compensation.")
 
-                # Applying edges filtering
-                if not skipEdgesFiltering:
-                    band = [self.MS.freqMin, self.MS.freqMax]
-                    filter = AntiAliasingFilter(order=6,
-                                    band=band,
-                                    samplingRate=
-                                        self.MS.samplingRate)
-                    filterOutput = filter. \
-                        filter(recording)
-
-                    newTimeSignal = np.zeros(recording.timeSignal.shape,
-                                             dtype=np.float32)
-
-                    for chIndex in range(msdThng.numChannels):
-                        inChCode = msdThng.inChannels.codes[chIndex]
-                        print("-- Applying edges filtering on" +
-                                " '{}' channel.".format(inChCode))
-                        newTimeSignal[:, chIndex] = \
-                            filterOutput[chIndex].timeSignal[:,0]
-                    
-                    recording.timeSignal = newTimeSignal
+                if skipRegularization:
+                    regularization = False
+                    print("-- Skipping Kirkeby IR regularization.")
+                else:
+                    regularization = True
 
                 IR = ImpulsiveResponse(excitation=excitationWGain,
-                                       recording=recording)
+                                       recording=recording,
+                                       regularization=regularization)
 
                 # Applying bypass calibration to in/out channel
-                for chIndex in range(msdThng.numChannels):
-                    inChCode = msdThng.inChannels.codes[chIndex]
-                    outChCode = msdThng.outChannel.codes[0]
-
-                    if not skipBypCalibration:
+                if not skipBypCalibration:
+                    newFreqSignal = np.zeros(IR.systemSignal.freqSignal.shape,
+                                            dtype=np.complex64)
+                    for chIndex in range(msdThng.numChannels):
+                        inChCode = msdThng.inChannels.codes[chIndex]
+                        outChCode = msdThng.outChannel.codes[0]
+                        chSignal = IR.systemSignal.freqSignal[:, chIndex]
                         print("-- Applying the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the channelcalibir signal
@@ -927,13 +915,13 @@ class MeasurementData(object):
                                 float(np.abs(chCalibIR.freqSignal[idx1k]))
 
                             # Deconvolution 
-                            IR._systemSignal = IR.systemSignal / \
-                                                chCalibIR
+                            newFreqSignal = \
+                                chSignal / chCalibIR.freqSignal[:,0]
                             
                             # chCalibIR.plot_freq()
-                    else:
-                        print("-- Skipping the bypass calibration on" +
-                                " '{}' channel.".format(inChCode))
+                    IR.systemSignal.freqSignal = newFreqSignal
+                else:
+                    print("-- Skipping the bypass calibration.")
 
                 # Applying input indirect calibration
                 for chIndex in range(msdThng.numChannels):
@@ -959,28 +947,6 @@ class MeasurementData(object):
                     else:
                         print("-- Skipping the input indirect calibration on" +
                                 " '{}' channel.".format(inChCode))
-
-                # # Applying edges filtering
-                # if not skipEdgesFiltering:
-                #     band = [self.MS.freqMin, self.MS.freqMax]
-                #     filter = AntiAliasingFilter(order=4,
-                #                     band=band,
-                #                     samplingRate=
-                #                         self.MS.samplingRate)
-                #     filterOutput = filter. \
-                #         filter(IR._systemSignal)
-
-                #     newTimeSignal = np.zeros(IR.systemSignal.timeSignal.shape,
-                #                              dtype=np.float32)
-
-                #     for chIndex in range(msdThng.numChannels):
-                #         inChCode = msdThng.inChannels.codes[chIndex]
-                #         print("-- Applying edges filtering on" +
-                #                 " '{}' channel.".format(inChCode))
-                #         newTimeSignal[:, chIndex] = \
-                #             filterOutput[chIndex].timeSignal[:,0]
-                    
-                #     IR._systemSignal.timeSignal = newTimeSignal
 
                 # Copying channel names and codes
                 for idx, chNum in \

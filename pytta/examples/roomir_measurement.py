@@ -218,16 +218,18 @@ for name, res in b.items():
 a = D.get('roomres', 'Mic1')
 b = D.calculate_ir(a,
                    calibrationTake=1,
-                   skipInCompensation=False, # Ok
-                   skipOutCompensation=False, # Ok
-                   skipEdgesFiltering=False, # Ok, mas não dando conta do ruído fora da banda de análise
-                   skipBypCalibration=False, # Introduzindo muita energia em altas
+                   skipInCompensation=True, # Ok
+                   skipOutCompensation=True, # Ok
+                   skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
+                   skipRegularization=False, # Ok
                    skipSave=False)
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
-        prot = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,109])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,109])
+        # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])
+        # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.5])
 
 # %% Formas alternativas de carregar dados na memória
 
