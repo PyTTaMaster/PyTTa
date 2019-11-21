@@ -735,7 +735,8 @@ class MeasurementData(object):
         MeasurementData.get() method and turn its items into correspondents
         MeasuredThings with the processed impulsive response.
         """
-        
+        self.__h5_update_MS()
+        self.__h5_update_links()
         IRMsdThngs = {}
         for msdThngName, msdThng in getDict.items():
             print("Calculating impulsive " +
@@ -771,6 +772,7 @@ class MeasurementData(object):
                 skipBypCalibration = True
                 skipInCompensation = True
                 skipOutCompensation = True
+                skipRegularization = True
                 print("- Skipping calibrations as it's a " +
                         "channel calibration IR.")
 
@@ -886,7 +888,8 @@ class MeasurementData(object):
                     for chIndex in range(msdThng.numChannels):
                         inChCode = msdThng.inChannels.codes[chIndex]
                         outChCode = msdThng.outChannel.codes[0]
-                        chSignal = IR.systemSignal.freqSignal[:, chIndex]
+                        # chSignal = IR.systemSignal.freqSignal[:, chIndex]
+                        chSignal = IR.systemSignal
                         print("-- Applying the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the channelcalibir signal
@@ -915,8 +918,12 @@ class MeasurementData(object):
                                 float(np.abs(chCalibIR.freqSignal[idx1k]))
 
                             # Deconvolution 
-                            newFreqSignal = \
-                                chSignal / chCalibIR.freqSignal[:,0]
+                            newIR = \
+                                ImpulsiveResponse(recording=chSignal,
+                                                  excitation=chCalibIR,
+                                                  regularization=
+                                                   False)
+                            newFreqSignal = newIR.systemSignal.freqSignal
                             
                             # chCalibIR.plot_freq()
                     IR.systemSignal.freqSignal = newFreqSignal
@@ -1015,15 +1022,6 @@ class MeasurementData(object):
                       "kind.")
                 continue
             kind = msdThng.kind
-            # origExcitationTimeSig = \
-            #     cp.deepcopy(self.MS.excitationSignals[msdThng.excitation].
-            #         timeSignal)
-            # origExctSamplingRate = \
-            #     self.MS.excitationSignals[msdThng.excitation].samplingRate
-            # timeSigWGain = origExcitationTimeSig*msdThng.outputLinearGain
-            # excitationWGain = SignalObj(signalArray=timeSigWGain,
-            #                             domain='time',
-            #                             samplingRate=origExctSamplingRate)
 
             # Calibrate the SignalObjs
             SigObjs = []

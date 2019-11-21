@@ -691,13 +691,8 @@ class SignalObj(_base.PyTTaObj):
 
     def __mul__(self, other):
         """
-        Gain apply method/FFT convolution (to do)
+        Gain apply method/FFT convolution
         """
-        # if type(other) != float and type(other) != int:
-        #     raise TypeError("Gain must be float or int")
-        # self.timeSignal *= other
-        # return self
-
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")

@@ -12,6 +12,7 @@ import os
 from pytta.classes import lju3ei1050 # Comunicação c/ o LabJack U3 + EI1050
 import numpy as np
 import scipy.io as io
+import matplotlib.pyplot as plt
 
 # %% Muda o current working directory do Python para a pasta onde este script
 # se encontra
@@ -51,7 +52,7 @@ excitationSignals['fala'] = pytta.read_wav(
 loadtxt = np.loadtxt(fname='14900_no_header.txt')
 mSensFreq = loadtxt[:,0]
 mSensdBMag = loadtxt[:,1]
-
+# plt.semilogx(mSensFreq, mSensdBMag)
 
 # %% Carrega resposta da fonte para compensação na cadeia de saida
 matLoad = io.loadmat('hcorrDodecCTISM2m_Brum.mat')
@@ -87,19 +88,19 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Dicionário com códigos e canais de saída associados
                           inChannels={'OE': (4, 'Orelha E'),
                                       'OD': (3, 'Orelha D'),
-                                      'Mic1': (5, 'Mic 1'),
+                                      'Mic1': (1, 'Mic 1'),
                                       'Mic2': (2, 'Mic 2'),
                                       'groups': {'HATS': (4, 3)}},
                           # Dicionário com códigos dos canais e compensações
                           # associadas à cadeia de entrada
                           inCompensations={'Mic1': (mSensFreq, mSensdBMag)},
                           # Dicionário com códigos e canais de saída associados
-                          outChannels={'O1': (3, 'Dodecaedro 1'),
+                          outChannels={'O1': (1, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
                                        'O3': (4, 'Sistema da sala')},
                           # Dicionário com códigos dos canais e compensações
                           # associadas à cadeia de saída
-                          outCompensations={'O1': (sSensFreq, sSensdBMag)})
+                          outCompensations={'O2': (sSensFreq, sSensdBMag)})
                         #   outCompensations={})
 D = rmr.MeasurementData(MS)
 
@@ -125,9 +126,9 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # excitation='fala',
                               # excitation='musica',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O1',
+                              outChSel='O2',
                               # Ganho na saída
-                              outputAmplification=-20, # [dB]
+                              outputAmplification=-3, # [dB]
                               # Configuração sala-fonte-receptor
                               sourcePos='S1')
 
@@ -188,7 +189,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # disponível no Setup de Medição
                               excitation='varredura',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O1',
+                              outChSel='O2',
                               # Ganho na saída
                               outputAmplification=-5) # [dB]
 # %% Inicia tomada de medição/aquisição de dados
@@ -218,8 +219,8 @@ for name, res in b.items():
 a = D.get('roomres', 'Mic1')
 b = D.calculate_ir(a,
                    calibrationTake=1,
-                   skipInCompensation=True, # Ok
-                   skipOutCompensation=True, # Ok
+                   skipInCompensation=False, # Ok
+                   skipOutCompensation=False, # Ok
                    skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
@@ -227,9 +228,11 @@ b = D.calculate_ir(a,
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,109])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
+        # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
+        # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
         # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])
-        # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.5])
+        prot2 = IR.measuredSignals[0].plot_time(xlim=None)
 
 # %% Formas alternativas de carregar dados na memória
 
