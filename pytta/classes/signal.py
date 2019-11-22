@@ -305,14 +305,15 @@ class SignalObj(_base.PyTTaObj):
                 mapping=outChannels, **kwargs)
         return
 
-    def plot_time(self, xlabel=None, ylabel=None):
+    def plot_time(self, xlabel=None, ylabel=None,
+                  ylim=None, xlim=None):
         """
         Time domain plotting method
         """
         if xlabel is None:
-            xlabel = 'Time in s'
+            xlabel = 'Time [s]'
         if ylabel is None:
-            ylabel = 'Amplitude in {}'
+            ylabel = 'Amplitude [{}]'
         firstCh = self.channels.mapping[0]
         ylabel = ylabel.format(self.channels[firstCh].unit)
         fig = plt.figure(figsize=(10, 5))
@@ -325,21 +326,35 @@ class SignalObj(_base.PyTTaObj):
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    self.timeSignal[:, chIndex]*self.channels[chNum].CF,
+                    self.timeSignal[:, chIndex],
                     label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.timeVector[0], self.timeVector[-1])
+        if xlim is None:
+            xlim = (self.timeVector[0], self.timeVector[-1])
         ax.set_xlim(xlim)
+        
         xticks = np.linspace(*xlim, 11).tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (1.05 * np.min(self.timeSignal*self.channels.CFlist()),
-                1.05 * np.max(self.timeSignal*self.channels.CFlist()))
+        limData = self.timeSignal
+        # limData = [value for value in limData.flatten() if not np.isinf(value)]
+        limData[np.isinf(limData)] = 0
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -348,16 +363,15 @@ class SignalObj(_base.PyTTaObj):
         fig.legend(loc='center right', fontsize=12)
         return fig
 
-    def plot_time_dB(self, xlabel=None, ylabel=None):
+    def plot_time_dB(self, xlabel=None, ylabel=None,
+                     ylim=None, xlim=None):
         """
         Time domain plotting method
         """
-        norm = self.timeSignal/np.max(np.abs(self.timeSignal), axis=0)
-        firstCh = self.channels.mapping[0]
         if xlabel is None:
-            xlabel = 'Time in s'
+            xlabel = 'Time [s]'
         if ylabel is None:
-            ylabel = 'Magnitude {}'.format(self.channels[firstCh].unit)
+            ylabel = 'Magnitude [dB]'
 
         fig = plt.figure(figsize=(10, 5))
 
@@ -369,20 +383,36 @@ class SignalObj(_base.PyTTaObj):
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    10*np.log10(norm[:, chIndex]**2),
+                    10*np.log10(self.timeSignal[:, chIndex]**2 /
+                                (self.channels[chNum].dBRef**2)),
                     label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.timeVector[0], self.timeVector[-1])
+        if xlim is None:
+            xlim = (self.timeVector[0], self.timeVector[-1])
         ax.set_xlim(xlim)
+
         xticks = np.linspace(*xlim, 11).tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
                            fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
 
-        ylim = (-100, 2)
+        limData = 10*np.log10(self.timeSignal**2/
+                              (np.array(self.channels.dBRefList())**2))
+        limData = [value for value in limData.flatten() if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -391,14 +421,15 @@ class SignalObj(_base.PyTTaObj):
         fig.legend(loc='center right', fontsize=12)
         return fig
 
-    def plot_freq(self, smooth=False, xlabel=None, ylabel=None):
+    def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
+                  ylim=None, xlim=None):
         """
         Frequency domain dB plotting method
         """
         if xlabel is None:
-            xlabel = 'Frequency in Hz'
+            xlabel = 'Frequency [Hz]'
         if ylabel is None:
-            ylabel = 'Magnitude'
+            ylabel = 'Magnitude [dB]'
 
         fig = plt.figure(figsize=(10, 5))
 
@@ -422,27 +453,37 @@ class SignalObj(_base.PyTTaObj):
             ax.semilogx(self.freqVector, dBSignal, label=label)
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-        xlim = (self.freqMin, self.freqMax)
+        if xlim is None:
+            xlim = (self.freqMin, self.freqMax)
+
         ax.set_xlim(xlim)
+        
         xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
         ax.set_xticks(xticks)
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
         ax.set_xlabel(xlabel, fontsize=20)
-
-        ylimInf = np.min(np.abs(self.freqSignal) /
-                                    self.channels.dBRefList())
-        ylimSup = np.max(np.abs(self.freqSignal) /
-                                    self.channels.dBRefList())
-
-        if ylimInf == 0:
-            ylimInf = np.mean(np.abs(self.freqSignal) /
-                                     self.channels.dBRefList())*1.1
         
-        ylim = (np.round(20*np.log10(ylimInf)) - 5,
-                np.round(20*np.log10(ylimSup)) + 5)
+        freqMinIdx = np.where(self.freqVector > self.freqMin)[0][0]
+        freqMaxIdx = np.where(self.freqVector < self.freqMax)[0][-1]
 
+        limData = \
+            20*np.log10(np.abs(self.freqSignal[freqMinIdx:freqMaxIdx, :]) /
+                        self.channels.dBRefList())
+
+        limData = [value for value in limData.flatten() if not np.isinf(value)]
+        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+    
+        ylimInf = np.nanmin(limData)
+        ylimInf -= margin
+        
+        ylimSup = np.nanmax(limData)
+        ylimSup += margin
+        
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
+
         yticks = np.linspace(*ylim, 11).tolist()
         ax.set_yticks(yticks)
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
@@ -619,74 +660,130 @@ class SignalObj(_base.PyTTaObj):
     def __truediv__(self, other):
         """
         Frequency domain division method
+
+        For deconvolution divide by a SignalObj.
+        For gain operation divide by a number.
+
         """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(np.zeros(self.timeSignal.shape),
-                           samplingRate=self.samplingRate,
-                           freqMin=self.freqMin, freqMax=self.freqMax)
-        result.channels = self.channels
-        if self.numChannels > 1:
-            if other.numChannels > 1:
-                if other.numChannels != self.numChannels:
-                    raise ValueError("Both signal-like objects must have the \
-                                     same number of channels.")
-                result_freqSignal = np.zeros(self.freqSignal.shape,
-                                             dtype=np.complex_)
-                for channel in range(other.numChannels):
-                    result_freqSignal[:, channel] = \
-                        self.freqSignal[:, channel] \
-                        / other.freqSignal[:, channel]
-                result.freqSignal = result_freqSignal
+        if type(other) == type(self):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=self.samplingRate,
+                            freqMin=self.freqMin, freqMax=self.freqMax)
+            result.channels = self.channels
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have the \
+                                        same number of channels.")
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(other.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            / other.freqSignal[:, channel]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
+                else:
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(self.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            / other.freqSignal[:, 0]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
             else:
-                result_freqSignal = np.zeros(self.freqSignal.shape,
-                                             dtype=np.complex_)
-                for channel in range(self.numChannels):
-                    result_freqSignal[:, channel] = \
-                        self.freqSignal[:, channel] \
-                        / other.freqSignal[:, 0]
+                result_freqSignal = self.freqSignal / other.freqSignal
+                result_freqSignal[np.isinf(result_freqSignal)] = 0
                 result.freqSignal = result_freqSignal
+            result.channels = self.channels / other.channels
+        elif type(other) == float or type(other) == int:
+            self.timeSignal = self.timeSignal / other
+            result = self
         else:
-            result.freqSignal = self.freqSignal / other.freqSignal
-        result.channels = self.channels / other.channels
+            raise TypeError("A SignalObj can operate with other alike or a " +
+                            "number in case of a gain operation.")
         return result
 
     def __mul__(self, other):
         """
-        Gain apply method/FFT convolution (to do)
+        Gain apply method/FFT convolution
         """
-        if type(other) != float and type(other) != int:
-            raise TypeError("Gain must be float or int")
-        self.timeSignal *= other
-        return self
+        if type(other) == type(self):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=self.samplingRate,
+                            freqMin=self.freqMin, freqMax=self.freqMax)
+            result.channels = self.channels
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have the \
+                                        same number of channels.")
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(other.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            * other.freqSignal[:, channel]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
+                else:
+                    result_freqSignal = np.zeros(self.freqSignal.shape,
+                                                dtype=np.complex_)
+                    for channel in range(self.numChannels):
+                        result_freqSignal[:, channel] = \
+                            self.freqSignal[:, channel] \
+                            * other.freqSignal[:, 0]
+                    result_freqSignal[np.isinf(result_freqSignal)] = 0
+                    result.freqSignal = result_freqSignal
+            else:
+                result_freqSignal = self.freqSignal * other.freqSignal
+                result_freqSignal[np.isinf(result_freqSignal)] = 0
+                result.freqSignal = result_freqSignal
+            result.channels = self.channels * other.channels
+        elif type(other) == float or type(other) == int:
+            self.timeSignal = self.timeSignal * other
+            result = self
+        else:
+            raise TypeError("A SignalObj can operate with other alike or a " +
+                            "number in case of a gain operation.")
+        return result
 
     def __add__(self, other):
         """
         Time domain addition method
         """
-        if type(other) != type(self):
-            raise TypeError("A SignalObj can only operate with other alike.")
-        if other.samplingRate != self.samplingRate:
-            raise TypeError("Both SignalObj must have the same sampling rate.")
         result = SignalObj(samplingRate=self.samplingRate)
         result.domain = 'time'
-        if self.numChannels > 1:
-            if other.numChannels > 1:
-                if other.numChannels != self.numChannels:
-                    raise ValueError("Both signal-like objects must have\
-                                     the same number of channels.")
-                for channel in range(other.numChannels):
-                    result.timeSignal = self._timeSignal[:, channel]\
-                        + other._timeSignal[:, channel]
+        if isinstance(other, SignalObj):
+            if other.samplingRate != self.samplingRate:
+                raise TypeError("Both SignalObj must have the same sampling rate.")
+            if self.numChannels > 1:
+                if other.numChannels > 1:
+                    if other.numChannels != self.numChannels:
+                        raise ValueError("Both signal-like objects must have\
+                                        the same number of channels.")
+                    for channel in range(other.numChannels):
+                        result.timeSignal = self._timeSignal[:, channel]\
+                            + other._timeSignal[:, channel]
+                else:
+                    for channel in range(other.numChannels):
+                        result.timeSignal = self._timeSignal[:, channel]\
+                            + other._timeSignal
             else:
-                for channel in range(other.numChannels):
-                    result.timeSignal = self._timeSignal[:, channel]\
-                        + other._timeSignal
+                result.timeSignal = self._timeSignal + other._timeSignal
+        elif isinstance(other, (float, int)):
+            result.timeSignal = self._timeSignal + other
         else:
-            result.timeSignal = self._timeSignal + other._timeSignal
+            raise TypeError("A SignalObj can only operate with other alike, " +
+                            "int, or float.")
+
         result.freqMin, result.freqMax = (self.freqMin, self.freqMax)
+        result._channels = self.channels
         return result
 
     def __sub__(self, other):
@@ -863,7 +960,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
     def __init__(self, excitation=None, recording=None,
                  method='linear', winType=None, winSize=None, overlap=None,
-                 ir=None, *args, **kwargs):
+                 regularization=True, ir=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if excitation is None or recording is None:
             if ir is None:
@@ -889,7 +986,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                        method=method,
                                                        winType=winType,
                                                        winSize=winSize,
-                                                       overlap=overlap)
+                                                       overlap=overlap,
+                                                       regularization=
+                                                        regularization)
         return
 
     def __repr__(self):
@@ -974,7 +1073,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
         return out
 
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
-                         winType=None, winSize=None, overlap=None):
+                         winType=None, winSize=None, overlap=None,
+                         regularization=False):
         if type(inputSignal) is not type(outputSignal):
             raise TypeError("Only signal-like objects can become an \
                             Impulsive Response.")
@@ -982,7 +1082,34 @@ class ImpulsiveResponse(_base.PyTTaObj):
             raise ValueError("Both signal-like objects must have the same\
                              sampling rate.")
         if method == 'linear':
-            result = outputSignal / inputSignal
+            if regularization:
+                data = inputSignal.freqSignal
+                freqVector = inputSignal.freqVector
+                b = data * 0 + 10**(-200/20) # inside signal freq range
+                a = data * 0 + 1 # outinside signal freq range
+                minFreq = np.max([inputSignal.freqMin, outputSignal.freqMin])
+                maxFreq = np.min([inputSignal.freqMax, outputSignal.freqMax])
+                # Calculate epsilon
+                eps = self._crossfade_spectruns(a, b,
+                                               [minFreq/np.sqrt(2),
+                                                minFreq],
+                                                freqVector)
+                if maxFreq < np.min([maxFreq*np.sqrt(2),
+                                    inputSignal.samplingRate/2]):
+                    eps = self._crossfade_spectruns(eps, a,
+                                                    [maxFreq,
+                                                    maxFreq*np.sqrt(2)],
+                                                    freqVector)
+                eps = \
+                    eps \
+                        * float(np.max(np.abs(outputSignal.freqSignal)))**2 \
+                            * 1/2
+                C = np.conj(data) / \
+                    (np.conj(data)*data + eps)
+                C = SignalObj(C,'freq',inputSignal.samplingRate)
+                result = outputSignal * C
+            else:
+                result = outputSignal / inputSignal
 
         elif method == 'H1':
             if winType is None:
@@ -1127,6 +1254,39 @@ class ImpulsiveResponse(_base.PyTTaObj):
         result.freqMax = outputSignal.freqMax
         result.channels = outputSignal.channels / inputSignal.channels
         return result    # end of function get_transferfunction()
+
+    def _crossfade_spectruns(self, a, b, freqLims, freqVector):
+        f0 = freqLims[0]
+        f1 = freqLims[1]
+        f0idx = np.where(freqVector >= f0)[0][0]
+        f1idx = np.where(freqVector <= f1)[0][-1]
+        totalSamples = a.shape[0]
+        xsamples = f1idx - f0idx
+        win = ss.hanning(2*xsamples)
+
+        rightWin = win[xsamples-1:-1]
+        fullRightWin = np.concatenate((np.ones(f0idx),
+                                       rightWin,
+                                       np.zeros(totalSamples-len(rightWin)-f0idx)))
+
+        leftWin = win[0:xsamples]
+        fullLeftWin = np.concatenate((np.zeros(f0idx),
+                                       leftWin,
+                                       np.ones(totalSamples-len(leftWin)-f0idx)))
+
+        aFreqSignal = np.zeros(a.shape, dtype=np.complex_)
+        bFreqSignal = np.zeros(b.shape, dtype=np.complex_)
+        
+        for chIndex in range(a.shape[1]):
+            aFreqSignal[:,chIndex] = a[:,chIndex] * fullRightWin
+            bFreqSignal[:,chIndex] = b[:,chIndex] * fullLeftWin
+        
+        a = aFreqSignal
+        b = bFreqSignal
+
+        result = a + b
+
+        return result
 
     def _calc_csd_tf(self, sig1, sig2, samplingRate, windowName,
                      numberOfSamples, overlapSamples):

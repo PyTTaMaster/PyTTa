@@ -481,7 +481,9 @@ class PlayRecMeasure(Measurement):
         recording.timeStamp = timeStamp
         recording.comment = 'SignalObj from a PlayRec measurement'
         recording.creation_name = creation_name
-        _print_max_level(self.excitation, kind='output', gain=self.outputLinearGain)
+        _print_max_level(self.excitation, kind='output',
+                         gain=self.outputLinearGain,
+                         mapping=self.outChannels.mapping)
         _print_max_level(recording, kind='input')
         return recording
 
@@ -626,13 +628,14 @@ class FRFMeasure(PlayRecMeasure):
                  #               'reference': 'south-west-floor corner',
                  #               'unit': 'm'},
                  method='linear', winType=None, winSize=None,
-                 overlap=None, *args, **kwargs):
+                 overlap=None, regularization=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.coordinates = coordinates
         self.method = method
         self.winType = winType
         self.winSize = winSize
         self.overlap = overlap
+        self.regularization = regularization
         return
 
     def __repr__(self):
@@ -715,21 +718,26 @@ class FRFMeasure(PlayRecMeasure):
                                              self.method,
                                              self.winType,
                                              self.winSize,
-                                             self.overlap)
+                                             self.overlap,
+                                             self.regularization)
         transferfunction.timeStamp = recording.timeStamp
         transferfunction.creation_name = creation_name
         return transferfunction
 
 
 # Sub functions
-def _print_max_level(sigObj, kind, gain=1):
+def _print_max_level(sigObj, kind, gain=1, mapping=None):
     for chIndex in range(sigObj.numChannels):
         chNum = sigObj.channels.mapping[chIndex]
+        if mapping is not None:
+            chNumMap = mapping[chIndex]
+        else:
+            chNumMap = chNum
         # Calculating the final level with a linear gain applied
         linearRmsAmplitude = 10**(sigObj.max_level()[chIndex]/20)
         finalLevel = 20*np.log10(linearRmsAmplitude*gain)
         print('max {} level (excitation) on channel [{}]: '
-                .format(kind, chNum) +
+                .format(kind, chNumMap) +
                 '{:.2f} {} - ref.: {} [{}]'
                 .format(finalLevel,
                         sigObj.channels[chNum].dBName,

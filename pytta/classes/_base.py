@@ -679,10 +679,11 @@ class ChannelsList(object):
                                           for index in range(len(self))])
         else:
             if len(otherList) > 1:
-                newChList = ChannelsList([self[0]*otherList[index]
+                newChList = ChannelsList([self[self.mapping[0]]*otherList[index]
                                           for index in range(len(otherList))])
             else:
-                newChList = ChannelsList([self[0]*otherList[0]])
+                newChList = ChannelsList([self[self.mapping[0]]*
+                                          otherList[otherList.mapping[0]]])
         return newChList
 
     def __truediv__(self, otherList):
