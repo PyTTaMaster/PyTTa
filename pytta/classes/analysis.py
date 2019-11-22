@@ -381,7 +381,7 @@ class Analysis(RICI):
     def plot(self, **kwargs):
         return self.plot_bars(**kwargs)
 
-    def plot_bars(self, xlabel=None, ylabel=None,
+    def plot_bars(self, xlabel=None, ylabel=None, ylim=None,
                   title=None, decimalSep=','):
         """
         Analysis bar plotting method
@@ -453,7 +453,8 @@ class Analysis(RICI):
         ylimSup = np.nanmax(limData)
         ylimSup += margin
         
-        ylim = (ylimInf, ylimSup)
+        if ylim is None:
+            ylim = (ylimInf, ylimSup)
         ax.set_ylim(ylim)
         
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
