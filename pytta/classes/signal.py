@@ -177,8 +177,10 @@ class SignalObj(_base.PyTTaObj):
             # duration in [s]
             self._timeLength = self.numSamples/self.samplingRate
             # [s] time vector (x axis)
-            self._timeVector = np.arange(0, self.timeLength,
-                                         1/self.samplingRate)
+            self._timeVector = np.linspace(0,
+                                           self.timeLength 
+                                           - 1/self.samplingRate,
+                                           self.numSamples)
             # [Hz] frequency vector (x axis)
             self._freqVector = np.linspace(0, (self.numSamples - 1) *
                                            self.samplingRate /
@@ -209,8 +211,11 @@ class SignalObj(_base.PyTTaObj):
             self._numSamples = len(self.timeSignal)  # [-] number of samples
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
-            self._timeVector = np.arange(0, self.timeLength,
-                                         1/self.samplingRate)
+            # [s] time vector (x axis)
+            self._timeVector = np.linspace(0,
+                                           self.timeLength 
+                                           - 1/self.samplingRate,
+                                           self.numSamples)
             self._freqVector = np.linspace(0, (self.numSamples-1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
