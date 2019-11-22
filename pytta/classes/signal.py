@@ -684,6 +684,7 @@ class SignalObj(_base.PyTTaObj):
             else:
                 result_freqSignal = self.freqSignal / other.freqSignal
                 result_freqSignal[np.isinf(result_freqSignal)] = 0
+                result_freqSignal[np.isnan(result_freqSignal)] = 0
                 result.freqSignal = result_freqSignal
             result.channels = self.channels / other.channels
         elif type(other) == float or type(other) == int:
