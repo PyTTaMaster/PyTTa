@@ -742,7 +742,7 @@ class MeasurementData(object):
             print("Calculating impulsive " +
                   "response for '{}'".format(msdThngName))
             if not isinstance(msdThng, MeasuredThing):
-                raise TypeError("'roomir.calc_ir' only works with " +
+                raise TypeError("'roomir.calculate_ir' only works with " +
                                 "MeasuredThing objects.")
             elif msdThng.kind not in ['roomres',
                                       'sourcerecalibration',
