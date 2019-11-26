@@ -84,10 +84,10 @@ class OctFilter(object):
 
 
 class AntiAliasingFilter(object):
-    def __init__(self, order, band, samplingrate):
+    def __init__(self, order, band, samplingRate):
         self.order = order
         self.band = band
-        self.samplingRate = samplingrate
+        self.samplingRate = samplingRate
         self.__design()
         return
 

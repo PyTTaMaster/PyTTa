@@ -7,6 +7,7 @@
 *.pytta
 *.hdf5
 *.wav
+*.txt
 
 # All the python stuff
 *.pyc

@@ -454,7 +454,8 @@ def measurement(kind='playrec',
 
     Options for (kind='frf'):
 
-        Same as for (kind='playrec')
+        - same as for (kind='playrec');
+        - regularization: [boolean] option for Kirkeby regularization
     """
     # Code snippet to guarantee that generated object name is
     # the declared at global scope
@@ -538,6 +539,11 @@ def measurement(kind='playrec',
 
 # Kind FRF
     elif kind in ['tf', 'frf', 'transferfunction', 'freqresponse']:
+        if 'regularization' in kwargs:
+            regularization = kwargs.get('regularization')
+            kwargs.pop('regularization', None)
+        else:
+            regularization = True
         if 'outputAmplification' in kwargs:
             outputAmplification = kwargs.get('outputAmplification')
             kwargs.pop('outputAmplification', None)
@@ -558,7 +564,9 @@ def measurement(kind='playrec',
                             inChannels=inChannels,
                             outChannels=outChannels,
                             freqMin=freqMin,
-                            freqMax=freqMax, **kwargs)
+                            freqMax=freqMax,
+                            regularization=regularization,
+                            **kwargs)
         frfObj.creation_name = creation_name
         return frfObj
 
