@@ -14,7 +14,7 @@ PyTTa Room Analysis:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from numba import njit
+# from numba import njit
 from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 import traceback
@@ -63,7 +63,7 @@ def T_cut_non_linear_IR_end(SigObj):
     return SigObj
     
 
-@njit
+# @njit
 def T_level_profile(timeSignal, samplingRate,
                     numSamples, numChannels, blockSamples=None):
     """
@@ -88,7 +88,7 @@ def T_level_profile(timeSignal, samplingRate,
     return profile, timeStamp
 
 
-@njit
+# @njit
 def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     squaredIR = timeSignal**2
     # assume the last 10% of the IR is noise, and calculate its noise level
@@ -129,7 +129,7 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     return startSample
 
 
-@njit
+# @njit
 def T_circular_time_shift(timeSignal, threshold=20):
     # find the first sample where inputSignal level > 20 dB or > bgNoise level
     startSample = T_start_sample_ISO3382(timeSignal, threshold)
@@ -137,7 +137,7 @@ def T_circular_time_shift(timeSignal, threshold=20):
     return (timeSignal, startSample)
 
 
-@njit
+# @njit
 def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                          numChannels, timeLength):
     returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
@@ -281,7 +281,7 @@ def plot_lundeby(band, timeVector, timeSignal,  samplingRate,
     plt.title('{0:.0f} [Hz]'.format(band))
     ax.legend(loc='upper center', shadow=True, fontsize='x-large')
 
-@njit
+# @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamples,
                              numChannels, timeLength):
     lundebyParams = \
@@ -346,7 +346,7 @@ def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
                         lundebyParams)
     return listEDC
 
-@njit
+# @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
     if not np.any(energyDecay):
         return 0

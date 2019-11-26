@@ -12,7 +12,7 @@ from setuptools import setup
 
 settings = {
     'name': 'PyTTa',
-    'version': '0.1.0b7',
+    'version': '0.1.0b7-ARM',
     'description': 'Signal processing tools for acoustics and vibrations in ' +
         'python, development package.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
@@ -20,7 +20,7 @@ settings = {
     'author_email': 'pytta@eac.ufsm.br',
     'license': 'MIT',
     'install_requires': ['numpy', 'scipy', 'matplotlib',
-        'sounddevice', 'soundfile', 'h5py', 'numba'],
+        'sounddevice', 'soundfile', 'h5py'],
     'packages': ['pytta', 'pytta.classes', 'pytta.apps'],
     'package_dir': {'classes': 'pytta'},
     'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
