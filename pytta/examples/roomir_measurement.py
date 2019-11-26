@@ -205,16 +205,6 @@ a = D.get('channelcalibir', 'Mic1')
 msdThing = a['channelcalibir_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
 msdThing.measuredSignals[0].plot_freq()
-
-# %% Calcula respostas ao sinal de excitação calibradas e salva em disco (vide 
-# parâmetro skipSave)
-a = D.get('roomres', 'Mic1')
-b = D.calibrate_res(a, calibrationTake=1, skipSave=False)
-for name, res in b.items():
-        print(name)
-        # res.measuredSignals[0].plot_time()
-        res.measuredSignals[0].plot_freq()
-
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco
 a = D.get('roomres', 'Mic1')
 b = D.calculate_ir(a,
@@ -233,6 +223,17 @@ for name, IR in b.items():
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
         # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])
         prot2 = IR.measuredSignals[0].plot_time(xlim=None)
+
+# %% Calcula respostas ao sinal de excitação calibradas e salva em disco
+a = D.get('roomres', 'Mic1')
+b = D.calibrate_res(a,
+                    calibrationTake=1,
+                    skipInCompensation=True,
+                    skipSave=False)
+for name, res in b.items():
+        print(name)
+        # res.measuredSignals[0].plot_time()
+        res.measuredSignals[0].plot_freq(ylim=[-13,50])
 
 # %% Formas alternativas de carregar dados na memória
 

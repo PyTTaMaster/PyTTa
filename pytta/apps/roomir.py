@@ -776,6 +776,50 @@ class MeasurementData(object):
                 print("- Skipping calibrations as it's a " +
                         "channel calibration IR.")
 
+            # Apply compensation for output transducer
+            if not skipOutCompensation:
+                outChCode = msdThng.outChannel.codes[0]
+                print("-- Applying compensation to the output " +
+                        "signal for output '{}'.".format(outChCode))
+                if outChCode not in self.MS.outCompensations:
+                    print("--- No compensation found for output " +
+                            "channel " +
+                            "'{}'. ".format(outChCode) +
+                            "Skipping compensation on this " +
+                            "channel.")
+                else:
+                    excitFreqVector = \
+                        excitationWGain.freqVector
+                    excitFreqSignal = \
+                        excitationWGain.freqSignal[:,0]
+                    excitdBMag = \
+                        20*np.log10(np.abs(excitFreqSignal))
+                    transSensFreq = \
+                        self.MS.outCompensations[outChCode][0]
+                    transSensdBMag = \
+                        self.MS.outCompensations[outChCode][1]
+                    interp_func = \
+                        interpolate.interp1d(transSensFreq,
+                                                transSensdBMag,
+                                                fill_value= \
+                                                (transSensdBMag[0],
+                                                transSensdBMag[-1]),
+                                                bounds_error=False)
+                    interpTransSensdBMag = \
+                        interp_func(excitFreqVector)
+                    correctedExcitdBMag = \
+                        excitdBMag - interpTransSensdBMag
+                    correctedExcitFreqSignal = \
+                        10**(correctedExcitdBMag/20)
+                    r = correctedExcitFreqSignal
+                    teta = np.angle(excitFreqSignal)
+                    correctedExcitFreqSignal = \
+                        r*np.cos(teta) + r*np.sin(teta)*1j
+                    excitationWGain.freqSignal = \
+                        correctedExcitFreqSignal
+            else:
+                print("-- Skipping output transducer compensation.")
+
             for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
 
@@ -826,50 +870,6 @@ class MeasurementData(object):
                     recording.freqSignal = newFreqSignal
                 else:
                     print("-- Skipping input transducer compensation.")
-
-                # Apply compensation for output transducer
-                if not skipOutCompensation:
-                    outChCode = msdThng.outChannel.codes[0]
-                    print("-- Applying compensation for the output " +
-                            "transducer '{}'.".format(outChCode))
-                    if outChCode not in self.MS.outCompensations:
-                        print("--- No compensation found for output " +
-                                "channel " +
-                                "'{}'. ".format(outChCode) +
-                                "Skipping compensation on this " +
-                                "channel.")
-                    else:
-                        excitFreqVector = \
-                            excitationWGain.freqVector
-                        excitFreqSignal = \
-                            excitationWGain.freqSignal[:,0]
-                        excitdBMag = \
-                            20*np.log10(np.abs(excitFreqSignal))
-                        transSensFreq = \
-                            self.MS.outCompensations[outChCode][0]
-                        transSensdBMag = \
-                            self.MS.outCompensations[outChCode][1]
-                        interp_func = \
-                            interpolate.interp1d(transSensFreq,
-                                                 transSensdBMag,
-                                                 fill_value= \
-                                                    (transSensdBMag[0],
-                                                    transSensdBMag[-1]),
-                                                 bounds_error=False)
-                        interpTransSensdBMag = \
-                            interp_func(excitFreqVector)
-                        correctedExcitdBMag = \
-                            excitdBMag - interpTransSensdBMag
-                        correctedExcitFreqSignal = \
-                            10**(correctedExcitdBMag/20)
-                        r = correctedExcitFreqSignal
-                        teta = np.angle(excitFreqSignal)
-                        correctedExcitFreqSignal = \
-                            r*np.cos(teta) + r*np.sin(teta)*1j
-                        excitationWGain.freqSignal = \
-                            correctedExcitFreqSignal
-                else:
-                    print("-- Skipping output transducer compensation.")
 
                 if skipRegularization:
                     regularization = False
@@ -1002,7 +1002,8 @@ class MeasurementData(object):
 
         return IRMsdThngs
 
-    def calibrate_res(self, getDict, calibrationTake=1, skipSave=False):
+    def calibrate_res(self, getDict, calibrationTake=1,
+                      skipInCompensation=False, skipSave=False):
         """
         Gets a dict of roomres or sourcerecalibration generated by the
         MeasurementData.get() method and turn its items into correspondents
@@ -1039,6 +1040,52 @@ class MeasurementData(object):
                         msdThng.inChannels.names[idx]
                     SigObj.channels[chNum].code = \
                         msdThng.inChannels.codes[idx]
+
+                # Apply compensation for input transducer
+                if not skipInCompensation:
+                    newFreqSignal = np.zeros(SigObj.freqSignal.shape,
+                                            dtype=np.complex64)
+                    for chIndex in range(msdThng.numChannels):
+                        inChCode = msdThng.inChannels.codes[chIndex]
+                        print("-- Applying compensation for the input " +
+                                "transducer '{}'.".format(inChCode))
+                        if inChCode not in self.MS.inCompensations:
+                            print("--- No compensation found for input " +
+                                    "channel " +
+                                    "'{}'. ".format(inChCode) +
+                                    "Skipping compensation on this " +
+                                    "channel.")
+                        else:
+                            roomResFreqVector = SigObj.freqVector
+                            roomResFreqSignal = SigObj.freqSignal[:,chIndex]
+                            roomResdBMag = \
+                                20*np.log10(np.abs(roomResFreqSignal))
+                            transSensFreq = \
+                                self.MS.inCompensations[inChCode][0]
+                            transSensdBMag = \
+                                self.MS.inCompensations[inChCode][1]
+                            interp_func = \
+                                interpolate.interp1d(transSensFreq,
+                                                     transSensdBMag,
+                                                     fill_value= \
+                                                        (transSensdBMag[0],
+                                                        transSensdBMag[-1]),
+                                                     bounds_error=False)
+                            interpTransSensdBMag = \
+                                interp_func(roomResFreqVector)
+                            correctedRoomResdBMag = \
+                                roomResdBMag - interpTransSensdBMag
+                            correctedRoomResFreqSignal = \
+                                10**(correctedRoomResdBMag/20)
+                            r = correctedRoomResFreqSignal
+                            teta = np.angle(roomResFreqSignal)
+                            correctedRoomResFreqSignal = \
+                                r*np.cos(teta) + r*np.sin(teta)*1j
+                            newFreqSignal[:,chIndex] = \
+                                correctedRoomResFreqSignal
+                    SigObj.freqSignal = newFreqSignal
+                else:
+                    print("-- Skipping input transducer compensation.")
 
                 # Apply calibration for each channel
                 
