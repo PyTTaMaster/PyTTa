@@ -4,7 +4,6 @@ import numpy as np
 import sounddevice as sd
 from pytta.classes.measurement import Measurement
 from pytta.classes.streaming import Recorder, Player, PlaybackRecorder
-from pytta.classes.signal import SignalObj
 from typing import Callable
 
 class DoomyDoode(object):
@@ -65,17 +64,17 @@ class DoomyDoode(object):
             raise ValueError("Doomsy's blocksize shoulds bee equals to streamsy's")
         try:
             self.dummyDataIn[self.dummyCounter:frames + self.dummyCounter, :] \
-                = indata[:] if indata is not None else 0.0
+                = indata[:] if indata is not None else 1e-13
             self.dummyDataOut[self.dummyCounter:frames + self.dummyCounter, :] \
-                = outdata[:] if outdata is not None else 0.0
+                = outdata[:] if outdata is not None else 1e-13
             self.dummyCounter += frames
         except ValueError:
-            print("SPL:", 20 * np.log10((np.mean(self.dummyDataIn ** 2, axis=0)) ** 0.5),
-                  20 * np.log10((np.mean(self.dummyDataOut ** 2, axis=0)) ** 0.5))
+            print(f"SPL: {20 * np.log10((np.mean(self.dummyDataIn ** 2, axis=0)) ** 0.5)} {20 * np.log10((np.mean(self.dummyDataOut ** 2, axis=0)) ** 0.5)}",
+                  end='\r')
             self.dummyCounter = 0
         return
 
-def rec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
+def rec(msmnt: Measurement=None, monitor: Callable=None, bs: int=1024):
     if msmnt is None:
         msmnt = generate.measurement('rec')
     with Recorder(msmnt, 'float32', bs) as rec:  # Creates context with Recorder object
@@ -85,7 +84,7 @@ def rec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
         signal = rec.retrieve()
     return signal
 
-def play(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
+def play(msmnt: Measurement=None, monitor: Callable=None, bs: int=1024):
     if msmnt is None:
         msmnt = generate.measurement('playrec')
     with Player(msmnt, 'float32', bs) as player:  # Creates context with Player object
@@ -94,7 +93,7 @@ def play(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
         player.run()    # start to reproduce
     return
 
-def playrec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
+def playrec(msmnt: Measurement=None, monitor: Callable=None, bs: int=1024):
     if msmnt is None:
         msmnt = generate.measurement('playrec')
     with PlaybackRecorder(msmnt, 'float32', bs) as pbr:  # Creates context with Player object
@@ -106,25 +105,15 @@ def playrec(msmnt: Measurement=None, monitor: Callable=None, bs: int=32):
 
 
 if __name__ == "__main__":
-    from pytta import generate, Recorder, SignalObj
+    from pytta import generate
 
-    bs = 32
+    bs = 1024
 
-    measure = generate.measurement(device=0)  # generates a default RecMeasure object
+    measure = generate.measurement(device=2)  # generates a default RecMeasure object
     doomsy = DoomyDoode(measure.samplingRate,  # Generates a DoomyDoode instance
                         measure.numInChannels,
                         bs)  # blocksize
 
-    signal1 = rec(msmnt=measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
-    signal1 = rec(msmnt=measure, monitor=None, bs=bs)
-
-    measure.excitation = signal1
-    play(measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
-    # Visualization
-    signal1.plot_time()
-    signal1.plot_freq()
-
-    signal2 = playrec(monitor=doomsy.stdout_print_dbfs, bs=bs)
-    signal2.plot_time()
-    signal2.plot_freq()
-
+    signal = playrec(measure, monitor=doomsy.stdout_print_dbfs, bs=bs)
+    signal.plot_time()
+    signal.plot_freq()
