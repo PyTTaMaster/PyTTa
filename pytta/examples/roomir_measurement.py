@@ -112,14 +112,14 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               kind='roomres',
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
-                        #       inChSel=['HATS', 'Mic1'],
-                              inChSel=['Mic1'],
+                              inChSel=['HATS', 'Mic1'],
+                        #       inChSel=['Mic1'],
                               # Configuração sala-fonte-receptor:
                               # Lista com as respectivas posições dos canais
                               # individuais ou grupos de canais de entrada
                               # selecionados
-                        #       receiversPos=['R1', 'R2', 'R1'],
-                              receiversPos=['R1'],
+                              receiversPos=['R1', 'R2'],
+                        #       receiversPos=['R1'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
                               excitation='varredura',
@@ -206,11 +206,12 @@ msdThing = a['channelcalibir_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
 msdThing.measuredSignals[0].plot_freq()
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco
-a = D.get('roomres', 'Mic1')
+a = D.get('roomres', 'HATS')
 b = D.calculate_ir(a,
                    calibrationTake=1,
                    skipInCompensation=False, # Ok
                    skipOutCompensation=False, # Ok
+                   whereToOutComp='excitation',
                    skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
@@ -218,7 +219,8 @@ b = D.calculate_ir(a,
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
+        # prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[-150,100])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
         # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])

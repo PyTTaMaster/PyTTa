@@ -114,16 +114,21 @@ class SignalObj(_base.PyTTaObj):
                  domain='time',
                  *args,
                  **kwargs):
+        # Check if input is a complex array
+        if True in np.iscomplex(signalArray):
+            dtype = 'complex64'
+        else:
+            dtype = 'float32'
         # Converting signalArray from list to np.array
         if isinstance(signalArray, list):
-            signalArray = np.array(signalArray, dtype='float32', ndmin=2).T
+            signalArray = np.array(signalArray, dtype=dtype, ndmin=2).T
         # Checking input array dimensions
         if len(signalArray.shape) > 2:
             message = "No 'pyttaObj' is able handle to arrays with more \
                        than 2 dimensions, '[:,:]', YET!."
             raise AttributeError(message)
         elif len(signalArray.shape) == 1:
-            signalArray = np.array(signalArray, ndmin=2, dtype='float32')
+            signalArray = np.array(signalArray, ndmin=2, dtype=dtype)
         if signalArray.shape[1] > signalArray.shape[0]:
             signalArray = signalArray.T
 

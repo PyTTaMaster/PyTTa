@@ -726,6 +726,7 @@ class MeasurementData(object):
                      calibrationTake=1,
                      skipInCompensation=False,
                      skipOutCompensation=False,
+                     whereToOutComp='excitation',
                      skipBypCalibration=False,
                      skipRegularization=False,
                      skipIndCalibration=False,
@@ -777,7 +778,7 @@ class MeasurementData(object):
                         "channel calibration IR.")
 
             # Apply compensation for output transducer
-            if not skipOutCompensation:
+            if not skipOutCompensation and whereToOutComp == 'excitation':
                 outChCode = msdThng.outChannel.codes[0]
                 print("-- Applying compensation to the output " +
                         "signal for output '{}'.".format(outChCode))
@@ -794,21 +795,21 @@ class MeasurementData(object):
                         excitationWGain.freqSignal[:,0]
                     excitdBMag = \
                         20*np.log10(np.abs(excitFreqSignal))
-                    transSensFreq = \
+                    outTransSensFreq = \
                         self.MS.outCompensations[outChCode][0]
-                    transSensdBMag = \
+                    outTransSensdBMag = \
                         self.MS.outCompensations[outChCode][1]
                     interp_func = \
-                        interpolate.interp1d(transSensFreq,
-                                                transSensdBMag,
+                        interpolate.interp1d(outTransSensFreq,
+                                                outTransSensdBMag,
                                                 fill_value= \
-                                                (transSensdBMag[0],
-                                                transSensdBMag[-1]),
+                                                (outTransSensdBMag[0],
+                                                outTransSensdBMag[-1]),
                                                 bounds_error=False)
-                    interpTransSensdBMag = \
+                    interpOutTransSensdBMag = \
                         interp_func(excitFreqVector)
                     correctedExcitdBMag = \
-                        excitdBMag - interpTransSensdBMag
+                        excitdBMag + interpOutTransSensdBMag
                     correctedExcitFreqSignal = \
                         10**(correctedExcitdBMag/20)
                     r = correctedExcitFreqSignal
@@ -818,7 +819,8 @@ class MeasurementData(object):
                     excitationWGain.freqSignal = \
                         correctedExcitFreqSignal
             else:
-                print("-- Skipping output transducer compensation.")
+                print("-- Skipping output transducer compensation on " +
+                      "excitation signal.")
 
             for avg in range(msdThng.averages):
                 print('- Calculating average {}'.format(avg+1))
@@ -831,6 +833,7 @@ class MeasurementData(object):
                                             dtype=np.complex64)
                     for chIndex in range(msdThng.numChannels):
                         inChCode = msdThng.inChannels.codes[chIndex]
+                        outChCode = msdThng.outChannel.codes[0]
                         print("-- Applying compensation for the input " +
                                 "transducer '{}'.".format(inChCode))
                         if inChCode not in self.MS.inCompensations:
@@ -839,26 +842,54 @@ class MeasurementData(object):
                                     "'{}'. ".format(inChCode) +
                                     "Skipping compensation on this " +
                                     "channel.")
+                            newFreqSignal[:, chIndex] = \
+                                recording.freqSignal[:, chIndex]
                         else:
                             roomResFreqVector = recording.freqVector
                             roomResFreqSignal = recording.freqSignal[:,chIndex]
                             roomResdBMag = \
                                 20*np.log10(np.abs(roomResFreqSignal))
-                            transSensFreq = \
+
+                            inTransSensFreq = \
                                 self.MS.inCompensations[inChCode][0]
-                            transSensdBMag = \
+                            inTransSensdBMag = \
                                 self.MS.inCompensations[inChCode][1]
-                            interp_func = \
-                                interpolate.interp1d(transSensFreq,
-                                                     transSensdBMag,
+                            in_interp_func = \
+                                interpolate.interp1d(inTransSensFreq,
+                                                     inTransSensdBMag,
                                                      fill_value= \
-                                                        (transSensdBMag[0],
-                                                        transSensdBMag[-1]),
+                                                        (inTransSensdBMag[0],
+                                                        inTransSensdBMag[-1]),
                                                      bounds_error=False)
-                            interpTransSensdBMag = \
-                                interp_func(roomResFreqVector)
-                            correctedRoomResdBMag = \
-                                roomResdBMag - interpTransSensdBMag
+                            interpInTransSensdBMag = \
+                                in_interp_func(roomResFreqVector)
+                            
+                            if not skipOutCompensation and \
+                                 whereToOutComp == 'recording':
+                                print("-- Applying compensation to the " +
+                                       "recording signal for output " +
+                                       "'{}'.".format(outChCode))
+                                outTransSensFreq = \
+                                    self.MS.outCompensations[outChCode][0]
+                                outTransSensdBMag = \
+                                    self.MS.outCompensations[outChCode][1]
+                                out_interp_func = \
+                                    interpolate.interp1d(outTransSensFreq,
+                                                            outTransSensdBMag,
+                                                            fill_value= \
+                                                            (outTransSensdBMag[0],
+                                                            outTransSensdBMag[-1]),
+                                                            bounds_error=False)
+                                interpOutTransSensdBMag = \
+                                    out_interp_func(roomResFreqVector)
+                                
+                                correctedRoomResdBMag = \
+                                    roomResdBMag - interpInTransSensdBMag - \
+                                        interpOutTransSensdBMag
+                            else:
+                                correctedRoomResdBMag = \
+                                    roomResdBMag - interpInTransSensdBMag
+
                             correctedRoomResFreqSignal = \
                                 10**(correctedRoomResdBMag/20)
                             r = correctedRoomResFreqSignal
@@ -867,6 +898,7 @@ class MeasurementData(object):
                                 r*np.cos(teta) + r*np.sin(teta)*1j
                             newFreqSignal[:,chIndex] = \
                                 correctedRoomResFreqSignal
+
                     recording.freqSignal = newFreqSignal
                 else:
                     print("-- Skipping input transducer compensation.")
@@ -885,11 +917,15 @@ class MeasurementData(object):
                 if not skipBypCalibration:
                     newFreqSignal = np.zeros(IR.systemSignal.freqSignal.shape,
                                             dtype=np.complex64)
+                    # bypFreqSignal = np.ones(IR.systemSignal.freqSignal.shape,
+                    #                         dtype=np.complex64)
                     for chIndex in range(msdThng.numChannels):
                         inChCode = msdThng.inChannels.codes[chIndex]
                         outChCode = msdThng.outChannel.codes[0]
-                        # chSignal = IR.systemSignal.freqSignal[:, chIndex]
-                        chSignal = IR.systemSignal
+                        chFreqSignal = IR.systemSignal.freqSignal[:, chIndex]
+                        chSignal = SignalObj(chFreqSignal, 'freq',
+                                             self.MS.samplingRate)
+                        # chSignal = IR.systemSignal
                         print("-- Applying the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the channelcalibir signal
@@ -904,6 +940,8 @@ class MeasurementData(object):
                                     "'{}/{}'. ".format(inChCode,outChCode) +
                                     "Skipping channel calibration on this " +
                                     "channels.")
+                            newFreqSignal[:, chIndex] = \
+                                IR.systemSignal.freqSignal[:, chIndex]
                         else:
                             # Geting the bypass IR
                             chCalibThng = chCalibThngs[calibrationTake-1]
@@ -920,12 +958,10 @@ class MeasurementData(object):
                             # Deconvolution 
                             newIR = \
                                 ImpulsiveResponse(recording=chSignal,
-                                                  excitation=chCalibIR,
-                                                  regularization=
-                                                   False)
-                            newFreqSignal = newIR.systemSignal.freqSignal
-                            
-                            # chCalibIR.plot_freq()
+                                                excitation=chCalibIR,
+                                                regularization=False)
+                            newFreqSignal[:, chIndex] = \
+                                newIR.systemSignal.freqSignal[:, 0]
                     IR.systemSignal.freqSignal = newFreqSignal
                 else:
                     print("-- Skipping the bypass calibration.")
@@ -1060,21 +1096,21 @@ class MeasurementData(object):
                             roomResFreqSignal = SigObj.freqSignal[:,chIndex]
                             roomResdBMag = \
                                 20*np.log10(np.abs(roomResFreqSignal))
-                            transSensFreq = \
+                            inTransSensFreq = \
                                 self.MS.inCompensations[inChCode][0]
-                            transSensdBMag = \
+                            inTransSensdBMag = \
                                 self.MS.inCompensations[inChCode][1]
                             interp_func = \
-                                interpolate.interp1d(transSensFreq,
-                                                     transSensdBMag,
+                                interpolate.interp1d(inTransSensFreq,
+                                                     inTransSensdBMag,
                                                      fill_value= \
-                                                        (transSensdBMag[0],
-                                                        transSensdBMag[-1]),
+                                                        (inTransSensdBMag[0],
+                                                        inTransSensdBMag[-1]),
                                                      bounds_error=False)
-                            interpTransSensdBMag = \
+                            interpInTransSensdBMag = \
                                 interp_func(roomResFreqVector)
                             correctedRoomResdBMag = \
-                                roomResdBMag - interpTransSensdBMag
+                                roomResdBMag - interpInTransSensdBMag
                             correctedRoomResFreqSignal = \
                                 10**(correctedRoomResdBMag/20)
                             r = correctedRoomResFreqSignal
