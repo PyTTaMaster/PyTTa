@@ -587,20 +587,30 @@ def __h5_unpack(ObjGroup):
         minBand = _h5.attr_parser(ObjGroup.attrs['minBand'])
         maxBand = _h5.attr_parser(ObjGroup.attrs['maxBand'])
         comment = _h5.attr_parser(ObjGroup.attrs['comment'])
-        xlabel = _h5.attr_parser(ObjGroup.attrs['xlabel'])
-        ylabel = _h5.attr_parser(ObjGroup.attrs['ylabel'])
         title = _h5.attr_parser(ObjGroup.attrs['title'])
+        dataLabel = _h5.attr_parser(ObjGroup.attrs['dataLabel'])
+        errorLabel = _h5.attr_parser(ObjGroup.attrs['errorLabel'])
+        xLabel = _h5.attr_parser(ObjGroup.attrs['xLabel'])
+        yLabel = _h5.attr_parser(ObjGroup.attrs['yLabel'])
         # Analysis data unpacking
         data = np.array(ObjGroup['data'])
+        # If error in save moment was None no group was created for it
+        if 'error' in ObjGroup:
+            error = np.array(ObjGroup['error'])
+        else:
+            error = None
         # Recreating the object
         anObject = Analysis(anType=anType,
                             nthOct=nthOct,
                             minBand=minBand,
                             maxBand=maxBand,
                             data=data,
+                            dataLabel=dataLabel,
+                            error=error,
+                            errorLabel=errorLabel,
                             comment=comment,
-                            xlabel=xlabel,
-                            ylabel=ylabel,
+                            xLabel=xLabel,
+                            yLabel=yLabel,
                             title=title)
         return anObject
 

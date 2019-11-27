@@ -359,6 +359,19 @@ class TestH5IO(unittest.TestCase):
                 1.7127, 1.2965, 2.1028,
                 1.9064, 1.6736, 1.6691, 0.9378,
                 0.3776]
+        error = [1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1,
+                 1, 1, 1, 1, 1, 1, 1,
+                 1, 1]
+        errorLabel='errinho'
+        error2 = [1,
+                  1, 1, 1,
+                  1, 1, 1, 1,
+                  1]
+        errorLabel2='erroncio'
+        dataLabel = 'etiquetismo'  
+        dataLabel2 = 'etiquetasso'
         comment = 'Testaaano carai'
         comment2 = 'Testano memo'
 
@@ -367,6 +380,9 @@ class TestH5IO(unittest.TestCase):
                             minBand=minBand,
                             maxBand=maxBand,
                             data=data,
+                            error=error,
+                            errorLabel=errorLabel,
+                            dataLabel=dataLabel,
                             comment=comment)
 
         an2 = pytta.Analysis(anType=anType2,
@@ -374,6 +390,9 @@ class TestH5IO(unittest.TestCase):
                             minBand=minBand2,
                             maxBand=maxBand2,
                             data=data2,
+                            error=error2,
+                            errorLabel=errorLabel2,
+                            dataLabel=dataLabel2,
                             comment=comment2)
 
         savedlst = [an, an2]
@@ -397,11 +416,20 @@ class TestH5IO(unittest.TestCase):
             self.assertEqual(pobj.maxBand,
                             savedlst[idx].maxBand)
 
+            self.assertEqual(pobj.dataLabel,
+                            savedlst[idx].dataLabel)
+
+            self.assertEqual(pobj.errorLabel,
+                            savedlst[idx].errorLabel)
+
             self.assertEqual(pobj.comment,
                             savedlst[idx].comment)
 
             self.assertEqual(pobj.data.tolist(),
                                 savedlst[idx].data.tolist())
+
+            self.assertEqual(pobj.error.tolist(),
+                                savedlst[idx].error.tolist())    
 
 if __name__ == '__main__':
     unittest.main()

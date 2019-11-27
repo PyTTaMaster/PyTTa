@@ -4,6 +4,7 @@ from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 from math import isnan
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 import time
 import locale
@@ -30,9 +31,12 @@ class Analysis(RICI):
                 minBand,
                 maxBand,
                 data,
+                dataLabel=None,
+                error=None,
+                errorLabel='Error',
                 comment='No comments.',
-                xlabel=None,
-                ylabel=None,
+                xLabel=None,
+                yLabel=None,
                 title=None):
         super().__init__()
         self.anType = anType
@@ -40,10 +44,13 @@ class Analysis(RICI):
         self.minBand = minBand
         self.maxBand = maxBand
         self.data = data
+        self.dataLabel = dataLabel
+        self.error = error
+        self.errorLabel = errorLabel
         self.comment = comment
         # Plot infos memory
-        self.xlabel = xlabel
-        self.ylabel = ylabel
+        self.xLabel = xLabel
+        self.yLabel = yLabel
         self.title = title
         return
 
@@ -320,7 +327,10 @@ class Analysis(RICI):
 
     @property
     def data(self):
-        """
+        """data [summary] # TO DO
+        
+        :return: [description]
+        :rtype: [type]
         """
         return self._data
 
@@ -344,6 +354,53 @@ class Analysis(RICI):
         # ...
         self._data = np.array(newData)
         self._bands = bands
+        return
+
+    @property
+    def error(self):
+        """error [summary] # TO DO
+        """
+        return self._error
+    
+    @error.setter
+    def error(self, newError):
+        if not isinstance(newError, np.ndarray) and \
+            not isinstance(newError, list) and \
+                newError is not None:
+            raise TypeError("'error' must be provided as a list, numpy " +
+                            "ndarray or None.")
+        if newError is not None:
+            if len(newError) != len(self.data):
+                raise ValueError("'error' must have the same length as 'data'.")
+            self._error = np.array(newError)
+        else:
+            self._error = newError
+        return
+
+    @property
+    def dataLabel(self):
+        """dataLabel [summary] # TO DO
+        """
+        return self._dataLabel
+    
+    @dataLabel.setter
+    def dataLabel(self, newLabel):
+        if newLabel is not None and not isinstance(newLabel, str):
+            raise TypeError("'dataLabel' must be a string or None.")
+        self._dataLabel = newLabel
+        return
+
+    @property
+    def errorLabel(self):
+        """errorLabel [summary] # TO DO
+        """
+        return self._errorLabel
+    
+    @errorLabel.setter
+    def errorLabel(self, newLabel):
+        if newLabel is not None and not isinstance(newLabel, str):
+            raise TypeError("'errorLabel' must be a string or None.")
+        self._errorLabel = newLabel
         return
 
     @property
@@ -371,17 +428,21 @@ class Analysis(RICI):
         h5group.attrs['nthOct'] = self.nthOct
         h5group.attrs['minBand'] = self.minBand
         h5group.attrs['maxBand'] = self.maxBand
-        h5group.attrs['comment'] = self.comment
-        h5group.attrs['xlabel'] = _h5.none_parser(self.xlabel)
-        h5group.attrs['ylabel'] = _h5.none_parser(self.ylabel)
-        h5group.attrs['title'] = _h5.none_parser(self.title)
+        h5group.attrs['dataLabel'] = _h5.attr_parser(self.dataLabel)
+        h5group.attrs['errorLabel'] = _h5.attr_parser(self.errorLabel)
+        h5group.attrs['comment'] = _h5.attr_parser(self.comment)
+        h5group.attrs['xLabel'] = _h5.attr_parser(self.xLabel)
+        h5group.attrs['yLabel'] = _h5.attr_parser(self.yLabel)
+        h5group.attrs['title'] = _h5.attr_parser(self.title)
         h5group['data'] = self.data
+        if self.error is not None:
+            h5group['error'] = self.error
         return
 
     def plot(self, **kwargs):
         return self.plot_bars(**kwargs)
 
-    def plot_bars(self, xlabel=None, ylabel=None, ylim=None,
+    def plot_bars(self, xLabel=None, yLabel=None, yLim=None,
                   title=None, decimalSep=','):
         """
         Analysis bar plotting method
@@ -395,22 +456,22 @@ class Analysis(RICI):
         else:
             raise ValueError("'decimalSep' must be the string '.' or ','.")
 
-        if xlabel is None:
-            if self.xlabel is None:
-                xlabel = 'Frequency bands [Hz]'
+        if xLabel is None:
+            if self.xLabel is None:
+                xLabel = 'Frequency bands [Hz]'
             else:
-                xlabel = self.xlabel
+                xLabel = self.xLabel
         else:
-            self.xlabel = xlabel
+            self.xLabel = xLabel
         
-        if ylabel is None:
-            if self.ylabel is None:
-                ylabel = 'Modulus [{}]'
-                ylabel = ylabel.format(self.unit)
+        if yLabel is None:
+            if self.yLabel is None:
+                yLabel = 'Modulus [{}]'
+                yLabel = yLabel.format(self.unit)
             else:
-                ylabel = self.ylabel
+                yLabel = self.yLabel
         else:
-            self.ylabel = ylabel
+            self.yLabel = yLabel
         
         if title is None:
             if self.title is None:
@@ -426,8 +487,8 @@ class Analysis(RICI):
         ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
                           projection='rectilinear', xscale='linear')
         ax.set_snap(True)
-
         fbar = range(len(self.data))
+        
 
         negativeCounter = 0
         for value in self.data:
@@ -436,26 +497,44 @@ class Analysis(RICI):
 
         if negativeCounter > len(self.data)//2:
             minval = np.amin(self.data)
+            marginData = [value for value in self.data if not np.isinf(value)]
+            margin = \
+                np.abs((np.nanmax(marginData) - np.nanmin(marginData)) / 20)
+            minval = minval - margin
             minval += np.sign(minval)
-            ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75)
+            ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75,
+                   label=self.dataLabel, zorder=-1)
+            if self.error is not None:
+                ax.errorbar(*zip(*enumerate(-minval + self.data)),
+                            yerr=self.error, fmt='none',
+                            ecolor='limegreen', elinewidth=23, zorder=0,
+                            fillstyle='full', alpha=.60, label=self.errorLabel)
 
         else:
-            ax.bar(fbar, self.data, width=0.75)
+            ax.bar(fbar, self.data, width=0.75, label=self.dataLabel, zorder=-1)
+            if self.error is not None:
+                ax.errorbar(fbar, self.data, yerr=self.error, fmt='none',
+                            ecolor='limegreen', elinewidth=23, zorder=0,
+                            fillstyle='full', alpha=.60, label=self.errorLabel)
             minval = 0
 
-        limData = -minval + self.data
-        limData = [value for value in limData if not np.isinf(value)]
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
+        error = self.error if self.error is not None else 0
+
+        ylimInfData = -minval + self.data - error
+        ylimInfData = [value for value in ylimInfData if not np.isinf(value)]
+        ylimInfMargin = \
+            np.abs((np.nanmax(ylimInfData) - np.nanmin(ylimInfData)) / 20)
+        ylimInf = np.nanmin(ylimInfData) - ylimInfMargin
     
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
+        ylimSupData = -minval + self.data + error
+        ylimSupData = [value for value in ylimSupData if not np.isinf(value)]
+        ylimSupMargin = \
+            np.abs((np.nanmax(ylimSupData) - np.nanmin(ylimSupData)) / 20)
+        ylimSup = np.nanmax(ylimSupData) + ylimSupMargin
         
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
-        
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
+        if yLim is None:
+            yLim = (ylimInf, ylimSup)
+        ax.set_ylim(yLim)
         
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
@@ -463,17 +542,28 @@ class Analysis(RICI):
         xticks = self.bands
         ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                            rotation=45, fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
+        ax.set_xlabel(xLabel, fontsize=20)
 
-        yticks = np.linspace(*ylim, 11)
-        ax.set_yticks(yticks.tolist())
-        yticklabels = yticks + minval
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticklabels.tolist()], fontsize=14)
+        # Adjust yticks    
+        # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.14/5))
+        # ax.yaxis.set_major_locator(ticker.AutoLocator())
+        ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
+        # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.3f'))
+        # ax.yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:#.2n}'))
+        ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
+        for item in (ax.get_xticklabels() + ax.get_yticklabels()):
+            item.set_fontsize(14)
 
-        ax.set_ylabel(ylabel, fontsize=20)
-            
+        # yticks = np.linspace(*yLim, 11)
+        # ax.set_yticks(yticks.tolist())
+        # yticklabels = yticks + minval
+        # ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
+        #                     for tick in yticklabels.tolist()], fontsize=14)
+
+        ax.set_ylabel(yLabel, fontsize=20)
         
+        ax.legend(loc='best')
+
         plt.title(title, fontsize=20)
         
         return fig
