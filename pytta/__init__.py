@@ -64,7 +64,7 @@ from .functions import read_wav, write_wav, merge, list_devices,\
 
 from .apps import roomir
 
-__version__ = '0.1.0b5'  # package version
+__version__ = '0.1.0b5a'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps

@@ -2,6 +2,7 @@
 .vscode/
 
 # Data files
+*.txt
 *.pkl
 *.mat
 *.pytta
