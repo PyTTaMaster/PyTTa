@@ -26,7 +26,7 @@ class DoomyDoode(object):
         self.numChannels = numchannels
         self.numSamples = int(self.blocksize \
                               * np.ceil(self.samplingRate \
-                                        / self.integ['fast'] \
+                                        / self.integ['slow'] \
                                         / self.blocksize))
         self.dummyDataIn = np.empty((self.numSamples, self.numChannels),
                                   dtype='float32')
@@ -59,7 +59,7 @@ class DoomyDoode(object):
         the root-mean-square of the buffer, then resets it
         """
         if status:
-            print(status)
+            print(status, end='\r')
         elif frames != self.blocksize:
             raise ValueError("Doomsy's blocksize shoulds bee equals to streamsy's")
         try:
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     bs = 1024
 
-    measure = generate.measurement(device=2)  # generates a default RecMeasure object
+    measure = generate.measurement()  # generates a default PlayRecMeasure object
     doomsy = DoomyDoode(measure.samplingRate,  # Generates a DoomyDoode instance
                         measure.numInChannels,
                         bs)  # blocksize
