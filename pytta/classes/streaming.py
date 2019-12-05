@@ -2,12 +2,49 @@
 
 import numpy as np
 import sounddevice as sd
-from multiprocessing import Event, Queue
+from multiprocessing import Event, Queue, Process
+from threading import Thread
 from queue import Empty
-from typing import Optional, List, Callable, Union, Type
-from pytta.classes._base import PyTTaObj, ChannelObj, CoordinateObj, ChannelsList
+from typing import Optional, Callable, Type, List
+from pytta import default
+from pytta.classes._base import PyTTaObj
 from pytta.classes.signal import SignalObj
 from pytta.classes.measurement import Measurement, RecMeasure
+
+
+class Monitor(object):
+    """
+    PyTTa default Monitor base class, to have default methods and properties that might be used
+    """
+    def __init__(self, numsamples: int,
+                 samplingrate: int=default.samplingRate,
+                 numchannels: List[int]=[len(default.inChannel), len(default.outChannel)],
+                 datatype: str='float32'):
+        self.samplingRate = samplingrate
+        self.numChannels = numchannels
+        self.numSamples = numsamples
+        self.inData = np.empty((self.numSamples, self.numChannels), dtype=datatype)
+        self.outData = np.empty((self.numSamples, self.numChannels), dtype=datatype)
+        self.counter = int()
+        return
+
+    def setup(self):
+        """
+        Start up widgets, threads, anything that will be used during audio processing
+        """
+        pass
+
+    def callback(self, indata: np.ndarray, outdata: np.ndarray, frames: int, status: sd.CallbackFlags):
+        """
+        The audio processing itself, will be called for every chunk of data taken from the queue
+        """
+        pass
+
+    def tear_down(self):
+        """
+        Finish any started object here, to allow the Monitor parallel process be joined
+        """
+        pass
 
 
 # Streaming class
@@ -145,9 +182,9 @@ class Streaming(PyTTaObj):
     def __init__(self, IO: str,
                  msmnt: Measurement,
                  datatype: str='float32',
-                 blocksize: int=1024,
-                 duration: Optional[float] = None,
-                 monitor_callback: Optional[Union[Callable, bool]] = False,
+                 blocksize: int=0,
+                 duration: Optional[float] = 5,
+                 monitor_callback: Optional[Callable] = None,
                  *args, **kwargs):
         """
 
@@ -170,7 +207,11 @@ class Streaming(PyTTaObj):
             self._durationInSamples = None
         self._duration = duration
         self._device = msmnt.device
-        self.monitor = Event()
+        self._theEnd = False
+        self.switch = Event()
+        self.switch.clear()
+        self.running = Event()
+        self.running.clear()
         """
         Essentially, the Event object is a boolean state. It can be
         `.set()` : Internally defines it to be True;
@@ -228,53 +269,77 @@ class Streaming(PyTTaObj):
     def set_io_properties(self, msmnt):
         if 'I' in self.IO:
             self.inChannels = msmnt.inChannels
-            self.recData = self.rec_data_adjust(self.numSamples, self.numInChannels)
+            self.recData = np.empty((self.numSamples, self.numInChannels), dtype=self.dataType)
         if 'O' in self.IO:
             self.outChannels = msmnt.outChannels
-            self.playData = self.play_data_adjust(
-                    msmnt.excitation.timeSignal.copy()) # adjust in blocks of blocksize samples
+            self.playData = msmnt.excitation.timeSignal
         self.count = int()
         return
 
-    def play_data_adjust(self, playdata):
-        len = playdata.shape[0]
-        chn = playdata.shape[1]
-        bs = self.blockSize
-        nchunks = int(np.ceil(len / bs))
-        array = np.empty((nchunks, bs, chn), dtype='float32')
-        for c in range(chn):
-            for n in range(nchunks):
-                array[n, :, c] = playdata[n * bs:(n + 1) * bs, c]
-        return array
+#    def play_data_adjust(self, playdata):
+#        len = playdata.shape[0]
+#        chn = playdata.shape[1]
+#        bs = self.blockSize
+#        nchunks = int(np.ceil(len / bs))
+#        array = np.empty((nchunks, bs, chn), dtype='float32')
+#        for c in range(chn):
+#            for n in range(nchunks):
+#                array[n, :, c] = playdata[n * bs:(n + 1) * bs, c]
+#        return array
+#
+#    def rec_data_adjust(self, nsamples, nchannels):
+#        bs = self.blockSize
+#        nchunks = int(np.ceil(nsamples / bs))
+#        array = np.empty((nchunks, bs, nchannels), dtype='float32')
+#        return array
+#
 
-    def rec_data_adjust(self, nsamples, nchannels):
-        bs = self.blockSize
-        nchunks = int(np.ceil(nsamples / bs))
-        array = np.empty((nchunks, bs, nchannels), dtype='float32')
-        return array
-
-    def set_monitoring(self, func: Union[Callable, bool] = False):
+    def set_monitoring(self, monitor = None):
         """
-        Set up the function used as monitor. It must have the following declaration:
+        Set up the class used as monitor. It must have the following methods with these names:
 
-            def monitor_callback(data: np.ndarray,
-                                 frames: int,
-                                 status: sd.CallbackFlags)
+            def setup(None) -> None:
+
+                _Call any function and other object configuration needed for the monitoring_
+
+                return
+
+
+            def callback(indata: np.ndarray, outdata: np.ndarray,
+                         frames: int, status: sd.CallbackFlags) -> None:
+
+                _Process the data gathered from the stream_
+
+                return
 
         It will be called from within a parallel process that the Recorder starts and
         terminates during it's .run() call.
 
-        :param func:
-        :type func: Callable
+        :param monitor: Object or class that will be used to monitor the stream data flow.
+        :type monitor: object
+
         """
-        if func is False:
-            self.monitor.clear()
-        elif isinstance(func, Callable):
-            self.monitor_callback = func
-            self.monitor.set()
+        if monitor is None:
+            self.switch.clear()
+            self.monitor = None
         else:
-            raise ValueError("The monitoring argument must be a callable:",
-                             "a function or a method.")
+            self.switch.set()
+            self.monitor = monitor
+        return
+
+    def monitoring(self):
+        self.monitor.setup()
+        while not self.running.is_set():
+            continue
+        while self.running.is_set():
+            try:  # call to switch.set()
+                indata, outdata, frames, status = self.queue.get_nowait()  # get from queue
+                if status:  # check any status
+                    self.lastStatus = status
+                self.monitor.callback(indata, outdata, frames, status)  # calls for monitoring function
+            except Empty:  # if queue has no data
+                continue
+        self.monitor.tear_down()
         return
 
     def runner(self, StreamType: Type, stream_callback):
@@ -294,29 +359,21 @@ class Streaming(PyTTaObj):
                         channels=self.numChannels,
                         dtype=self.dataType,
                         latency='low',
+                        dither_off=True,
                         callback=stream_callback) as stream:
+            if self.switch.is_set():
+                t = Process(target=self.monitoring)
+                t.start()
+            self.running.set()
             stream.start()
             while stream.active:
-                if self.monitor:
-                    try:  # call to switch.set()
-                        readonly = self.queue.get_nowait()  # get from queue
-                        input = readonly[0] if 'I' in self.IO else None
-                        output = readonly[1] if 'O' in self.IO else None
-                        frames, status = readonly[-2:]
-                        if status:  # check any status
-                            self.lastStatus = status
-                            print(status)  # prints status to stdout, for checking
-                        self.monitor_callback(input, output, frames, status)  # calls for monitoring function
-                    except Empty:  # if queue has no data
-                        if self.lastStatus is sd.CallbackStop \
-                                or self.lastStatus is sd.CallbackAbort:
-                            # checks if callback is stopped or aborted
-                            break  # then breaks the loop
-                        else:  # else, try to run again.
-                            continue
-                else:
-                     continue
-            stream.close()
+                pass
+            stream.stop()
+            self.running.clear()
+            if self.switch.is_set():
+                t.join()
+                t.close()
+            self.queue.close()
         return
 
     def calib_pressure(self, chIndex, refPrms=1.00, refFreq=1000):
@@ -387,6 +444,10 @@ class Streaming(PyTTaObj):
         return len(self.outChannels)
 
     @property
+    def theEnd(self):
+        return self._theEnd
+
+    @property
     def numChannels(self):
         if self.IO == 'I':
             return self.numInChannels
@@ -407,8 +468,8 @@ class Recorder(Streaming):
     """
     def __init__(self, msmnt: Measurement,
                  datatype: str='float32',
-                 blocksize: int=32,
-                 duration: Optional[float] = None,
+                 blocksize: int=0,
+                 duration: Optional[float] = 5,
                  *args, **kwargs):
         """
 
@@ -419,7 +480,7 @@ class Recorder(Streaming):
         :param blocksize: number of frames reads on each call of the stream callback
         :type blocksize: int
         """
-        super().__init__('I', msmnt, datatype, blocksize, *args, **kwargs)
+        super().__init__('I', msmnt, datatype, blocksize, duration, *args, **kwargs)
         return
 
     def stream_callback(self, indata: np.ndarray, frames: int,
@@ -427,11 +488,11 @@ class Recorder(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        self.recData[self.count, :, :] = indata[:]
-        self.count += 1
+        self.recData[self.count:frames + self.count, :] = indata[:]
         if self.monitor:
-            self.queue.put_nowait([indata, None, frames, status])
-        if self.count == self.recData.shape[0]:
+            self.queue.put_nowait((indata[:], None, frames, status))
+        self.count += frames
+        if self.count >= self.durationInSamples:
             raise sd.CallbackStop
         return
 
@@ -457,7 +518,7 @@ class Player(Streaming):
     """
     def __init__(self, msmnt: Measurement,
                  datatype: str='float32',
-                 blocksize: int=32,
+                 blocksize: int=0,
                  *args, **kwargs):
         """
 
@@ -476,17 +537,17 @@ class Player(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        outdata[:] = self.playData[self.count, :, :]
-        self.count += 1
+        outdata[:] = self.playData[self.count:frames + self.count, :]
         if self.monitor:
-            self.queue.put_nowait([None, outdata, frames, status])
-        if self.count == self.playData.shape[0]:
+            self.queue.put_nowait((None, outdata[:], frames, status))
+        self.count += frames
+        if self.count >= self.durationInSamples:
             raise sd.CallbackStop
         return
 
     def run(self):
         """
-        Instantiates a sounddevice.InputStream and calls for a parallel process
+        Instantiates a sounddevice.OutputStream and calls for a parallel process
         if any monitoring is set up.
         Then turn on the switch Event, and starts the stream.
         Waits for it to finish, unset the event
@@ -505,27 +566,32 @@ class PlaybackRecorder(Streaming):
     """
     def __init__(self, msmnt: Measurement,
                  datatype: str = 'float32',
-                 blocksize: int = 64):
+                 blocksize: int = 0):
         super().__init__('IO', msmnt, datatype, blocksize)
         return
 
     def stream_callback(self, indata, outdata, frames, time, status):
-        outdata[:] = self.playData[self.count, :, :]
-        self.recData[self.count, :, :] = indata[:]
-        self.count += 1
-        if self.monitor:
-            self.queue.put_nowait([indata, outdata, frames, status])
-        if self.count*frames >= self.numSamples:
+        try:
+            outdata[:] = self.playData[self.count:frames + self.count, :]
+            self.recData[self.count:frames + self.count, :] = indata[:]
+            if self.monitor:
+                self.queue.put_nowait((self.recData[self.count:frames + self.count, :].copy(),
+                                       self.playData[self.count:frames + self.count, :].copy(),
+                                       frames, status))
+            self.count += frames
+        except ValueError:
             raise sd.CallbackStop
+        except Exception as e:
+            print(type(e), e, '\n', 'Last Callback Status:', status)
+            raise sd.CallbackAbort
         return
 
     def retrieve(self):
-        arr = self.recData.reshape((self.numSamples, self.numInChannels))
-        assert arr.ndim == 2
-        signal = SignalObj(arr, 'time', self.samplingRate,
+        signal = SignalObj(self.recData, 'time', self.samplingRate,
                            freqMin=20, freqMax=20e3)
         return signal
 
     def run(self):
         self.runner(sd.Stream, self.stream_callback)
         return
+
