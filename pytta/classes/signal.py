@@ -370,7 +370,7 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_time_dB(self, xlabel=None, ylabel=None,
@@ -454,7 +454,7 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
@@ -525,7 +525,7 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
@@ -1069,13 +1069,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
         pass
 
     def plot_time(self, *args, **kwargs):
-        self.systemSignal.plot_time(*args, **kwargs)
+        return self.systemSignal.plot_time(*args, **kwargs)
 
     def plot_time_dB(self, *args, **kwargs):
-        self.systemSignal.plot_time_dB(*args, **kwargs)
+        return self.systemSignal.plot_time_dB(*args, **kwargs)
 
     def plot_freq(self, *args, **kwargs):
-        self.systemSignal.plot_freq(*args, **kwargs)
+        return self.systemSignal.plot_freq(*args, **kwargs)
 
 # Properties
 

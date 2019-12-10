@@ -442,7 +442,7 @@ class Analysis(RICI):
     def plot(self, **kwargs):
         return self.plot_bars(**kwargs)
 
-    def plot_bars(self, xLabel=None, yLabel=None, yLim=None,
+    def plot_bars(self, xLabel=None, yLabel=None, yLim=None, errorLabel=None,
                   title=None, decimalSep=','):
         """
         Analysis bar plotting method
@@ -482,6 +482,14 @@ class Analysis(RICI):
         else:
             self.title = title
         
+        if errorLabel is None:
+            if self.errorLabel is None:
+                errorLabel = 'Error'
+            else:
+                errorLabel = self.errorLabel
+        else:
+            self.errorLabel = errorLabel
+
         fig = plt.figure(figsize=(10, 5))
 
         ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
@@ -508,14 +516,14 @@ class Analysis(RICI):
                 ax.errorbar(*zip(*enumerate(-minval + self.data)),
                             yerr=self.error, fmt='none',
                             ecolor='limegreen', elinewidth=23, zorder=0,
-                            fillstyle='full', alpha=.60, label=self.errorLabel)
+                            fillstyle='full', alpha=.60, label=errorLabel)
 
         else:
             ax.bar(fbar, self.data, width=0.75, label=self.dataLabel, zorder=-1)
             if self.error is not None:
                 ax.errorbar(fbar, self.data, yerr=self.error, fmt='none',
                             ecolor='limegreen', elinewidth=23, zorder=0,
-                            fillstyle='full', alpha=.60, label=self.errorLabel)
+                            fillstyle='full', alpha=.60, label=errorLabel)
             minval = 0
 
         error = self.error if self.error is not None else 0
