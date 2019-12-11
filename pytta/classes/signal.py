@@ -1016,6 +1016,25 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                  "passing as parameter the 'excitation' " +
                                  "and 'recording' signals, or a calculated " +
                                  "'ir'.")   
+            # Zero padding
+            elif excitation.numSamples > recording.numSamples:
+                print("Zero padding on IR calculation!")
+                excitSig = excitation.timeSignal
+                recSig = recording.timeSignal
+                newTimeSignal = \
+                    np.zeros((excitSig.shape[0], recSig.shape[1]))
+                newTimeSignal[:recSig.shape[0], :recSig.shape[1]] = \
+                    recSig
+                recording.timeSignal = newTimeSignal
+            elif excitation.numSamples < recording.numSamples:
+                print("Zero padding on IR calculation!")
+                excitSig = excitation.timeSignal
+                recSig = recording.timeSignal
+                newTimeSignal = \
+                    np.zeros((recSig.shape[0], excitSig.shape[1]))
+                newTimeSignal[:excitSig.shape[0], :excitSig.shape[1]] = \
+                    excitSig
+                excitation.timeSignal = newTimeSignal
             self._methodInfo = {'method': method, 'winType': winType,
                                 'winSize': winSize, 'overlap': overlap}
             self._systemSignal = self._calculate_tf_ir(excitation,
