@@ -34,6 +34,10 @@ class SignalObj(_base.PyTTaObj):
         * samplingRate (44100), (int):
             signal's sampling rate;
 
+        * signalType ('power'), ('str'):
+            type of the input signal. 'power' for finite power signal (infinite
+            energy) and 'energy' for energy signal (power tends to zero);    
+
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
 
@@ -135,9 +139,15 @@ class SignalObj(_base.PyTTaObj):
         if signalArray.shape[1] > signalArray.shape[0]:
             signalArray = signalArray.T
 
+        if 'signalType' in kwargs:
+            signalType = kwargs.pop('signalType')
+        else:
+            signalType = 'power'
+
         super().__init__(*args, **kwargs)
 
         self.channels = _base.ChannelsList()
+        self.signalType = signalType
         self.lengthDomain = domain
         if self.lengthDomain == 'freq':
             self.freqSignal = signalArray  # [-] signal in frequency domain
@@ -156,6 +166,32 @@ class SignalObj(_base.PyTTaObj):
         return
 
 # SignalObj Properties
+    @property
+    def signalType(self):
+        return self._signalType
+    
+    @signalType.setter
+    def signalType(self, newSigType):
+        if not isinstance(newSigType, str):
+            raise TypeError("signalType must be a string and may be 'power' " +
+                            "for music, speech, and other recorded signals, " +
+                            "or 'energy' for impulsive responses.")
+        elif newSigType not in ['power', 'energy']:
+            raise TypeError("signalType may be 'power' " +
+                            "for music, speech, and other recorded signals, " +
+                            "or 'energy' for impulsive responses.")
+        elif hasattr(self, '_signalType'):
+            if newSigType == self.signalType:
+                print("'signalType' is already '" + self.signalType + "'.")
+            else:
+                self._signalType = newSigType
+                self._freqSignal = \
+                    np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
+                if newSigType == 'power':
+                    self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+        else:
+            self._signalType = newSigType
+
     @property
     def timeVector(self):
         return self._timeVector
@@ -176,8 +212,10 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._timeSignal = np.array(newSignal, dtype='float32')
-            self._freqSignal = np.fft.rfft(self._timeSignal, axis=0, norm=None)
-            self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+            self._freqSignal = \
+                np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
+            if self.signalType == 'power':
+                self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             # number of samples
             self._numSamples = len(self._timeSignal)
             # size parameter
@@ -378,7 +416,6 @@ class SignalObj(_base.PyTTaObj):
         """
         Time domain plotting method
         """
-        firstCh = self.channels.mapping[0]
         if xlabel is None:
             xlabel = 'Time [s]'
         if ylabel is None:
@@ -482,7 +519,7 @@ class SignalObj(_base.PyTTaObj):
                          self.freqSignal[:, chIndex])),
                          31, 3)
             else:
-                Signal = self.freqSignal[:, chIndex]  # / (2**(1/2))
+                Signal = self.freqSignal[:, chIndex]
             dBSignal = 20 * np.log10(np.abs(Signal) /
                                      self.channels[chNum].dBRef)
             label = '{} {}'.format(self.channels[chNum].name, unitData)
@@ -689,6 +726,7 @@ class SignalObj(_base.PyTTaObj):
         """
         h5group.attrs['class'] = 'SignalObj'
         h5group.attrs['channels'] = repr(self.channels)
+        h5group.attrs['signalType'] = _h5.attr_parser(self.signalType)
         h5group['timeSignal'] = self.timeSignal
         super().h5_save(h5group)
         pass
@@ -702,12 +740,13 @@ class SignalObj(_base.PyTTaObj):
 
         """
         if type(other) == type(self):
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                               samplingRate=self.samplingRate,
+                               freqMin=self.freqMin, freqMax=self.freqMax,
+                               signalType='energy')
+            result.channels = self.channels
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
-            result = SignalObj(np.zeros(self.timeSignal.shape),
-                            samplingRate=self.samplingRate,
-                            freqMin=self.freqMin, freqMax=self.freqMax)
-            result.channels = self.channels
             if self.numChannels > 1:
                 if other.numChannels > 1:
                     if other.numChannels != self.numChannels:
@@ -1162,7 +1201,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
                             * 1/2
                 C = np.conj(data) / \
                     (np.conj(data)*data + eps)
-                C = SignalObj(C,'freq',inputSignal.samplingRate)
+                C = SignalObj(C,
+                              'freq',
+                              inputSignal.samplingRate,
+                              signalType='energy')
                 result = outputSignal * C
             else:
                 result = outputSignal / inputSignal
@@ -1177,7 +1219,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
             result = SignalObj(np.zeros((winSize//2 + 1,
                                          outputSignal.freqSignal.shape[1])),
                                domain='freq',
-                               samplingRate=inputSignal.samplingRate)
+                               samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:
                     if inputSignal.numChannels\
@@ -1216,7 +1259,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 winSize = inputSignal.samplingRate//2
             if overlap is None:
                 overlap = 0.5
-            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result = SignalObj(samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             result.domain = 'freq'
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:
@@ -1255,7 +1299,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 winSize = inputSignal.samplingRate//2
             if overlap is None:
                 overlap = 0.5
-            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result = SignalObj(samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             result.domain = 'freq'
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:

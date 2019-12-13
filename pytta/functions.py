@@ -455,12 +455,18 @@ def __h5_unpack(ObjGroup):
         freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
         freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
         lengthDomain = ObjGroup.attrs['lengthDomain']
+        # Added with an if for compatibilitie issues
+        if 'signalType' in ObjGroup.attrs:
+            signalType = _h5.attr_parser(ObjGroup.attrs['signalType'])
+        else:
+            signalType = 'power'
         comment = ObjGroup.attrs['comment']
         # SignalObj attr unpacking
         channels = eval(ObjGroup.attrs['channels'])
         # Creating and conforming SignalObj
         SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
                            domain='time',
+                           signalType=signalType,
                            samplingRate=samplingRate,
                            freqMin=freqMin,
                            freqMax=freqMax,
