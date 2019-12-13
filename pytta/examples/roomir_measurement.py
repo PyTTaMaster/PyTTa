@@ -223,7 +223,7 @@ b = D.calculate_ir(a,
                    skipInCompensation=False, # Ok
                    skipOutCompensation=False, # Ok
                    whereToOutComp='excitation',
-                   skipBypCalibration=True, # Ok
+                   skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
                    skipSave=False)
@@ -231,7 +231,7 @@ for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[-150,100])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[-30,85])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
         # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])

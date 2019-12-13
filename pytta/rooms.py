@@ -37,30 +37,36 @@ def _filter(signal,
     result = of.filter(signal)
     return result[0]
 
-def T_cut_non_linear_IR_end(SigObj):
+def T_cut_non_linear_IR_end(SigObj, IRManualCut):
     timeSignal = SigObj.timeSignal
     timeVector = SigObj.timeVector
     samplingRate = SigObj.samplingRate
     numSamples = SigObj.numSamples
     numChannels = SigObj.numChannels
-    winTimeLength = 0.1  # [s]
-    meanSize = 5  # [blocks]
-    dBtoReplica = 9  # [dB]
-    blockSamples = int(winTimeLength * samplingRate)
-    timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
-                                            numSamples, numChannels,
-                                            blockSamples)
-    cutTime = timeVector[-1]
-    for blockIdx, blockAmplitude in enumerate(timeWinData):
-        if blockIdx >= meanSize:
-            anteriorMean = 10*np.log10( \
-                np.sum(timeWinData[blockIdx-meanSize:blockIdx])/meanSize)
-            if 10*np.log10(blockAmplitude) > anteriorMean+dBtoReplica:
-                cutTime = timeVecWin[blockIdx-meanSize//2]
-                break
+    if IRManualCut is None:
+        winTimeLength = 0.1  # [s]
+        meanSize = 5  # [blocks]
+        dBtoReplica = 9  # [dB]
+        blockSamples = int(winTimeLength * samplingRate)
+        timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
+                                                numSamples, numChannels,
+                                                blockSamples)
+        cutTime = timeVector[-1]
+        for blockIdx, blockAmplitude in enumerate(timeWinData):
+            if blockIdx >= meanSize:
+                anteriorMean = 10*np.log10( \
+                    np.sum(timeWinData[blockIdx-meanSize:blockIdx])/meanSize)
+                if 10*np.log10(blockAmplitude) > anteriorMean+dBtoReplica:
+                    cutTime = timeVecWin[blockIdx-meanSize//2]
+                    break
+    else:
+        cutTime = IRManualCut
     timeCutIdx = np.where(timeVector >= cutTime)[0][0]
-    SigObj.timeSignal = timeSignal[:timeCutIdx]
-    return SigObj
+    result = SignalObj(timeSignal[:timeCutIdx],
+                       'time',
+                       samplingRate,
+                       signalType='energy')
+    return result
     
 
 @njit
@@ -310,8 +316,11 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamp
         energyDecay = np.zeros(truncatedTimeVector.size)
     return (energyDecay, truncatedTimeVector, lundebyParams)
 
-def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
-    cuttedInputSignal = T_cut_non_linear_IR_end(inputSignal)
+def cumulative_integration(inputSignal,
+                           plotLundebyResults,
+                           IRManualCut,
+                           **kwargs):
+    cuttedInputSignal = T_cut_non_linear_IR_end(inputSignal, IRManualCut)
     timeSignal = cuttedInputSignal.timeSignal[:]
     timeSignal, sampleShift = T_circular_time_shift(timeSignal)
     del sampleShift
@@ -590,7 +599,9 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
     pass
 
 
-def analyse(obj, *params, plotLundebyResults=False, **kwargs):
+def analyse(obj, *params,
+            plotLundebyResults=False,
+            IRManualCut=None, **kwargs):
     """analyse
     
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
@@ -656,7 +667,10 @@ def analyse(obj, *params, plotLundebyResults=False, **kwargs):
     if obj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
     samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
+    listEDC = cumulative_integration(SigObj,
+                                     plotLundebyResults,
+                                     IRManualCut,
+                                     **kwargs)
     for prm in params:
         if 'RT' == prm:
             RTdecay = params[params.index('RT')+1]
