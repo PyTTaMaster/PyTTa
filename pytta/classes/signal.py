@@ -287,7 +287,43 @@ class SignalObj(_base.PyTTaObj):
             orientations.append(self.channels[chNum].orientation)
         return orientations
 
+    @property
+    def numChannels(self):
+        try:
+            numChannels = self.timeSignal.shape[1]
+        except IndexError:
+            numChannels = 1
+        return numChannels
+
+    def num_channels(self):  # DEPRECATED
+        warn(DeprecationWarning("This method is DEPRECATED and being " +
+                                "replaced by .numChannels property."))
+        return self.numChannels
+
 # SignalObj Methods
+
+    def crop(self, startTime, endTime):
+        """crop crop the signal duration in the specified interval
+        
+        :param startTime: start time for cropping
+        :type startTime: int, float
+        :param endTime: end time for cropping
+        :type endTime: int, float or str
+        """
+        if not isinstance(startTime, (float, int)) or \
+            not isinstance(endTime, (float, int, str)):
+            raise TypeError("'startTime' and 'endTime' must be int, float or " +
+                            "'end'.")
+        if isinstance(endTime, str):
+            if endTime == 'end':
+                endTime = self.timeVector[-1]
+            else:
+                raise TypeError("'endTime' must be int, float or " +
+                                "'end'.")
+        endIdx = np.where(self.timeVector >= endTime)[0][0]
+        startIdx = np.where(self.timeVector >= startTime)[0][0]
+        self.timeSignal = self.timeSignal[startIdx:endIdx,:]
+
     def mean(self):
         print('DEPRECATED! This method will be renamed to',
               ':method:``.channelMean()``',
@@ -305,18 +341,6 @@ class SignalObj(_base.PyTTaObj):
                                              dtype=self.timeSignal.dtype),
                          lengthDomain='time', samplingRate=self.samplingRate)
 
-    @property
-    def numChannels(self):
-        try:
-            numChannels = self.timeSignal.shape[1]
-        except IndexError:
-            numChannels = 1
-        return numChannels
-
-    def num_channels(self):  # DEPRECATED
-        warn(DeprecationWarning("This method is DEPRECATED and being " +
-                                "replaced by .numChannels property."))
-        return self.numChannels
 
     def max_level(self):
         maxlvl = []
