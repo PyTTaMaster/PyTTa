@@ -40,6 +40,7 @@ class TestH5IO(unittest.TestCase):
         """
         sin1 = pytta.generate.sin(freq=500, timeLength=6)
         sin2 = pytta.generate.sin(freq=1000, timeLength=7)
+        sin2.signalType = 'energy'
         savedlst = [sin1, sin2]
         pytta.save(self.filename, sin1, sin2)
         loaded = pytta.load(self.filename)
@@ -55,6 +56,9 @@ class TestH5IO(unittest.TestCase):
             # SignalObj.samplingRate
             self.assertEqual(pobj.samplingRate,
                              savedlst[idx].samplingRate)
+            # SignalObj.signalType
+            self.assertEqual(pobj.signalType,
+                             savedlst[idx].signalType)
             # SignalObj.channels
             self.assertEqual(str(pobj.channels),
                              str(savedlst[idx].channels))

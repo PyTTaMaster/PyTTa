@@ -394,13 +394,10 @@ class ChannelObj(object):
         return newCh
 
     def calib_volt(self, refSignalObj, refVrms, refFreq):
-        Vrms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) / (2**(1/2))
-        print(Vrms)
-        freqFound = np.round(
-                refSignalObj.freqVector[np.where(
-                        np.abs(refSignalObj.freqSignal) ==
-                        np.max(np.abs(refSignalObj.freqSignal)))[0]])
-        if freqFound != refFreq:
+        Vrms = refSignalObj.rms()[0]
+        freqFound = np.round(refSignalObj.freqVector[np.argmax(
+                refSignalObj.freqSignal)])
+        if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
             print('\x1b[0;30;43mATENTTION! Found calibration frequency (' +
                   '{:.2}'.format(freqFound) +
                   ' [Hz]) differs from refFreq (' +

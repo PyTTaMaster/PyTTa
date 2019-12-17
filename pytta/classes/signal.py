@@ -34,6 +34,10 @@ class SignalObj(_base.PyTTaObj):
         * samplingRate (44100), (int):
             signal's sampling rate;
 
+        * signalType ('power'), ('str'):
+            type of the input signal. 'power' for finite power signal (infinite
+            energy) and 'energy' for energy signal (power tends to zero);    
+
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
 
@@ -98,6 +102,9 @@ class SignalObj(_base.PyTTaObj):
 
         * plot_freq():
             generates the signal's spectre graphic;
+        
+        * plot_spectrogram():
+            generates the signal's spectrogram graphic;
 
         * calib_voltage(refSignalObj,refVrms,refFreq):
             voltage calibration from an input SignalObj;
@@ -132,9 +139,15 @@ class SignalObj(_base.PyTTaObj):
         if signalArray.shape[1] > signalArray.shape[0]:
             signalArray = signalArray.T
 
+        if 'signalType' in kwargs:
+            signalType = kwargs.pop('signalType')
+        else:
+            signalType = 'power'
+
         super().__init__(*args, **kwargs)
 
         self.channels = _base.ChannelsList()
+        self.signalType = signalType
         self.lengthDomain = domain
         if self.lengthDomain == 'freq':
             self.freqSignal = signalArray  # [-] signal in frequency domain
@@ -153,6 +166,32 @@ class SignalObj(_base.PyTTaObj):
         return
 
 # SignalObj Properties
+    @property
+    def signalType(self):
+        return self._signalType
+    
+    @signalType.setter
+    def signalType(self, newSigType):
+        if not isinstance(newSigType, str):
+            raise TypeError("signalType must be a string and may be 'power' " +
+                            "for music, speech, and other recorded signals, " +
+                            "or 'energy' for impulsive responses.")
+        elif newSigType not in ['power', 'energy']:
+            raise TypeError("signalType may be 'power' " +
+                            "for music, speech, and other recorded signals, " +
+                            "or 'energy' for impulsive responses.")
+        elif hasattr(self, '_signalType'):
+            if newSigType == self.signalType:
+                print("'signalType' is already '" + self.signalType + "'.")
+            else:
+                self._signalType = newSigType
+                self._freqSignal = \
+                    np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
+                if newSigType == 'power':
+                    self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+        else:
+            self._signalType = newSigType
+
     @property
     def timeVector(self):
         return self._timeVector
@@ -173,8 +212,10 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._timeSignal = np.array(newSignal, dtype='float32')
-            self._freqSignal = np.fft.rfft(self._timeSignal, axis=0, norm=None)
-            self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+            self._freqSignal = \
+                np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
+            if self.signalType == 'power':
+                self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             # number of samples
             self._numSamples = len(self._timeSignal)
             # size parameter
@@ -246,7 +287,43 @@ class SignalObj(_base.PyTTaObj):
             orientations.append(self.channels[chNum].orientation)
         return orientations
 
+    @property
+    def numChannels(self):
+        try:
+            numChannels = self.timeSignal.shape[1]
+        except IndexError:
+            numChannels = 1
+        return numChannels
+
+    def num_channels(self):  # DEPRECATED
+        warn(DeprecationWarning("This method is DEPRECATED and being " +
+                                "replaced by .numChannels property."))
+        return self.numChannels
+
 # SignalObj Methods
+
+    def crop(self, startTime, endTime):
+        """crop crop the signal duration in the specified interval
+        
+        :param startTime: start time for cropping
+        :type startTime: int, float
+        :param endTime: end time for cropping
+        :type endTime: int, float or str
+        """
+        if not isinstance(startTime, (float, int)) or \
+            not isinstance(endTime, (float, int, str)):
+            raise TypeError("'startTime' and 'endTime' must be int, float or " +
+                            "'end'.")
+        if isinstance(endTime, str):
+            if endTime == 'end':
+                endTime = self.timeVector[-1]
+            else:
+                raise TypeError("'endTime' must be int, float or " +
+                                "'end'.")
+        endIdx = np.where(self.timeVector >= endTime)[0][0]
+        startIdx = np.where(self.timeVector >= startTime)[0][0]
+        self.timeSignal = self.timeSignal[startIdx:endIdx,:]
+
     def mean(self):
         print('DEPRECATED! This method will be renamed to',
               ':method:``.channelMean()``',
@@ -264,18 +341,6 @@ class SignalObj(_base.PyTTaObj):
                                              dtype=self.timeSignal.dtype),
                          lengthDomain='time', samplingRate=self.samplingRate)
 
-    @property
-    def numChannels(self):
-        try:
-            numChannels = self.timeSignal.shape[1]
-        except IndexError:
-            numChannels = 1
-        return numChannels
-
-    def num_channels(self):  # DEPRECATED
-        warn(DeprecationWarning("This method is DEPRECATED and being " +
-                                "replaced by .numChannels property."))
-        return self.numChannels
 
     def max_level(self):
         maxlvl = []
@@ -367,7 +432,7 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_time_dB(self, xlabel=None, ylabel=None,
@@ -385,14 +450,39 @@ class SignalObj(_base.PyTTaObj):
         ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
                           projection='rectilinear')
         ax.set_snap(True)
+
+        dBSignal = np.abs(self.timeSignal) / \
+            self.channels.dBRefList()
+        dBSignal = 20*np.log10(dBSignal)
+
+        margin = 0
+        infYLim = 1000000
+        supYLim = -1000000
         for chIndex in range(self.numChannels):
             chNum = self.channels.mapping[chIndex]
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
             ax.plot(self.timeVector,
-                    10*np.log10(self.timeSignal[:, chIndex]**2 /
-                                (self.channels[chNum].dBRef**2)),
+                    dBSignal[:, chIndex],
                     label=label)
+            newInfYLim = np.nanmin(np.abs(self.timeSignal[:, chIndex])) / \
+                self.channels[chNum].dBRef
+            newInfYLim = 20*np.log10(newInfYLim)
+
+            if newInfYLim < infYLim:
+                infYLim = newInfYLim
+
+            newSupYLim = np.nanmax(np.abs(self.timeSignal[:, chIndex])) / \
+                self.channels[chNum].dBRef
+            newSupYLim = 20*np.log10(newSupYLim)
+
+            if newSupYLim > supYLim:
+                supYLim = newSupYLim
+
+            newMargin = (supYLim - infYLim)/20
+            if newMargin > margin:
+                margin = newMargin
+
         ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
         if xlim is None:
@@ -425,7 +515,7 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
@@ -453,7 +543,7 @@ class SignalObj(_base.PyTTaObj):
                          self.freqSignal[:, chIndex])),
                          31, 3)
             else:
-                Signal = self.freqSignal[:, chIndex]  # / (2**(1/2))
+                Signal = self.freqSignal[:, chIndex]
             dBSignal = 20 * np.log10(np.abs(Signal) /
                                      self.channels[chNum].dBRef)
             label = '{} {}'.format(self.channels[chNum].name, unitData)
@@ -496,11 +586,26 @@ class SignalObj(_base.PyTTaObj):
         ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
                             for tick in yticks], fontsize=14)
         ax.set_ylabel(ylabel, fontsize=20)
-        fig.legend(loc='center right', fontsize=12)
+        ax.legend(loc='best', fontsize=12)
         return fig
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
                          xlabel=None, ylabel=None):
+        """plot_spectrogram plots the spectrum time history
+        
+        :param window: window type for the time slicing, defaults to 'hann'
+        :type window: str, optional
+        :param winSize: window size in samples, defaults to 1024
+        :type winSize: int, optional
+        :param overlap: window overlap in %, defaults to 0.5
+        :type overlap: float, optional
+        :param xlabel: x axis label, defaults to None
+        :type xlabel: str, optional
+        :param ylabel: y axis label, defaults to None
+        :type ylabel: str, optional
+        :return: figure
+        :rtype: matplotlib.figure.Figure
+        """
         firstCh = self.channels.mapping[0]
         unitData = '[{} ref.: {} {}]'.format(self.channels[firstCh].dBName,
                                              self.channels[firstCh].dBRef,
@@ -645,6 +750,7 @@ class SignalObj(_base.PyTTaObj):
         """
         h5group.attrs['class'] = 'SignalObj'
         h5group.attrs['channels'] = repr(self.channels)
+        h5group.attrs['signalType'] = _h5.attr_parser(self.signalType)
         h5group['timeSignal'] = self.timeSignal
         super().h5_save(h5group)
         pass
@@ -658,12 +764,13 @@ class SignalObj(_base.PyTTaObj):
 
         """
         if type(other) == type(self):
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                               samplingRate=self.samplingRate,
+                               freqMin=self.freqMin, freqMax=self.freqMax,
+                               signalType='energy')
+            result.channels = self.channels
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
-            result = SignalObj(np.zeros(self.timeSignal.shape),
-                            samplingRate=self.samplingRate,
-                            freqMin=self.freqMin, freqMax=self.freqMax)
-            result.channels = self.channels
             if self.numChannels > 1:
                 if other.numChannels > 1:
                     if other.numChannels != self.numChannels:
@@ -972,6 +1079,25 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                  "passing as parameter the 'excitation' " +
                                  "and 'recording' signals, or a calculated " +
                                  "'ir'.")   
+            # Zero padding
+            elif excitation.numSamples > recording.numSamples:
+                print("Zero padding on IR calculation!")
+                excitSig = excitation.timeSignal
+                recSig = recording.timeSignal
+                newTimeSignal = \
+                    np.zeros((excitSig.shape[0], recSig.shape[1]))
+                newTimeSignal[:recSig.shape[0], :recSig.shape[1]] = \
+                    recSig
+                recording.timeSignal = newTimeSignal
+            elif excitation.numSamples < recording.numSamples:
+                print("Zero padding on IR calculation!")
+                excitSig = excitation.timeSignal
+                recSig = recording.timeSignal
+                newTimeSignal = \
+                    np.zeros((recSig.shape[0], excitSig.shape[1]))
+                newTimeSignal[:excitSig.shape[0], :excitSig.shape[1]] = \
+                    excitSig
+                excitation.timeSignal = newTimeSignal
             self._methodInfo = {'method': method, 'winType': winType,
                                 'winSize': winSize, 'overlap': overlap}
             self._systemSignal = self._calculate_tf_ir(excitation,
@@ -1025,13 +1151,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
         pass
 
     def plot_time(self, *args, **kwargs):
-        self.systemSignal.plot_time(*args, **kwargs)
+        return self.systemSignal.plot_time(*args, **kwargs)
 
     def plot_time_dB(self, *args, **kwargs):
-        self.systemSignal.plot_time_dB(*args, **kwargs)
+        return self.systemSignal.plot_time_dB(*args, **kwargs)
 
     def plot_freq(self, *args, **kwargs):
-        self.systemSignal.plot_freq(*args, **kwargs)
+        return self.systemSignal.plot_freq(*args, **kwargs)
 
 # Properties
 
@@ -1099,7 +1225,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
                             * 1/2
                 C = np.conj(data) / \
                     (np.conj(data)*data + eps)
-                C = SignalObj(C,'freq',inputSignal.samplingRate)
+                C = SignalObj(C,
+                              'freq',
+                              inputSignal.samplingRate,
+                              signalType='energy')
                 result = outputSignal * C
             else:
                 result = outputSignal / inputSignal
@@ -1114,7 +1243,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
             result = SignalObj(np.zeros((winSize//2 + 1,
                                          outputSignal.freqSignal.shape[1])),
                                domain='freq',
-                               samplingRate=inputSignal.samplingRate)
+                               samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:
                     if inputSignal.numChannels\
@@ -1153,7 +1283,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 winSize = inputSignal.samplingRate//2
             if overlap is None:
                 overlap = 0.5
-            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result = SignalObj(samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             result.domain = 'freq'
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:
@@ -1192,7 +1323,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 winSize = inputSignal.samplingRate//2
             if overlap is None:
                 overlap = 0.5
-            result = SignalObj(samplingRate=inputSignal.samplingRate)
+            result = SignalObj(samplingRate=inputSignal.samplingRate,
+                               signalType='energy')
             result.domain = 'freq'
             if outputSignal.numChannels > 1:
                 if inputSignal.numChannels > 1:
