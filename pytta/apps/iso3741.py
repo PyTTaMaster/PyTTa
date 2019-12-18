@@ -34,7 +34,7 @@ def _filter(signal,
     result = of.filter(signal)
     return result[0]
 
-def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
+def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     """
     Calculate from the provided list of one channel SignalObjs the mean 
     one-third-octave band time-averaged sound pressure level in the test room
@@ -64,11 +64,12 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
-        firstChNum = sigObj.channels.mapping[0]
-
-        if not sigObj.channels[firstChNum].calibCheck:
-            raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
-
+        # if not sigObj.channels[firstChNum].calibCheck:
+        #     raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
+        # Cutting the IR
+        if IRManualCut is not None:
+            sigObj.crop(0, IRManualCut)
+        # Bands filtering
         hSignal = SignalObj(sigObj.timeSignal[:,0],
                             sigObj.lengthDomain,
                             sigObj.samplingRate)
@@ -88,7 +89,6 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
                            comment='Leq')
         Leqs.append(Leq)
 
-    
     Leq = 0
     for L in Leqs:
         Leq =  L + Leq
