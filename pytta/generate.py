@@ -100,8 +100,8 @@ def sin(Arms=0.5,
     sinSigObj.creation_name = creation_name
     return sinSigObj
 
-
-def sweep(freqMin=None,
+#FIXME: por que não passar valores padrão pré preenchidos? Linhas 147-158 economia
+def sweep(freqMin=None, 
           freqMax=None,
           samplingRate=None,
           fftDegree=None,
@@ -249,7 +249,7 @@ def __do_sweep_windowing(inputSweep,
     newSweep = fullWindow * inputSweep
     return newSweep
 
-
+# FIXME: change name to random_noise
 def noise(kind='white',
           samplingRate=None,
           fftDegree=None,
@@ -261,7 +261,7 @@ def noise(kind='white',
     silence at the beginning and ending of the signal, plus a fade in to avoid
     abrupt speaker excursioning. All noises have normalized amplitude.
 
-        White noise is generated using numpy.randn between [[1];[-1]];
+        White noise is generated using numpy.randn between [[1];[-1]]; # FIXME: This looks incorrect because the signal has normal distribution, so no limits but an average and standard deviation
 
         Pink noise is still in progress;
 
@@ -369,10 +369,15 @@ def impulse(samplingRate=None,
         fftDegree = default.fftDegree
 
     numSamples = 2**fftDegree
-    impulseSignal = (numSamples / samplingRate) \
-        * np.ones(numSamples) + 1j * np.random.randn(numSamples)
-    impulseSignal = np.real(np.fft.ifft(impulseSignal))
-    impulseSignal = impulseSignal / max(impulseSignal)
+    # FIXME: I don't know why you created this way. I guess it would be better to just create a vector of zeros and then substitute the first sample by 1.
+# =============================================================================
+#     impulseSignal = (numSamples / samplingRate) \
+#         * np.ones(numSamples) + 1j * np.random.randn(numSamples)  
+#     impulseSignal = np.real(np.fft.ifft(impulseSignal))
+#     impulseSignal = impulseSignal / max(impulseSignal)
+# =============================================================================
+    impulseSignal = np.zeros(numSamples)
+    impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,
                               domain='time',
                               samplingRate=samplingRate)
