@@ -226,16 +226,18 @@ b = D.calculate_ir(a,
                    skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
+                   IREndManualCut=None,
+                   IRStartManualCut=None,
                    skipSave=False)
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[-30,85])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[0,85])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
-        # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])
-        prot2 = IR.measuredSignals[0].plot_time(xlim=[-0.01, 0.3])
+        prot2 = IR.measuredSignals[0].plot_time_dB(xlim=None)
+        # prot2 = IR.measuredSignals[0].plot_time(xlim=[-0.01, 0.3])
 
 # %% Calcula respostas ao sinal de excitação calibradas e salva em disco
 a = D.get('roomres', 'Mic1')
