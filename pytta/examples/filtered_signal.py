@@ -22,5 +22,5 @@ if __name__ == "__main__":
 
     myFSignal = myFilt.filter(mySignal)
 
-    myFSignal.plot_time()
-    myFSignal.plot_freq()
+    myFSignal[2].plot_time()
+    myFSignal[2].plot_freq()

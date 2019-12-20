@@ -82,23 +82,30 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
         print("noiseLevelCheck: The SNR too bad or this is not an " +
               "impulse response.")
         return 0
-
     # find the first sample that lies under the given threshold
     threshold = abs(threshold)
     startSample = 1
-
 #    # TODO - envelope mar/pdi - check!
 #    if idxNoShift:
 #        print("Something wrong!")
 #        return
-
-#    % if maximum lies on the first point, then there is no point in searching
-#    % for the beginning of the IR. Just return this position.
+    # if maximum lies on the first point, then there is no point in searching
+    # for the beginning of the IR. Just return this position.
     if max_idx > 0:
-
         abs_dat = 10*np.log10(squaredIR[:max_idx]) \
                   - 10.*np.log10(max_val)
-        lastBelowThreshold = np.where(abs_dat < threshold)[0][-1]
+        thresholdNotOk = True
+        thresholdShift = 0
+        while thresholdNotOk:
+            if len(np.where(abs_dat < (-threshold+thresholdShift))[0]) > 0:
+                lastBelowThreshold = \
+                    np.where(abs_dat < (-threshold+thresholdShift))[0][-1]
+                thresholdNotOk = False
+            else:
+                thresholdShift += 1
+        if thresholdShift > 0:
+            print("T_start_sample_ISO3382: 20 dB threshold too high. " +
+                  "Decreasing it.")
         if lastBelowThreshold > 0:
             startSample = lastBelowThreshold
         else:
@@ -110,8 +117,8 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
 def T_circular_time_shift(timeSignal, threshold=20):
     # find the first sample where inputSignal level > 20 dB or > bgNoise level
     startSample = T_start_sample_ISO3382(timeSignal, threshold)
-    timeSignal = timeSignal[startSample:]
-    return (timeSignal, startSample)
+    newTimeSignal = timeSignal[startSample:]
+    return (newTimeSignal, startSample)
 
 
 @njit
@@ -211,7 +218,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         lateDynRange = np.abs(10*np.log10(timeWinData[stopIdx]) \
             - 10*np.log10(timeWinData[startIdx]))
 
-        if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:  # where returns empty
+        # where returns empty
+        if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:
             print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
                 "low. Skipping!")
             # c[1] = np.inf
@@ -245,8 +253,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
 @njit
-def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamples,
-                             numChannels, timeLength):
+def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
+                             numSamples, numChannels, timeLength):
     lundebyParams = \
         T_Lundeby_correction(band,
                              timeSignal,
@@ -291,6 +299,7 @@ def cumulative_integration(inputSignal,
         ax.legend(loc='upper center', shadow=True, fontsize='x-large')
     
     timeSignal = inputSignal.timeSignal[:]
+    # Substituted by SignalObj.crop in analyse function
     # timeSignal, sampleShift = T_circular_time_shift(timeSignal)
     # del sampleShift
     hSignal = SignalObj(timeSignal,
@@ -304,7 +313,7 @@ def cumulative_integration(inputSignal,
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
         band = bands[ch]
-        timeSignal = signal.timeSignal[:]
+        timeSignal = cp.copy(signal.timeSignal[:])
         timeVector = signal.timeVector[:]
         samplingRate = signal.samplingRate
         numSamples = signal.numSamples
@@ -507,12 +516,12 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     Lps = []
     for chIndex in range(hSignal.numChannels):
         timeSignal = cp.copy(hSignal.timeSignal[:,chIndex])
-        timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+        timeSignalNoStart, sampleShift = T_circular_time_shift(timeSignal)
         windowLength = 0.0032 # [s]
         windowEnd = int(windowLength*SigObj.samplingRate)
 
         Lps.append(
-            10*np.log10(np.trapz(y=timeSignal[:windowEnd]**2/(2e-5**2),
+            10*np.log10(np.trapz(y=timeSignalNoStart[:windowEnd]**2/(2e-5**2),
                                  x=hSignal.timeVector[sampleShift:sampleShift+windowEnd])))
     LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
                             maxBand=float(bands[-1]), data=Lps,

@@ -27,7 +27,6 @@ Functions:
     For further information, check the function specific documentation.
 """
 
-
 import os
 import time
 import json
@@ -47,6 +46,7 @@ from pytta.generate import measurement  # TODO: Change to class instantiation.
 import copy as cp
 import pytta.h5utilities as _h5
 from warnings import warn
+
 
 def list_devices():
     """
@@ -86,7 +86,6 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
 
     """
     return np.log2(timeLength*samplingRate)
-
 
 
 def read_wav(fileName):
@@ -384,72 +383,41 @@ def h5_save(fileName: str, *PyTTaObjs):
 
     >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
 
-    Dictionaries can also be passed as a PyTTaObj. An hdf5 group will be
+    Dictionaries can also be passed as a PyTTa object. An hdf5 group will be
     created for each dictionary and its PyTTa objects will be saved. To ensure
-    the diciontary name will be saved create the key 'dictName' inside it with 
-    its name in a string as the value.
+    the diciontary name will be saved, create the key 'dictName' inside it with 
+    its name in a string as the value. This function will take this key and use
+    as variable name for the dict. 
+
+    Lists can also be passed as a PyTTa object. An hdf5 group will be created 
+    for each list and its PyTTa objects will be saved. To ensure the list name
+    will be saved, append to the list a string containing its name. This
+    function will take the first string found and use it as variable name for
+    the list. 
     """
     # Checking if filename has .hdf5 extension
     if fileName.split('.')[-1] != 'hdf5':
         fileName += '.hdf5'
     with h5py.File(fileName, 'w') as f:
         # Dict for counting equal names for correctly renaming
-        objsNameCount = {}
-        objCount = 0  # Counter for loaded objects
-        totCount = 0  # Counter for total groups
+        totalPObjCount = 0  # Counter for total groups
+        savedPObjCount = 0  # Counter for loaded objects
         for idx, pObj in enumerate(PyTTaObjs):
-            if isinstance(pObj, (SignalObj,
-                                ImpulsiveResponse,
-                                RecMeasure,
-                                PlayRecMeasure,
-                                FRFMeasure,
-                                Analysis)):
-                # Check if creation_name was already used
-                creationName = pObj.creation_name
-                if creationName in objsNameCount:
-                    objsNameCount[creationName] += 1
-                    creationName += '_' + str(objsNameCount[creationName])
-                else:
-                    objsNameCount[creationName] = 1
-                # create obj's group
-                objH5Group = f.create_group(creationName)
-                # save the obj inside its group
-                totCount += 1
-                totalObjCount, savedObjCount = __h5_pack(objH5Group, pObj)
-                objCount += savedObjCount
-
-            elif isinstance(pObj, dict):
-                # Getting the dict creationName
-                if 'dictName' in pObj:
-                    creationName = pObj.pop('dictName')
-                else:
-                    creationName = 'Dict'
-                # Check if creation_name was already used
-                if creationName in objsNameCount:
-                    objsNameCount[creationName] += 1
-                    creationName += '_' + str(objsNameCount[creationName])
-                else:
-                    objsNameCount[creationName] = 1
-                # create obj's group
-                objH5Group = f.create_group(creationName)
-                # save the obj inside its group
-                totalObjCount, savedObjCount = __h5_pack(objH5Group, pObj)
-                totCount += totalObjCount
-                objCount += savedObjCount
-            else:
-                print("Only PyTTa objects or dict with PyTTa objects " +
-                      "can be saved through this function. Skipping " +
-                      "object number " + str(idx) + ".")
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(f, pObj, idx)
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
     # Final message
-    plural1 = 's' if objCount > 1 else ''
-    plural2 = 's' if totCount > 1 else ''
+    plural1 = 's' if savedPObjCount > 1 else ''
+    plural2 = 's' if totalPObjCount > 1 else ''
     print('Saved inside the hdf5 file {} PyTTa object{}'
-          .format(objCount, plural1) +
-          ' of {} object{} provided.'.format(totCount, plural2))
+          .format(savedPObjCount, plural1) +
+          ' of {} object{} provided.'.format(totalPObjCount, plural2))
     return fileName
 
 
-def __h5_pack(objH5Group, pObj):
+def __h5_pack(rootH5Group, pObj, objDesc):
     """
     __h5_pack packs a PyTTa object or dict into its respective HDF5 group.
     """
@@ -459,42 +427,90 @@ def __h5_pack(objH5Group, pObj):
                          PlayRecMeasure,
                          FRFMeasure,
                          Analysis)):
-        pObj.h5_save(objH5Group)
-        totalObjCount = 1
-        savedObjCount = 1
-        return totalObjCount, savedObjCount
-
-    if isinstance(pObj, dict):
-        if 'dictName' in pObj:
-            dictName = pObj.pop('dictName')
+        # Creation name
+        if isinstance(objDesc, str):
+            creationName = objDesc
         else:
-            dictName = objH5Group.name.split('/')[-1]
-        print("Saving the dict '{}'.".format(dictName))
+            creationName = pObj.creation_name
+        # Check if creation_name was already used
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
+        # save the obj inside its group
+        pObj.h5_save(objH5Group)
+        return (1, 1)
+
+    elif isinstance(pObj, dict):
+        # Creation name
+        if 'dictName' in pObj:
+            creationName = pObj.pop('dictName')
+        elif isinstance(objDesc, str):
+            creationName = objDesc
+        else:
+            creationName = 'noNameDict'
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        print("Saving the dict '{}'.".format(creationName))
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
         objH5Group.attrs['class'] = 'dict'
-        # Saving each key of the dict
-        totalObjCount = len(pObj)
-        savedObjCount = 0
+        # Saving each key of the dict inside the hdf5 group
+        totalPObjCount = 0
+        savedPObjCount = 0
         for key, pObjFromDict in pObj.items():
-            if isinstance(pObjFromDict, (SignalObj,
-                                         ImpulsiveResponse,
-                                         RecMeasure,
-                                         PlayRecMeasure,
-                                         FRFMeasure,
-                                         Analysis)):
-                newGroup = objH5Group.create_group(key)
-                _, _ = __h5_pack(newGroup, pObjFromDict)
-                savedObjCount += 1
-            elif isinstance(pObjFromDict, dict):
-                newGroup = objH5Group.create_group(key)
-                totalObjCount2, savedObjcount2 = __h5_pack(newGroup,
-                                                           pObjFromDict)
-                totalObjCount = totalObjCount -1 + totalObjCount2
-                savedObjCount += savedObjcount2
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(objH5Group, pObjFromDict, key)
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
+        return (totalPObjCount, savedPObjCount)
+    
+    elif isinstance(pObj, list):
+        # Creation name
+        creationName = None
+        for idx, item in enumerate(pObj):
+            if isinstance(item, str):
+                creationName = item
+                pObj.pop(idx)
+                continue
+        if creationName is None:
+            if isinstance(objDesc, str):
+                creationName = objDesc
             else:
-                print("Dictionary key '{}' can't be saved as its ".format(key) +
-                      "value isn't a PyTTa object or dict. Skipping.")
-        return totalObjCount, savedObjCount
-            
+                creationName = 'noNameList'
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        print("Saving the list '{}'.".format(creationName))
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
+        objH5Group.attrs['class'] = 'list'
+        # Saving each item of the list inside the hdf5 group
+        totalPObjCount = 0
+        savedPObjCount = 0
+        for idx, pObjFromList in enumerate(pObj):
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(objH5Group, pObjFromList, str(idx))
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
+        return totalPObjCount, savedPObjCount
+
+    else:
+        print("Only PyTTa objects and dicts/lists with PyTTa objects " +
+              "can be saved through this function. Skipping " +
+              "object '" + str(objDesc) + "'.")
+        return (1, 0)
+
+
+def __h5_pack_count_and_rename(creationName, h5Group):
+    # Check if creation_name was already used
+    objNameCount = 1
+    newCreationName = cp.copy(creationName)
+    while newCreationName in h5Group:
+        objNameCount += 1
+        newCreationName = \
+            creationName + '_' + str(objNameCount)
+    creationName = newCreationName
+    return creationName
+
 
 def h5_load(fileName: str):
     """
@@ -507,10 +523,10 @@ def h5_load(fileName: str):
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
     totCount = 0  # Counter for total groups
-    for PyTTaObjName, PyTTaobjH5Group in f.items():
+    for PyTTaObjName, PyTTaObjH5Group in f.items():
         totCount += 1
         try:
-            loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaobjH5Group)
+            loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjH5Group)
             objCount += 1
         except NotImplementedError:
             print('Skipping hdf5 group named {} as it '.format(PyTTaObjName) +
@@ -535,14 +551,14 @@ def __h5_unpack(objH5Group):
         freqMin = _h5.none_parser(objH5Group.attrs['freqMin'])
         freqMax = _h5.none_parser(objH5Group.attrs['freqMax'])
         lengthDomain = objH5Group.attrs['lengthDomain']
+        # SignalObj attr unpacking
+        channels = eval(objH5Group.attrs['channels'])
         # Added with an if for compatibilitie issues
         if 'signalType' in objH5Group.attrs:
             signalType = _h5.attr_parser(objH5Group.attrs['signalType'])
         else:
             signalType = 'power'
         comment = objH5Group.attrs['comment']
-        # SignalObj attr unpacking
-        channels = eval(objH5Group.attrs['channels'])
         # Creating and conforming SignalObj
         SigObj = SignalObj(signalArray=np.array(objH5Group['timeSignal']),
                            domain='time',
@@ -702,9 +718,20 @@ def __h5_unpack(objH5Group):
 
     elif objH5Group.attrs['class'] == 'dict':
         dictObj = {}
-        for PyTTaObjName, PyTTaobjH5Group in objH5Group.items():
-            dictObj[PyTTaObjName] = __h5_unpack(PyTTaobjH5Group)
+        for PyTTaObjName, PyTTaObjH5Group in objH5Group.items():
+            dictObj[PyTTaObjName] = __h5_unpack(PyTTaObjH5Group)
         return dictObj
 
+    elif objH5Group.attrs['class']  == 'list':
+        dictObj = {}
+        for idx, PyTTaObjH5Group in objH5Group.items():
+            dictObj[int(idx)] = __h5_unpack(PyTTaObjH5Group)
+        idxs = [int(item) for item in list(dictObj.keys())]
+        maxIdx = max(idxs)
+        listObj = []
+        for idx in range(maxIdx+1):
+            listObj.append(dictObj[idx])
+        return listObj
+        
     else:
         raise NotImplementedError
