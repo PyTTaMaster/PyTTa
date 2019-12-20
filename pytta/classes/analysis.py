@@ -8,7 +8,7 @@ import matplotlib.ticker as ticker
 import numpy as np
 import time
 import locale
-from pytta import h5utilities as _h5
+from pytta import h5utils as _h5
 
 
 # Analysis types and its units

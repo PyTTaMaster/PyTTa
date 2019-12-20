@@ -43,8 +43,8 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
+from pytta import h5utils as _h5
 import copy as cp
-import pytta.h5utilities as _h5
 from warnings import warn
 
 

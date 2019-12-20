@@ -10,9 +10,9 @@ from pytta.classes._base import ChannelObj, ChannelsList
 from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse, Analysis
 from pytta import rooms
-from . import iso3741
+from pytta import iso3741
 from pytta.functions import __h5_unpack as pyttah5unpck
-import pytta.h5utilities as _h5
+from pytta import h5utils as _h5
 import time
 import numpy as np
 import scipy.stats

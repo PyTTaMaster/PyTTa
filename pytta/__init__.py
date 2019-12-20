@@ -55,26 +55,27 @@ from .classes import SignalObj, ImpulsiveResponse,\
                      Analysis
 
 from . import generate
-from . import h5utilities
+from . import h5utils
 from . import rooms
+from . import iso3741
 
 from .functions import read_wav, write_wav, merge, list_devices,\
                        fft_convolve, find_delay, corr_coef, resample, peak_time,\
                        save, load, fft_degree
 
-from .apps import roomir, iso3741
+from .apps import roomir
 
 __version__ = '0.1.0b7'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps
            'roomir',
-           'iso3741',
 
            # Submodules
            'generate',
            'frequtils',
-           'h5utilities',
+           'h5utils',
+           'iso3741',
 
            # Functions
            'merge',

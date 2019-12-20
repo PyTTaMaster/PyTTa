@@ -12,7 +12,7 @@ import time
 from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
-from pytta import h5utilities as _h5
+from pytta import h5utils as _h5
 from pytta.frequtils import fractional_octave_frequencies as FOF
 
 # filterwarnings("default", category=DeprecationWarning)
@@ -251,7 +251,7 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._freqSignal = np.array(newSignal)
-            self._timeSignal = np.array(np.fft.irfft(self._freqSignal,
+            self._timeSignal = np.array(np.fft.irfft(self._freqSignal*np.sqrt(2),
                                                      axis=0, norm=None),
                                         dtype='float32')
             self._numSamples = len(self.timeSignal)  # [-] number of samples
