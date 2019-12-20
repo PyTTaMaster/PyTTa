@@ -31,16 +31,26 @@ MS, D = rmr.med_load('med-teste')
 
 # %% Carrega sinais de excitação e cria dicionário para o setup da medição
 excitationSignals = {}
-excitationSignals['varredura'] = pytta.generate.sweep(
+excitationSignals['varredura18'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
         freqMin=20,
         freqMax=20000,
-        fftDegree=19,
+        fftDegree=18,
         startMargin=0.05,
         stopMargin=3,
         method='logarithmic',
         windowing='hann',
-        samplingRate=48000)
+        samplingRate=44100)
+excitationSignals['varredura17'] = pytta.generate.sweep(
+        # Geração do sweep (também pode ser carregado projeto prévio)
+        freqMin=20,
+        freqMax=20000,
+        fftDegree=17,
+        startMargin=0.05,
+        stopMargin=1,
+        method='logarithmic',
+        windowing='hann',
+        samplingRate=44100)
 # Carregando sinal de música
 excitationSignals['musica'] = pytta.read_wav(
         'audio/Piano Over the rainbow Mic2 SHORT_edited.wav')
@@ -67,7 +77,7 @@ sSensdBMag = 20*np.log10(sourceSens)
 # %% Cria novo setup de medição e inicializa objeto de dados, que gerencia o
 # MeasurementSetup e os dados da medição em disco
 MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
-                          samplingRate=48000,  # [Hz]
+                          samplingRate=44100,  # [Hz]
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
@@ -122,11 +132,11 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                         #       receiversPos=['R1'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
-                              excitation='varredura',
+                              excitation='varredura18',
                               # excitation='fala',
                               # excitation='musica',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O2',
+                              outChSel='O1',
                               # Ganho na saída
                               outputAmplification=-3, # [dB]
                               # Configuração sala-fonte-receptor
@@ -160,7 +170,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               inChSel=['Mic1'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
-                              excitation='varredura',
+                              excitation='varredura18',
                               # Código do canal de saída a ser utilizado.
                               outChSel='O2',
                               # Ganho na saída
@@ -187,11 +197,11 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               inChSel=['Mic1'],
                               # Escolha do sinal de excitacão
                               # disponível no Setup de Medição
-                              excitation='varredura',
+                              excitation='varredura17',
                               # Código do canal de saída a ser utilizado.
-                              outChSel='O2',
+                              outChSel='O1',
                               # Ganho na saída
-                              outputAmplification=-5) # [dB]
+                              outputAmplification=-30) # [dB]
 # %% Inicia tomada de medição/aquisição de dados
 takeMeasure.run()
 
@@ -206,7 +216,8 @@ msdThing = a['channelcalibir_O1-Mic1_varredura_1']
 msdThing.measuredSignals[0].plot_time()
 msdThing.measuredSignals[0].plot_freq()
 # %% Calcula respostas impulsivas aplicando calibrações e salva em disco
-a = D.get('roomres', 'HATS')
+a = D.get('roomres', 'Mic1')
+# a = D.get('channelcalibration', 'Mic1')
 b = D.calculate_ir(a,
                    calibrationTake=1,
                    skipInCompensation=False, # Ok
@@ -215,16 +226,18 @@ b = D.calculate_ir(a,
                    skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
+                   IREndManualCut=None,
+                   IRStartManualCut=None,
                    skipSave=False)
 for name, IR in b.items():
         print(name)
         # IR.measuredSignals[0].plot_time()
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[-150,100])
+        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[0,85])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
         # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
-        # prot2 = IR.measuredSignals[0].plot_time(xlim=[0,0.004])
-        prot2 = IR.measuredSignals[0].plot_time(xlim=None)
+        prot2 = IR.measuredSignals[0].plot_time_dB(xlim=None)
+        # prot2 = IR.measuredSignals[0].plot_time(xlim=[-0.01, 0.3])
 
 # %% Calcula respostas ao sinal de excitação calibradas e salva em disco
 a = D.get('roomres', 'Mic1')

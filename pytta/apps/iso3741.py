@@ -34,11 +34,12 @@ def _filter(signal,
     result = of.filter(signal)
     return result[0]
 
-def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
+def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     """
     Calculate from the provided list of one channel SignalObjs the mean 
     one-third-octave band time-averaged sound pressure level in the test room
-    with the noise source under test in operation, Lp(ST).
+    with the noise source under test in operation, Lp(ST), and the standard
+    deviation, Sm, for the preliminary measurements.
 
     Correction for background noise not implemented because of the UFSM
     reverberation chamber's good isolation.
@@ -63,11 +64,12 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
-        firstChNum = sigObj.channels.mapping[0]
-
-        if not sigObj.channels[firstChNum].calibCheck:
-            raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
-
+        # if not sigObj.channels[firstChNum].calibCheck:
+        #     raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
+        # Cutting the IR
+        if IRManualCut is not None:
+            sigObj.crop(0, IRManualCut)
+        # Bands filtering
         hSignal = SignalObj(sigObj.timeSignal[:,0],
                             sigObj.lengthDomain,
                             sigObj.samplingRate)
@@ -86,6 +88,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
                            maxBand=float(bands[-1]), data=Leq,
                            comment='Leq')
         Leqs.append(Leq)
+
     Leq = 0
     for L in Leqs:
         Leq =  L + Leq
@@ -93,4 +96,17 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq):
     Lp_ST.anType = 'mixed'
     Lp_ST.unit = 'dB'
     Lp_ST.creation_name = creation_name
+
+    # Statistics for Lp_ST
+    data = np.vstack([an.data for an in Leqs])
+    Sm = []
+    for bandIdx in range(data.shape[1]):
+        summing = 0
+        for idx in range(data.shape[0]):
+            summing += \
+            (data[idx, bandIdx] - Lp_ST.data[bandIdx])**2 / (data.shape[0] - 1)
+        Sm.append(summing**(1/2))
+    
+    Lp_ST.error = Sm
+    Lp_ST.errorLabel = "Standard deviation"
     return Lp_ST

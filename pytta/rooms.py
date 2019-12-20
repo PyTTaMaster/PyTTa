@@ -18,6 +18,7 @@ from numba import njit
 from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.classes.filter import fractional_octave_frequencies as FOF
 import traceback
+import copy as cp
 
 
 def _filter(signal,
@@ -36,31 +37,6 @@ def _filter(signal,
                    base=base)
     result = of.filter(signal)
     return result[0]
-
-def T_cut_non_linear_IR_end(SigObj):
-    timeSignal = SigObj.timeSignal
-    timeVector = SigObj.timeVector
-    samplingRate = SigObj.samplingRate
-    numSamples = SigObj.numSamples
-    numChannels = SigObj.numChannels
-    winTimeLength = 0.1  # [s]
-    meanSize = 5  # [blocks]
-    dBtoReplica = 9  # [dB]
-    blockSamples = int(winTimeLength * samplingRate)
-    timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
-                                            numSamples, numChannels,
-                                            blockSamples)
-    cutTime = timeVector[-1]
-    for blockIdx, blockAmplitude in enumerate(timeWinData):
-        if blockIdx >= meanSize:
-            anteriorMean = 10*np.log10( \
-                np.sum(timeWinData[blockIdx-meanSize:blockIdx])/meanSize)
-            if 10*np.log10(blockAmplitude) > anteriorMean+dBtoReplica:
-                cutTime = timeVecWin[blockIdx-meanSize//2]
-                break
-    timeCutIdx = np.where(timeVector >= cutTime)[0][0]
-    SigObj.timeSignal = timeSignal[:timeCutIdx]
-    return SigObj
     
 
 @njit
@@ -92,7 +68,8 @@ def T_level_profile(timeSignal, samplingRate,
 def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     squaredIR = timeSignal**2
     # assume the last 10% of the IR is noise, and calculate its noise level
-    noiseLevel = np.mean(squaredIR[-int(len(squaredIR)//10):, :])
+    last10Idx = -int(len(squaredIR)//10)
+    noiseLevel = np.mean(squaredIR[last10Idx:])
     # get the maximum of the signal, that is the assumed IR peak
     max_val = np.max(squaredIR)
     max_idx = np.argmax(squaredIR)
@@ -267,20 +244,6 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
-def plot_lundeby(band, timeVector, timeSignal,  samplingRate,
-                 lundebyParams):
-    c0, c1, interIdx, BGL = lundebyParams
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                        projection='rectilinear', xscale='linear')
-    line = c1*timeVector + c0
-    ax.plot(timeVector, 10*np.log10(timeSignal**2),label='IR')
-    ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise')
-    ax.plot(timeVector, line,label='Late slope')
-    ax.axvline(x=interIdx/samplingRate, label='Truncation point')
-    plt.title('{0:.0f} [Hz]'.format(band))
-    ax.legend(loc='upper center', shadow=True, fontsize='x-large')
-
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamples,
                              numChannels, timeLength):
@@ -310,11 +273,26 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate, numSamp
         energyDecay = np.zeros(truncatedTimeVector.size)
     return (energyDecay, truncatedTimeVector, lundebyParams)
 
-def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
-    cuttedInputSignal = T_cut_non_linear_IR_end(inputSignal)
-    timeSignal = cuttedInputSignal.timeSignal[:]
-    timeSignal, sampleShift = T_circular_time_shift(timeSignal)
-    del sampleShift
+def cumulative_integration(inputSignal,
+                           plotLundebyResults,
+                           **kwargs):
+
+    def plot_lundeby():
+        c0, c1, interIdx, BGL = lundebyParams
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                            projection='rectilinear', xscale='linear')
+        line = c1*timeVector + c0
+        ax.plot(timeVector, 10*np.log10(timeSignal**2),label='IR')
+        ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise')
+        ax.plot(timeVector, line,label='Late slope')
+        ax.axvline(x=interIdx/samplingRate, label='Truncation point')
+        plt.title('{0:.0f} [Hz]'.format(band))
+        ax.legend(loc='upper center', shadow=True, fontsize='x-large')
+    
+    timeSignal = inputSignal.timeSignal[:]
+    # timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+    # del sampleShift
     hSignal = SignalObj(timeSignal,
                         inputSignal.lengthDomain,
                         inputSignal.samplingRate)
@@ -342,8 +320,9 @@ def cumulative_integration(inputSignal, plotLundebyResults, **kwargs):
                                      timeLength)
         listEDC.append((energyDecay, energyVector))
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
-            plot_lundeby(band, timeVector, timeSignal,  samplingRate,
-                        lundebyParams)
+            # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
+            #             lundebyParams)
+            plot_lundeby()
     return listEDC
 
 @njit
@@ -384,7 +363,7 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
     return RT
 
 
-def G_Lpe(IR, nthOct, minFreq, maxFreq):
+def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     """G_Lpe 
     
     Calculates the energy level from the room impulsive response.
@@ -424,11 +403,18 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq):
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
 
-    firstChNum = IR.systemSignal.channels.mapping[0]
-    if not IR.systemSignal.channels[firstChNum].calibCheck:
-        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
-    SigObj = IR.systemSignal
-    hSignal = SignalObj(SigObj.timeSignal[:,0],
+    # firstChNum = IR.systemSignal.channels.mapping[0]
+    # if not IR.systemSignal.channels[firstChNum].calibCheck:
+    #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+
+    SigObj = cp.copy(IR.systemSignal)
+    # Cutting the IR
+    if IREndManualCut is not None:
+        SigObj.crop(0, IREndManualCut)
+    timeSignal, _ = T_circular_time_shift(SigObj.timeSignal[:,0])
+    # Bands filtering
+    # hSignal = SignalObj(SigObj.timeSignal[:,0],
+    hSignal = SignalObj(timeSignal,
                         SigObj.lengthDomain,
                         SigObj.samplingRate)
     hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
@@ -493,18 +479,24 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
 
-    firstChNum = IR.systemSignal.channels.mapping[0]
-    if not IR.systemSignal.channels[firstChNum].calibCheck:
-        raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
+    # firstChNum = IR.systemSignal.channels.mapping[0]
+    # if not IR.systemSignal.channels[firstChNum].calibCheck:
+    #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
     SigObj = IR.systemSignal
     # Windowing the IR
-    dBtoOnSet = 20
-    dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
-    windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
-    windowLength = 0.0032 # [s]
-    windowEnd = windowStart + int(windowLength*SigObj.samplingRate)
+    # dBtoOnSet = 20
+    # dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
+    # windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
+    
+    timeSignal = cp.copy(SigObj.timeSignal[:,0])
+    # timeSignal, sampleShift = T_circular_time_shift(timeSignal)
 
-    hSignal = SignalObj(SigObj.timeSignal[windowStart:windowEnd,0],
+    # windowLength = 0.0032 # [s]
+    # windowEnd = int(windowLength*SigObj.samplingRate)
+
+
+    # hSignal = SignalObj(timeSignal[:windowEnd],
+    hSignal = SignalObj(timeSignal,
                         SigObj.lengthDomain,
                         SigObj.samplingRate)
     hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
@@ -514,13 +506,26 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
                 maxFreq=maxFreq)[:,1]
     Lps = []
     for chIndex in range(hSignal.numChannels):
+        timeSignal = cp.copy(hSignal.timeSignal[:,chIndex])
+        timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+        windowLength = 0.0032 # [s]
+        windowEnd = int(windowLength*SigObj.samplingRate)
+
         Lps.append(
-            10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
-                                 x=hSignal.timeVector)))
+            10*np.log10(np.trapz(y=timeSignal[:windowEnd]**2/(2e-5**2),
+                                 x=hSignal.timeVector[sampleShift:sampleShift+windowEnd])))
     LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
                             maxBand=float(bands[-1]), data=Lps,
                             comment='Source recalibration method IR')
     LpsAnal.creation_name = creation_name
+    # Plot IR cutting
+    # fig = plt.figure(figsize=(10, 5))
+    # ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+    #                         projection='rectilinear', xscale='linear')
+    # ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
+    # ax.axvline(x=(sampleShift)/SigObj.samplingRate)
+    # ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate)
+    # ax.set_xlim([-sampleShift/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
     return LpsAnal
 
 
@@ -540,7 +545,10 @@ def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
 
     revChTerm = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
                             maxBand=float(bands[-1]), data=terms)
-
+    Lpe.anType = 'mixed'
+    Lpe_revCh.anType = 'mixed'
+    Lps_revCh.anType = 'mixed'
+    Lps_inSitu.anType = 'mixed'
     G = Lpe - Lpe_revCh - revChTerm + 37 \
         + Lps_revCh - Lps_inSitu
     G.anType = 'G'
@@ -589,8 +597,44 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
 #    return output
     pass
 
+def crop_IR(SigObj, IREndManualCut):
+    timeSignal = cp.copy(SigObj.timeSignal[:,0])
+    timeVector = SigObj.timeVector
+    samplingRate = SigObj.samplingRate
+    numSamples = SigObj.numSamples
+    numChannels = SigObj.numChannels
+    # Cut the end automatically or manual
+    if IREndManualCut is None:
+        winTimeLength = 0.1  # [s]
+        meanSize = 5  # [blocks]
+        dBtoReplica = 6  # [dB]
+        blockSamples = int(winTimeLength * samplingRate)
+        timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
+                                                numSamples, numChannels,
+                                                blockSamples)
+        endTimeCut = timeVector[-1]
+        for blockIdx, blockAmplitude in enumerate(timeWinData):
+            if blockIdx >= meanSize:
+                anteriorMean = 10*np.log10( \
+                    np.sum(timeWinData[blockIdx-meanSize:blockIdx])/meanSize)
+                if 10*np.log10(blockAmplitude) > anteriorMean+dBtoReplica:
+                    endTimeCut = timeVecWin[blockIdx-meanSize//2]
+                    break
+    else:
+        endTimeCut = IREndManualCut
+    endTimeCutIdx = np.where(timeVector >= endTimeCut)[0][0]
+    timeSignal = timeSignal[:endTimeCutIdx]
+    # Cut the start automatically
+    timeSignal, _ = T_circular_time_shift(timeSignal)
+    result = SignalObj(timeSignal,
+                       'time',
+                       samplingRate,
+                       signalType='energy')
+    return result
 
-def analyse(obj, *params, plotLundebyResults=False, **kwargs):
+def analyse(obj, *params,
+            plotLundebyResults=False,
+            IREndManualCut=None, **kwargs):
     """analyse
     
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
@@ -656,7 +700,12 @@ def analyse(obj, *params, plotLundebyResults=False, **kwargs):
     if obj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
     samplingRate = obj.samplingRate
-    listEDC = cumulative_integration(SigObj, plotLundebyResults, **kwargs)
+    
+    SigObj = crop_IR(SigObj, IREndManualCut)
+
+    listEDC = cumulative_integration(SigObj,
+                                     plotLundebyResults,
+                                     **kwargs)
     for prm in params:
         if 'RT' == prm:
             RTdecay = params[params.index('RT')+1]

@@ -7,15 +7,17 @@ import numpy as np
 from timeit import timeit
 
 # %% Loading IR
-path = pytta.__path__[0] + '/examples/RIS/'
-file = 'scene9_RIR_LS1_MP1_Dodecahedron.wav'
+path = pytta.__path__[0] + '/examples/'
+file = 'scene11_RIR_LS1_MP1_Dodecahedron.wav'
 myarr = pytta.read_wav(path+file)
 
 # %% Analyse
 an = pytta.rooms.analyse(myarr, 'RT', 20, nthOct=3, minFreq=60, maxFreq=20000,
                         plotLundebyResults=False)
 # %%
-an.plot(title='Tempo de reverberação',ylabel='TR [s]', xlabel='Bandas [Hz]')
+an.plot(title='Tempo de reverberação',yLabel='TR [s]', xLabel='Bandas [Hz]')
+#an.plot(title='Tempo de reverberação')
+
 
 # %% Ita result
 an_ita = pytta.Analysis(anType='RT',nthOct=3,minBand=60,maxBand=20000,
@@ -24,11 +26,12 @@ an_ita = pytta.Analysis(anType='RT',nthOct=3,minBand=60,maxBand=20000,
                         2.1225, 1.9030, 1.9064, 2.0137, 1.8834, 1.6736, 1.5220,
                         1.5677, 1.6691, 1.4698, 1.2754, 0.9378, 0.6863, 0.4889,
                         0.3776, 0.3113])
-an_ita.plot(title='Tempo de reverberação',ylabel='TR [s]', xlabel='Bandas [Hz]')
+an_ita.plot(title='Tempo de reverberação',yLabel='TR [s]', xLabel='Bandas [Hz]')
+#an_ita.plot(title='Tempo de reverberação')
 
 #%%
 dif = an - an_ita
-dif.plot(title='TR PyTTa - TR ITA', xlabel='Bandas [Hz]', ylabel='Diferença [s]')
+dif.plot(title='TR PyTTa - TR ITA', xLabel='Bandas [Hz]', yLabel='Diferença [s]')
 # %% Processing duration time
 # setup = """from __main__ import myout"""
 
