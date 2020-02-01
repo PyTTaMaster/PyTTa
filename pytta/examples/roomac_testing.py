@@ -7,13 +7,13 @@ import numpy as np
 from timeit import timeit
 
 # %% Loading IR
-path = pytta.__path__[0] + '/examples/'
-file = 'scene11_RIR_LS1_MP1_Dodecahedron.wav'
+path = pytta.__path__[0] + '/examples/RIS/'
+file = 'scene9_RIR_LS1_MP1_Dodecahedron.wav'
 myarr = pytta.read_wav(path+file)
 
 # %% Analyse
 an = pytta.rooms.analyse(myarr, 'RT', 20, nthOct=3, minFreq=60, maxFreq=20000,
-                        plotLundebyResults=False)
+                        plotLundebyResults=False, IREndManualCut=2)
 # %%
 an.plot(title='Tempo de reverberação',yLabel='TR [s]', xLabel='Bandas [Hz]')
 #an.plot(title='Tempo de reverberação')

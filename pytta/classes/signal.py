@@ -185,10 +185,8 @@ class SignalObj(_base.PyTTaObj):
                 print("'signalType' is already '" + self.signalType + "'.")
             else:
                 self._signalType = newSigType
-                self._freqSignal = \
-                    np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
-                if newSigType == 'power':
-                    self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+                _fft(self)
+        # for initialization purposes
         else:
             self._signalType = newSigType
 
@@ -212,10 +210,6 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._timeSignal = np.array(newSignal, dtype='float32')
-            self._freqSignal = \
-                np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
-            if self.signalType == 'power':
-                self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
             # number of samples
             self._numSamples = len(self._timeSignal)
             # size parameter
@@ -227,13 +221,19 @@ class SignalObj(_base.PyTTaObj):
                                            self.timeLength 
                                            - 1/self.samplingRate,
                                            self.numSamples)
-            # [Hz] frequency vector (x axis)
-            self._freqVector = np.linspace(0, (self.numSamples - 1) *
-                                           self.samplingRate /
-                                           (2*self.numSamples),
-                                           (int(self.numSamples/2)+1)
-                                           if self.numSamples % 2 == 0
-                                           else int((self.numSamples+1)/2))
+            _fft(self)
+            # signal in frequency domain
+            # self._freqSignal = \
+            #     np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
+            # if self.signalType == 'power':
+            #     self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+            # # [Hz] frequency vector (x axis)
+            # self._freqVector = np.linspace(0, (self.numSamples - 1) *
+            #                                self.samplingRate /
+            #                                (2*self.numSamples),
+            #                                (int(self.numSamples/2)+1)
+            #                                if self.numSamples % 2 == 0
+            #                                else int((self.numSamples+1)/2))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -251,23 +251,24 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._freqSignal = np.array(newSignal)
-            self._timeSignal = np.array(np.fft.irfft(self._freqSignal*np.sqrt(2),
-                                                     axis=0, norm=None),
-                                        dtype='float32')
             self._numSamples = len(self.timeSignal)  # [-] number of samples
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
-            # [s] time vector (x axis)
-            self._timeVector = np.linspace(0,
-                                           self.timeLength 
-                                           - 1/self.samplingRate,
-                                           self.numSamples)
             self._freqVector = np.linspace(0, (self.numSamples-1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
                                            (int((self.numSamples/2) + 1)
                                            if self.numSamples % 2 == 0
                                            else int((self.numSamples+1)/2)))
+            _ifft(self)
+            # self._timeSignal = np.array(np.fft.irfft(self._freqSignal*np.sqrt(2),
+            #                                          axis=0, norm=None),
+            #                             dtype='float32')
+            # # [s] time vector (x axis)
+            # self._timeVector = np.linspace(0,
+            #                                self.timeLength 
+            #                                - 1/self.samplingRate,
+            #                                self.numSamples)
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -1423,3 +1424,66 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         axis=0)
         del f
         return S12, S11
+
+def _fft(SigObj):
+    """fft do the transformation to the frequency domain of the current time
+    signal inside the provided SignalObj. This is an internal function.
+    
+    :param SigObj: desired SignalObj for transformation
+    :type SigObj: SignalObj
+    :raises TypeError: in case it is not a SignalObj
+    """
+    if not isinstance(SigObj, SignalObj):
+        raise TypeError("This method only accepts a SignalObj.")
+    # FFT
+    newFreqSignal = \
+        np.fft.rfft(SigObj._timeSignal, axis=0, norm=None)
+    # turning peak amplitude into RMS amplitude
+    newFreqSignal /=  2**(1/2)
+    newFreqSignal[0,:] *= 2**(1/2)
+    # spectrum normalization
+    if SigObj.signalType == 'power':
+        newFreqSignal /= len(newFreqSignal)
+    # assign new freq signal
+    SigObj._freqSignal = newFreqSignal
+    # frequency vector (x axis)
+    SigObj._freqVector = np.linspace(0, (SigObj.numSamples - 1) *
+                                    SigObj.samplingRate /
+                                    (2*SigObj.numSamples),
+                                    (int(SigObj.numSamples/2)+1)
+                                    if SigObj.numSamples % 2 == 0
+                                    else int((SigObj.numSamples+1)/2))
+    return
+
+def _ifft(SigObj):
+    """ifft do the transformation to the time domain of the current frequency
+    signal inside the provided SignalObj. This is an internal function.
+    
+    :param SigObj: desired SignalObj for transformation
+    :type SigObj: SignalObj
+    :raises TypeError: in case it is not a SignalObj
+    """
+    if not isinstance(SigObj, SignalObj):
+        raise TypeError("This method only accepts a SignalObj.")
+    # spectrum denormalization
+    if SigObj.signalType == 'power':
+        adjustedFreqSignal = \
+            SigObj._freqSignal*len(SigObj._freqSignal)
+    # turning RMS amplitude into peak amplitude except DC freq
+    adjustedFreqSignal *=  2**(1/2)
+    adjustedFreqSignal[0,:] /= 2**(1/2)
+    # IFFT
+    SigObj._timeSignal = \
+        np.array(np.fft.irfft(adjustedFreqSignal,
+                              axis=0, norm=None),
+                 dtype='float32')
+    # time vector (x axis)
+    SigObj._timeVector = np.linspace(0,
+                                     SigObj.timeLength 
+                                     - 1/SigObj.samplingRate,
+                                     SigObj.numSamples)
+    return
+
+# def plot_time(*SigObjs):
+
+# def plot_freq(*SigObjs):

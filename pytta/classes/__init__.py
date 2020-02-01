@@ -25,14 +25,24 @@ Classes:
 """
 
 
-from pytta.classes.signal import SignalObj, ImpulsiveResponse
-from pytta.classes.measurement import RecMeasure, PlayRecMeasure, FRFMeasure
-from pytta.classes.streaming import Streaming, Recorder
-from pytta.classes.filter import OctFilter, weighting
-from pytta.classes.analysis import Analysis
+from .signal import SignalObj, ImpulsiveResponse
+#from .signal import plot_SignalObjs
+from .measurement import RecMeasure, PlayRecMeasure, FRFMeasure
+from .streaming import Streaming, Recorder
+from .filter import OctFilter, weighting
+from .analysis import Analysis
 
-__all__ = ['SignalObj', 'ImpulsiveResponse',
-           'RecMeasure', 'PlayRecMeasure', 'FRFMeasure',
-           'Streaming', 'Recorder',
-           'OctFilter', 'weighting',
-           'Analysis']
+__all__ = [ # Classes
+           'SignalObj',
+           'ImpulsiveResponse',
+           'RecMeasure',
+           'PlayRecMeasure',
+           'FRFMeasure',
+           'Streaming',
+           'Recorder',
+           'OctFilter',
+           'weighting',
+           'Analysis']#,
+
+        #    # Functions
+        #   'plot_SignalObjs']
