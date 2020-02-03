@@ -49,10 +49,10 @@ from .properties import default
 # methods and function calls
 
 from .classes import SignalObj, ImpulsiveResponse,\
-                     RecMeasure, PlayRecMeasure, FRFMeasure,\
-                     Streaming, Recorder,\
-                     OctFilter, weighting,\
-                     Analysis
+    RecMeasure, PlayRecMeasure, FRFMeasure,\
+    Streaming, Recorder,\
+    OctFilter, weighting,\
+    Analysis
 
 from . import generate
 from . import h5utils
@@ -60,8 +60,8 @@ from . import rooms
 from . import iso3741
 
 from .functions import read_wav, write_wav, merge, list_devices,\
-                       fft_convolve, find_delay, corr_coef, resample, peak_time,\
-                       save, load, fft_degree
+    fft_convolve, find_delay, corr_coef, resample,\
+    peak_time, save, load, fft_degree, plot_time
 
 from .apps import roomir
 
@@ -91,6 +91,7 @@ __all__ = [  # Apps
            'load',
            'weighting',
            'fft_degree',
+           'plot_time',
 
            # Classes
            'RecMeasure',

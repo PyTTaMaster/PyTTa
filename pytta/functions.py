@@ -11,17 +11,18 @@ Functions:
     ---------------------
 
         >>> pytta.list_devices()
-        >>> pytta.fft_degree( timeLength, samplingRate)
-        >>> pytta.read_wav( fileName )
-        >>> pytta.write_wav( fileName, signalObject )
-        >>> pytta.merge( signalObj1, signalObj2, ..., signalObjN )
-        >>> pytta.fft_convolve( signalObj1, signalObj2 )
-        >>> pytta.find_delay( signalObj1, signalObj2 )
-        >>> pytta.corr_coef( signalObj1, signalObj2 )
-        >>> pytta.resample( signalObj, newSamplingRate )
-        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN )
+        >>> pytta.fft_degree(timeLength, samplingRate)
+        >>> pytta.read_wav(fileName)
+        >>> pytta.write_wav(fileName, signalObject)
+        >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.fft_convolve(signalObj1, signalObj2)
+        >>> pytta.find_delay(signalObj1, signalObj2)
+        >>> pytta.corr_coef(signalObj1, signalObj2)
+        >>> pytta.resample(signalObj, newSamplingRate)
+        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
         >>> pytta.save(fileName, obj1, ..., objN)
         >>> pytta.load(fileName)
+        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
 
 
     For further information, check the function specific documentation.
@@ -46,7 +47,9 @@ from pytta.generate import measurement  # TODO: Change to class instantiation.
 from pytta import h5utils as _h5
 import copy as cp
 from warnings import warn
-# from pytta.classes import plot_SignalObjs
+import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import locale
 
 
 def list_devices():
@@ -736,3 +739,89 @@ def __h5_unpack(objH5Group):
         
     else:
         raise NotImplementedError
+
+def plot_time(*SigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None,
+              decimalSep:str=','):
+    """plot_time plot one or more SignalObj together
+    
+    :param SigObjs: SignalObjs as arguments to be ploted
+    :type SigObjs: SignalObj
+    :param xLabel: x axis label, defaults to None
+    :type xLabel: str, optional
+    :param yLabel: y axis label, defaults to None
+    :type yLabel: str, optional
+    :param yLim: y axis limits, defaults to None
+    :type yLim: list, optional
+    :param title: plot title, defaults to None
+    :type title: str, optional
+    :param decimalSep: decimal separator, defaults to ','
+    :type decimalSep: str, optional
+    """
+    if decimalSep == ',':
+        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+        plt.rcParams['axes.formatter.use_locale'] = True
+    elif decimalSep =='.':
+        locale.setlocale(locale.LC_NUMERIC, 'C')
+        plt.rcParams['axes.formatter.use_locale'] = False
+    else:
+        raise ValueError("'decimalSep' must be the string '.' or ','.")
+
+    if xLabel is None:
+        xLabel = 'Time [s]'
+    
+    if yLabel is None:
+        yLabel = 'Amplitude'
+    
+    if title is None:
+        title = ''
+
+    xLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
+    yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
+
+    fig = plt.figure(figsize=(10, 5))
+    ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
+                        projection='rectilinear', xscale='linear')
+    ax.set_snap(True)
+    ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+
+    for SigObj in SigObjs:
+
+        for chIndex in range(SigObj.numChannels):
+            chNum = SigObj.channels.mapping[chIndex]
+            label = '{} [{}]'.format(SigObj.channels[chNum].name,
+                                     SigObj.channels[chNum].unit)
+            ax.plot(SigObj.timeVector,
+                    SigObj.timeSignal[:, chIndex],
+                    label=label)
+
+        xLims = \
+            np.vstack((xLims, [SigObj.timeVector[0], SigObj.timeVector[-1]]))
+
+        yLimData = SigObj.timeSignal[:, chIndex]
+        yLimData[np.isinf(yLimData)] = 0    
+        yLims = \
+            np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
+    
+    ax.set_xlabel(xLabel, fontsize=20)
+    ax.set_ylabel(yLabel, fontsize=20)
+    ax.legend(loc='best', fontsize=12)
+
+    if xLim is None:
+        xLim = [np.nanmin(xLims[:,0]), np.nanmax(xLims[:,1])]
+    ax.set_xlim(xLim)
+
+    if yLim is None:
+        yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
+        margin = (yLim[1] - yLim[0]) / 20
+        yLim = [yLim[0]-margin, yLim[1]+margin]
+    ax.set_ylim(yLim)
+
+    ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=10))
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
+    for item in (ax.get_xticklabels() + ax.get_yticklabels()):
+        item.set_fontsize(14)
+    
+    return fig

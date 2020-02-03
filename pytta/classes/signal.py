@@ -180,7 +180,8 @@ class SignalObj(_base.PyTTaObj):
 
         return
 
-# SignalObj Properties
+    # SignalObj Properties
+
     @property
     def signalType(self):
         return self._signalType
@@ -225,30 +226,14 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._timeSignal = np.array(newSignal, dtype='float32')
-            # number of samples
-            self._numSamples = len(self._timeSignal)
-            # size parameter
-            self._fftDegree = np.log2(self._numSamples)
-            # duration in [s]
-            self._timeLength = self.numSamples/self.samplingRate
-            # [s] time vector (x axis)
+            self._numSamples = len(self._timeSignal)  # [-] number of samples
+            self._fftDegree = np.log2(self._numSamples)  # [-] size parameter
+            self._timeLength = self.numSamples/self.samplingRate  # [s]
             self._timeVector = np.linspace(0,
                                            self.timeLength 
                                            - 1/self.samplingRate,
                                            self.numSamples)
             self._fft()
-            # signal in frequency domain
-            # self._freqSignal = \
-            #     np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
-            # if self.signalType == 'power':
-            #     self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
-            # # [Hz] frequency vector (x axis)
-            # self._freqVector = np.linspace(0, (self.numSamples - 1) *
-            #                                self.samplingRate /
-            #                                (2*self.numSamples),
-            #                                (int(self.numSamples/2)+1)
-            #                                if self.numSamples % 2 == 0
-            #                                else int((self.numSamples+1)/2))
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -276,14 +261,6 @@ class SignalObj(_base.PyTTaObj):
                                            if self.numSamples % 2 == 0
                                            else int((self.numSamples+1)/2)))
             self._ifft()
-            # self._timeSignal = np.array(np.fft.irfft(self._freqSignal*np.sqrt(2),
-            #                                          axis=0, norm=None),
-            #                             dtype='float32')
-            # # [s] time vector (x axis)
-            # self._timeVector = np.linspace(0,
-            #                                self.timeLength 
-            #                                - 1/self.samplingRate,
-            #                                self.numSamples)
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -316,7 +293,7 @@ class SignalObj(_base.PyTTaObj):
                                 "replaced by .numChannels property."))
         return self.numChannels
 
-# SignalObj Methods
+    # SignalObj Methods
 
     def crop(self, startTime, endTime):
         """crop crop the signal duration in the specified interval
@@ -1018,7 +995,6 @@ class SignalObj(_base.PyTTaObj):
         return
 
 
-# ImpulsiveResponse class
 class ImpulsiveResponse(_base.PyTTaObj):
     """
         This class is a container of SignalObj, intended to calculate impulsive
@@ -1222,7 +1198,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
     def plot_freq(self, *args, **kwargs):
         return self.systemSignal.plot_freq(*args, **kwargs)
 
-# Properties
+    # Properties
 
     @property
     def irSignal(self):
@@ -1441,7 +1417,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
         result.freqMin = outputSignal.freqMin
         result.freqMax = outputSignal.freqMax
         result.channels = outputSignal.channels / inputSignal.channels
-        return result    # end of function get_transferfunction()
+        return result
 
     def _crossfade_spectruns(self, a, b, freqLims, freqVector):
         f0 = freqLims[0]
