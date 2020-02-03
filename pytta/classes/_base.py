@@ -84,11 +84,11 @@ class PyTTaObj(RICI):
 # PyTTaObj Properties
     @property
     def samplingRate(self):
-        return self._samplingRate
+        return int(self._samplingRate)
 
     @samplingRate.setter
     def samplingRate(self, newSamplingRate):
-        self._samplingRate = newSamplingRate
+        self._samplingRate = int(newSamplingRate)
         return
 
     @property
