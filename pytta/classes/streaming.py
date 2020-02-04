@@ -179,16 +179,16 @@ class Streaming(PyTTaObj):
             It\'s parameters are the same as the previous methods.
     """
 
-    def __init__(self, IO: str,
+    def __init__(self,
+                 IO: str,
                  msmnt: Measurement,
-                 datatype: str='float32',
-                 blocksize: int=0,
+                 datatype: str = 'float32',
+                 blocksize: int = 0,
                  duration: Optional[float] = 5,
-                 monitor_callback: Optional[Callable] = None,
+                 monitor: Optional[Monitor] = None,
                  *args, **kwargs):
         """
-        Some considerations about the multiprocessing library and its crucial
-        use in this algorithm
+        Considerations about the multiprocessing library and its crucial use in this algorithm.
 
         The Event object is a boolean state. It can be
         `.set()` : Internally defines it to be True;
@@ -220,7 +220,7 @@ class Streaming(PyTTaObj):
         self._numSamples = msmnt.numSamples  # registers total amount of samples recorded
         self._dataType = datatype  # registers data type
         self._blockSize = blocksize  # registers blocksize
-        if duration is not None:
+        if (type(duration) is float) or (type(duration) is int):
             self._durationInSamples = int(duration*msmnt.samplingRate)
         else:
             self._durationInSamples = None
@@ -228,14 +228,15 @@ class Streaming(PyTTaObj):
         self._device = msmnt.device
         self._theEnd = False
         self.loopCheck = Event()  # controls looping state
-        self.monitorCheck = Event()  #
+        self.loopCheck.clear()
+        self.monitorCheck = Event()  # monitoring state
         self.monitorCheck.clear()
-        self.runningCheck = Event()
+        self.runningCheck = Event()  #  measurement state
         self.runningCheck.clear()
         self.lastStatus = None  # will register last status passed by stream
-        self.statusCount = int()
-        self.queue = Queue(self.numSamples // 16)  # instantiates a multiprocessing Queue
-        self.set_monitoring(monitor_callback)
+        self.statusCount = int(0)  # zero
+        self.queue = Queue(self.numSamples//2)  # instantiates a multiprocessing Queue
+        self.set_monitoring(monitor)
         self.set_io_properties(msmnt)
         return
 
@@ -281,7 +282,8 @@ class Streaming(PyTTaObj):
 
         if 'I' in self.IO:
             self.inChannels = msmnt.inChannels
-            self.recData = np.empty((self.numSamples, self.numInChannels), dtype=self.dataType)
+            self.recData = np.empty((self.numSamples, self.numInChannels),
+                                    dtype=self.dataType)
         if 'O' in self.IO:
             self.outChannels = msmnt.outChannels
             self.playData = msmnt.excitation.timeSignal[:]
@@ -306,14 +308,14 @@ class Streaming(PyTTaObj):
 #        return array
 #
 
-    def set_monitoring(self, monitor = None):
+    def set_monitoring(self,
+                       monitor: Monitor = None):
         """
-        Set up the class used as monitor. It must have the following methods with these names:
+        Set up the class used as monitor. It must have the following methods with these names.
 
             def setup(None) -> None:
 
                 _Call any function and other object configuration needed for the monitoring_
-
                 return
 
 
@@ -321,7 +323,6 @@ class Streaming(PyTTaObj):
                          frames: int, status: sd.CallbackFlags) -> None:
 
                 _Process the data gathered from the stream_
-
                 return
 
         It will be called from within a parallel process that the Recorder starts and
@@ -341,7 +342,8 @@ class Streaming(PyTTaObj):
 
     def monitoring(self):
         """
-        Main monitoring loop.
+        Monitor loop.
+
         This is the place where the parallel processing occurs, the income of
         data and the calling for the callback function. Tear down after loop
         breaks.
@@ -350,9 +352,7 @@ class Streaming(PyTTaObj):
             None.
 
         """
-
-        self.monitor.setup()  # calls the Monitor object function to set up
-                              # as instantiation of graphical objects, etc
+        self.monitor.setup()    # calls the Monitor function to set up itself
 
         while not self.runningCheck.is_set():  # Waits untill stream start
             continue
