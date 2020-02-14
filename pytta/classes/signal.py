@@ -979,6 +979,8 @@ class SignalObj(_base.PyTTaObj):
         if self.signalType == 'power':
             adjustedFreqSignal = \
                 self._freqSignal*len(self._freqSignal)
+        else:
+            adjustedFreqSignal = self._freqSignal
         # turning RMS amplitude into peak amplitude except DC freq
         adjustedFreqSignal *=  2**(1/2)
         adjustedFreqSignal[0,:] /= 2**(1/2)
