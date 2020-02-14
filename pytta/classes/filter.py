@@ -69,8 +69,9 @@ class OctFilter(object):
         for ch in range(signalObj.numChannels):
             filtered = np.zeros((signalObj.numSamples, n))
             for k in range(n):
-                filtered[:, k] = ss.sosfilt(self.sos[:, :, k],
-                                            signalObj.timeSignal[:, ch],
+                cContigousArray = signalObj.timeSignal[:, ch].copy(order='C')
+                filtered[:, k] = ss.sosfilt(self.sos[:, :, k].copy(order='C'),
+                                            cContigousArray,
                                             axis=0).T
             signalDict = {'signalArray': filtered,
                           'domain': 'time',

@@ -56,6 +56,9 @@ def T_level_profile(timeSignal, samplingRate,
     timeStamp = np.zeros((nblocks, 1))
 
     for ch in range(numChannels):
+        # if numChannels == 1:
+        #     tmp = timeSignal
+        # else:
         tmp = timeSignal[:, ch]
         for idx in range(nblocks):
             profile[idx, ch] = mean_squared(tmp[:blockSamples])
@@ -607,11 +610,15 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
     pass
 
 def crop_IR(SigObj, IREndManualCut):
-    timeSignal = cp.copy(SigObj.timeSignal[:,0])
+    timeSignal = cp.copy(SigObj.timeSignal)
     timeVector = SigObj.timeVector
     samplingRate = SigObj.samplingRate
     numSamples = SigObj.numSamples
-    numChannels = SigObj.numChannels
+    # numChannels = SigObj.numChannels
+    if SigObj.numChannels > 1:
+        print('crop_IR: The provided impulsive response has more than one ' +
+              'channel. Cropping based on channel 1.')
+    numChannels = 1
     # Cut the end automatically or manual
     if IREndManualCut is None:
         winTimeLength = 0.1  # [s]
