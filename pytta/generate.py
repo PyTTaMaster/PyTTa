@@ -93,7 +93,9 @@ def sin(Arms=0.5,
 
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
-    t = np.linspace(0, timeLength - (1/samplingRate), samplingRate*timeLength)
+    t = np.linspace(0,
+                    timeLength - (1/samplingRate),
+                    int(samplingRate*timeLength))
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
     sinSigObj = SignalObj(sin, domain='time', samplingRate=samplingRate,
                           freqMin=default.freqMin, freqMax=default.freqMax)

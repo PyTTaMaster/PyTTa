@@ -58,14 +58,15 @@ from . import generate
 from . import h5utils
 from . import rooms
 from . import iso3741
+from . import plot
 
 from .functions import read_wav, write_wav, merge, list_devices,\
     fft_convolve, find_delay, corr_coef, resample,\
-    peak_time, save, load, fft_degree, plot_time
+    peak_time, save, load, fft_degree, plot_time, plot_freq, plot_bars
 
 from .apps import roomir
 
-__version__ = '0.1.0b7'  # package version
+__version__ = '0.1.0b8'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps
@@ -76,6 +77,7 @@ __all__ = [  # Apps
            'frequtils',
            'h5utils',
            'iso3741',
+           'plot',
 
            # Functions
            'merge',
@@ -92,6 +94,8 @@ __all__ = [  # Apps
            'weighting',
            'fft_degree',
            'plot_time',
+           'plot_freq',
+           'plot_bars',
 
            # Classes
            'RecMeasure',

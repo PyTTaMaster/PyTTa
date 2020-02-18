@@ -14,10 +14,9 @@ from pytta import default
 from pytta.classes import _base
 from pytta import h5utils as _h5
 from pytta.frequtils import fractional_octave_frequencies as FOF
+from pytta import plot
 
 # filterwarnings("default", category=DeprecationWarning)
-
-
 class SignalObj(_base.PyTTaObj):
     """
     Signal object class.
@@ -370,62 +369,46 @@ class SignalObj(_base.PyTTaObj):
                 mapping=outChannels, **kwargs)
         return
 
-    def plot_time(self, xlabel=None, ylabel=None,
-                  ylim=None, xlim=None):
+    def plot_time(self, xLabel:str=None, yLabel:str=None,
+                yLim:list=None, xLim:list=None, title:str=None,
+                decimalSep:str=','):
         """
         Time domain plotting method
         """
-        if xlabel is None:
-            xlabel = 'Time [s]'
-        if ylabel is None:
-            ylabel = 'Amplitude [{}]'
-        firstCh = self.channels.mapping[0]
-        ylabel = ylabel.format(self.channels[firstCh].unit)
-        fig = plt.figure(figsize=(10, 5))
+        if xLabel is not None:
+            self.xLabel = xLabel
+        else:
+            if hasattr(self, 'xLabel'):
+                if self.xLabel is not None:
+                    xLabel = self.xLabel
 
-        ax = fig.add_axes([0.08, 0.1, 0.8, 0.85], polar=False,
-                          projection='rectilinear')
-        ax.set_snap(True)
+        if yLabel is not None:
+            self.yLabel = yLabel
+        else:
+            if hasattr(self, 'yLabel'):
+                if self.yLabel is not None:
+                    yLabel = self.yLabel
+        
+        if title is not None:
+            self.title = title 
+        else:
+            if hasattr(self, 'title'):
+                if self.title is not None:
+                    title = self.title
+
+        dataSet = []
         for chIndex in range(self.numChannels):
             chNum = self.channels.mapping[chIndex]
             label = '{} [{}]'.format(self.channels[chNum].name,
                                      self.channels[chNum].unit)
-            ax.plot(self.timeVector,
-                    self.timeSignal[:, chIndex],
-                    label=label)
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
-
-        if xlim is None:
-            xlim = (self.timeVector[0], self.timeVector[-1])
-        ax.set_xlim(xlim)
-        
-        xticks = np.linspace(*xlim, 11).tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
-                           fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
-
-        limData = self.timeSignal
-        # limData = [value for value in limData.flatten() if not np.isinf(value)]
-        limData[np.isinf(limData)] = 0
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
-    
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
-        
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
-
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
-
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-        ax.legend(loc='best', fontsize=12)
+            x = self.timeVector
+            y = self.timeSignal[:, chIndex]            
+            dataSet.append({
+                'label':label,
+                'x':x,
+                'y':y
+            })
+        fig = plot.time(dataSet, xLabel, yLabel, yLim, xLim, title, decimalSep)
         return fig
 
     def plot_time_dB(self, xlabel=None, ylabel=None,
@@ -511,75 +494,55 @@ class SignalObj(_base.PyTTaObj):
         ax.legend(loc='best', fontsize=12)
         return fig
 
-    def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
-                  ylim=None, xlim=None):
+    def plot_freq(self, smooth:bool=False, xLabel:str=None, yLabel:str=None,
+                yLim:list=None, xLim:list=None, title:str=None,
+                decimalSep:str=','):
         """
         Frequency domain dB plotting method
         """
-        if xlabel is None:
-            xlabel = 'Frequency [Hz]'
-        if ylabel is None:
-            ylabel = 'Magnitude [dB]'
+        if xLabel is not None:
+            self.xLabel = xLabel
+        else:
+            if hasattr(self, 'xLabel'):
+                if self.xLabel is not None:
+                    xLabel = self.xLabel
 
-        fig = plt.figure(figsize=(10, 5))
+        if yLabel is not None:
+            self.yLabel = yLabel
+        else:
+            if hasattr(self, 'yLabel'):
+                if self.yLabel is not None:
+                    yLabel = self.yLabel
+        
+        if title is not None:
+            self.title = title 
+        else:
+            if hasattr(self, 'title'):
+                if self.title is not None:
+                    title = self.title
 
-        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                          projection='rectilinear', xscale='log')
-        ax.set_snap(True)
-        for chIndex in range(0, self.numChannels):
+        dataSet = []
+        minFreq = self.freqMin
+        maxFreq = self.freqMax
+        x = self.freqVector
+        for chIndex in range(self.numChannels):
             chNum = self.channels.mapping[chIndex]
             unitData = '[{} ref.: {} {}]'.format(self.channels[chNum].dBName,
-                                                 self.channels[chNum].dBRef,
-                                                 self.channels[chNum].unit)
-            if smooth:
-                Signal = ss.savgol_filter(np.squeeze(np.abs(
-                         self.freqSignal[:, chIndex])),
-                         31, 3)
-            else:
-                Signal = self.freqSignal[:, chIndex]
-            dBSignal = 20 * np.log10(np.abs(Signal) /
-                                     self.channels[chNum].dBRef)
+                                                self.channels[chNum].dBRef,
+                                                self.channels[chNum].unit)
             label = '{} {}'.format(self.channels[chNum].name, unitData)
-            ax.semilogx(self.freqVector, dBSignal, label=label)
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
-
-        if xlim is None:
-            xlim = (self.freqMin, self.freqMax)
-
-        ax.set_xlim(xlim)
-        
-        xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
-                           rotation=45, fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
-        
-        freqMinIdx = np.where(self.freqVector > self.freqMin)[0][0]
-        freqMaxIdx = np.where(self.freqVector < self.freqMax)[0][-1]
-
-        limData = \
-            20*np.log10(np.abs(self.freqSignal[freqMinIdx:freqMaxIdx, :]) /
-                        self.channels.dBRefList())
-
-        limData = [value for value in limData.flatten() if not np.isinf(value)]
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
-    
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
-        
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
-        
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
-
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-        ax.legend(loc='best', fontsize=12)
+            y = self.freqSignal[:, chIndex]
+            dBRef = self.channels[chNum].dBRef
+            dataSet.append({
+                'label':label,
+                'x':x,
+                'y':y,
+                'dBRef':dBRef,
+                'minFreq':minFreq,
+                'maxFreq':maxFreq
+            })
+        fig = plot.freq(dataSet, smooth, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep)
         return fig
 
     def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,

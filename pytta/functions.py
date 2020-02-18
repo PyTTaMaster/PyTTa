@@ -22,7 +22,9 @@ Functions:
         >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
         >>> pytta.save(fileName, obj1, ..., objN)
         >>> pytta.load(fileName)
-        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN )
+        >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
 
 
     For further information, check the function specific documentation.
@@ -47,9 +49,7 @@ from pytta.generate import measurement  # TODO: Change to class instantiation.
 from pytta import h5utils as _h5
 import copy as cp
 from warnings import warn
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import locale
+from pytta import plot
 
 
 def list_devices():
@@ -173,7 +173,7 @@ def find_delay(signal1, signal2):
     Cross Correlation alternative, more efficient fft based method to calculate
     time shift between two signals.
 
-    >>> shift = pytta.find_delay(signal1,signal2)
+        >>> shift = pytta.find_delay(signal1,signal2)
 
     """
     if signal1.N != signal2.N:
@@ -199,8 +199,8 @@ def corr_coef(signal1, signal2):
 
 def resample(signal, newSamplingRate):
     """
-        Resample the timeSignal of the input SignalObj to the
-        given sample rate using the scipy.signal.resample() function
+    Resample the timeSignal of the input SignalObj to the
+    given sample rate using the scipy.signal.resample() function
     """
     newSignalSize = np.int(signal.timeLength*newSamplingRate)
     resampled = ss.resample(signal.timeSignal[:], newSignalSize)
@@ -210,7 +210,7 @@ def resample(signal, newSamplingRate):
 
 def peak_time(signal):
     """
-        Return the time at signal's amplitude peak.
+    Return the time at signal's amplitude peak.
     """
     if not isinstance(signal, SignalObj):
         raise TypeError('Signal must be an SignalObj.')
@@ -740,88 +740,195 @@ def __h5_unpack(objH5Group):
     else:
         raise NotImplementedError
 
-def plot_time(*SigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None,
-              decimalSep:str=','):
-    """plot_time plot one or more SignalObj together
+def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None, decimalSep:str=','):
+    """Plot provided SignalObjs togheter in time domain.
+
+    Saves xLabel, yLabel, and title when provided for the next plots.
     
-    :param SigObjs: SignalObjs as arguments to be ploted
-    :type SigObjs: SignalObj
-    :param xLabel: x axis label, defaults to None
-    :type xLabel: str, optional
-    :param yLabel: y axis label, defaults to None
-    :type yLabel: str, optional
-    :param yLim: y axis limits, defaults to None
-    :type yLim: list, optional
-    :param title: plot title, defaults to None
-    :type title: str, optional
-    :param decimalSep: decimal separator, defaults to ','
-    :type decimalSep: str, optional
+    Parameters (default), (type):
+    -----------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * xLabel (None), (str):
+            x axis label.
+
+        * yLabel (None), (str):
+            y axis label.
+
+        * yLim (None), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (None), (str):
+            left and right limits.
+
+            >>> xLim = [0, 15]
+
+        * title (None), (str):
+            plot title.
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
     """
-    if decimalSep == ',':
-        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-        plt.rcParams['axes.formatter.use_locale'] = True
-    elif decimalSep =='.':
-        locale.setlocale(locale.LC_NUMERIC, 'C')
-        plt.rcParams['axes.formatter.use_locale'] = False
-    else:
-        raise ValueError("'decimalSep' must be the string '.' or ','.")
+    dataSet = []
+    for idx, sigObj in enumerate(sigObjs):
+        if not isinstance(sigObj, SignalObj):
+            print("plot_time: skipping object {} as it isn't a SignalObj."
+                  .format(idx+1))
+            continue
+        for chIndex in range(sigObj.numChannels):
+            chNum = sigObj.channels.mapping[chIndex]
+            label = '{} [{}]'.format(sigObj.channels[chNum].name,
+                                     sigObj.channels[chNum].unit)
+            x = sigObj.timeVector
+            y = sigObj.timeSignal[:, chIndex]            
+            dataSet.append({
+                'label':label,
+                'x':x,
+                'y':y
+            })
+    fig = plot.time(dataSet, xLabel, yLabel, yLim, xLim, title, decimalSep)
+    return fig
 
-    if xLabel is None:
-        xLabel = 'Time [s]'
-    
-    if yLabel is None:
-        yLabel = 'Amplitude'
-    
-    if title is None:
-        title = ''
+def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, xLim:list=None, title:str=None,
+              decimalSep:str=','):
+    """Plot provided SignalObjs magnitudes togheter in frequency domain.
 
-    xLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
-    yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
+    Parameters (default), (type):
+    -----------------------------
 
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
-                        projection='rectilinear', xscale='linear')
-    ax.set_snap(True)
-    ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
 
-    for SigObj in SigObjs:
+        * yLabel ('Amplitude'), (str):
+            y axis label.
 
-        for chIndex in range(SigObj.numChannels):
-            chNum = SigObj.channels.mapping[chIndex]
-            label = '{} [{}]'.format(SigObj.channels[chNum].name,
-                                     SigObj.channels[chNum].unit)
-            ax.plot(SigObj.timeVector,
-                    SigObj.timeSignal[:, chIndex],
-                    label=label)
+        * yLim (), (list):
+            inferior and superior limits.
 
-        xLims = \
-            np.vstack((xLims, [SigObj.timeVector[0], SigObj.timeVector[-1]]))
+            >>> yLim = [-100, 100]
 
-        yLimData = SigObj.timeSignal[:, chIndex]
-        yLimData[np.isinf(yLimData)] = 0    
-        yLims = \
-            np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
-    
-    ax.set_xlabel(xLabel, fontsize=20)
-    ax.set_ylabel(yLabel, fontsize=20)
-    ax.legend(loc='best', fontsize=12)
+        * xLim (), (list):
+            left and right limits
 
-    if xLim is None:
-        xLim = [np.nanmin(xLims[:,0]), np.nanmax(xLims[:,1])]
-    ax.set_xlim(xLim)
+            >>> xLim = [15, 21000]
 
-    if yLim is None:
-        yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
-        margin = (yLim[1] - yLim[0]) / 20
-        yLim = [yLim[0]-margin, yLim[1]+margin]
-    ax.set_ylim(yLim)
+        * title (), (str):
+            plot title
 
-    ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
-    ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
-    ax.xaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=10))
-    ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
-    for item in (ax.get_xticklabels() + ax.get_yticklabels()):
-        item.set_fontsize(14)
-    
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    dataSet = []
+    for idx, sigObj in enumerate(sigObjs):
+        if not isinstance(sigObj, SignalObj):
+            print("plot_freq: skipping object {} as it isn't a SignalObj."
+                  .format(idx+1))
+            continue
+        minFreq = sigObj.freqMin
+        maxFreq = sigObj.freqMax
+        x = sigObj.freqVector
+        for chIndex in range(sigObj.numChannels):
+            chNum = sigObj.channels.mapping[chIndex]
+            unitData = '[{} ref.: {} {}]'.format(sigObj.channels[chNum].dBName,
+                                                 sigObj.channels[chNum].dBRef,
+                                                 sigObj.channels[chNum].unit)
+            label = '{} {}'.format(sigObj.channels[chNum].name, unitData)
+            y = sigObj.freqSignal[:, chIndex]
+            dBRef = sigObj.channels[chNum].dBRef
+            dataSet.append({
+                'label':label,
+                'x':x,
+                'y':y,
+                'dBRef':dBRef,
+                'minFreq':minFreq,
+                'maxFreq':maxFreq
+            })
+    fig = plot.freq(dataSet, smooth, xLabel, yLabel, yLim, xLim, title,
+                    decimalSep)
+    return fig
+
+def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, title:str=None, decimalSep:str=',',
+              barWidth:float=0.75, errorStyle:str=None):
+    """Plot the analysis data in fractinal octave bands.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *analyses (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+        * barWidth (0.75), float:
+            width of the bars from one fractional octave band. 
+            0 < barWidth < 1.
+
+        * errorStyle ('standard'), str:
+            error curve style. May be 'laza' or None/'standard'.
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    dataSet = []
+    for idx, analysis in enumerate(analyses):
+        if not isinstance(analysis, Analysis):
+            print("plot_bars: skipping object {} as it isn't an Analysis."
+                .format(idx+1))
+            continue
+        bands = analysis.bands
+        anData = analysis.data
+        dataLabel = analysis.dataLabel
+        error = analysis.error
+        errorLabel = analysis.errorLabel
+        dataSet.append({
+            'bands':bands,
+            'data':anData,
+            'dataLabel':dataLabel,
+            'error':error,
+            'errorLabel':errorLabel})
+    fig = plot.bars(dataSet, xLabel, yLabel, yLim, title,
+        decimalSep, barWidth, errorStyle)
     return fig
