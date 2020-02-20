@@ -453,59 +453,79 @@ class Analysis(RICI):
         return self.plot_bars(**kwargs)
 
     def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
-                xLabel:str=None, yLabel:str=None,
-                yLim:list=None, title:str=None, decimalSep:str=',',
-                barWidth:float=0.75, errorStyle:str=None):
-        """
-        Analysis bar plotting method
-        """
+                  xLabel:str=None, yLabel:str=None,
+                  yLim:list=None, title:str=None, decimalSep:str=',',
+                  barWidth:float=0.75, errorStyle:str=None):
+        """Plot the analysis data in fractinal octave bands.
 
-        if dataLabel is None:
-            if self.dataLabel is None:
-                dataLabel = '{} [{}]'.format(self.anName, self.unit)
-            else:
-                dataLabel = self.dataLabel
-        else:
+        Parameters (default), (type):
+        -----------------------------
+
+            * dataLabel ('Analysis type [unit]'), (str):
+                legend label for the current data
+
+            * errorLabel ('Error'), (str):
+                legend label for the current data error
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+            * barWidth (0.75), float:
+                width of the bars from one fractional octave band. 
+                0 < barWidth < 1.
+
+            * errorStyle ('standard'), str:
+                error curve style. May be 'laza' or None/'standard'.
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
+        """
+        if dataLabel is not None:
             self.dataLabel = dataLabel
 
-        if errorLabel is None:
-            if self.errorLabel is None:
-                errorLabel = 'Error'
-            else:
-                errorLabel = self.errorLabel
-        else:
+        if errorLabel is not None:
             self.errorLabel = errorLabel
 
-        if xLabel is None:
-            if self.xLabel is not None:
-                xLabel = self.xLabel
-        else:
-            self.xLabel = xLabel
-        
-        if yLabel is None:
-            if self.yLabel is None:
-                yLabel = 'Modulus [{}]'.format(self.unit)
-            else:
-                yLabel = self.yLabel
-        else:
-            self.yLabel = yLabel
-        
-        if title is None:
-            if self.title is None:
-                title = '{} analysis'.format(self.anName)
-            else:
-                title = self.title
-        else:
-            self.title = title
-        
-        dataSet = []
-        dataSet.append({
-            'bands':self.bands,
-            'data':self.data,
-            'dataLabel':self.dataLabel,
-            'error':self.error,
-            'errorLabel':self.errorLabel})
-        fig = plot.bars(dataSet, self.xLabel, self.yLabel, yLim, self.title,
-            decimalSep, barWidth, errorStyle)
-        return fig
 
+        if xLabel is not None:
+            self.barsXLabel = xLabel
+        else:
+            if hasattr(self, 'barsXLabel'):
+                if self.barsXLabel is not None:
+                    xLabel = self.barsXLabel
+
+        if yLabel is not None:
+            self.barsYLabel = yLabel
+        else:
+            if hasattr(self, 'barsYLabel'):
+                if self.barsYLabel is not None:
+                    yLabel = self.barsYLabel
+
+        if title is not None:
+            self.barsTitle = title
+        else:
+            if hasattr(self, 'barsTitle'):
+                if self.barsTitle is not None:
+                    title = self.barsTitle
+
+        fig = plot.bars((self,), self.xLabel, self.yLabel, yLim, self.title,
+                        decimalSep, barWidth, errorStyle)
+        return fig

@@ -62,7 +62,8 @@ from . import plot
 
 from .functions import read_wav, write_wav, merge, list_devices,\
     fft_convolve, find_delay, corr_coef, resample,\
-    peak_time, save, load, fft_degree, plot_time, plot_freq, plot_bars
+    peak_time, save, load, fft_degree, plot_time, plot_time_dB, plot_freq,\
+    plot_bars, plot_spectrogram
 
 from .apps import roomir
 
@@ -94,8 +95,10 @@ __all__ = [  # Apps
            'weighting',
            'fft_degree',
            'plot_time',
+           'plot_time_dB',
            'plot_freq',
            'plot_bars',
+           'plot_spectrogram',
 
            # Classes
            'RecMeasure',

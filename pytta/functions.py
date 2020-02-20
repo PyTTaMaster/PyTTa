@@ -20,12 +20,12 @@ Functions:
         >>> pytta.corr_coef(signalObj1, signalObj2)
         >>> pytta.resample(signalObj, newSamplingRate)
         >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.save(fileName, obj1, ..., objN)
-        >>> pytta.load(fileName)
-        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN )
+        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
         >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
         >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
-
+        >>> pytta.save(fileName, obj1, ..., objN)
+        >>> pytta.load(fileName)
 
     For further information, check the function specific documentation.
 """
@@ -225,6 +225,261 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None, decimalSep:str=','):
+    """Plot provided SignalObjs togheter in time domain.
+
+    Saves xLabel, yLabel, and title when provided for the next plots.
+    
+    Parameters (default), (type):
+    -----------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * xLabel (None), (str):
+            x axis label.
+
+        * yLabel (None), (str):
+            y axis label.
+
+        * yLim (None), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (None), (str):
+            left and right limits.
+
+            >>> xLim = [0, 15]
+
+        * title (None), (str):
+            plot title.
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
+    fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+    return fig
+
+def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None, decimalSep:str=','):
+    """Plot provided SignalObjs togheter in decibels in time domain.
+    
+    Parameters (default), (type):
+    -----------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * xLabel ('Time [s]'), (str):
+                x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (), (list):
+            left and right limits
+
+            >>> xLim = [0, 15]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
+    fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                       decimalSep)
+    return fig
+
+def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, xLim:list=None, title:str=None,
+              decimalSep:str=','):
+    """Plot provided SignalObjs magnitudes togheter in frequency domain.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (), (list):
+            left and right limits
+
+            >>> xLim = [15, 21000]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_freq:')
+    fig = plot.freq(realSigObjs, smooth, xLabel, yLabel, yLim, xLim, title,
+                    decimalSep)
+    return fig
+
+def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, title:str=None, decimalSep:str=',',
+              barWidth:float=0.75, errorStyle:str=None):
+    """Plot the analysis data in fractinal octave bands.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *analyses (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+        * barWidth (0.75), float:
+            width of the bars from one fractional octave band. 
+            0 < barWidth < 1.
+
+        * errorStyle ('standard'), str:
+            error curve style. May be 'laza' or None/'standard'.
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+
+    analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
+    fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
+        decimalSep, barWidth, errorStyle)
+    return fig
+
+def plot_spectrogram(sigObjs, winType:str='hann', winSize:int=1024,
+                     overlap:float=0.5, xLabel:str=None, yLabel:str=None,
+                     yLim:list=None, xLim:list=None, title:str=None,
+                     decimalSep:str=','):
+    """
+    Plots provided SignalObjs spectrogram.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * winType ('hann'), (str):
+            window type for the time slicing.
+
+        * winSize (1024), (int):
+            window size in samples
+
+        * overlap (0.5), (float):
+            window overlap in %
+
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Frequency [Hz]'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior frequency limits.
+
+            >>> yLim = [20, 1000]
+
+        * xLim (), (list):
+            left and right time limits
+
+            >>> xLim = [1, 3]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        List of matplotlib.figure.Figure objects for each item in curveData.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_spectrogram:')
+    figs = plot.spectrogram(realSigObjs, winType, winSize,
+                            overlap, xLabel, yLabel, xLim, yLim,
+                            title, decimalSep)
+    return figs
+
+def _remove_non_(dataType, dataSet,
+                 msgPrefix:str='_remove_non_SignalObjs:'):
+    if isinstance(dataSet, (list, tuple)):
+        newDataSet = []
+        for idx, item in enumerate(dataSet):
+            if not isinstance(item, dataType):
+                print("{}: skipping object {} as it isn't a {}."
+                      .format(msgPrefix, idx+1, dataType.__name__))
+            else:
+                newDataSet.append(item)
+        if isinstance(dataSet, tuple):
+            newDataSet = tuple(newDataSet)
+    return newDataSet
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
@@ -268,7 +523,6 @@ def load(fileName: str):
     else:
         ValueError('pytta.load only works with *.hdf5 or *.pytta files.')
     return output
-
 
 def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
@@ -739,196 +993,3 @@ def __h5_unpack(objH5Group):
         
     else:
         raise NotImplementedError
-
-def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
-    """Plot provided SignalObjs togheter in time domain.
-
-    Saves xLabel, yLabel, and title when provided for the next plots.
-    
-    Parameters (default), (type):
-    -----------
-
-        * *sigObjs (), (SignalObj):
-            non-keyworded input arguments with N SignalObjs.
-
-        * xLabel (None), (str):
-            x axis label.
-
-        * yLabel (None), (str):
-            y axis label.
-
-        * yLim (None), (list):
-            inferior and superior limits.
-
-            >>> yLim = [-100, 100]
-
-        * xLim (None), (str):
-            left and right limits.
-
-            >>> xLim = [0, 15]
-
-        * title (None), (str):
-            plot title.
-
-        * decimalSep (','), (str):
-            may be dot or comma.
-
-            >>> decimalSep = ',' # in Brazil
-
-    Return:
-    --------
-
-        matplotlib.figure.Figure object.
-    """
-    dataSet = []
-    for idx, sigObj in enumerate(sigObjs):
-        if not isinstance(sigObj, SignalObj):
-            print("plot_time: skipping object {} as it isn't a SignalObj."
-                  .format(idx+1))
-            continue
-        for chIndex in range(sigObj.numChannels):
-            chNum = sigObj.channels.mapping[chIndex]
-            label = '{} [{}]'.format(sigObj.channels[chNum].name,
-                                     sigObj.channels[chNum].unit)
-            x = sigObj.timeVector
-            y = sigObj.timeSignal[:, chIndex]            
-            dataSet.append({
-                'label':label,
-                'x':x,
-                'y':y
-            })
-    fig = plot.time(dataSet, xLabel, yLabel, yLim, xLim, title, decimalSep)
-    return fig
-
-def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
-              yLim:list=None, xLim:list=None, title:str=None,
-              decimalSep:str=','):
-    """Plot provided SignalObjs magnitudes togheter in frequency domain.
-
-    Parameters (default), (type):
-    -----------------------------
-
-        * *sigObjs (), (SignalObj):
-            non-keyworded input arguments with N SignalObjs.
-        
-        * xLabel ('Time [s]'), (str):
-            x axis label.
-
-        * yLabel ('Amplitude'), (str):
-            y axis label.
-
-        * yLim (), (list):
-            inferior and superior limits.
-
-            >>> yLim = [-100, 100]
-
-        * xLim (), (list):
-            left and right limits
-
-            >>> xLim = [15, 21000]
-
-        * title (), (str):
-            plot title
-
-        * decimalSep (','), (str):
-            may be dot or comma.
-
-            >>> decimalSep = ',' # in Brazil
-
-    Return:
-    --------
-
-        matplotlib.figure.Figure object.
-    """
-    dataSet = []
-    for idx, sigObj in enumerate(sigObjs):
-        if not isinstance(sigObj, SignalObj):
-            print("plot_freq: skipping object {} as it isn't a SignalObj."
-                  .format(idx+1))
-            continue
-        minFreq = sigObj.freqMin
-        maxFreq = sigObj.freqMax
-        x = sigObj.freqVector
-        for chIndex in range(sigObj.numChannels):
-            chNum = sigObj.channels.mapping[chIndex]
-            unitData = '[{} ref.: {} {}]'.format(sigObj.channels[chNum].dBName,
-                                                 sigObj.channels[chNum].dBRef,
-                                                 sigObj.channels[chNum].unit)
-            label = '{} {}'.format(sigObj.channels[chNum].name, unitData)
-            y = sigObj.freqSignal[:, chIndex]
-            dBRef = sigObj.channels[chNum].dBRef
-            dataSet.append({
-                'label':label,
-                'x':x,
-                'y':y,
-                'dBRef':dBRef,
-                'minFreq':minFreq,
-                'maxFreq':maxFreq
-            })
-    fig = plot.freq(dataSet, smooth, xLabel, yLabel, yLim, xLim, title,
-                    decimalSep)
-    return fig
-
-def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
-              yLim:list=None, title:str=None, decimalSep:str=',',
-              barWidth:float=0.75, errorStyle:str=None):
-    """Plot the analysis data in fractinal octave bands.
-
-    Parameters (default), (type):
-    -----------------------------
-
-        * *analyses (), (SignalObj):
-            non-keyworded input arguments with N SignalObjs.
-        
-        * xLabel ('Time [s]'), (str):
-            x axis label.
-
-        * yLabel ('Amplitude'), (str):
-            y axis label.
-
-        * yLim (), (list):
-            inferior and superior limits.
-
-            >>> yLim = [-100, 100]
-
-        * title (), (str):
-            plot title
-
-        * decimalSep (','), (str):
-            may be dot or comma.
-
-            >>> decimalSep = ',' # in Brazil
-
-        * barWidth (0.75), float:
-            width of the bars from one fractional octave band. 
-            0 < barWidth < 1.
-
-        * errorStyle ('standard'), str:
-            error curve style. May be 'laza' or None/'standard'.
-
-    Return:
-    --------
-
-        matplotlib.figure.Figure object.
-    """
-    dataSet = []
-    for idx, analysis in enumerate(analyses):
-        if not isinstance(analysis, Analysis):
-            print("plot_bars: skipping object {} as it isn't an Analysis."
-                .format(idx+1))
-            continue
-        bands = analysis.bands
-        anData = analysis.data
-        dataLabel = analysis.dataLabel
-        error = analysis.error
-        errorLabel = analysis.errorLabel
-        dataSet.append({
-            'bands':bands,
-            'data':anData,
-            'dataLabel':dataLabel,
-            'error':error,
-            'errorLabel':errorLabel})
-    fig = plot.bars(dataSet, xLabel, yLabel, yLim, title,
-        decimalSep, barWidth, errorStyle)
-    return fig
