@@ -409,7 +409,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
         decimalSep, barWidth, errorStyle)
     return fig
 
-def plot_spectrogram(sigObjs, winType:str='hann', winSize:int=1024,
+def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
                      overlap:float=0.5, xLabel:str=None, yLabel:str=None,
                      yLim:list=None, xLim:list=None, title:str=None,
                      decimalSep:str=','):
