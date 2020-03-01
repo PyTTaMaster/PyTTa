@@ -11,22 +11,24 @@ Functions:
     ---------------------
 
         >>> pytta.list_devices()
-        >>> pytta.fft_degree( timeLength, samplingRate)
-        >>> pytta.read_wav( fileName )
-        >>> pytta.write_wav( fileName, signalObject )
-        >>> pytta.merge( signalObj1, signalObj2, ..., signalObjN )
-        >>> pytta.fft_convolve( signalObj1, signalObj2 )
-        >>> pytta.find_delay( signalObj1, signalObj2 )
-        >>> pytta.corr_coef( signalObj1, signalObj2 )
-        >>> pytta.resample( signalObj, newSamplingRate )
-        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN )
+        >>> pytta.fft_degree(timeLength, samplingRate)
+        >>> pytta.read_wav(fileName)
+        >>> pytta.write_wav(fileName, signalObject)
+        >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.fft_convolve(signalObj1, signalObj2)
+        >>> pytta.find_delay(signalObj1, signalObj2)
+        >>> pytta.corr_coef(signalObj1, signalObj2)
+        >>> pytta.resample(signalObj, newSamplingRate)
+        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
+        >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
         >>> pytta.save(fileName, obj1, ..., objN)
         >>> pytta.load(fileName)
 
-
     For further information, check the function specific documentation.
 """
-
 
 import os
 import time
@@ -44,8 +46,10 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
+from pytta import h5utils as _h5
 import copy as cp
-import pytta.h5utilities as _h5
+from warnings import warn
+from pytta import plot
 
 
 def list_devices():
@@ -86,7 +90,6 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
 
     """
     return np.log2(timeLength*samplingRate)
-
 
 
 def read_wav(fileName):
@@ -170,7 +173,7 @@ def find_delay(signal1, signal2):
     Cross Correlation alternative, more efficient fft based method to calculate
     time shift between two signals.
 
-    >>> shift = pytta.find_delay(signal1,signal2)
+        >>> shift = pytta.find_delay(signal1,signal2)
 
     """
     if signal1.N != signal2.N:
@@ -196,8 +199,8 @@ def corr_coef(signal1, signal2):
 
 def resample(signal, newSamplingRate):
     """
-        Resample the timeSignal of the input SignalObj to the
-        given sample rate using the scipy.signal.resample() function
+    Resample the timeSignal of the input SignalObj to the
+    given sample rate using the scipy.signal.resample() function
     """
     newSignalSize = np.int(signal.timeLength*newSamplingRate)
     resampled = ss.resample(signal.timeSignal[:], newSignalSize)
@@ -207,7 +210,7 @@ def resample(signal, newSamplingRate):
 
 def peak_time(signal):
     """
-        Return the time at signal's amplitude peak.
+    Return the time at signal's amplitude peak.
     """
     if not isinstance(signal, SignalObj):
         raise TypeError('Signal must be an SignalObj.')
@@ -222,6 +225,261 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None, decimalSep:str=','):
+    """Plot provided SignalObjs togheter in time domain.
+
+    Saves xLabel, yLabel, and title when provided for the next plots.
+    
+    Parameters (default), (type):
+    -----------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * xLabel (None), (str):
+            x axis label.
+
+        * yLabel (None), (str):
+            y axis label.
+
+        * yLim (None), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (None), (str):
+            left and right limits.
+
+            >>> xLim = [0, 15]
+
+        * title (None), (str):
+            plot title.
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
+    fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+    return fig
+
+def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
+              xLim:list=None, title:str=None, decimalSep:str=','):
+    """Plot provided SignalObjs togheter in decibels in time domain.
+    
+    Parameters (default), (type):
+    -----------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * xLabel ('Time [s]'), (str):
+                x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (), (list):
+            left and right limits
+
+            >>> xLim = [0, 15]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
+    fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                       decimalSep)
+    return fig
+
+def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, xLim:list=None, title:str=None,
+              decimalSep:str=','):
+    """Plot provided SignalObjs magnitudes togheter in frequency domain.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * xLim (), (list):
+            left and right limits
+
+            >>> xLim = [15, 21000]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_freq:')
+    fig = plot.freq(realSigObjs, smooth, xLabel, yLabel, yLim, xLim, title,
+                    decimalSep)
+    return fig
+
+def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
+              yLim:list=None, title:str=None, decimalSep:str=',',
+              barWidth:float=0.75, errorStyle:str=None):
+    """Plot the analysis data in fractinal octave bands.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *analyses (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+        
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Amplitude'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior limits.
+
+            >>> yLim = [-100, 100]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+        * barWidth (0.75), float:
+            width of the bars from one fractional octave band. 
+            0 < barWidth < 1.
+
+        * errorStyle ('standard'), str:
+            error curve style. May be 'laza' or None/'standard'.
+
+    Return:
+    --------
+
+        matplotlib.figure.Figure object.
+    """
+
+    analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
+    fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
+        decimalSep, barWidth, errorStyle)
+    return fig
+
+def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
+                     overlap:float=0.5, xLabel:str=None, yLabel:str=None,
+                     yLim:list=None, xLim:list=None, title:str=None,
+                     decimalSep:str=','):
+    """
+    Plots provided SignalObjs spectrogram.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * *sigObjs (), (SignalObj):
+            non-keyworded input arguments with N SignalObjs.
+
+        * winType ('hann'), (str):
+            window type for the time slicing.
+
+        * winSize (1024), (int):
+            window size in samples
+
+        * overlap (0.5), (float):
+            window overlap in %
+
+        * xLabel ('Time [s]'), (str):
+            x axis label.
+
+        * yLabel ('Frequency [Hz]'), (str):
+            y axis label.
+
+        * yLim (), (list):
+            inferior and superior frequency limits.
+
+            >>> yLim = [20, 1000]
+
+        * xLim (), (list):
+            left and right time limits
+
+            >>> xLim = [1, 3]
+
+        * title (), (str):
+            plot title
+
+        * decimalSep (','), (str):
+            may be dot or comma.
+
+            >>> decimalSep = ',' # in Brazil
+
+    Return:
+    --------
+
+        List of matplotlib.figure.Figure objects for each item in curveData.
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_spectrogram:')
+    figs = plot.spectrogram(realSigObjs, winType, winSize,
+                            overlap, xLabel, yLabel, xLim, yLim,
+                            title, decimalSep)
+    return figs
+
+def _remove_non_(dataType, dataSet,
+                 msgPrefix:str='_remove_non_SignalObjs:'):
+    if isinstance(dataSet, (list, tuple)):
+        newDataSet = []
+        for idx, item in enumerate(dataSet):
+            if not isinstance(item, dataType):
+                print("{}: skipping object {} as it isn't a {}."
+                      .format(msgPrefix, idx+1, dataType.__name__))
+            else:
+                newDataSet.append(item)
+        if isinstance(dataSet, tuple):
+            newDataSet = tuple(newDataSet)
+    return newDataSet
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
@@ -229,17 +487,25 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
 
     The file format is choosed by the extension applied to the fileName. If no
     extension is provided choose the default file format.
+
+    For more information on saving PyTTa objects in .hdf5 format see
+    pytta.functions.h5_save' documentation.
+
+    For more information on saving PyTTa objects in .pytta format see
+    pytta.functions.pytta_save' documentation. (DEPRECATED)
     """
     # default file format
     defaultFormat = '.hdf5'
     # Checking the choosed file format
     if fileName.split('.')[-1] == 'hdf5':
         h5_save(fileName, *PyTTaObjs)
-    elif fileName.split('.')[-1] == 'pytta':
+    elif fileName.split('.')[-1] == 'pytta': # DEPRECATED
+        warn(DeprecationWarning("'.pytta' format is DEPRECATED and being " +
+                                "replaced by '.hdf5'."))
         pytta_save(fileName, *PyTTaObjs)
     else:
-        print('File extension must be .hdf5 or .pytta.\n'
-        'Applying the default extension: {}.'.format(defaultFormat))
+        print("File extension must be '.hdf5'.\n" +
+              "Applying the default extension.")
         fileName += defaultFormat
         save(fileName, *PyTTaObjs)
 
@@ -251,11 +517,12 @@ def load(fileName: str):
     if fileName.split('.')[-1] == 'hdf5':
         output = h5_load(fileName)
     elif fileName.split('.')[-1] == 'pytta':
+        warn(DeprecationWarning("'.pytta' format is DEPRECATED and being " +
+                                "replaced by '.hdf5'."))
         output = pytta_load(fileName)
     else:
         ValueError('pytta.load only works with *.hdf5 or *.pytta files.')
     return output
-
 
 def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
@@ -264,8 +531,6 @@ def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     Just calls .save() method of each class and packs them all into a major
     .pytta file along with a Meta.json file containing the fileName of each
     saved object.
-
-    The .pytta extension must not be appended to the fileName
     """
     if fileName.split('.')[-1] == 'pytta':
         fileName = fileName.replace('.pytta', '')
@@ -375,45 +640,134 @@ def h5_save(fileName: str, *PyTTaObjs):
     the own object and it saves itself inside the group.
 
     >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+
+    Dictionaries can also be passed as a PyTTa object. An hdf5 group will be
+    created for each dictionary and its PyTTa objects will be saved. To ensure
+    the diciontary name will be saved, create the key 'dictName' inside it with 
+    its name in a string as the value. This function will take this key and use
+    as variable name for the dict. 
+
+    Lists can also be passed as a PyTTa object. An hdf5 group will be created 
+    for each list and its PyTTa objects will be saved. To ensure the list name
+    will be saved, append to the list a string containing its name. This
+    function will take the first string found and use it as variable name for
+    the list. 
     """
     # Checking if filename has .hdf5 extension
     if fileName.split('.')[-1] != 'hdf5':
         fileName += '.hdf5'
     with h5py.File(fileName, 'w') as f:
         # Dict for counting equal names for correctly renaming
-        objsNameCount = {}
-        objCount = 0  # Counter for loaded objects
-        totCount = 0  # Counter for total groups
-    
-        for idx, pobj in enumerate(PyTTaObjs):
-            totCount += 1
-            if isinstance(pobj, (SignalObj,
-                                 ImpulsiveResponse,
-                                 RecMeasure,
-                                 PlayRecMeasure,
-                                 FRFMeasure,
-                                 Analysis)):
-                # Check if creation_name was already used
-                creationName = pobj.creation_name
-                if creationName in objsNameCount:
-                    objsNameCount[creationName] += 1
-                    creationName += '_' + str(objsNameCount[creationName])
-                else:
-                    objsNameCount[creationName] = 1
-                # create obj's group
-                ObjGroup = f.create_group(creationName)
-                # save the obj inside its group
-                pobj.h5_save(ObjGroup)
-                objCount += 1
-            else:
-                print("Only PyTTa objects can be saved through this" +
-                      "function. Skipping object number " + str(idx) + ".")
+        totalPObjCount = 0  # Counter for total groups
+        savedPObjCount = 0  # Counter for loaded objects
+        for idx, pObj in enumerate(PyTTaObjs):
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(f, pObj, idx)
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
     # Final message
-    plural1 = 's' if objCount > 1 else ''
-    print('Saved {} PyTTa object'.format(objCount) + plural1 +
-        ' of {}'.format(totCount) +
-        ' inside the hdf5 file.')
+    plural1 = 's' if savedPObjCount > 1 else ''
+    plural2 = 's' if totalPObjCount > 1 else ''
+    print('Saved inside the hdf5 file {} PyTTa object{}'
+          .format(savedPObjCount, plural1) +
+          ' of {} object{} provided.'.format(totalPObjCount, plural2))
     return fileName
+
+
+def __h5_pack(rootH5Group, pObj, objDesc):
+    """
+    __h5_pack packs a PyTTa object or dict into its respective HDF5 group.
+    """
+    if isinstance(pObj, (SignalObj,
+                         ImpulsiveResponse,
+                         RecMeasure,
+                         PlayRecMeasure,
+                         FRFMeasure,
+                         Analysis)):
+        # Creation name
+        if isinstance(objDesc, str):
+            creationName = objDesc
+        else:
+            creationName = pObj.creation_name
+        # Check if creation_name was already used
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
+        # save the obj inside its group
+        pObj.h5_save(objH5Group)
+        return (1, 1)
+
+    elif isinstance(pObj, dict):
+        # Creation name
+        if 'dictName' in pObj:
+            creationName = pObj.pop('dictName')
+        elif isinstance(objDesc, str):
+            creationName = objDesc
+        else:
+            creationName = 'noNameDict'
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        print("Saving the dict '{}'.".format(creationName))
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
+        objH5Group.attrs['class'] = 'dict'
+        # Saving each key of the dict inside the hdf5 group
+        totalPObjCount = 0
+        savedPObjCount = 0
+        for key, pObjFromDict in pObj.items():
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(objH5Group, pObjFromDict, key)
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
+        return (totalPObjCount, savedPObjCount)
+    
+    elif isinstance(pObj, list):
+        # Creation name
+        creationName = None
+        for idx, item in enumerate(pObj):
+            if isinstance(item, str):
+                creationName = item
+                pObj.pop(idx)
+                continue
+        if creationName is None:
+            if isinstance(objDesc, str):
+                creationName = objDesc
+            else:
+                creationName = 'noNameList'
+        creationName = __h5_pack_count_and_rename(creationName, rootH5Group)
+        print("Saving the list '{}'.".format(creationName))
+        # create obj's group
+        objH5Group = rootH5Group.create_group(creationName)
+        objH5Group.attrs['class'] = 'list'
+        # Saving each item of the list inside the hdf5 group
+        totalPObjCount = 0
+        savedPObjCount = 0
+        for idx, pObjFromList in enumerate(pObj):
+            packTotalPObjCount, packSavedPObjCount = \
+                __h5_pack(objH5Group, pObjFromList, str(idx))
+            totalPObjCount, savedPObjCount = \
+                totalPObjCount + packTotalPObjCount, \
+                    savedPObjCount + packSavedPObjCount
+        return totalPObjCount, savedPObjCount
+
+    else:
+        print("Only PyTTa objects and dicts/lists with PyTTa objects " +
+              "can be saved through this function. Skipping " +
+              "object '" + str(objDesc) + "'.")
+        return (1, 0)
+
+
+def __h5_pack_count_and_rename(creationName, h5Group):
+    # Check if creation_name was already used
+    objNameCount = 1
+    newCreationName = cp.copy(creationName)
+    while newCreationName in h5Group:
+        objNameCount += 1
+        newCreationName = \
+            creationName + '_' + str(objNameCount)
+    creationName = newCreationName
+    return creationName
 
 
 def h5_load(fileName: str):
@@ -427,10 +781,10 @@ def h5_load(fileName: str):
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
     totCount = 0  # Counter for total groups
-    for PyTTaObjName, PyTTaObjGroup in f.items():
+    for PyTTaObjName, PyTTaObjH5Group in f.items():
         totCount += 1
         try:
-            loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjGroup)
+            loadedObjects[PyTTaObjName] = __h5_unpack(PyTTaObjH5Group)
             objCount += 1
         except NotImplementedError:
             print('Skipping hdf5 group named {} as it '.format(PyTTaObjName) +
@@ -445,26 +799,26 @@ def h5_load(fileName: str):
     return loadedObjects
 
 
-def __h5_unpack(ObjGroup):
+def __h5_unpack(objH5Group):
     """
     Unpack an HDF5 group into its respective PyTTa object
     """
-    if ObjGroup.attrs['class'] == 'SignalObj':
+    if objH5Group.attrs['class'] == 'SignalObj':
         # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        lengthDomain = ObjGroup.attrs['lengthDomain']
+        samplingRate = objH5Group.attrs['samplingRate']
+        freqMin = _h5.none_parser(objH5Group.attrs['freqMin'])
+        freqMax = _h5.none_parser(objH5Group.attrs['freqMax'])
+        lengthDomain = objH5Group.attrs['lengthDomain']
+        # SignalObj attr unpacking
+        channels = eval(objH5Group.attrs['channels'])
         # Added with an if for compatibilitie issues
-        if 'signalType' in ObjGroup.attrs:
-            signalType = _h5.attr_parser(ObjGroup.attrs['signalType'])
+        if 'signalType' in objH5Group.attrs:
+            signalType = _h5.attr_parser(objH5Group.attrs['signalType'])
         else:
             signalType = 'power'
-        comment = ObjGroup.attrs['comment']
-        # SignalObj attr unpacking
-        channels = eval(ObjGroup.attrs['channels'])
+        comment = objH5Group.attrs['comment']
         # Creating and conforming SignalObj
-        SigObj = SignalObj(signalArray=np.array(ObjGroup['timeSignal']),
+        SigObj = SignalObj(signalArray=np.array(objH5Group['timeSignal']),
                            domain='time',
                            signalType=signalType,
                            samplingRate=samplingRate,
@@ -475,12 +829,12 @@ def __h5_unpack(ObjGroup):
         SigObj.lengthDomain = lengthDomain
         return SigObj
 
-    elif ObjGroup.attrs['class'] == 'ImpulsiveResponse':
-        systemSignal = __h5_unpack(ObjGroup['systemSignal'])
-        method = ObjGroup.attrs['method']
-        winType = ObjGroup.attrs['winType']
-        winSize = ObjGroup.attrs['winSize']
-        overlap = ObjGroup.attrs['overlap']
+    elif objH5Group.attrs['class'] == 'ImpulsiveResponse':
+        systemSignal = __h5_unpack(objH5Group['systemSignal'])
+        method = objH5Group.attrs['method']
+        winType = objH5Group.attrs['winType']
+        winSize = objH5Group.attrs['winSize']
+        overlap = objH5Group.attrs['overlap']
         IR = ImpulsiveResponse(method=method,
                                winType=winType,
                                winSize=winSize,
@@ -488,19 +842,19 @@ def __h5_unpack(ObjGroup):
                                ir=systemSignal)
         return IR
 
-    elif ObjGroup.attrs['class'] == 'RecMeasure':
+    elif objH5Group.attrs['class'] == 'RecMeasure':
         # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
+        samplingRate = objH5Group.attrs['samplingRate']
+        freqMin = _h5.none_parser(objH5Group.attrs['freqMin'])
+        freqMax = _h5.none_parser(objH5Group.attrs['freqMax'])
+        comment = objH5Group.attrs['comment']
+        lengthDomain = objH5Group.attrs['lengthDomain']
+        fftDegree = objH5Group.attrs['fftDegree']
+        timeLength = objH5Group.attrs['timeLength']
         # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        blocking = ObjGroup.attrs['blocking']
+        device = _h5.list_w_int_parser(objH5Group.attrs['device'])
+        inChannels = eval(objH5Group.attrs['inChannels'])
+        blocking = objH5Group.attrs['blocking']
         # Recreating the object
         rObj = measurement(kind='rec',
                            device=device,
@@ -515,23 +869,23 @@ def __h5_unpack(ObjGroup):
                            timeLength=timeLength)
         return rObj
 
-    elif ObjGroup.attrs['class'] == 'PlayRecMeasure':
+    elif objH5Group.attrs['class'] == 'PlayRecMeasure':
         # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength =ObjGroup.attrs['timeLength']
+        samplingRate = objH5Group.attrs['samplingRate']
+        freqMin = _h5.none_parser(objH5Group.attrs['freqMin'])
+        freqMax = _h5.none_parser(objH5Group.attrs['freqMax'])
+        comment = objH5Group.attrs['comment']
+        lengthDomain = objH5Group.attrs['lengthDomain']
+        fftDegree = objH5Group.attrs['fftDegree']
+        timeLength =objH5Group.attrs['timeLength']
         # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        outChannels = eval(ObjGroup.attrs['outChannels'])
-        blocking = ObjGroup.attrs['blocking']
+        device = _h5.list_w_int_parser(objH5Group.attrs['device'])
+        inChannels = eval(objH5Group.attrs['inChannels'])
+        outChannels = eval(objH5Group.attrs['outChannels'])
+        blocking = objH5Group.attrs['blocking']
         # PlayRecMeasure attrs unpacking
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        outputAmplification = ObjGroup.attrs['outputAmplification']
+        excitation = __h5_unpack(objH5Group['excitation'])
+        outputAmplification = objH5Group.attrs['outputAmplification']
         # Recreating the object
         prObj = measurement(kind='playrec',
                             excitation=excitation,
@@ -546,28 +900,28 @@ def __h5_unpack(ObjGroup):
                             comment=comment)
         return prObj
 
-    elif ObjGroup.attrs['class'] == 'FRFMeasure':
+    elif objH5Group.attrs['class'] == 'FRFMeasure':
         # PyTTaObj attrs unpacking
-        samplingRate = ObjGroup.attrs['samplingRate']
-        freqMin = _h5.none_parser(ObjGroup.attrs['freqMin'])
-        freqMax = _h5.none_parser(ObjGroup.attrs['freqMax'])
-        comment = ObjGroup.attrs['comment']
-        lengthDomain = ObjGroup.attrs['lengthDomain']
-        fftDegree = ObjGroup.attrs['fftDegree']
-        timeLength = ObjGroup.attrs['timeLength']
+        samplingRate = objH5Group.attrs['samplingRate']
+        freqMin = _h5.none_parser(objH5Group.attrs['freqMin'])
+        freqMax = _h5.none_parser(objH5Group.attrs['freqMax'])
+        comment = objH5Group.attrs['comment']
+        lengthDomain = objH5Group.attrs['lengthDomain']
+        fftDegree = objH5Group.attrs['fftDegree']
+        timeLength = objH5Group.attrs['timeLength']
         # Measurement attrs unpacking
-        device = _h5.list_w_int_parser(ObjGroup.attrs['device'])
-        inChannels = eval(ObjGroup.attrs['inChannels'])
-        outChannels = eval(ObjGroup.attrs['outChannels'])
-        blocking = ObjGroup.attrs['blocking']
+        device = _h5.list_w_int_parser(objH5Group.attrs['device'])
+        inChannels = eval(objH5Group.attrs['inChannels'])
+        outChannels = eval(objH5Group.attrs['outChannels'])
+        blocking = objH5Group.attrs['blocking']
         # PlayRecMeasure attrs unpacking
-        excitation = __h5_unpack(ObjGroup['excitation'])
-        outputAmplification = ObjGroup.attrs['outputAmplification']
+        excitation = __h5_unpack(objH5Group['excitation'])
+        outputAmplification = objH5Group.attrs['outputAmplification']
         # FRFMeasure attrs unpacking
-        method = _h5.none_parser(ObjGroup.attrs['method'])
-        winType = _h5.none_parser(ObjGroup.attrs['winType'])
-        winSize = _h5.none_parser(ObjGroup.attrs['winSize'])
-        overlap = _h5.none_parser(ObjGroup.attrs['overlap'])
+        method = _h5.none_parser(objH5Group.attrs['method'])
+        winType = _h5.none_parser(objH5Group.attrs['winType'])
+        winSize = _h5.none_parser(objH5Group.attrs['winSize'])
+        overlap = _h5.none_parser(objH5Group.attrs['overlap'])
         # Recreating the object
         frfObj = measurement(kind='frf',
                              method=method,
@@ -586,23 +940,23 @@ def __h5_unpack(ObjGroup):
                              comment=comment)
         return frfObj
 
-    elif ObjGroup.attrs['class'] == 'Analysis':
+    elif objH5Group.attrs['class'] == 'Analysis':
         # Analysis attrs unpacking
-        anType = _h5.attr_parser(ObjGroup.attrs['anType'])
-        nthOct = _h5.attr_parser(ObjGroup.attrs['nthOct'])
-        minBand = _h5.attr_parser(ObjGroup.attrs['minBand'])
-        maxBand = _h5.attr_parser(ObjGroup.attrs['maxBand'])
-        comment = _h5.attr_parser(ObjGroup.attrs['comment'])
-        title = _h5.attr_parser(ObjGroup.attrs['title'])
-        dataLabel = _h5.attr_parser(ObjGroup.attrs['dataLabel'])
-        errorLabel = _h5.attr_parser(ObjGroup.attrs['errorLabel'])
-        xLabel = _h5.attr_parser(ObjGroup.attrs['xLabel'])
-        yLabel = _h5.attr_parser(ObjGroup.attrs['yLabel'])
+        anType = _h5.attr_parser(objH5Group.attrs['anType'])
+        nthOct = _h5.attr_parser(objH5Group.attrs['nthOct'])
+        minBand = _h5.attr_parser(objH5Group.attrs['minBand'])
+        maxBand = _h5.attr_parser(objH5Group.attrs['maxBand'])
+        comment = _h5.attr_parser(objH5Group.attrs['comment'])
+        title = _h5.attr_parser(objH5Group.attrs['title'])
+        dataLabel = _h5.attr_parser(objH5Group.attrs['dataLabel'])
+        errorLabel = _h5.attr_parser(objH5Group.attrs['errorLabel'])
+        xLabel = _h5.attr_parser(objH5Group.attrs['xLabel'])
+        yLabel = _h5.attr_parser(objH5Group.attrs['yLabel'])
         # Analysis data unpacking
-        data = np.array(ObjGroup['data'])
+        data = np.array(objH5Group['data'])
         # If error in save moment was None no group was created for it
-        if 'error' in ObjGroup:
-            error = np.array(ObjGroup['error'])
+        if 'error' in objH5Group:
+            error = np.array(objH5Group['error'])
         else:
             error = None
         # Recreating the object
@@ -620,5 +974,22 @@ def __h5_unpack(ObjGroup):
                             title=title)
         return anObject
 
+    elif objH5Group.attrs['class'] == 'dict':
+        dictObj = {}
+        for PyTTaObjName, PyTTaObjH5Group in objH5Group.items():
+            dictObj[PyTTaObjName] = __h5_unpack(PyTTaObjH5Group)
+        return dictObj
+
+    elif objH5Group.attrs['class']  == 'list':
+        dictObj = {}
+        for idx, PyTTaObjH5Group in objH5Group.items():
+            dictObj[int(idx)] = __h5_unpack(PyTTaObjH5Group)
+        idxs = [int(item) for item in list(dictObj.keys())]
+        maxIdx = max(idxs)
+        listObj = []
+        for idx in range(maxIdx+1):
+            listObj.append(dictObj[idx])
+        return listObj
+        
     else:
         raise NotImplementedError

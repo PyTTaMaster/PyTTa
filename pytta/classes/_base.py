@@ -14,7 +14,7 @@ from pytta.classes._instanceinfo import RememberInstanceCreationInfo as RICI
 import numpy as np
 from scipy import io
 import time
-from pytta import h5utilities as _h5
+from pytta import h5utils as _h5
 
 
 class PyTTaObj(RICI):
@@ -84,11 +84,11 @@ class PyTTaObj(RICI):
 # PyTTaObj Properties
     @property
     def samplingRate(self):
-        return self._samplingRate
+        return int(self._samplingRate)
 
     @samplingRate.setter
     def samplingRate(self, newSamplingRate):
-        self._samplingRate = newSamplingRate
+        self._samplingRate = int(newSamplingRate)
         return
 
     @property

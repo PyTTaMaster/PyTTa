@@ -12,12 +12,12 @@ import time
 from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
-from pytta import h5utilities as _h5
+from pytta import h5utils as _h5
 from pytta.frequtils import fractional_octave_frequencies as FOF
+from pytta import plot
+import copy as cp
 
 # filterwarnings("default", category=DeprecationWarning)
-
-
 class SignalObj(_base.PyTTaObj):
     """
     Signal object class.
@@ -79,17 +79,32 @@ class SignalObj(_base.PyTTaObj):
             2**fftDegree signal's number of samples;
 
         * numSamples (samples), (int):
-            signal's number of samples
+            signal's number of samples;
+
+        * coordinates (list), (list):
+            position in space for the current SignalObj;
+
+        * orientation (list), (list):
+            orientation for the current SignalObj;
+
+        * numChannels (int), (int):
+            number of channels;
 
 
     Methods:
     ---------
-
-        * num_channels():
-            return the number of channels in the instace;
+        * crop(startTime, endTime):
+            crops the timeSignal within the provided time interval;
 
         * max_level():
             return the channel's max levels;
+
+        * rms():
+            return the effective value for the entire signal;
+        
+        * spl():
+            gives the sound pressure level for the entire signal.
+            Calibration is needed;
 
         * play():
             reproduce the timeSignal with default output device;
@@ -165,7 +180,8 @@ class SignalObj(_base.PyTTaObj):
 
         return
 
-# SignalObj Properties
+    # SignalObj Properties
+
     @property
     def signalType(self):
         return self._signalType
@@ -185,10 +201,8 @@ class SignalObj(_base.PyTTaObj):
                 print("'signalType' is already '" + self.signalType + "'.")
             else:
                 self._signalType = newSigType
-                self._freqSignal = \
-                    np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
-                if newSigType == 'power':
-                    self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
+                self._fft()
+        # for initialization purposes
         else:
             self._signalType = newSigType
 
@@ -212,28 +226,14 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._timeSignal = np.array(newSignal, dtype='float32')
-            self._freqSignal = \
-                np.fft.rfft(self._timeSignal, axis=0, norm=None) / 2**(1/2)
-            if self.signalType == 'power':
-                self._freqSignal = 1/len(self._freqSignal)*self._freqSignal
-            # number of samples
-            self._numSamples = len(self._timeSignal)
-            # size parameter
-            self._fftDegree = np.log2(self._numSamples)
-            # duration in [s]
-            self._timeLength = self.numSamples/self.samplingRate
-            # [s] time vector (x axis)
+            self._numSamples = len(self._timeSignal)  # [-] number of samples
+            self._fftDegree = np.log2(self._numSamples)  # [-] size parameter
+            self._timeLength = self.numSamples/self.samplingRate  # [s]
             self._timeVector = np.linspace(0,
                                            self.timeLength 
                                            - 1/self.samplingRate,
                                            self.numSamples)
-            # [Hz] frequency vector (x axis)
-            self._freqVector = np.linspace(0, (self.numSamples - 1) *
-                                           self.samplingRate /
-                                           (2*self.numSamples),
-                                           (int(self.numSamples/2)+1)
-                                           if self.numSamples % 2 == 0
-                                           else int((self.numSamples+1)/2))
+            self._fft()
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -251,23 +251,16 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._freqSignal = np.array(newSignal)
-            self._timeSignal = np.array(np.fft.irfft(self._freqSignal,
-                                                     axis=0, norm=None),
-                                        dtype='float32')
             self._numSamples = len(self.timeSignal)  # [-] number of samples
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
-            # [s] time vector (x axis)
-            self._timeVector = np.linspace(0,
-                                           self.timeLength 
-                                           - 1/self.samplingRate,
-                                           self.numSamples)
             self._freqVector = np.linspace(0, (self.numSamples-1) *
                                            self.samplingRate /
                                            (2*self.numSamples),
                                            (int((self.numSamples/2) + 1)
                                            if self.numSamples % 2 == 0
                                            else int((self.numSamples+1)/2)))
+            self._ifft()
             self.channels.conform_to(self)
         else:
             raise TypeError('Input array must be a numpy ndarray')
@@ -300,7 +293,7 @@ class SignalObj(_base.PyTTaObj):
                                 "replaced by .numChannels property."))
         return self.numChannels
 
-# SignalObj Methods
+    # SignalObj Methods
 
     def crop(self, startTime, endTime):
         """crop crop the signal duration in the specified interval
@@ -377,283 +370,277 @@ class SignalObj(_base.PyTTaObj):
                 mapping=outChannels, **kwargs)
         return
 
-    def plot_time(self, xlabel=None, ylabel=None,
-                  ylim=None, xlim=None):
+    def plot_time(self, xLabel:str=None, yLabel:str=None,
+                yLim:list=None, xLim:list=None, title:str=None,
+                decimalSep:str=','):
+        """Plots the signal in time domain.
+
+        xLabel, yLabel, and title are saved for the next plots when provided.
+
+        Parameters (default), (type):
+        ------------------------------
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * xLim (), (list):
+                left and right limits
+
+                >>> xLim = [0, 15]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
         """
-        Time domain plotting method
-        """
-        if xlabel is None:
-            xlabel = 'Time [s]'
-        if ylabel is None:
-            ylabel = 'Amplitude [{}]'
-        firstCh = self.channels.mapping[0]
-        ylabel = ylabel.format(self.channels[firstCh].unit)
-        fig = plt.figure(figsize=(10, 5))
+        if xLabel is not None:
+            self.timeXLabel = xLabel
+        else:
+            if hasattr(self, 'timeXLabel'):
+                if self.timeXLabel is not None:
+                    xLabel = self.timeXLabel
 
-        ax = fig.add_axes([0.08, 0.1, 0.8, 0.85], polar=False,
-                          projection='rectilinear')
-        ax.set_snap(True)
-        for chIndex in range(self.numChannels):
-            chNum = self.channels.mapping[chIndex]
-            label = '{} [{}]'.format(self.channels[chNum].name,
-                                     self.channels[chNum].unit)
-            ax.plot(self.timeVector,
-                    self.timeSignal[:, chIndex],
-                    label=label)
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
-
-        if xlim is None:
-            xlim = (self.timeVector[0], self.timeVector[-1])
-        ax.set_xlim(xlim)
+        if yLabel is not None:
+            self.timeYLabel = yLabel
+        else:
+            if hasattr(self, 'timeYLabel'):
+                if self.timeYLabel is not None:
+                    yLabel = self.timeYLabel
         
-        xticks = np.linspace(*xlim, 11).tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
-                           fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
+        if title is not None:
+            self.timeTitle = title 
+        else:
+            if hasattr(self, 'timeTitle'):
+                if self.timeTitle is not None:
+                    title = self.timeTitle
 
-        limData = self.timeSignal
-        # limData = [value for value in limData.flatten() if not np.isinf(value)]
-        limData[np.isinf(limData)] = 0
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
-    
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
-        
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
-
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
-
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-        ax.legend(loc='best', fontsize=12)
+        fig = plot.time((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
         return fig
 
-    def plot_time_dB(self, xlabel=None, ylabel=None,
-                     ylim=None, xlim=None):
+    def plot_time_dB(self, xLabel:str=None, yLabel:str=None,
+                yLim:list=None, xLim:list=None, title:str=None,
+                decimalSep:str=','):
+        """Plots the signal in decibels in time domain.
+
+        xLabel, yLabel, and title are saved for the next plots when provided.
+
+        Parameters (default), (type):
+        ------------------------------
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * xLim (), (list):
+                left and right limits
+
+                >>> xLim = [0, 15]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
         """
-        Time domain plotting method
-        """
-        if xlabel is None:
-            xlabel = 'Time [s]'
-        if ylabel is None:
-            ylabel = 'Magnitude [dB]'
+        if xLabel is not None:
+            self.timedBXLabel = xLabel
+        else:
+            if hasattr(self, 'timedBXLabel'):
+                if self.timedBXLabel is not None:
+                    xLabel = self.timedBXLabel
 
-        fig = plt.figure(figsize=(10, 5))
-
-        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                          projection='rectilinear')
-        ax.set_snap(True)
-
-        dBSignal = np.abs(self.timeSignal) / \
-            self.channels.dBRefList()
-        dBSignal = 20*np.log10(dBSignal)
-
-        margin = 0
-        infYLim = 1000000
-        supYLim = -1000000
-        for chIndex in range(self.numChannels):
-            chNum = self.channels.mapping[chIndex]
-            label = '{} [{}]'.format(self.channels[chNum].name,
-                                     self.channels[chNum].unit)
-            ax.plot(self.timeVector,
-                    dBSignal[:, chIndex],
-                    label=label)
-            newInfYLim = np.nanmin(np.abs(self.timeSignal[:, chIndex])) / \
-                self.channels[chNum].dBRef
-            newInfYLim = 20*np.log10(newInfYLim)
-
-            if newInfYLim < infYLim:
-                infYLim = newInfYLim
-
-            newSupYLim = np.nanmax(np.abs(self.timeSignal[:, chIndex])) / \
-                self.channels[chNum].dBRef
-            newSupYLim = 20*np.log10(newSupYLim)
-
-            if newSupYLim > supYLim:
-                supYLim = newSupYLim
-
-            newMargin = (supYLim - infYLim)/20
-            if newMargin > margin:
-                margin = newMargin
-
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
-
-        if xlim is None:
-            xlim = (self.timeVector[0], self.timeVector[-1])
-        ax.set_xlim(xlim)
-
-        xticks = np.linspace(*xlim, 11).tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
-                           fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
-
-        limData = 10*np.log10(self.timeSignal**2/
-                              (np.array(self.channels.dBRefList())**2))
-        limData = [value for value in limData.flatten() if not np.isinf(value)]
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
-    
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
+        if yLabel is not None:
+            self.timedBYLabel = yLabel
+        else:
+            if hasattr(self, 'timedBYLabel'):
+                if self.timedBYLabel is not None:
+                    yLabel = self.timedBYLabel
         
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
+        if title is not None:
+            self.timedBTitle = title 
+        else:
+            if hasattr(self, 'timedBTitle'):
+                if self.timedBTitle is not None:
+                    title = self.timedBTitle
 
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
-
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-        ax.legend(loc='best', fontsize=12)
+        fig = plot.time_dB((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
         return fig
 
-    def plot_freq(self, smooth=False, xlabel=None, ylabel=None,
-                  ylim=None, xlim=None):
+    def plot_freq(self, smooth:bool=False, xLabel:str=None, yLabel:str=None,
+                  yLim:list=None, xLim:list=None, title:str=None,
+                  decimalSep:str=','):
+        """Plots the signal decibel magnitude in frequency domain.
+
+        xLabel, yLabel, and title are saved for the next plots when provided.
+
+        Parameters (default), (type):
+        -----------------------------
+                    
+            * smooth (False), (bool):
+                option for curve smoothing. Uses scipy.signal.savgol_filter.
+                Preliminar implementation. Needs review.
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * xLim (), (list):
+                left and right limits
+
+                >>> xLim = [15, 21000]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
         """
-        Frequency domain dB plotting method
-        """
-        if xlabel is None:
-            xlabel = 'Frequency [Hz]'
-        if ylabel is None:
-            ylabel = 'Magnitude [dB]'
+        if xLabel is not None:
+            self.freqXLabel = xLabel
+        else:
+            if hasattr(self, 'freqXLabel'):
+                if self.freqXLabel is not None:
+                    xLabel = self.freqXLabel
 
-        fig = plt.figure(figsize=(10, 5))
-
-        ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                          projection='rectilinear', xscale='log')
-        ax.set_snap(True)
-        for chIndex in range(0, self.numChannels):
-            chNum = self.channels.mapping[chIndex]
-            unitData = '[{} ref.: {} {}]'.format(self.channels[chNum].dBName,
-                                                 self.channels[chNum].dBRef,
-                                                 self.channels[chNum].unit)
-            if smooth:
-                Signal = ss.savgol_filter(np.squeeze(np.abs(
-                         self.freqSignal[:, chIndex])),
-                         31, 3)
-            else:
-                Signal = self.freqSignal[:, chIndex]
-            dBSignal = 20 * np.log10(np.abs(Signal) /
-                                     self.channels[chNum].dBRef)
-            label = '{} {}'.format(self.channels[chNum].name, unitData)
-            ax.semilogx(self.freqVector, dBSignal, label=label)
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
-
-        if xlim is None:
-            xlim = (self.freqMin, self.freqMax)
-
-        ax.set_xlim(xlim)
+        if yLabel is not None:
+            self.freqYLabel = yLabel
+        else:
+            if hasattr(self, 'freqYLabel'):
+                if self.freqYLabel is not None:
+                    yLabel = self.freqYLabel
         
-        xticks = FOF(minFreq=xlim[0], maxFreq=xlim[1], nthOct=3)[:, 1].tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
-                           rotation=45, fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
-        
-        freqMinIdx = np.where(self.freqVector > self.freqMin)[0][0]
-        freqMaxIdx = np.where(self.freqVector < self.freqMax)[0][-1]
+        if title is not None:
+            self.freqTitle = title 
+        else:
+            if hasattr(self, 'freqTitle'):
+                if self.freqTitle is not None:
+                    title = self.freqTitle
 
-        limData = \
-            20*np.log10(np.abs(self.freqSignal[freqMinIdx:freqMaxIdx, :]) /
-                        self.channels.dBRefList())
-
-        limData = [value for value in limData.flatten() if not np.isinf(value)]
-        margin = (np.nanmax(limData) - np.nanmin(limData)) / 20
-    
-        ylimInf = np.nanmin(limData)
-        ylimInf -= margin
-        
-        ylimSup = np.nanmax(limData)
-        ylimSup += margin
-        
-        if ylim is None:
-            ylim = (ylimInf, ylimSup)
-        ax.set_ylim(ylim)
-
-        yticks = np.linspace(*ylim, 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-        ax.legend(loc='best', fontsize=12)
+        fig = plot.freq((self,), smooth, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep)
         return fig
 
-    def plot_spectrogram(self, window='hann', winSize=1024, overlap=0.5,
-                         xlabel=None, ylabel=None):
-        """plot_spectrogram plots the spectrum time history
-        
-        :param window: window type for the time slicing, defaults to 'hann'
-        :type window: str, optional
-        :param winSize: window size in samples, defaults to 1024
-        :type winSize: int, optional
-        :param overlap: window overlap in %, defaults to 0.5
-        :type overlap: float, optional
-        :param xlabel: x axis label, defaults to None
-        :type xlabel: str, optional
-        :param ylabel: y axis label, defaults to None
-        :type ylabel: str, optional
-        :return: figure
-        :rtype: matplotlib.figure.Figure
+    def plot_spectrogram(self, winType:str='hann', winSize:int=1024,
+                         overlap:float=0.5, xLabel:str=None, yLabel:str=None,
+                         yLim:list=None, xLim:list=None, title:str=None,
+                         decimalSep:str=','):
+        """Plots a signal spectrogram.
+
+        Parameters (default), (type):
+        -----------------------------
+
+            * winType ('hann'), (str):
+                window type for the time slicing.
+
+            * winSize (1024), (int):
+                window size in samples
+
+            * overlap (0.5), (float):
+                window overlap in %
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Frequency [Hz]'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior frequency limits.
+
+                >>> yLim = [20, 1000]
+
+            * xLim (), (list):
+                left and right time limits
+
+                >>> xLim = [1, 3]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+        Return:
+        --------
+
+            List of matplotlib.figure.Figure objects for each item in curveData.
         """
-        firstCh = self.channels.mapping[0]
-        unitData = '[{} ref.: {} {}]'.format(self.channels[firstCh].dBName,
-                                             self.channels[firstCh].dBRef,
-                                             self.channels[firstCh].unit)
+        if xLabel is not None:
+            self.spectrogramXLabel = xLabel
+        else:
+            if hasattr(self, 'spectrogramXLabel'):
+                if self.spectrogramXLabel is not None:
+                    xLabel = self.spectrogramXLabel
 
-        if xlabel is None:
-            xlabel = 'Time in s'
-        if ylabel is None:
-            ylabel = 'Frequency in Hz'
-        fig = plt.figure(figsize=(10, 5))
+        if yLabel is not None:
+            self.spectrogramYLabel = yLabel
+        else:
+            if hasattr(self, 'spectrogramYLabel'):
+                if self.spectrogramYLabel is not None:
+                    yLabel = self.spectrogramYLabel
+        
+        if title is not None:
+            self.spectrogramTitle = title 
+        else:
+            if hasattr(self, 'spectrogramTitle'):
+                if self.spectrogramTitle is not None:
+                    title = self.spectrogramTitle
 
-        ax = fig.add_axes([0.1, 0.1, 0.95, 0.8], polar=False,
-                          projection='rectilinear')
-        ax.set_snap(False)
-
-        _spectrogram, _specTime, _specFreq\
-            = self._calc_spectrogram(self.timeSignal[:, 0], overlap,
-                                     window, winSize)
-        pcmesh = ax.pcolormesh(_specTime, _specFreq, _spectrogram,
-                               cmap=plt.jet(), vmin=-120)
-
-        xlim = (self.timeVector[0], self.timeVector[-1])
-        ax.set_xlim(xlim)
-        xticks = np.linspace(*xlim, 11).tolist()
-        ax.set_xticks(xticks)
-        ax.set_xticklabels(['{:.2n}'.format(tick) for tick in xticks],
-                           fontsize=14)
-        ax.set_xlabel(xlabel, fontsize=20)
-
-        ylim = (self.freqMin, self.freqMax)
-        ax.set_ylim(ylim)
-        yticks = np.linspace(ylim[0], ylim[1], 11).tolist()
-        ax.set_yticks(yticks)
-        ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-                            for tick in yticks], fontsize=14)
-        ax.set_ylabel(ylabel, fontsize=20)
-
-        cbar = fig.colorbar(pcmesh)
-        cbar.ax.tick_params(labelsize=12)
-        cbar.ax.set_ylabel('Magnitude {}'.format(unitData),
-                           fontsize=20)
-        return fig
+        figs = plot.spectrogram((self,), winType, winSize,
+                                overlap, xLabel, yLabel, xLim, yLim,
+                                title, decimalSep)
+        return figs
 
     def calib_voltage(self, chIndex, refSignalObj, refVrms=1, refFreq=1000):
         """
-        calibVoltage method: use informed SignalObj with a calibration voltage
-        signal, and the reference RMS voltage to calculate the Correction
-        Factor.
+        Use informed SignalObj with a calibration voltage  signal, and the
+        reference RMS voltage to calculate and apply the Correction Factor.
 
             >>> SignalObj.calibVoltage(chIndex,refSignalObj,refVrms,refFreq)
 
@@ -686,14 +673,14 @@ class SignalObj(_base.PyTTaObj):
     def calib_pressure(self, chIndex, refSignalObj,
                        refPrms=1.00, refFreq=1000):
         """
-        calibPressure method: use informed SignalObj, with a calibration
+        Use informed SignalObj, with a calibration
         acoustic pressure signal, and the reference RMS acoustic pressure to
-        calculate the Correction Factor.
+        calculate and apply the Correction Factor.
 
             >>> SignalObj.calibPressure(chIndex,refSignalObj,refPrms,refFreq)
 
-        Parameters:
-        -------------
+        Parameters (default), (type):
+        ------------------------------
 
             * chIndex (), (int):
                 channel index for calibration. Starts in 0;
@@ -761,14 +748,14 @@ class SignalObj(_base.PyTTaObj):
 
         For deconvolution divide by a SignalObj.
         For gain operation divide by a number.
-
         """
+        result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=cp.copy(self.samplingRate),
+                            freqMin=cp.copy(self.freqMin),
+                            freqMax=cp.copy(self.freqMax),
+                            signalType='energy')
+        result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
-            result = SignalObj(np.zeros(self.timeSignal.shape),
-                               samplingRate=self.samplingRate,
-                               freqMin=self.freqMin, freqMax=self.freqMax,
-                               signalType='energy')
-            result.channels = self.channels
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
             if self.numChannels > 1:
@@ -800,8 +787,7 @@ class SignalObj(_base.PyTTaObj):
                 result.freqSignal = result_freqSignal
             result.channels = self.channels / other.channels
         elif type(other) == float or type(other) == int:
-            self.timeSignal = self.timeSignal / other
-            result = self
+            result.timeSignal = self.timeSignal / other
         else:
             raise TypeError("A SignalObj can operate with other alike or a " +
                             "number in case of a gain operation.")
@@ -811,13 +797,14 @@ class SignalObj(_base.PyTTaObj):
         """
         Gain apply method/FFT convolution
         """
+        result = SignalObj(np.zeros(self.timeSignal.shape),
+                        samplingRate=cp.copy(self.samplingRate),
+                        freqMin=cp.copy(self.freqMin),
+                        freqMax=cp.copy(self.freqMax))
+        result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
-            result = SignalObj(np.zeros(self.timeSignal.shape),
-                            samplingRate=self.samplingRate,
-                            freqMin=self.freqMin, freqMax=self.freqMax)
-            result.channels = self.channels
             if self.numChannels > 1:
                 if other.numChannels > 1:
                     if other.numChannels != self.numChannels:
@@ -846,8 +833,7 @@ class SignalObj(_base.PyTTaObj):
                 result.freqSignal = result_freqSignal
             result.channels = self.channels * other.channels
         elif type(other) == float or type(other) == int:
-            self.timeSignal = self.timeSignal * other
-            result = self
+            result.timeSignal = self.timeSignal * other
         else:
             raise TypeError("A SignalObj can operate with other alike or a " +
                             "number in case of a gain operation.")
@@ -883,7 +869,7 @@ class SignalObj(_base.PyTTaObj):
                             "int, or float.")
 
         result.freqMin, result.freqMax = (self.freqMin, self.freqMax)
-        result._channels = self.channels
+        result._channels = cp.deepcopy(self.channels)
         return result
 
     def __sub__(self, other):
@@ -927,135 +913,183 @@ class SignalObj(_base.PyTTaObj):
             key += self.numChannels
         return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
 
-    def _calc_spectrogram(self, timeData=None, overlap=0.5,
-                          winType='hann', winSize=1024, *, channel=0):
-        if timeData is None:
-            timeData = self.timeSignal
-            if self.numChannels > 1:
-                timeData = timeData[:, channel]
-        window = eval('ss.windows.' + winType)(winSize)
-        nextIdx = int(winSize*overlap)
-        rng = int(timeData.shape[0]/winSize/overlap - 1)
-        _spectrogram = np.zeros((winSize//2 + 1, rng))
-        _specFreq = np.linspace(0, self.samplingRate//2, winSize//2 + 1)
-        _specTime = np.linspace(0, self.timeVector[-1], rng)
-        for N in range(rng):
-            try:
-                strIdx = N*nextIdx
-                endIdx = winSize + N*nextIdx
-                sliceAudio = window*timeData[strIdx:endIdx]
-                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-                sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-                _spectrogram[:, N] = 20*np.log10(sliceMag)
-            except IndexError:
-                sliceAudio = timeData[-winSize:]
-                sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-                sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-                _spectrogram[:, N] = 20*np.log10(sliceMag)
-        return _spectrogram, _specTime, _specFreq
+    # def _calc_spectrogram(self, timeData=None, overlap=0.5,
+    #                       winType='hann', winSize=1024, *, channel=0):
+    #     if timeData is None:
+    #         timeData = self.timeSignal
+    #         if self.numChannels > 1:
+    #             timeData = timeData[:, channel]
+    #     window = eval('ss.windows.' + winType)(winSize)
+    #     nextIdx = int(winSize*overlap)
+    #     rng = int(timeData.shape[0]/winSize/overlap - 1)
+    #     _spectrogram = np.zeros((winSize//2 + 1, rng))
+    #     _specFreq = np.linspace(0, self.samplingRate//2, winSize//2 + 1)
+    #     _specTime = np.linspace(0, self.timeVector[-1], rng)
+    #     for N in range(rng):
+    #         try:
+    #             strIdx = N*nextIdx
+    #             endIdx = winSize + N*nextIdx
+    #             sliceAudio = window*timeData[strIdx:endIdx]
+    #             sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+    #             sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
+    #             _spectrogram[:, N] = 20*np.log10(sliceMag)
+    #         except IndexError:
+    #             sliceAudio = timeData[-winSize:]
+    #             sliceFFT = np.fft.rfft(sliceAudio, axis=0)
+    #             sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
+    #             _spectrogram[:, N] = 20*np.log10(sliceMag)
+    #     return _spectrogram, _specTime, _specFreq
+
+    def _fft(self):
+        """fft do the transformation to the frequency domain of the current
+        time signal.
+        """
+        # FFT
+        newFreqSignal = \
+            np.fft.rfft(self._timeSignal, axis=0, norm=None)
+        # turning peak amplitude into RMS amplitude
+        newFreqSignal /=  2**(1/2)
+        newFreqSignal[0,:] *= 2**(1/2)
+        # spectrum normalization
+        if self.signalType == 'power':
+            newFreqSignal /= len(newFreqSignal)
+        # assign new freq signal
+        self._freqSignal = newFreqSignal
+        # frequency vector (x axis)
+        self._freqVector = np.linspace(0, (self.numSamples - 1) *
+                                        self.samplingRate /
+                                        (2*self.numSamples),
+                                        (int(self.numSamples/2)+1)
+                                        if self.numSamples % 2 == 0
+                                        else int((self.numSamples+1)/2))
+        return
+
+    def _ifft(self):
+        """ifft do the transformation to the time domain of the current
+        frequency signal
+        """
+        # spectrum denormalization
+        if self.signalType == 'power':
+            adjustedFreqSignal = \
+                self._freqSignal*len(self._freqSignal)
+        else:
+            adjustedFreqSignal = self._freqSignal
+        # turning RMS amplitude into peak amplitude except DC freq
+        adjustedFreqSignal *=  2**(1/2)
+        adjustedFreqSignal[0,:] /= 2**(1/2)
+        # IFFT
+        self._timeSignal = \
+            np.array(np.fft.irfft(adjustedFreqSignal,
+                                axis=0, norm=None),
+                    dtype='float32')
+        # time vector (x axis)
+        self._timeVector = np.linspace(0,
+                                       self.timeLength 
+                                       - 1/self.samplingRate,
+                                       self.numSamples)
+        return
 
 
-# ImpulsiveResponse class
 class ImpulsiveResponse(_base.PyTTaObj):
     """
-        This class is a container of SignalObj, intended to calculate impulsive
-        responses and store them.
+    This class is a container of SignalObj, intended to calculate impulsive
+    responses and store them.
 
-        The access to this class is provided by itself and as an output
-        of the FRFMeasure.run() method.
+    The access to this class is provided by itself and as an output
+    of the FRFMeasure.run() method.
 
-        Creation parameters:
-        ---------------------
+    Creation parameters:
+    ---------------------
 
-            * excitation (SignalObj) (optional)::
-                The signal-like object used as excitation signal on the
-                measurement-like object. Optional if 'ir' is provided;
+        * excitation (SignalObj) (optional)::
+            The signal-like object used as excitation signal on the
+            measurement-like object. Optional if 'ir' is provided;
 
-            * recording (SignalObj) (optional)::
-                The recorded signal-like object, obtained directly from the
-                audio interface used on the measurement-like object. Optional
-                if 'ir' is provided;
+        * recording (SignalObj) (optional)::
+            The recorded signal-like object, obtained directly from the
+            audio interface used on the measurement-like object. Optional
+            if 'ir' is provided;
 
-            * method (str):
-                The way that the impulsive response should be computed, accepts
-                "linear", "H1", "H2" and "Ht" as values:
+        * method (str):
+            The way that the impulsive response should be computed, accepts
+            "linear", "H1", "H2" and "Ht" as values:
 
-                    * "linear":
-                        Computes using the spectral division of the signals;
+                * "linear":
+                    Computes using the spectral division of the signals;
 
-                    * "H1":
-                        Uses power spectral density Ser divided by See, with
-                        "e" standing for "excitation" and "r" for "recording;
+                * "H1":
+                    Uses power spectral density Ser divided by See, with
+                    "e" standing for "excitation" and "r" for "recording;
 
-                    * "H2":
-                        uses power spectral density Srr divided by Sre, with
-                        "e" standing for "excitation" and "r" for "recording;
+                * "H2":
+                    uses power spectral density Srr divided by Sre, with
+                    "e" standing for "excitation" and "r" for "recording;
 
-                    * "Ht":
-                        uses the formula: TODO;
+                * "Ht":
+                    uses the formula: TODO;
 
-            * winType (str | tuple) (optional):
-                The name of the window used by the scipy.signal.csd function
-                to compute the power spectral density, (only for method="H1",
-                method="H2" and method="Ht"). The possible values are:
+        * winType (str | tuple) (optional):
+            The name of the window used by the scipy.signal.csd function
+            to compute the power spectral density, (only for method="H1",
+            method="H2" and method="Ht"). The possible values are:
 
-                    >>> boxcar, triang, blackman, hamming, hann, bartlett,
-                        flattop, parzen, bohman, blackmanharris, nuttall,
-                        barthann, kaiser (needs beta), gaussian (needs standard
-                        deviation), general_gaussian (needs power, width),
-                        slepian (needs width), dpss (needs normalized half-
-                        bandwidth), chebwin (needs attenuation), exponential
-                        (needs decay scale), tukey (needs taper fraction).
+                >>> boxcar, triang, blackman, hamming, hann, bartlett,
+                    flattop, parzen, bohman, blackmanharris, nuttall,
+                    barthann, kaiser (needs beta), gaussian (needs standard
+                    deviation), general_gaussian (needs power, width),
+                    slepian (needs width), dpss (needs normalized half-
+                    bandwidth), chebwin (needs attenuation), exponential
+                    (needs decay scale), tukey (needs taper fraction).
 
-                If the window requires no parameters, then window can be
-                a string.
+            If the window requires no parameters, then window can be
+            a string.
 
-                If the window requires parameters, then window must be a tuple
-                with the first argument the string name of the window, and the
-                next arguments the needed parameters.
+            If the window requires parameters, then window must be a tuple
+            with the first argument the string name of the window, and the
+            next arguments the needed parameters.
 
-                    source:
-                        https://docs.scipy.org/doc/scipy/reference/generated\
-                        /scipy.signal.csd.html
+                source:
+                    https://docs.scipy.org/doc/scipy/reference/generated\
+                    /scipy.signal.csd.html
 
-            * winSize (int) (optional):
-                The size of the window used by the scipy.signal.csd function
-                to compute the power spectral density, (only for method="H1",
-                method="H2" and method="Ht");
+        * winSize (int) (optional):
+            The size of the window used by the scipy.signal.csd function
+            to compute the power spectral density, (only for method="H1",
+            method="H2" and method="Ht");
 
-            * overlap (float) (optional):
-                the overlap ratio of the window used by the scipy.signal.csd
-                function to compute the power spectral density, (only for
-                method ="H1", method="H2" and method="Ht").
+        * overlap (float) (optional):
+            the overlap ratio of the window used by the scipy.signal.csd
+            function to compute the power spectral density, (only for
+            method ="H1", method="H2" and method="Ht").
 
-            * ir (SignalObj) (optional):
-                An calculated impulsive response. Optional if 'excitation' and
-                'recording' are provided;
+        * ir (SignalObj) (optional):
+            An calculated impulsive response. Optional if 'excitation' and
+            'recording' are provided;
 
-        The class's attribute are described next:
+    The class's attribute are described next:
 
-        Attributes:
-        ------------
+    Attributes:
+    ------------
 
-            * irSignal | IR | tfSignal | TF | systemSignal:
-                All names are valid, returns the computed impulsive response
-                signal-like object;
+        * irSignal | IR | tfSignal | TF | systemSignal:
+            All names are valid, returns the computed impulsive response
+            signal-like object;
 
-            * methodInfo:
-                Returns a dict with the "method", "winType", "winSize" and
-                "overlap" parameters.
+        * methodInfo:
+            Returns a dict with the "method", "winType", "winSize" and
+            "overlap" parameters.
 
-        Methods:
-        ------------
+    Methods:
+    ------------
 
-        * plot_time():
-            generates the systemSignal historic graphic;
+    * plot_time():
+        generates the systemSignal historic graphic;
 
-        * plot_time_dB():
-            generates the systemSignal historic graphic in dB;
+    * plot_time_dB():
+        generates the systemSignal historic graphic in dB;
 
-        * plot_freq():
-            generates the systemSignal spectral magnitude graphic;
+    * plot_freq():
+        generates the systemSignal spectral magnitude graphic;
     """
 
     def __init__(self, excitation=None, recording=None,
@@ -1159,7 +1193,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
     def plot_freq(self, *args, **kwargs):
         return self.systemSignal.plot_freq(*args, **kwargs)
 
-# Properties
+    # Properties
 
     @property
     def irSignal(self):
@@ -1378,7 +1412,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
         result.freqMin = outputSignal.freqMin
         result.freqMax = outputSignal.freqMax
         result.channels = outputSignal.channels / inputSignal.channels
-        return result    # end of function get_transferfunction()
+        return result
 
     def _crossfade_spectruns(self, a, b, freqLims, freqVector):
         f0 = freqLims[0]

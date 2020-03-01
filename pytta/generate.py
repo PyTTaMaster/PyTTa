@@ -93,7 +93,9 @@ def sin(Arms=0.5,
 
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
-    t = np.linspace(0, timeLength - (1/samplingRate), samplingRate*timeLength)
+    t = np.linspace(0,
+                    timeLength - (1/samplingRate),
+                    int(samplingRate*timeLength))
     sin = Arms*(2**(1/2)) * np.sin(2*np.pi*freq*t+phase)
     sinSigObj = SignalObj(sin, domain='time', samplingRate=samplingRate,
                           freqMin=default.freqMin, freqMax=default.freqMax)
@@ -110,22 +112,22 @@ def sweep(freqMin=None,
           method='logarithmic',
           windowing='hann'):
     """
-   Generates a chirp signal defined by the "method" input, windowed, with
-   silence interval at the beggining and end of the signal, plus a hanning
-   fade in and fade out.
+    Generates a chirp signal defined by the "method" input, windowed, with
+    silence interval at the beggining and end of the signal, plus a hanning
+    fade in and fade out.
 
-   >>> x = pytta.generate.sweep()
-   >>> x.plot_time()
+    >>> x = pytta.generate.sweep()
+    >>> x.plot_time()
 
-   Return a signalObj containing a logarithmic chirp signal from 17.8 Hz
-   to 22050 Hz, with a fade in beginning at 17.8 Hz time instant and ending at
-   the 20 Hz time instant; plus a fade out beginning at 20000 Hz time instant
-   and ending at 22050 Hz time instant.
+    Return a signalObj containing a logarithmic chirp signal from 17.8 Hz
+    to 22050 Hz, with a fade in beginning at 17.8 Hz time instant and ending at
+    the 20 Hz time instant; plus a fade out beginning at 20000 Hz time instant
+    and ending at 22050 Hz time instant.
 
-   The fade in and the fade out are made with half hanning window. First half
-   for the fade in and last half for the fade out. Different number of points
-   are used for each fade, so the number of time samples during each frequency
-   is respected.
+    The fade in and the fade out are made with half hanning window. First half
+    for the fade in and last half for the fade out. Different number of points
+    are used for each fade, so the number of time samples during each frequency
+    is respected.
 
     """
     # Code snippet to guarantee that generated object name is
@@ -261,7 +263,9 @@ def noise(kind='white',
     silence at the beginning and ending of the signal, plus a fade in to avoid
     abrupt speaker excursioning. All noises have normalized amplitude.
 
-        White noise is generated using numpy.randn between [[1];[-1]]; # FIXME: This looks incorrect because the signal has normal distribution, so no limits but an average and standard deviation
+        White noise is generated using numpy.randn between [[1];[-1]]; 
+        # FIXME: This looks incorrect because the signal has normal
+        # distribution, so no limits but an average and standard deviation.
 
         Pink noise is still in progress;
 
@@ -369,13 +373,15 @@ def impulse(samplingRate=None,
         fftDegree = default.fftDegree
 
     numSamples = 2**fftDegree
-    # FIXME: I don't know why you created this way. I guess it would be better to just create a vector of zeros and then substitute the first sample by 1.
-# =============================================================================
-#     impulseSignal = (numSamples / samplingRate) \
-#         * np.ones(numSamples) + 1j * np.random.randn(numSamples)  
-#     impulseSignal = np.real(np.fft.ifft(impulseSignal))
-#     impulseSignal = impulseSignal / max(impulseSignal)
-# =============================================================================
+    # FIXME: I don't know why you created this way. I guess it would be better 
+    # to just create a vector of zeros and then substitute the first sample by 
+    # 1.
+    # =========================================================================
+    #     impulseSignal = (numSamples / samplingRate) \
+    #         * np.ones(numSamples) + 1j * np.random.randn(numSamples)  
+    #     impulseSignal = np.real(np.fft.ifft(impulseSignal))
+    #     impulseSignal = impulseSignal / max(impulseSignal)
+    # =========================================================================
     impulseSignal = np.zeros(numSamples)
     impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,

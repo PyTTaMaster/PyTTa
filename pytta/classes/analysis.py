@@ -8,7 +8,8 @@ import matplotlib.ticker as ticker
 import numpy as np
 import time
 import locale
-from pytta import h5utilities as _h5
+from pytta import h5utils as _h5
+from pytta import plot
 
 
 # Analysis types and its units
@@ -108,7 +109,11 @@ class Analysis(RICI):
                                       "types.")
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data)
+                        data=data, dataLabel=self.dataLabel,
+                        error=self.error, errorLabel=self.errorLabel,
+                        comment=self.comment,
+                        xLabel=self.xLabel, yLabel=self.yLabel,
+                        title=self.title)
 
         return result
 
@@ -152,7 +157,11 @@ class Analysis(RICI):
                                       "types.")
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data)
+                        data=data, dataLabel=self.dataLabel,
+                        error=self.error, errorLabel=self.errorLabel,
+                        comment=self.comment,
+                        xLabel=self.xLabel, yLabel=self.yLabel,
+                        title=self.title)
 
         return result
 
@@ -161,16 +170,21 @@ class Analysis(RICI):
             if other.range != self.range:
                 raise ValueError("Can't subtract! Both Analysis have " +
                                 "different band limits.")
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data*other.data)
+            anType='mixed'
+            data=self.data*other.data
         elif isinstance(other, (int, float)):
-            result = Analysis(anType='mixed', nthOct=self.nthOct,
-                            minBand=self.minBand, maxBand=self.maxBand,
-                            data=self.data*other)
+            anType='mixed'
+            data=self.data*other
         else:
             raise TypeError("Analysys can only be operated with int, float, " +
                             "or Analysis types.")
+        result = Analysis(anType=anType, nthOct=self.nthOct,
+                        minBand=self.minBand, maxBand=self.maxBand,
+                        data=data, dataLabel=self.dataLabel,
+                        error=self.error, errorLabel=self.errorLabel,
+                        comment=self.comment,
+                        xLabel=self.xLabel, yLabel=self.yLabel,
+                        title=self.title)
         return result
 
     def __rtruediv__(self, other):
@@ -206,8 +220,11 @@ class Analysis(RICI):
                                       "types.")
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data)
-
+                        data=data, dataLabel=self.dataLabel,
+                        error=self.error, errorLabel=self.errorLabel,
+                        comment=self.comment,
+                        xLabel=self.xLabel, yLabel=self.yLabel,
+                        title=self.title)
         return result
         
 
@@ -409,14 +426,7 @@ class Analysis(RICI):
         """
         return self._bands
 
-
     # Methods
-
-    # def _to_dict(self):
-    #     return
-
-    # def pytta_save(self, dirname=time.ctime(time.time())):
-    #     return
 
     def h5_save(self, h5group):
         """
@@ -442,136 +452,80 @@ class Analysis(RICI):
     def plot(self, **kwargs):
         return self.plot_bars(**kwargs)
 
-    def plot_bars(self, xLabel=None, yLabel=None, yLim=None, errorLabel=None,
-                  title=None, decimalSep=','):
-        """
-        Analysis bar plotting method
-        """
-        if decimalSep == ',':
-            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-            plt.rcParams['axes.formatter.use_locale'] = True
-        elif decimalSep =='.':
-            locale.setlocale(locale.LC_NUMERIC, 'C')
-            plt.rcParams['axes.formatter.use_locale'] = False
-        else:
-            raise ValueError("'decimalSep' must be the string '.' or ','.")
+    def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
+                  xLabel:str=None, yLabel:str=None,
+                  yLim:list=None, title:str=None, decimalSep:str=',',
+                  barWidth:float=0.75, errorStyle:str=None):
+        """Plot the analysis data in fractinal octave bands.
 
-        if xLabel is None:
-            if self.xLabel is None:
-                xLabel = 'Frequency bands [Hz]'
-            else:
-                xLabel = self.xLabel
-        else:
-            self.xLabel = xLabel
-        
-        if yLabel is None:
-            if self.yLabel is None:
-                yLabel = 'Modulus [{}]'
-                yLabel = yLabel.format(self.unit)
-            else:
-                yLabel = self.yLabel
-        else:
-            self.yLabel = yLabel
-        
-        if title is None:
-            if self.title is None:
-                title = '{} analysis'
-                title = title.format(self.anName)
-            else:
-                title = self.title
-        else:
-            self.title = title
-        
-        if errorLabel is None:
-            if self.errorLabel is None:
-                errorLabel = 'Error'
-            else:
-                errorLabel = self.errorLabel
-        else:
+        Parameters (default), (type):
+        -----------------------------
+
+            * dataLabel ('Analysis type [unit]'), (str):
+                legend label for the current data
+
+            * errorLabel ('Error'), (str):
+                legend label for the current data error
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+            * barWidth (0.75), float:
+                width of the bars from one fractional octave band. 
+                0 < barWidth < 1.
+
+            * errorStyle ('standard'), str:
+                error curve style. May be 'laza' or None/'standard'.
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
+        """
+        if dataLabel is not None:
+            self.dataLabel = dataLabel
+
+        if errorLabel is not None:
             self.errorLabel = errorLabel
 
-        fig = plt.figure(figsize=(10, 5))
 
-        ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
-                          projection='rectilinear', xscale='linear')
-        ax.set_snap(True)
-        fbar = range(len(self.data))
-        
-
-        negativeCounter = 0
-        for value in self.data:
-            if value < 0:
-                negativeCounter += 1
-
-        if negativeCounter > len(self.data)//2:
-            minval = np.amin(self.data)
-            marginData = [value for value in self.data if not np.isinf(value)]
-            margin = \
-                np.abs((np.nanmax(marginData) - np.nanmin(marginData)) / 20)
-            minval = minval - margin
-            minval += np.sign(minval)
-            ax.bar(*zip(*enumerate(-minval + self.data)), width=0.75,
-                   label=self.dataLabel, zorder=-1)
-            if self.error is not None:
-                ax.errorbar(*zip(*enumerate(-minval + self.data)),
-                            yerr=self.error, fmt='none',
-                            ecolor='limegreen', elinewidth=23, zorder=0,
-                            fillstyle='full', alpha=.60, label=errorLabel)
-
+        if xLabel is not None:
+            self.barsXLabel = xLabel
         else:
-            ax.bar(fbar, self.data, width=0.75, label=self.dataLabel, zorder=-1)
-            if self.error is not None:
-                ax.errorbar(fbar, self.data, yerr=self.error, fmt='none',
-                            ecolor='limegreen', elinewidth=23, zorder=0,
-                            fillstyle='full', alpha=.60, label=errorLabel)
-            minval = 0
+            if hasattr(self, 'barsXLabel'):
+                if self.barsXLabel is not None:
+                    xLabel = self.barsXLabel
 
-        error = self.error if self.error is not None else 0
+        if yLabel is not None:
+            self.barsYLabel = yLabel
+        else:
+            if hasattr(self, 'barsYLabel'):
+                if self.barsYLabel is not None:
+                    yLabel = self.barsYLabel
 
-        ylimInfData = -minval + self.data - error
-        ylimInfData = [value for value in ylimInfData if not np.isinf(value)]
-        ylimInfMargin = \
-            np.abs((np.nanmax(ylimInfData) - np.nanmin(ylimInfData)) / 20)
-        ylimInf = np.nanmin(ylimInfData) - ylimInfMargin
-    
-        ylimSupData = -minval + self.data + error
-        ylimSupData = [value for value in ylimSupData if not np.isinf(value)]
-        ylimSupMargin = \
-            np.abs((np.nanmax(ylimSupData) - np.nanmin(ylimSupData)) / 20)
-        ylimSup = np.nanmax(ylimSupData) + ylimSupMargin
-        
-        if yLim is None:
-            yLim = (ylimInf, ylimSup)
-        ax.set_ylim(yLim)
-        
-        ax.grid(color='gray', linestyle='-.', linewidth=0.4)
+        if title is not None:
+            self.barsTitle = title
+        else:
+            if hasattr(self, 'barsTitle'):
+                if self.barsTitle is not None:
+                    title = self.barsTitle
 
-        ax.set_xticks(fbar)
-        xticks = self.bands
-        ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
-                           rotation=45, fontsize=14)
-        ax.set_xlabel(xLabel, fontsize=20)
-
-        # Adjust yticks    
-        # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.14/5))
-        # ax.yaxis.set_major_locator(ticker.AutoLocator())
-        ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
-        # ax.yaxis.set_major_formatter(ticker.FormatStrFormatter('%.3f'))
-        # ax.yaxis.set_major_formatter(ticker.StrMethodFormatter('{x:#.2n}'))
-        ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
-        for item in (ax.get_xticklabels() + ax.get_yticklabels()):
-            item.set_fontsize(14)
-
-        # yticks = np.linspace(*yLim, 11)
-        # ax.set_yticks(yticks.tolist())
-        # yticklabels = yticks + minval
-        # ax.set_yticklabels(['{:n}'.format(float('{0:.2f}'.format(tick)))
-        #                     for tick in yticklabels.tolist()], fontsize=14)
-
-        ax.set_ylabel(yLabel, fontsize=20)
-        
-        ax.legend(loc='best')
-
-        plt.title(title, fontsize=20)
-        
+        fig = plot.bars((self,), self.xLabel, self.yLabel, yLim, self.title,
+                        decimalSep, barWidth, errorStyle)
         return fig

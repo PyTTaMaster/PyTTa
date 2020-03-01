@@ -10,9 +10,9 @@ from pytta.classes._base import ChannelObj, ChannelsList
 from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse, Analysis
 from pytta import rooms
-from . import iso3741
+from pytta import iso3741
 from pytta.functions import __h5_unpack as pyttah5unpck
-import pytta.h5utilities as _h5
+from pytta import h5utils as _h5
 import time
 import numpy as np
 import scipy.stats
@@ -1696,6 +1696,22 @@ class MeasurementPostProcess(object):
         self.maxFreq = maxFreq
 
     def G_Lps(self, recalibirsGetDict):
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        # for frame, line in traceback.walk_stack(None):
+        for framenline in traceback.walk_stack(None):
+            # varnames = frame.f_code.co_varnames
+            varnames = framenline[0].f_code.co_varnames
+            if varnames is ():
+                break
+        # creation_file, creation_line, creation_function, \
+        #     creation_text = \
+        extracted_text = \
+            traceback.extract_stack(framenline[0], 1)[0]
+            # traceback.extract_stack(frame, 1)[0]
+        # creation_name = creation_text.split("=")[0].strip()
+        creation_name = extracted_text[3].split("=")[0].strip()
+
         recalibirs = recalibirsGetDict
         # Calculating Lps for each recalibir MeasuredThing
         Lps_avgs = {}
@@ -1713,7 +1729,8 @@ class MeasurementPostProcess(object):
             data = np.vstack([an.data for an in Lpss])
             Lps_CI[name] = []
             for bandIdx in range(data.shape[1]):
-                Lps_CI[name].append(mean_confidence_interval(data[:,bandIdx])[1])
+                Lps_CI[name].append(
+                    mean_confidence_interval(data[:,bandIdx])[1])
         # Calculate average Lps
         finalLpss = {}
         for name, Lpss in Lps_avgs.items():            
@@ -1724,12 +1741,30 @@ class MeasurementPostProcess(object):
             Lps.errorLabel = 'Confiança 95% dist. T-Student'
             Lps.error = Lps_CI[name]
             Lps.dataLabel = name
+            Lps.creation_name = 'Lps_' + name
             finalLpss[name] = Lps
+        finalLpss['dictName'] = creation_name
         return finalLpss
 
     def G_Lpe_inSitu(self, roomirsGetDict, IREndManualCut=None):
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        # for frame, line in traceback.walk_stack(None):
+        for framenline in traceback.walk_stack(None):
+            # varnames = frame.f_code.co_varnames
+            varnames = framenline[0].f_code.co_varnames
+            if varnames is ():
+                break
+        # creation_file, creation_line, creation_function, \
+        #     creation_text = \
+        extracted_text = \
+            traceback.extract_stack(framenline[0], 1)[0]
+            # traceback.extract_stack(frame, 1)[0]
+        # creation_name = creation_text.split("=")[0].strip()
+        creation_name = extracted_text[3].split("=")[0].strip()
+
         #  Lpe in all positions and averagßes
-        # Lpe_avgs = {'S1R1': [Analysis_avg1, Analysis_avg2, ..., Analysis_avgn]}
+        # Lpe_avgs = {'S1R1': [Analysis_avg1, An_avg2, ..., An_avgn]}
         roomirs = roomirsGetDict
         Lpe_avgs = {}
         for roomir in roomirs.values():
@@ -1737,26 +1772,63 @@ class MeasurementPostProcess(object):
             if SR not in Lpe_avgs:
                 Lpe_avgs[SR] = []
             for IR in roomir.measuredSignals:
-                Lpe_avgs[SR].append(rooms.G_Lpe(IR, self.nthOct, self.minFreq, self.maxFreq, IREndManualCut))
+                Lpe_avgs[SR].append(rooms.G_Lpe(IR, self.nthOct, self.minFreq,
+                                                self.maxFreq, IREndManualCut))
+        Lpe_avgs['dictName'] = creation_name
         return Lpe_avgs
 
     def G_Lpe_revCh(self, roomirsGetDict, IREndManualCut=None):
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        # for frame, line in traceback.walk_stack(None):
+        for framenline in traceback.walk_stack(None):
+            # varnames = frame.f_code.co_varnames
+            varnames = framenline[0].f_code.co_varnames
+            if varnames is ():
+                break
+        # creation_file, creation_line, creation_function, \
+        #     creation_text = \
+        extracted_text = \
+            traceback.extract_stack(framenline[0], 1)[0]
+            # traceback.extract_stack(frame, 1)[0]
+        # creation_name = creation_text.split("=")[0].strip()
+        creation_name = extracted_text[3].split("=")[0].strip()
+
         SigObjs = []
         for msdThng in roomirsGetDict.values():
             SigObjs.extend([IR.systemSignal for IR in msdThng.measuredSignals])
-        Lpe_revCh = iso3741.Lp_ST(SigObjs, self.nthOct, self.minFreq, self.maxFreq, IREndManualCut)
+        Lpe_revCh = iso3741.Lp_ST(SigObjs, self.nthOct, self.minFreq,
+                                  self.maxFreq, IREndManualCut)
+        Lpe_revCh.creation_name = creation_name
         return Lpe_revCh
 
     def G(self, Lpe_avgs, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        # for frame, line in traceback.walk_stack(None):
+        for framenline in traceback.walk_stack(None):
+            # varnames = frame.f_code.co_varnames
+            varnames = framenline[0].f_code.co_varnames
+            if varnames is ():
+                break
+        # creation_file, creation_line, creation_function, \
+        #     creation_text = \
+        extracted_text = \
+            traceback.extract_stack(framenline[0], 1)[0]
+            # traceback.extract_stack(frame, 1)[0]
+        # creation_name = creation_text.split("=")[0].strip()
+        creation_name = extracted_text[3].split("=")[0].strip()
+
         # G (omfg) calculation
         # G averages in all positions
         # G_avgs = {'S1R1': [Analysis_avg1, Analysis_avg2, ..., Analysis_avgn]}
         V_revCh = 207
         G_avgs = {}
         for SR, Lpes in Lpe_avgs.items():
-            G_avgs[SR] = []
-            for Lpe in Lpes:
-                G_avgs[SR].append(rooms.strength_factor(Lpe,
+            if 'S' in SR and 'R' in SR:
+                G_avgs[SR] = []
+                for Lpe in Lpes:
+                    G_avgs[SR].append(rooms.strength_factor(Lpe,
                                                             Lpe_revCh,
                                                             V_revCh, T_revCh,
                                                             Lps_revCh, 
@@ -1781,6 +1853,7 @@ class MeasurementPostProcess(object):
             meanG.error = G_CI[SR]
             meanG.dataLabel = SR
             G[SR] = meanG
+        G['dictName'] = creation_name
         return G
     
     def G_T_revCh(self, roomirsGetDict, IREndManualCut=None):
@@ -1808,9 +1881,10 @@ class MeasurementPostProcess(object):
                 print("Calculating average {}".format(idx))
                 sigObj = avg.systemSignal
                 TR = rooms.analyse(sigObj, 'RT', 15, nthOct=self.nthOct,
-                                        minFreq=self.minFreq, maxFreq=self.maxFreq,
-                                        plotLundebyResults=False,
-                                        IREndManualCut=IREndManualCut)
+                                   minFreq=self.minFreq,
+                                   maxFreq=self.maxFreq,
+                                   plotLundebyResults=False,
+                                   IREndManualCut=IREndManualCut)
                 RTs.append(TR)
         # Averaging in space
         bands = RTs[0].bands
@@ -1828,8 +1902,9 @@ class MeasurementPostProcess(object):
             bandRTmean = bandRTsum / bandRTcount
             spacialAvgdRT.append(bandRTmean)    
         # Constructing the Analysis
-        T_revCh = Analysis(anType='RT', nthOct=self.nthOct, minBand=float(bands[0]),
-                                 maxBand=float(bands[-1]), data=spacialAvgdRT)
+        T_revCh = Analysis(anType='RT', nthOct=self.nthOct,
+                           minBand=float(bands[0]), maxBand=float(bands[-1]),
+                           data=spacialAvgdRT)
         T_revCh.creation_name = creation_name
         return T_revCh
 
