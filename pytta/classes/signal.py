@@ -251,7 +251,15 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._freqSignal = np.array(newSignal)
-            self._numSamples = len(self.timeSignal)  # [-] number of samples
+            # [-] number of samples
+            # needed when freqSignal is provided at init
+            if hasattr(self, '_timeSignal'):
+                self._numSamples = len(self.timeSignal)
+            else:
+                freqLen = len(self.freqSignal)
+                self._numSamples = int((freqLen*2) + 1) \
+                                   if freqLen % 2 == 0 \
+                                   else int((freqLen+1)*2)
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
             self._freqVector = np.linspace(0, (self.numSamples-1) *
@@ -570,6 +578,8 @@ class SignalObj(_base.PyTTaObj):
                          decimalSep:str=','):
         """Plots a signal spectrogram.
 
+        xLabel, yLabel, and title are saved for the next plots when provided.
+
         Parameters (default), (type):
         -----------------------------
 
@@ -749,11 +759,12 @@ class SignalObj(_base.PyTTaObj):
         For deconvolution divide by a SignalObj.
         For gain operation divide by a number.
         """
+        signalType = 'energy'
         result = SignalObj(np.zeros(self.timeSignal.shape),
-                            samplingRate=cp.copy(self.samplingRate),
-                            freqMin=cp.copy(self.freqMin),
-                            freqMax=cp.copy(self.freqMax),
-                            signalType='energy')
+                        samplingRate=cp.copy(self.samplingRate),
+                        freqMin=cp.copy(self.freqMin),
+                        freqMax=cp.copy(self.freqMax),
+                        signalType=signalType)
         result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
@@ -797,10 +808,15 @@ class SignalObj(_base.PyTTaObj):
         """
         Gain apply method/FFT convolution
         """
+        if other.signalType == 'energy' or self.signalType == 'energy':
+            signalType = 'energy'
+        else:
+            signalType = 'power'
         result = SignalObj(np.zeros(self.timeSignal.shape),
                         samplingRate=cp.copy(self.samplingRate),
                         freqMin=cp.copy(self.freqMin),
-                        freqMax=cp.copy(self.freqMax))
+                        freqMax=cp.copy(self.freqMax),
+                        signalType=signalType)
         result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
@@ -843,8 +859,16 @@ class SignalObj(_base.PyTTaObj):
         """
         Time domain addition method
         """
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
+        if other.signalType == 'energy' or self.signalType == 'energy':
+            signalType = 'energy'
+        else:
+            signalType = 'power'
+        result = SignalObj(np.zeros(self.timeSignal.shape),
+                        samplingRate=cp.copy(self.samplingRate),
+                        freqMin=cp.copy(self.freqMin),
+                        freqMax=cp.copy(self.freqMax),
+                        signalType=signalType)
+        result.channels = cp.deepcopy(self.channels)
         if isinstance(other, SignalObj):
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
@@ -867,9 +891,6 @@ class SignalObj(_base.PyTTaObj):
         else:
             raise TypeError("A SignalObj can only operate with other alike, " +
                             "int, or float.")
-
-        result.freqMin, result.freqMax = (self.freqMin, self.freqMax)
-        result._channels = cp.deepcopy(self.channels)
         return result
 
     def __sub__(self, other):
@@ -880,8 +901,16 @@ class SignalObj(_base.PyTTaObj):
             raise TypeError("A SignalObj can only operate with other alike.")
         if other.samplingRate != self.samplingRate:
             raise TypeError("Both SignalObj must have the same sampling rate.")
-        result = SignalObj(samplingRate=self.samplingRate)
-        result.domain = 'time'
+        if other.signalType == 'energy' or self.signalType == 'energy':
+            signalType = 'energy'
+        else:
+            signalType = 'power'
+        result = SignalObj(np.zeros(self.timeSignal.shape),
+                        samplingRate=cp.copy(self.samplingRate),
+                        freqMin=cp.copy(self.freqMin),
+                        freqMax=cp.copy(self.freqMax),
+                        signalType=signalType)
+        result.channels = cp.deepcopy(self.channels)
         if self.numChannels > 1:
             if other.numChannels > 1:
                 if other.numChannels != self.numChannels:
@@ -912,33 +941,6 @@ class SignalObj(_base.PyTTaObj):
         elif key < 0:
             key += self.numChannels
         return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
-
-    # def _calc_spectrogram(self, timeData=None, overlap=0.5,
-    #                       winType='hann', winSize=1024, *, channel=0):
-    #     if timeData is None:
-    #         timeData = self.timeSignal
-    #         if self.numChannels > 1:
-    #             timeData = timeData[:, channel]
-    #     window = eval('ss.windows.' + winType)(winSize)
-    #     nextIdx = int(winSize*overlap)
-    #     rng = int(timeData.shape[0]/winSize/overlap - 1)
-    #     _spectrogram = np.zeros((winSize//2 + 1, rng))
-    #     _specFreq = np.linspace(0, self.samplingRate//2, winSize//2 + 1)
-    #     _specTime = np.linspace(0, self.timeVector[-1], rng)
-    #     for N in range(rng):
-    #         try:
-    #             strIdx = N*nextIdx
-    #             endIdx = winSize + N*nextIdx
-    #             sliceAudio = window*timeData[strIdx:endIdx]
-    #             sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-    #             sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-    #             _spectrogram[:, N] = 20*np.log10(sliceMag)
-    #         except IndexError:
-    #             sliceAudio = timeData[-winSize:]
-    #             sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-    #             sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-    #             _spectrogram[:, N] = 20*np.log10(sliceMag)
-    #     return _spectrogram, _specTime, _specFreq
 
     def _fft(self):
         """fft do the transformation to the frequency domain of the current
@@ -1239,7 +1241,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 data = inputSignal.freqSignal
                 freqVector = inputSignal.freqVector
                 b = data * 0 + 10**(-200/20) # inside signal freq range
-                a = data * 0 + 1 # outinside signal freq range
+                a = data * 0 + 1 # outside signal freq range
                 minFreq = np.max([inputSignal.freqMin, outputSignal.freqMin])
                 maxFreq = np.min([inputSignal.freqMax, outputSignal.freqMax])
                 # Calculate epsilon
