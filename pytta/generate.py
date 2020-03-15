@@ -373,20 +373,12 @@ def impulse(samplingRate=None,
         fftDegree = default.fftDegree
 
     numSamples = 2**fftDegree
-    # FIXME: I don't know why you created this way. I guess it would be better 
-    # to just create a vector of zeros and then substitute the first sample by 
-    # 1.
-    # =========================================================================
-    #     impulseSignal = (numSamples / samplingRate) \
-    #         * np.ones(numSamples) + 1j * np.random.randn(numSamples)  
-    #     impulseSignal = np.real(np.fft.ifft(impulseSignal))
-    #     impulseSignal = impulseSignal / max(impulseSignal)
-    # =========================================================================
     impulseSignal = np.zeros(numSamples)
     impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,
                               domain='time',
-                              samplingRate=samplingRate)
+                              samplingRate=samplingRate,
+                              signalType='energy')
     impulseSignal.creation_name = creation_name
     return impulseSignal
 
