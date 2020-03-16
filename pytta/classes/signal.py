@@ -36,7 +36,7 @@ class SignalObj(_base.PyTTaObj):
 
         * signalType ('power'), ('str'):
             type of the input signal. 'power' for finite power signal (infinite
-            energy) and 'energy' for energy signal (power tends to zero);    
+            energy) and 'energy' for energy signal (power tends to zero);
 
         * freqMin (20), (int):
             minimum frequency bandwidth limit;
@@ -101,7 +101,7 @@ class SignalObj(_base.PyTTaObj):
 
         * rms():
             return the effective value for the entire signal;
-        
+
         * spl():
             gives the sound pressure level for the entire signal.
             Calibration is needed;
@@ -117,7 +117,7 @@ class SignalObj(_base.PyTTaObj):
 
         * plot_freq():
             generates the signal's spectre graphic;
-        
+
         * plot_spectrogram():
             generates the signal's spectrogram graphic;
 
@@ -185,7 +185,7 @@ class SignalObj(_base.PyTTaObj):
     @property
     def signalType(self):
         return self._signalType
-    
+
     @signalType.setter
     def signalType(self, newSigType):
         if not isinstance(newSigType, str):
@@ -230,7 +230,7 @@ class SignalObj(_base.PyTTaObj):
             self._fftDegree = np.log2(self._numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate  # [s]
             self._timeVector = np.linspace(0,
-                                           self.timeLength 
+                                           self.timeLength
                                            - 1/self.samplingRate,
                                            self.numSamples)
             self._fft()
@@ -253,7 +253,7 @@ class SignalObj(_base.PyTTaObj):
                 newSignal = np.array(newSignal, ndmin=2)
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._freqSignal = np.array(newSignal)
+            self._freqSignal = np.array(newSignal, dtype='complex64')
             # [-] number of samples
             # needed when freqSignal is provided at init
             if hasattr(self, '_timeSignal'):
@@ -308,7 +308,7 @@ class SignalObj(_base.PyTTaObj):
 
     def crop(self, startTime, endTime):
         """crop crop the signal duration in the specified interval
-        
+
         :param startTime: start time for cropping
         :type startTime: int, float
         :param endTime: end time for cropping
@@ -359,9 +359,7 @@ class SignalObj(_base.PyTTaObj):
         return np.mean(self.timeSignal**2, axis=0)**0.5
 
     def spl(self):
-        refList = np.array([ch.dBRef for ch
-                            in self.channels], dtype=np.float32)
-        return 20*np.log10(self.rms()/refList)
+        return 20*np.log10(self.rms()/self.channels.dBRefList())
 
     def size_check(self, inputArray=[]):
         if inputArray.size == 0:
@@ -433,9 +431,9 @@ class SignalObj(_base.PyTTaObj):
             if hasattr(self, 'timeYLabel'):
                 if self.timeYLabel is not None:
                     yLabel = self.timeYLabel
-        
+
         if title is not None:
-            self.timeTitle = title 
+            self.timeTitle = title
         else:
             if hasattr(self, 'timeTitle'):
                 if self.timeTitle is not None:
@@ -496,9 +494,9 @@ class SignalObj(_base.PyTTaObj):
             if hasattr(self, 'timedBYLabel'):
                 if self.timedBYLabel is not None:
                     yLabel = self.timedBYLabel
-        
+
         if title is not None:
-            self.timedBTitle = title 
+            self.timedBTitle = title
         else:
             if hasattr(self, 'timedBTitle'):
                 if self.timedBTitle is not None:
@@ -516,7 +514,7 @@ class SignalObj(_base.PyTTaObj):
 
         Parameters (default), (type):
         -----------------------------
-                    
+
             * smooth (False), (bool):
                 option for curve smoothing. Uses scipy.signal.savgol_filter.
                 Preliminar implementation. Needs review.
@@ -563,9 +561,9 @@ class SignalObj(_base.PyTTaObj):
             if hasattr(self, 'freqYLabel'):
                 if self.freqYLabel is not None:
                     yLabel = self.freqYLabel
-        
+
         if title is not None:
-            self.freqTitle = title 
+            self.freqTitle = title
         else:
             if hasattr(self, 'freqTitle'):
                 if self.freqTitle is not None:
@@ -637,9 +635,9 @@ class SignalObj(_base.PyTTaObj):
             if hasattr(self, 'spectrogramYLabel'):
                 if self.spectrogramYLabel is not None:
                     yLabel = self.spectrogramYLabel
-        
+
         if title is not None:
-            self.spectrogramTitle = title 
+            self.spectrogramTitle = title
         else:
             if hasattr(self, 'spectrogramTitle'):
                 if self.spectrogramTitle is not None:
@@ -995,7 +993,7 @@ class SignalObj(_base.PyTTaObj):
                     dtype='float32')
         # time vector (x axis)
         self._timeVector = np.linspace(0,
-                                       self.timeLength 
+                                       self.timeLength
                                        - 1/self.samplingRate,
                                        self.numSamples)
         return
@@ -1122,7 +1120,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                 raise ValueError("You may create an ImpulsiveResponse " +
                                  "passing as parameter the 'excitation' " +
                                  "and 'recording' signals, or a calculated " +
-                                 "'ir'.")   
+                                 "'ir'.")
             # Zero padding
             elif excitation.numSamples > recording.numSamples:
                 print("Zero padding on IR calculation!")
@@ -1447,11 +1445,11 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
         aFreqSignal = np.zeros(a.shape, dtype=np.complex_)
         bFreqSignal = np.zeros(b.shape, dtype=np.complex_)
-        
+
         for chIndex in range(a.shape[1]):
             aFreqSignal[:,chIndex] = a[:,chIndex] * fullRightWin
             bFreqSignal[:,chIndex] = b[:,chIndex] * fullLeftWin
-        
+
         a = aFreqSignal
         b = bFreqSignal
 
