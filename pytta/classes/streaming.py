@@ -3,9 +3,9 @@
 import numpy as np
 import sounddevice as sd
 from multiprocessing import Event, Queue, Process
-from threading import Thread
+from os import popen
 from queue import Empty
-from typing import Optional, Callable, Type, List
+from typing import Optional, Callable, List, Any, Type
 from pytta import default
 from pytta.classes._base import PyTTaObj
 from pytta.classes.signal import SignalObj
@@ -231,7 +231,7 @@ class Streaming(PyTTaObj):
         self.loopCheck.clear()
         self.monitorCheck = Event()  # monitoring state
         self.monitorCheck.clear()
-        self.runningCheck = Event()  #  measurement state
+        self.runningCheck = Event()  # measurement state
         self.runningCheck.clear()
         self.lastStatus = None  # will register last status passed by stream
         self.statusCount = int(0)  # zero
@@ -242,7 +242,7 @@ class Streaming(PyTTaObj):
 
     def __enter__(self):
         """
-        Provides context functionality, the `with` keyword, e.g.
+        Provide context functionality, the `with` keyword, e.g.
 
             >>> with Recorder(Measurement) as rec:  # <-- called here
             ...     rec.set_monitoring(Callable)
@@ -255,7 +255,7 @@ class Streaming(PyTTaObj):
 
     def __exit__(self, exc_type: Type, exc_val: Exception, exc_tb: Type):
         """
-        Provides context functionality, the `with` keyword, e.g.
+        Provide context functionality, the `with` keyword, e.g.
 
             >>> with Streaming('play', Measurement) as strm:
             ...     strm.set_monitoring(Callable)
@@ -270,7 +270,7 @@ class Streaming(PyTTaObj):
 
     def set_io_properties(self, msmnt):
         """
-        Allocates memory for input and output of data, set counter
+        Allocate memory for input and output of data, set counter
 
         Args:
             msmnt (TYPE): DESCRIPTION.
@@ -279,7 +279,6 @@ class Streaming(PyTTaObj):
             None.
 
         """
-
         if 'I' in self.IO:
             self.inChannels = msmnt.inChannels
             self.recData = np.empty((self.numSamples, self.numInChannels),
@@ -340,7 +339,7 @@ class Streaming(PyTTaObj):
             self.monitor = monitor
         return
 
-    def monitoring(self):
+    def monitoring1(self):
         """
         Monitor loop.
 
@@ -368,8 +367,120 @@ class Streaming(PyTTaObj):
         self.monitor.tear_down()
         return
 
-    def runner(self, StreamType: Type, stream_callback):
+    def streaming(self,
+                  streamtype: sd.Stream,
+                  streamcallback: Callable):
         """
+        Stream loop.
+
+        Attempt to run the streaming in parallel process and monitoring on main.
+        """
+        self.stream = streamtype(samplerate=self.samplingRate,
+                                 blocksize=self.blockSize,
+                                 device=self.device,
+                                 channels=self.numChannels,
+                                 dtype=self.dataType,
+                                 latency='low',
+                                 dither_off=True,
+                                 callback=streamcallback)
+        self.runningCheck.set()
+        self.stream.start()
+        while self.stream.active:
+            sd.sleep(100)
+            if self.stream.stopped:
+                break
+        self.stream.close()
+        self.runningCheck.clear()
+        return
+
+    def monitoring(self):
+        while not self.runningCheck.is_set():  # Waits untill stream start
+            continue
+        while self.runningCheck.is_set():
+            try:
+                streamCallbackData = self.queue.get_nowait()  # get from queue
+                if streamCallbackData[-1]:  # check any status
+                    self.lastStatus = streamCallbackData[-1]  # saves the last
+                    self.statusCount += 1  # counts one more
+                if self.monitorCheck.is_set():
+                    self.monitor.callback(*streamCallbackData)  # calls for monitoring function
+            except Empty:  # if queue has no data
+                if self.runningCheck.is_set():
+                    continue
+                else:
+                    break
+
+    def runner3(self, streamtype, streamcallback):
+        """
+        Main loop attempt 3. WORST CASE.
+
+        Args:
+            streamtype (TYPE): DESCRIPTION.
+            streamcallback (TYPE): DESCRIPTION.
+
+        Returns:
+            None.
+
+        """
+        self.stream = streamtype(samplerate=self.samplingRate,
+                                 blocksize=self.blockSize,
+                                 device=self.device,
+                                 channels=self.numChannels,
+                                 dtype=self.dataType,
+                                 latency='low',
+                                 dither_off=True,
+                                 callback=streamcallback)
+        if self.monitorCheck.is_set():
+            self.monitor.setup()    # calls the Monitor function to set up itself
+        self.stream.start()
+        while self.stream.active:
+            try:
+                streamCallbackData = self.queue.get_nowait()  # get from queue
+                if streamCallbackData[-1]:  # check any status
+                    self.lastStatus = streamCallbackData[-1]  # saves the last
+                    self.statusCount += 1  # counts one more
+                if self.monitorCheck.is_set():
+                    self.monitor.callback(*streamCallbackData)  # calls for monitoring function
+            except Empty:  # if queue has no data
+                if self.stream.stopped:
+                    break
+                else:
+                    continue
+        self.stream.close()
+        if self.monitorCheck.is_set():
+            self.monitor.tear_down()
+        return
+
+
+    def runner(self, streamtype: Type, streamcallback: Callable):
+        """
+        Main loop attemp 2.
+
+        This is the place where the parallel processing occurs, the income of
+        data and the calling for the callback function. Tear down after loop
+        breaks.
+
+        Returns:
+            None.
+
+        """
+        if self.monitorCheck.is_set():
+            self.monitor.setup()    # calls the Monitor function to set up itself
+        process = Process(target=self.streaming, args=(streamtype, streamcallback))
+        process.start()
+        if self.monitorCheck.is_set():
+            self.monitoring()
+        process.join()
+        process.close()
+        if self.monitorCheck.is_set():
+            self.monitor.tear_down()
+        return
+
+
+    def runner1(self, StreamType: Type, stream_callback):
+        """
+        Main loop attempt 1.
+
         Instantiates a sounddevice.InputStream and calls for a parallel process
         if any monitoring is set up.
         Then turn on the monitorCheck Event, and starts the stream.
@@ -598,10 +709,11 @@ class PlaybackRecorder(Streaming):
         try:
             outdata[:] = self.playData[self.dataCount:frames + self.dataCount, :]
             self.recData[self.dataCount:frames + self.dataCount, :] = indata[:]
-            if self.monitor:
-                self.queue.put_nowait((self.recData[self.dataCount:frames + self.dataCount, :].copy(),
-                                       self.playData[self.dataCount:frames + self.dataCount, :].copy(),
-                                       frames, status))
+            if self.monitorCheck.is_set():
+                self.queue.put_nowait((self.recData[self.dataCount:frames + self.dataCount, :],
+                                       self.playData[self.dataCount:frames + self.dataCount, :],
+                                       frames,
+                                       status))
             self.dataCount += frames
         except ValueError:
             raise sd.CallbackStop
