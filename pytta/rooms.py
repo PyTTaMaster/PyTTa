@@ -500,15 +500,15 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     # dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
     # windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
     
-    timeSignal = cp.copy(SigObj.timeSignal[:,0])
-    # timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+    broadBandTimeSignal = cp.copy(SigObj.timeSignal[:,0])
+    broadBandTimeSignalNoStart, sampleShift = \
+        T_circular_time_shift(broadBandTimeSignal)
+    windowLength = 0.0032 # [s]
+    windowEnd = int(windowLength*SigObj.samplingRate)
 
-    # windowLength = 0.0032 # [s]
-    # windowEnd = int(windowLength*SigObj.samplingRate)
 
-
-    # hSignal = SignalObj(timeSignal[:windowEnd],
-    hSignal = SignalObj(timeSignal,
+    hSignal = SignalObj(broadBandTimeSignalNoStart[:windowEnd],
+    # hSignal = SignalObj(timeSignal,
                         SigObj.lengthDomain,
                         SigObj.samplingRate)
     hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
@@ -519,25 +519,27 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     Lps = []
     for chIndex in range(hSignal.numChannels):
         timeSignal = cp.copy(hSignal.timeSignal[:,chIndex])
-        timeSignalNoStart, sampleShift = T_circular_time_shift(timeSignal)
-        windowLength = 0.0032 # [s]
-        windowEnd = int(windowLength*SigObj.samplingRate)
+        # timeSignalNoStart, sampleShift = T_circular_time_shift(timeSignal)
+        # windowLength = 0.0032 # [s]
+        # windowEnd = int(windowLength*SigObj.samplingRate)
 
         Lps.append(
-            10*np.log10(np.trapz(y=timeSignalNoStart[:windowEnd]**2/(2e-5**2),
-                                 x=hSignal.timeVector[sampleShift:sampleShift+windowEnd])))
+            # 10*np.log10(np.trapz(y=timeSignalNoStart[:windowEnd]**2/(2e-5**2),
+            10*np.log10(np.trapz(y=timeSignal**2/(2e-5**2),
+                                #  x=hSignal.timeVector[sampleShift:sampleShift+windowEnd])))
+                                 x=hSignal.timeVector)))
     LpsAnal = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
-                            maxBand=float(bands[-1]), data=Lps,
-                            comment='Source recalibration method IR')
+                       maxBand=float(bands[-1]), data=Lps,
+                       comment='Source recalibration method IR')
     LpsAnal.creation_name = creation_name
     # Plot IR cutting
-    # fig = plt.figure(figsize=(10, 5))
-    # ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-    #                         projection='rectilinear', xscale='linear')
-    # ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
-    # ax.axvline(x=(sampleShift)/SigObj.samplingRate)
-    # ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate)
-    # ax.set_xlim([-sampleShift/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
+    fig = plt.figure(figsize=(10, 5))
+    ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+                            projection='rectilinear', xscale='linear')
+    ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
+    ax.axvline(x=(sampleShift)/SigObj.samplingRate, linewidth=4, color='k')
+    ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate, linewidth=4, color='k')
+    ax.set_xlim([(sampleShift-100)/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
     return LpsAnal
 
 
