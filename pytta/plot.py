@@ -107,8 +107,8 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
         xLims = \
             np.vstack((xLims, [data['x'][0], data['x'][-1]]))
     
-    ax.set_xlabel(xLabel, fontsize=20)
-    ax.set_ylabel(yLabel, fontsize=20)
+    ax.set_xlabel(xLabel, fontsize=16)
+    ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
 
     if xLim is None:
@@ -243,8 +243,8 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
         xLims = \
             np.vstack((xLims, [data['x'][0], data['x'][-1]]))
     
-    ax.set_xlabel(xLabel, fontsize=20)
-    ax.set_ylabel(yLabel, fontsize=20)
+    ax.set_xlabel(xLabel, fontsize=16)
+    ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
 
     if xLim is None:
@@ -390,8 +390,8 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
         yLims = \
             np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
 
-    ax.set_xlabel(xLabel, fontsize=20)
-    ax.set_ylabel(yLabel, fontsize=20)
+    ax.set_xlabel(xLabel, fontsize=16)
+    ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
 
     if xLim is None:
@@ -465,7 +465,7 @@ def _curve_data_extractor_freq(sigObjs):
     return curveData
 
 def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
-         errorStyle):
+         errorStyle, forceZeroCentering):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
@@ -499,6 +499,9 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
 
         * errorStyle ('standard'), str:
             error curve style. May be 'laza' or None/'standard'.
+        
+        * forceZeroCentering ('False'), bool:
+            force centered bars at Y zero.
 
     Return:
     --------
@@ -540,8 +543,8 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
                         projection='rectilinear', xscale='linear')
     ax.set_snap(True)
-    ax.set_xlabel(xLabel, fontsize=20)
-    ax.set_ylabel(yLabel, fontsize=20)
+    ax.set_xlabel(xLabel, fontsize=16)
+    ax.set_ylabel(yLabel, fontsize=16)
     plt.title(title, fontsize=20)
 
     yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
@@ -576,7 +579,8 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
 
         fbar = np.arange(0,len(data['data']))
 
-        if negativeCounter < (len(data['data'])*dataSetLen)//2:
+        if negativeCounter < (len(data['data'])*dataSetLen)//2 or \
+            forceZeroCentering:
             minVal = 0
         
         ax.bar(fbar + barWidth*dtIdx/dataSetLen,
@@ -772,8 +776,8 @@ def spectrogram(sigObjs, winType, winSize,
         for item in (ax.get_xticklabels() + ax.get_yticklabels()):
             item.set_fontsize(14)        
         
-        ax.set_xlabel(xLabel, fontsize=20)
-        ax.set_ylabel(yLabel, fontsize=20)
+        ax.set_xlabel(xLabel, fontsize=16)
+        ax.set_ylabel(yLabel, fontsize=16)
 
         cbar = fig.colorbar(pcmesh)
         cbar.ax.tick_params(labelsize=12)

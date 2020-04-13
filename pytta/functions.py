@@ -373,7 +373,8 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
               yLim:list=None, title:str=None, decimalSep:str=',',
-              barWidth:float=0.75, errorStyle:str=None):
+              barWidth:float=0.75, errorStyle:str=None,
+              forceZeroCentering:bool=False):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
@@ -408,6 +409,9 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
         * errorStyle ('standard'), str:
             error curve style. May be 'laza' or None/'standard'.
 
+        * forceZeroCentering ('False'), bool:
+            force centered bars at Y zero.
+
     Return:
     --------
 
@@ -417,7 +421,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
     analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
     if len(analyses) > 0:
         fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
-            decimalSep, barWidth, errorStyle)
+            decimalSep, barWidth, errorStyle, forceZeroCentering)
         return fig
     else:
         return
