@@ -1070,6 +1070,11 @@ class ImpulsiveResponse(_base.PyTTaObj):
             function to compute the power spectral density, (only for
             method ="H1", method="H2" and method="Ht").
 
+        * regularization (bool), (True):
+            Do Kirkeby regularization with a packing filter for the impulsive
+            response's time signature. Details in 'Advancements in impulsive 
+            response measurements by sine sweeps' Farina, 2007.
+    
         * ir (SignalObj) (optional):
             An calculated impulsive response. Optional if 'excitation' and
             'recording' are provided;
