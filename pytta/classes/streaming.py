@@ -179,17 +179,36 @@ class Streaming(PyTTaObj):
             It\'s parameters are the same as the previous methods.
     """
 
-    def __init__(self, IO: str,
+    def __init__(self,
+                 IO: str,
                  msmnt: Measurement,
-                 datatype: str='float32',
-                 blocksize: int=0,
+                 datatype: str = 'float32',
+                 blocksize: int = 0,
                  duration: Optional[float] = 5,
-                 monitor_callback: Optional[Callable] = None,
+                 monitor: Optional[Monitor] = None,
                  *args, **kwargs):
         """
+        Considerations about the multiprocessing library and its crucial use in this algorithm.
+
+        The Event object is a boolean state. It can be
+        `.set()` : Internally defines it to be True;
+        `.clear()` : Internally defines it to be False;
+        `.is_set()` : Check if it is True (only after call to `.set()`)
+        This Event, from multiprocessing library, can be checked from different
+        processes simultaneously.
+
+        A Queue is First In First Out (FIFO) container object. Data can be stored in it
+        and be retrieved in the same storing order. The enqueueing and
+        dequeueing are made by:
+        `.put()` : Add data to Queue
+        `.put_nowait()` : Add data to Queue without waiting for memlocks
+        `.get()` : Retrieve data from Queue
+        `.get_nowait()` : Retrieves data from Queue without waiting for memlocks
+        This Queue, from multiprocessing library, can be manipulated from
+        different processes simultaneously.
 
         :param msmnt: PyTTa Measurement-like object.
-        :type msmnt: pytta.RecMeasure
+        :type msmnt: pytta.Measurement
         :param datatype: string with the data type name
         :type datatype: str
         :param blocksize: number of frames reads on each call of the stream callback
@@ -201,40 +220,23 @@ class Streaming(PyTTaObj):
         self._numSamples = msmnt.numSamples  # registers total amount of samples recorded
         self._dataType = datatype  # registers data type
         self._blockSize = blocksize  # registers blocksize
-        if duration is not None:
+        if (type(duration) is float) or (type(duration) is int):
             self._durationInSamples = int(duration*msmnt.samplingRate)
         else:
             self._durationInSamples = None
         self._duration = duration
         self._device = msmnt.device
         self._theEnd = False
-        self.switch = Event()
-        self.switch.clear()
-        self.running = Event()
-        self.running.clear()
-        """
-        Essentially, the Event object is a boolean state. It can be
-        `.set()` : Internally defines it to be True;
-        `.clear()` : Internally defines it to be False;
-        `.is_set()` : Check if it is True (only after call to `.set()`)
-
-        This Event, from multiprocessing library, can be checked from different
-        processes simultaneously.
-        """
+        self.loopCheck = Event()  # controls looping state
+        self.loopCheck.clear()
+        self.monitorCheck = Event()  # monitoring state
+        self.monitorCheck.clear()
+        self.runningCheck = Event()  #  measurement state
+        self.runningCheck.clear()
         self.lastStatus = None  # will register last status passed by stream
-        self.queue = Queue(self.numSamples // 16)  # instantiates a multiprocessing Queue
-        """
-        A Queue is First In First Out (FIFO) container object. Data can be stored in it
-        and be retrieved in the same order as it has been put. It can
-        `.put()` : Add data to Queue
-        `.put_nowait()` : Add data to Queue without waiting for memlocks
-        `.get()` : Retrieve data from Queue
-        `.get_nowait()` : Retrieves data from Queue without waiting for memlocks
-
-        This Queue, from multiprocessing library, can be checked from different
-        processes simultaneously.
-        """
-        self.set_monitoring(monitor_callback)
+        self.statusCount = int(0)  # zero
+        self.queue = Queue(self.numSamples//2)  # instantiates a multiprocessing Queue
+        self.set_monitoring(monitor)
         self.set_io_properties(msmnt)
         return
 
@@ -267,13 +269,25 @@ class Streaming(PyTTaObj):
             return
 
     def set_io_properties(self, msmnt):
+        """
+        Allocates memory for input and output of data, set counter
+
+        Args:
+            msmnt (TYPE): DESCRIPTION.
+
+        Returns:
+            None.
+
+        """
+
         if 'I' in self.IO:
             self.inChannels = msmnt.inChannels
-            self.recData = np.empty((self.numSamples, self.numInChannels), dtype=self.dataType)
+            self.recData = np.empty((self.numSamples, self.numInChannels),
+                                    dtype=self.dataType)
         if 'O' in self.IO:
             self.outChannels = msmnt.outChannels
-            self.playData = msmnt.excitation.timeSignal
-        self.count = int()
+            self.playData = msmnt.excitation.timeSignal[:]
+        self.dataCount = int()
         return
 
 #    def play_data_adjust(self, playdata):
@@ -294,14 +308,14 @@ class Streaming(PyTTaObj):
 #        return array
 #
 
-    def set_monitoring(self, monitor = None):
+    def set_monitoring(self,
+                       monitor: Monitor = None):
         """
-        Set up the class used as monitor. It must have the following methods with these names:
+        Set up the class used as monitor. It must have the following methods with these names.
 
             def setup(None) -> None:
 
                 _Call any function and other object configuration needed for the monitoring_
-
                 return
 
 
@@ -309,7 +323,6 @@ class Streaming(PyTTaObj):
                          frames: int, status: sd.CallbackFlags) -> None:
 
                 _Process the data gathered from the stream_
-
                 return
 
         It will be called from within a parallel process that the Recorder starts and
@@ -320,23 +333,36 @@ class Streaming(PyTTaObj):
 
         """
         if monitor is None:
-            self.switch.clear()
+            self.monitorCheck.clear()
             self.monitor = None
         else:
-            self.switch.set()
+            self.monitorCheck.set()
             self.monitor = monitor
         return
 
     def monitoring(self):
-        self.monitor.setup()
-        while not self.running.is_set():
+        """
+        Monitor loop.
+
+        This is the place where the parallel processing occurs, the income of
+        data and the calling for the callback function. Tear down after loop
+        breaks.
+
+        Returns:
+            None.
+
+        """
+        self.monitor.setup()    # calls the Monitor function to set up itself
+
+        while not self.runningCheck.is_set():  # Waits untill stream start
             continue
-        while self.running.is_set():
-            try:  # call to switch.set()
-                indata, outdata, frames, status = self.queue.get_nowait()  # get from queue
-                if status:  # check any status
-                    self.lastStatus = status
-                self.monitor.callback(indata, outdata, frames, status)  # calls for monitoring function
+        while self.runningCheck.is_set():
+            try:
+                streamCallbackData = self.queue.get_nowait()  # get from queue
+                if streamCallbackData[-1]:  # check any status
+                    self.lastStatus = streamCallbackData[-1]  # saves the last
+                    self.statusCount += 1  # counts one more
+                self.monitor.callback(*streamCallbackData)  # calls for monitoring function
             except Empty:  # if queue has no data
                 continue
         self.monitor.tear_down()
@@ -346,13 +372,16 @@ class Streaming(PyTTaObj):
         """
         Instantiates a sounddevice.InputStream and calls for a parallel process
         if any monitoring is set up.
-        Then turn on the switch Event, and starts the stream.
+        Then turn on the monitorCheck Event, and starts the stream.
         Waits for it to finish, unset the event
         And terminates the process
 
         :return:
         :rtype:
         """
+        if self.monitorCheck.is_set():
+            t = Process(target=self.monitoring)
+            t.start()
         with StreamType(samplerate=self.samplingRate,
                         blocksize=self.blockSize,
                         device=self.device,
@@ -361,19 +390,14 @@ class Streaming(PyTTaObj):
                         latency='low',
                         dither_off=True,
                         callback=stream_callback) as stream:
-            if self.switch.is_set():
-                t = Process(target=self.monitoring)
-                t.start()
-            self.running.set()
-            stream.start()
+            self.runningCheck.set()
             while stream.active:
-                pass
-            stream.stop()
-            self.running.clear()
-            if self.switch.is_set():
-                t.join()
-                t.close()
-            self.queue.close()
+                sd.sleep(100)
+        self.runningCheck.clear()
+        if self.monitorCheck.is_set():
+            t.join()
+            t.close()
+        self.queue.close()
         return
 
     def calib_pressure(self, chIndex, refPrms=1.00, refFreq=1000):
@@ -488,11 +512,11 @@ class Recorder(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        self.recData[self.count:frames + self.count, :] = indata[:]
+        self.recData[self.dataCount:frames + self.dataCount, :] = indata[:]
         if self.monitor:
             self.queue.put_nowait((indata[:], None, frames, status))
-        self.count += frames
-        if self.count >= self.durationInSamples:
+        self.dataCount += frames
+        if self.dataCount >= self.durationInSamples:
             raise sd.CallbackStop
         return
 
@@ -537,11 +561,11 @@ class Player(Streaming):
         """
         This method will be called from the stream, as stated on sounddevice's documentation.
         """
-        outdata[:] = self.playData[self.count:frames + self.count, :]
+        outdata[:] = self.playData[self.dataCount:frames + self.dataCount, :]
         if self.monitor:
             self.queue.put_nowait((None, outdata[:], frames, status))
-        self.count += frames
-        if self.count >= self.durationInSamples:
+        self.dataCount += frames
+        if self.dataCount >= self.durationInSamples:
             raise sd.CallbackStop
         return
 
@@ -549,7 +573,7 @@ class Player(Streaming):
         """
         Instantiates a sounddevice.OutputStream and calls for a parallel process
         if any monitoring is set up.
-        Then turn on the switch Event, and starts the stream.
+        Then turn on the monitorCheck Event, and starts the stream.
         Waits for it to finish, unset the event
         And terminates the process
 
@@ -572,13 +596,13 @@ class PlaybackRecorder(Streaming):
 
     def stream_callback(self, indata, outdata, frames, time, status):
         try:
-            outdata[:] = self.playData[self.count:frames + self.count, :]
-            self.recData[self.count:frames + self.count, :] = indata[:]
+            outdata[:] = self.playData[self.dataCount:frames + self.dataCount, :]
+            self.recData[self.dataCount:frames + self.dataCount, :] = indata[:]
             if self.monitor:
-                self.queue.put_nowait((self.recData[self.count:frames + self.count, :].copy(),
-                                       self.playData[self.count:frames + self.count, :].copy(),
+                self.queue.put_nowait((self.recData[self.dataCount:frames + self.dataCount, :].copy(),
+                                       self.playData[self.dataCount:frames + self.dataCount, :].copy(),
                                        frames, status))
-            self.count += frames
+            self.dataCount += frames
         except ValueError:
             raise sd.CallbackStop
         except Exception as e:

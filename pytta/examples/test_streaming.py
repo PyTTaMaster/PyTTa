@@ -141,7 +141,7 @@ if __name__ == "__main__":
     dev = [0, 0]
     print(dev)
 
-    noise = generate.noise(fftDegree=17)
+    noise = generate.noise(fftDegree=19)
 
     measure = generate.measurement(excitation=noise, device=dev)  # generates a default PlayRecMeasure object
 
