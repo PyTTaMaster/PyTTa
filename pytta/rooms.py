@@ -418,8 +418,12 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
     #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
-
-    SigObj = cp.copy(IR.systemSignal)
+    if isinstance(IR, SignalObj):
+        SigObj = cp.copy(IR)
+    elif isinstance(IR, ImpulsiveResponse):
+        SigObj = cp.copy(IR.systemSignal)
+    else:
+        raise TypeError("'IR' must be an ImpulsiveResponse or SignalObj.")
     # Cutting the IR
     if IREndManualCut is not None:
         SigObj.crop(0, IREndManualCut)
@@ -494,7 +498,12 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
     #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
-    SigObj = IR.systemSignal
+    if isinstance(IR, SignalObj):
+        SigObj = IR
+    elif isinstance(IR, ImpulsiveResponse):
+        SigObj = IR.systemSignal
+    else:
+        raise TypeError("'IR' must be an ImpulsiveResponse or SignalObj.")
     # Windowing the IR
     # dBtoOnSet = 20
     # dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
