@@ -267,8 +267,11 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
         matplotlib.figure.Figure object.
     """
     realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
-    fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
-    return fig
+    if len(realSigObjs) > 0:
+        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+        return fig
+    else:
+        return
 
 def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
               xLim:list=None, title:str=None, decimalSep:str=','):
@@ -311,9 +314,13 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     """
     realSigObjs = \
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
-    fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
-                       decimalSep)
-    return fig
+    if len(realSigObjs) > 0:
+        fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                           decimalSep)
+        return fig
+    else:
+        return
+                               
 
 def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
               yLim:list=None, xLim:list=None, title:str=None,
@@ -357,13 +364,17 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
     """
     realSigObjs = \
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_freq:')
-    fig = plot.freq(realSigObjs, smooth, xLabel, yLabel, yLim, xLim, title,
-                    decimalSep)
-    return fig
+    if len(realSigObjs) > 0:
+        fig = plot.freq(realSigObjs, smooth, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep)
+        return fig
+    else:
+        return
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
               yLim:list=None, title:str=None, decimalSep:str=',',
-              barWidth:float=0.75, errorStyle:str=None):
+              barWidth:float=0.75, errorStyle:str=None,
+              forceZeroCentering:bool=False):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
@@ -398,6 +409,9 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
         * errorStyle ('standard'), str:
             error curve style. May be 'laza' or None/'standard'.
 
+        * forceZeroCentering ('False'), bool:
+            force centered bars at Y zero.
+
     Return:
     --------
 
@@ -405,9 +419,12 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
     """
 
     analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
-    fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
-        decimalSep, barWidth, errorStyle)
-    return fig
+    if len(analyses) > 0:
+        fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
+            decimalSep, barWidth, errorStyle, forceZeroCentering)
+        return fig
+    else:
+        return
 
 def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
                      overlap:float=0.5, xLabel:str=None, yLabel:str=None,
@@ -462,21 +479,78 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     """
     realSigObjs = \
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_spectrogram:')
-    figs = plot.spectrogram(realSigObjs, winType, winSize,
-                            overlap, xLabel, yLabel, xLim, yLim,
-                            title, decimalSep)
-    return figs
+    if len(realSigObjs) > 0:
+        figs = plot.spectrogram(realSigObjs, winType, winSize,
+                                overlap, xLabel, yLabel, xLim, yLim,
+                                title, decimalSep)
+        return figs
+    else:
+        return
+
+def plot_waterfall(*sigObjs, step=10, xLim:list=None,
+                   Pmin=20, Pmax=None, tmin=0, tmax=None, azim=-72, elev=14,
+                   cmap='jet', winPlot=False, waterfallPlot=True, fill=True,
+                   lines=False, alpha=1, figsize=(20, 8), winAlpha=0,
+                   removeGridLines=False, saveFig=False, bar=False, width=0.70,
+                   size=3, lcol=None, filtered=True):
+    """This function was gently sent by Rinaldi Polese Petrolli.
+
+    # TO DO
+    
+    Keyword Arguments:
+        step {int} -- [description] (default: {10})
+        xLim {list} -- [description] (default: {None})
+        Pmin {int} -- [description] (default: {20})
+        Pmax {[type]} -- [description] (default: {None})
+        tmin {int} -- [description] (default: {0})
+        tmax {[type]} -- [description] (default: {None})
+        azim {int} -- [description] (default: {-72})
+        elev {int} -- [description] (default: {14})
+        cmap {str} -- [description] (default: {'jet'})
+        winPlot {bool} -- [description] (default: {False})
+        waterfallPlot {bool} -- [description] (default: {True})
+        fill {bool} -- [description] (default: {True})
+        lines {bool} -- [description] (default: {False})
+        alpha {int} -- [description] (default: {1})
+        figsize {tuple} -- [description] (default: {(20, 8)})
+        winAlpha {int} -- [description] (default: {0})
+        removeGridLines {bool} -- [description] (default: {False})
+        saveFig {bool} -- [description] (default: {False})
+        bar {bool} -- [description] (default: {False})
+        width {float} -- [description] (default: {0.70})
+        size {int} -- [description] (default: {3})
+        lcol {[type]} -- [description] (default: {None})
+        filtered {bool} -- [description] (default: {True})
+    
+    Returns:
+        [type] -- [description]
+    """
+    realSigObjs = \
+        _remove_non_(SignalObj, sigObjs, msgPrefix='plot_waterfall:')
+    if len(realSigObjs) > 0:
+        figs = plot.waterfall(realSigObjs, step, xLim,
+                              Pmin, Pmax, tmin, tmax, azim, elev,
+                              cmap, winPlot, waterfallPlot, fill,
+                              lines, alpha, figsize, winAlpha,
+                              removeGridLines, saveFig, bar, width,
+                              size, lcol, filtered)
+        return figs
+    else:
+        return
 
 def _remove_non_(dataType, dataSet,
                  msgPrefix:str='_remove_non_SignalObjs:'):
     if isinstance(dataSet, (list, tuple)):
         newDataSet = []
         for idx, item in enumerate(dataSet):
-            if not isinstance(item, dataType):
+            if isinstance(item, dataType):
+                newDataSet.append(item)
+            elif isinstance(item, ImpulsiveResponse) and \
+                dataType.__name__ == 'SignalObj':
+                newDataSet.append(item.systemSignal)
+            else:
                 print("{}: skipping object {} as it isn't a {}."
                       .format(msgPrefix, idx+1, dataType.__name__))
-            else:
-                newDataSet.append(item)
         if isinstance(dataSet, tuple):
             newDataSet = tuple(newDataSet)
     return newDataSet

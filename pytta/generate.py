@@ -386,7 +386,8 @@ def impulse(samplingRate=None,
     impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,
                               domain='time',
-                              samplingRate=samplingRate)
+                              samplingRate=samplingRate,
+                              signalType='energy')
     impulseSignal.creation_name = creation_name
     return impulseSignal
 

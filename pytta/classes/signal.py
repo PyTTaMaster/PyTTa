@@ -241,6 +241,9 @@ class SignalObj(_base.PyTTaObj):
 
     @property
     def freqSignal(self):
+        """
+        Return half of the RMS spectrum. Normalized in case of a power signal.  
+        """
         return self._freqSignal
 
     @freqSignal.setter
@@ -757,16 +760,17 @@ class SignalObj(_base.PyTTaObj):
         For deconvolution divide by a SignalObj.
         For gain operation divide by a number.
         """
-        signalType = 'energy'
-        result = SignalObj(np.zeros(self.timeSignal.shape),
-                        samplingRate=cp.copy(self.samplingRate),
-                        freqMin=cp.copy(self.freqMin),
-                        freqMax=cp.copy(self.freqMax),
-                        signalType=signalType)
-        result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
+            currentFreqSignal = _make_pk_spectra(self.freqSignal)
+            otherFreqSignal = _make_pk_spectra(other.freqSignal)
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                               samplingRate=cp.copy(self.samplingRate),
+                               freqMin=cp.copy(self.freqMin),
+                               freqMax=cp.copy(self.freqMax),
+                               signalType='energy')
+            result.channels = cp.deepcopy(self.channels)
             if self.numChannels > 1:
                 if other.numChannels > 1:
                     if other.numChannels != self.numChannels:
@@ -776,27 +780,30 @@ class SignalObj(_base.PyTTaObj):
                                                 dtype=np.complex_)
                     for channel in range(other.numChannels):
                         result_freqSignal[:, channel] = \
-                            self.freqSignal[:, channel] \
-                            / other.freqSignal[:, channel]
-                    result_freqSignal[np.isinf(result_freqSignal)] = 0
-                    result.freqSignal = result_freqSignal
+                            currentFreqSignal[:, channel] \
+                            / otherFreqSignal[:, channel]
                 else:
                     result_freqSignal = np.zeros(self.freqSignal.shape,
                                                 dtype=np.complex_)
                     for channel in range(self.numChannels):
                         result_freqSignal[:, channel] = \
-                            self.freqSignal[:, channel] \
-                            / other.freqSignal[:, 0]
-                    result_freqSignal[np.isinf(result_freqSignal)] = 0
-                    result.freqSignal = result_freqSignal
+                            currentFreqSignal[:, channel] \
+                            / otherFreqSignal[:, 0]
             else:
-                result_freqSignal = self.freqSignal / other.freqSignal
-                result_freqSignal[np.isinf(result_freqSignal)] = 0
-                result_freqSignal[np.isnan(result_freqSignal)] = 0
-                result.freqSignal = result_freqSignal
+                result_freqSignal = currentFreqSignal / otherFreqSignal
+            result_freqSignal[np.isinf(result_freqSignal)] = 0
+            result_freqSignal[np.isnan(result_freqSignal)] = 0
+            result.freqSignal = _make_rms_spectra(result_freqSignal)
             result.channels = self.channels / other.channels
         elif type(other) == float or type(other) == int:
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                               samplingRate=cp.copy(self.samplingRate),
+                               freqMin=cp.copy(self.freqMin),
+                               freqMax=cp.copy(self.freqMax),
+                               signalType='energy')
+            result.channels = cp.deepcopy(self.channels)
             result.timeSignal = self.timeSignal / other
+
         else:
             raise TypeError("A SignalObj can operate with other alike or a " +
                             "number in case of a gain operation.")
@@ -806,19 +813,21 @@ class SignalObj(_base.PyTTaObj):
         """
         Gain apply method/FFT convolution
         """
-        if other.signalType == 'energy' or self.signalType == 'energy':
-            signalType = 'energy'
-        else:
-            signalType = 'power'
-        result = SignalObj(np.zeros(self.timeSignal.shape),
-                        samplingRate=cp.copy(self.samplingRate),
-                        freqMin=cp.copy(self.freqMin),
-                        freqMax=cp.copy(self.freqMax),
-                        signalType=signalType)
-        result.channels = cp.deepcopy(self.channels)
         if type(other) == type(self):
             if other.samplingRate != self.samplingRate:
                 raise TypeError("Both SignalObj must have the same sampling rate.")
+            if other.signalType == 'energy' or self.signalType == 'energy':
+                signalType = 'energy'
+            else:
+                signalType = 'power'
+            currentFreqSignal = _make_pk_spectra(self.freqSignal)
+            otherFreqSignal = _make_pk_spectra(other.freqSignal)
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=cp.copy(self.samplingRate),
+                            freqMin=cp.copy(self.freqMin),
+                            freqMax=cp.copy(self.freqMax),
+                            signalType=signalType)
+            result.channels = cp.deepcopy(self.channels)
             if self.numChannels > 1:
                 if other.numChannels > 1:
                     if other.numChannels != self.numChannels:
@@ -828,26 +837,28 @@ class SignalObj(_base.PyTTaObj):
                                                 dtype=np.complex_)
                     for channel in range(other.numChannels):
                         result_freqSignal[:, channel] = \
-                            self.freqSignal[:, channel] \
-                            * other.freqSignal[:, channel]
-                    result_freqSignal[np.isinf(result_freqSignal)] = 0
-                    result.freqSignal = result_freqSignal
+                            currentFreqSignal[:, channel] \
+                            * otherFreqSignal[:, channel]
                 else:
                     result_freqSignal = np.zeros(self.freqSignal.shape,
                                                 dtype=np.complex_)
                     for channel in range(self.numChannels):
                         result_freqSignal[:, channel] = \
-                            self.freqSignal[:, channel] \
-                            * other.freqSignal[:, 0]
-                    result_freqSignal[np.isinf(result_freqSignal)] = 0
-                    result.freqSignal = result_freqSignal
+                            currentFreqSignal[:, channel] \
+                            * otherFreqSignal[:, 0]
             else:
-                result_freqSignal = self.freqSignal * other.freqSignal
-                result_freqSignal[np.isinf(result_freqSignal)] = 0
-                result.freqSignal = result_freqSignal
+                result_freqSignal = currentFreqSignal * otherFreqSignal
+            result_freqSignal[np.isinf(result_freqSignal)] = 0
+            result.freqSignal = _make_rms_spectra(result_freqSignal)
             result.channels = self.channels * other.channels
         elif type(other) == float or type(other) == int:
+            result = SignalObj(np.zeros(self.timeSignal.shape),
+                            samplingRate=cp.copy(self.samplingRate),
+                            freqMin=cp.copy(self.freqMin),
+                            freqMax=cp.copy(self.freqMax),
+                            signalType=cp.copy(self.signalType))
             result.timeSignal = self.timeSignal * other
+            result.channels = cp.deepcopy(self.channels)
         else:
             raise TypeError("A SignalObj can operate with other alike or a " +
                             "number in case of a gain operation.")
@@ -948,8 +959,7 @@ class SignalObj(_base.PyTTaObj):
         newFreqSignal = \
             np.fft.rfft(self._timeSignal, axis=0, norm=None)
         # turning peak amplitude into RMS amplitude
-        newFreqSignal /=  2**(1/2)
-        newFreqSignal[0,:] *= 2**(1/2)
+        newFreqSignal = _make_rms_spectra(newFreqSignal)
         # spectrum normalization
         if self.signalType == 'power':
             newFreqSignal /= len(newFreqSignal)
@@ -975,8 +985,7 @@ class SignalObj(_base.PyTTaObj):
         else:
             adjustedFreqSignal = self._freqSignal
         # turning RMS amplitude into peak amplitude except DC freq
-        adjustedFreqSignal *=  2**(1/2)
-        adjustedFreqSignal[0,:] /= 2**(1/2)
+        adjustedFreqSignal = _make_pk_spectra(adjustedFreqSignal)
         # IFFT
         self._timeSignal = \
             np.array(np.fft.irfft(adjustedFreqSignal,
@@ -988,7 +997,6 @@ class SignalObj(_base.PyTTaObj):
                                        - 1/self.samplingRate,
                                        self.numSamples)
         return
-
 
 class ImpulsiveResponse(_base.PyTTaObj):
     """
@@ -1062,6 +1070,11 @@ class ImpulsiveResponse(_base.PyTTaObj):
             function to compute the power spectral density, (only for
             method ="H1", method="H2" and method="Ht").
 
+        * regularization (bool), (True):
+            Do Kirkeby regularization with a packing filter for the impulsive
+            response's time signature. Details in 'Advancements in impulsive 
+            response measurements by sine sweeps' Farina, 2007.
+    
         * ir (SignalObj) (optional):
             An calculated impulsive response. Optional if 'excitation' and
             'recording' are provided;
@@ -1236,7 +1249,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                              sampling rate.")
         if method == 'linear':
             if regularization:
-                data = inputSignal.freqSignal
+                data = _make_pk_spectra(inputSignal.freqSignal)
+                outputFreqSignal = _make_pk_spectra(outputSignal.freqSignal)
                 freqVector = inputSignal.freqVector
                 b = data * 0 + 10**(-200/20) # inside signal freq range
                 a = data * 0 + 1 # outside signal freq range
@@ -1255,10 +1269,11 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                                     freqVector)
                 eps = \
                     eps \
-                        * float(np.max(np.abs(outputSignal.freqSignal)))**2 \
+                        * float(np.max(np.abs(outputFreqSignal)))**2 \
                             * 1/2
                 C = np.conj(data) / \
                     (np.conj(data)*data + eps)
+                C = _make_rms_spectra(C)
                 C = SignalObj(C,
                               'freq',
                               inputSignal.samplingRate,
@@ -1457,3 +1472,15 @@ class ImpulsiveResponse(_base.PyTTaObj):
                         axis=0)
         del f
         return S12, S11
+
+def _make_rms_spectra(freqSignal):
+    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
+    newFreqSignal[:,:] = freqSignal / 2**(1/2)
+    newFreqSignal[0,:] = freqSignal[0,:] * 2**(1/2)
+    return newFreqSignal
+
+def _make_pk_spectra(freqSignal):
+    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
+    newFreqSignal[:,:] = freqSignal * 2**(1/2)
+    newFreqSignal[0,:] = freqSignal[0,:] / 2**(1/2)
+    return newFreqSignal

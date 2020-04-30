@@ -1836,8 +1836,11 @@ class MeasurementPostProcess(object):
         # Statistics for G
         G_CI = {}
         for SR, Gs in G_avgs.items():
-            data = np.vstack([an.data for an in Gs])
             G_CI[SR] = []
+            if len(Gs) < 2:
+                G_CI[SR] = None
+                continue
+            data = np.vstack([an.data for an in Gs])
             for bandIdx in range(data.shape[1]):
                 G_CI[SR].append(mean_confidence_interval(data[:,bandIdx])[1])
         # Calculate mean G value

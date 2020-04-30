@@ -22,6 +22,77 @@ anTypes = {'RT': ('s', 'Reverberation time'),
 
 class Analysis(RICI):
     """
+    Objects belonging to the Analysis class holds fractional octave band data.
+
+    It does conveniently the operations linearly between Analyses of the type 
+    'Level'. Therefore those operations do not occur with values in dB scale.
+
+    Available Analysis' types below.
+    
+    For more information see each parameter/attribute/method specific
+    documentation.
+ 
+    Creation parameters:
+    --------------------
+
+        * anType, (string):
+            Type of the Analysis. May be:
+                - 'RT' for 'Reverberation time' Analysis in [s];
+                - 'C' for 'Clarity' in dB;
+                - 'D' for 'Definition' in %;
+                - 'G' for 'Strength factor' in dB;
+                - 'L' for any 'Level' Analysis in dB (e.g: SPL);
+                - 'mixed' for any combination between the types above.
+        
+        * nthOct, (int):
+            The number of fractions per octave;
+        
+        * minBand, (int | float):
+            The exact or approximated start frequency;
+        
+        * maxBand, (int | float):
+            The exact or approximated stop frequency;
+
+        * data, (list | numpy array):
+            The data with the exact number of bands between the spcified minimum
+            (minBand) and maximum band (maxBand);
+        
+        * dataLabel (''), (string):
+            Label for plots;
+        
+        * error, (list | numpy array):
+            The error with the exact number of bands between the spcified
+            minimum (minBand) and maximum band (maxBand);
+
+        * errorLabel (''), (string):
+            Label for plots;
+        
+        * comment ('No comments.'), (string):
+            Some comment about the object.
+
+        * xLabel (None), (string):
+            x axis plot label;
+        
+        * yLabel (None), (string):
+            y axis plot label;
+        
+        * title (None), (string):
+            plot title.
+    
+
+    Attributes:
+    -----------
+
+        * bands (NumPy array):
+            The bands central frequencies.
+        
+    
+    Methods:
+    --------
+    
+        * plot_bars():
+            Generates a bar plot.
+        
     """
 
     # Magic methods
@@ -107,13 +178,23 @@ class Analysis(RICI):
             raise NotImplementedError("Operation not implemented between " +
                                       "Analysis and {}".format(type(other)) +
                                       "types.")
+        selfDataLabel = self.dataLabel if self.dataLabel is not None \
+            else 'Analysis 1'
+        if hasattr(other,'dataLabel'):
+            if other.dataLabel is not None:
+                otherDataLabel = other.dataLabel 
+            else:
+                otherDataLabel = 'Analysis 2'
+        else:
+            otherDataLabel = 'Analysis 2'
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data, dataLabel=self.dataLabel,
-                        error=self.error, errorLabel=self.errorLabel,
-                        comment=self.comment,
+                        data=data, dataLabel=selfDataLabel +
+                                            ' + ' + otherDataLabel,
+                        error=None, errorLabel=None,
+                        comment=None,
                         xLabel=self.xLabel, yLabel=self.yLabel,
-                        title=self.title)
+                        title=None)
 
         return result
 
@@ -155,20 +236,30 @@ class Analysis(RICI):
             raise NotImplementedError("Operation not implemented between " +
                                       "Analysis and {}".format(type(other)) +
                                       "types.")
+        selfDataLabel = self.dataLabel if self.dataLabel is not None \
+            else 'Analysis 1'
+        if hasattr(other,'dataLabel'):
+            if other.dataLabel is not None:
+                otherDataLabel = other.dataLabel 
+            else:
+                otherDataLabel = 'Analysis 2'
+        else:
+            otherDataLabel = 'Analysis 2'
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data, dataLabel=self.dataLabel,
-                        error=self.error, errorLabel=self.errorLabel,
-                        comment=self.comment,
+                        data=data, dataLabel=selfDataLabel +
+                                            ' - ' + otherDataLabel,
+                        error=None, errorLabel=None,
+                        comment=None,
                         xLabel=self.xLabel, yLabel=self.yLabel,
-                        title=self.title)
+                        title=None)
 
         return result
 
     def __mul__(self, other):
         if isinstance(other, Analysis):
             if other.range != self.range:
-                raise ValueError("Can't subtract! Both Analysis have " +
+                raise ValueError("Can't multiply! Both Analysis have " +
                                 "different band limits.")
             anType='mixed'
             data=self.data*other.data
@@ -178,13 +269,23 @@ class Analysis(RICI):
         else:
             raise TypeError("Analysys can only be operated with int, float, " +
                             "or Analysis types.")
+        selfDataLabel = self.dataLabel if self.dataLabel is not None \
+            else 'Analysis 1'
+        if hasattr(other,'dataLabel'):
+            if other.dataLabel is not None:
+                otherDataLabel = other.dataLabel 
+            else:
+                otherDataLabel = 'Analysis 2'
+        else:
+            otherDataLabel = 'Analysis 2'
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data, dataLabel=self.dataLabel,
-                        error=self.error, errorLabel=self.errorLabel,
-                        comment=self.comment,
+                        data=data, dataLabel=selfDataLabel +
+                                            ' * ' + otherDataLabel,
+                        error=None, errorLabel=None,
+                        comment=None,
                         xLabel=self.xLabel, yLabel=self.yLabel,
-                        title=self.title)
+                        title=None)
         return result
 
     def __rtruediv__(self, other):
@@ -218,13 +319,23 @@ class Analysis(RICI):
             raise NotImplementedError("Operation not implemented between " +
                                       "Analysis and {}".format(type(other)) +
                                       "types.")
+        selfDataLabel = self.dataLabel if self.dataLabel is not None \
+            else 'Analysis 1'
+        if hasattr(other,'dataLabel'):
+            if other.dataLabel is not None:
+                otherDataLabel = other.dataLabel 
+            else:
+                otherDataLabel = 'Analysis 2'
+        else:
+            otherDataLabel = 'Analysis 2'
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data, dataLabel=self.dataLabel,
-                        error=self.error, errorLabel=self.errorLabel,
-                        comment=self.comment,
+                        data=data, dataLabel=selfDataLabel +
+                                            ' / ' + otherDataLabel,
+                        error=None, errorLabel=None,
+                        comment=None,
                         xLabel=self.xLabel, yLabel=self.yLabel,
-                        title=self.title)
+                        title=None)
         return result
         
 
@@ -259,9 +370,23 @@ class Analysis(RICI):
             raise NotImplementedError("Operation not implemented between " +
                                       "Analysis and {}".format(type(other)) +
                                       "types.")
+        selfDataLabel = self.dataLabel if self.dataLabel is not None \
+            else 'Analysis 1'
+        if hasattr(other,'dataLabel'):
+            if other.dataLabel is not None:
+                otherDataLabel = other.dataLabel 
+            else:
+                otherDataLabel = 'Analysis 2'
+        else:
+            otherDataLabel = 'Analysis 2'
         result = Analysis(anType=anType, nthOct=self.nthOct,
                         minBand=self.minBand, maxBand=self.maxBand,
-                        data=data)
+                        data=data, dataLabel=selfDataLabel +
+                                            ' / ' + otherDataLabel,
+                        error=None, errorLabel=None,
+                        comment=None,
+                        xLabel=self.xLabel, yLabel=self.yLabel,
+                        title=None)
 
         return result
 
@@ -269,7 +394,20 @@ class Analysis(RICI):
 
     @property
     def anType(self):
-        """
+        """Type of the Analysis.
+        
+        May be:
+            - 'RT' for 'Reverberation time' Analysis in [s];
+            - 'C' for 'Clarity' in dB;
+            - 'D' for 'Definition' in %;
+            - 'G' for 'Strength factor' in dB;
+            - 'L' for any 'Level' Analysis in dB (e.g: SPL);
+            - 'mixed' for any combination between the types above.
+
+        Return:
+        -------
+
+            string.
         """
         return self._anType
 
@@ -289,7 +427,14 @@ class Analysis(RICI):
 
     @property
     def nthOct(self):
-        """
+        """octave band fraction.
+
+        Could be 1, 3, 6...
+
+        Return:
+        -------
+
+            int.
         """
         return self._nthOct
 
@@ -312,7 +457,12 @@ class Analysis(RICI):
 
     @property
     def minBand(self):
-        """
+        """minimum octave fraction band.
+
+        Return:
+        -------
+
+            float.
         """
         return self._bandMin
 
@@ -326,7 +476,12 @@ class Analysis(RICI):
 
     @property
     def maxBand(self):
-        """
+        """maximum octave fraction band.
+
+        Return:
+        -------
+
+            float.
         """
         return self._bandMax
 
@@ -344,10 +499,16 @@ class Analysis(RICI):
 
     @property
     def data(self):
-        """data [summary] # TO DO
+        """Fractional octave bands data.
+
+        data must be a list or NumPy ndarray with the same number of elements
+        than bands between the spcified minimum (minBand) and maximum band
+        (maxBand).
         
-        :return: [description]
-        :rtype: [type]
+        Return:
+        -------
+
+            NumPy ndarray.
         """
         return self._data
 
@@ -375,7 +536,18 @@ class Analysis(RICI):
 
     @property
     def error(self):
-        """error [summary] # TO DO
+        """error per octave fraction band.
+
+        The error must be a list or NumPy ndarray with same number of elements
+        as bands between the spcified minimum (minBand) and maximum bands
+        (maxBand);
+
+        Shown as +-error.
+
+        Return:
+        -------
+
+            NumPy ndarray.
         """
         return self._error
     
@@ -396,7 +568,14 @@ class Analysis(RICI):
 
     @property
     def dataLabel(self):
-        """dataLabel [summary] # TO DO
+        """Label of the data.
+
+        Used for plot purposes.
+
+        Return:
+        -------
+
+            str.
         """
         return self._dataLabel
     
@@ -409,7 +588,14 @@ class Analysis(RICI):
 
     @property
     def errorLabel(self):
-        """errorLabel [summary] # TO DO
+        """Label of the error information.
+
+        Used for plot purposes.
+
+        Return:
+        -------
+
+            str.
         """
         return self._errorLabel
     
@@ -422,7 +608,12 @@ class Analysis(RICI):
 
     @property
     def bands(self):
-        """
+        """The octave fraction bands central frequencies.
+        
+        Return:
+        -------
+
+            list with the fractional octave bands of this Analysis.
         """
         return self._bands
 
@@ -450,12 +641,6 @@ class Analysis(RICI):
         return
 
     def plot(self, **kwargs):
-        return self.plot_bars(**kwargs)
-
-    def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
-                  xLabel:str=None, yLabel:str=None,
-                  yLim:list=None, title:str=None, decimalSep:str=',',
-                  barWidth:float=0.75, errorStyle:str=None):
         """Plot the analysis data in fractinal octave bands.
 
         Parameters (default), (type):
@@ -493,6 +678,61 @@ class Analysis(RICI):
             * errorStyle ('standard'), str:
                 error curve style. May be 'laza' or None/'standard'.
 
+            * forceZeroCentering ('False'), bool:
+                force centered bars at Y zero.
+
+        Return:
+        --------
+
+            matplotlib.figure.Figure object.
+        """
+        return self.plot_bars(**kwargs)
+
+    def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
+                  xLabel:str=None, yLabel:str=None,
+                  yLim:list=None, title:str=None, decimalSep:str=',',
+                  barWidth:float=0.75, errorStyle:str=None,
+                  forceZeroCentering:bool=False):
+        """Plot the analysis data in fractinal octave bands.
+
+        Parameters (default), (type):
+        -----------------------------
+
+            * dataLabel ('Analysis type [unit]'), (str):
+                legend label for the current data
+
+            * errorLabel ('Error'), (str):
+                legend label for the current data error
+
+            * xLabel ('Time [s]'), (str):
+                x axis label.
+
+            * yLabel ('Amplitude'), (str):
+                y axis label.
+
+            * yLim (), (list):
+                inferior and superior limits.
+
+                >>> yLim = [-100, 100]
+
+            * title (), (str):
+                plot title
+
+            * decimalSep (','), (str):
+                may be dot or comma.
+
+                >>> decimalSep = ',' # in Brazil
+
+            * barWidth (0.75), float:
+                width of the bars from one fractional octave band. 
+                0 < barWidth < 1.
+
+            * errorStyle ('standard'), str:
+                error curve style. May be 'laza' or None/'standard'.
+
+            * forceZeroCentering ('False'), bool:
+                force centered bars at Y zero.
+
         Return:
         --------
 
@@ -526,6 +766,7 @@ class Analysis(RICI):
                 if self.barsTitle is not None:
                     title = self.barsTitle
 
-        fig = plot.bars((self,), self.xLabel, self.yLabel, yLim, self.title,
-                        decimalSep, barWidth, errorStyle)
+        fig = plot.bars((self,), xLabel, yLabel, yLim,
+                        self.title, decimalSep, barWidth, errorStyle,
+                        forceZeroCentering)
         return fig
