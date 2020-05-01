@@ -126,12 +126,24 @@ def T_circular_time_shift(timeSignal, threshold=20):
 
 @njit
 def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
-                         numChannels, timeLength):
+                         numChannels, timeLength, suppressWarnings=True):
     returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
     timeSignal, sampleShift = T_circular_time_shift(timeSignal)
     if sampleShift is None:
         return returnTuple
-    winTimeLength = 0.03  # 30 ms window
+
+    # Window length - 10 to 50 ms, longer periods for lower frequencies and vice versa
+    if band < 20000:
+        winTimeLength = 0.01
+    if band < 10000:
+        winTimeLength = 0.02
+    if band < 250:
+        winTimeLength = 0.03
+    if band < 100:
+        winTimeLength = 0.04
+    if band < 30:
+        winTimeLength = 0.05
+
     numSamples -= sampleShift  # discount shifted samples
     numParts = 5  # number of parts per 10 dB decay. N = any([3, 10])
     dBtoNoise = 7  # stop point 10 dB above first estimated background noise
@@ -155,7 +167,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
     dynRange = 10*np.log10(timeWinData[stopIdx]) \
         - 10*np.log10(timeWinData[startIdx])
     if (stopIdx == startIdx) or (dynRange > -5)[0]:
-        print(band, "[Hz] band: SNR too low for the preliminar slope",
+        if not suppressWarnings:
+            print(band, "[Hz] band: SNR too low for the preliminar slope",
               "calculation.")
         return returnTuple
 
@@ -165,15 +178,17 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
     c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
                         rcond=-1)[0]
 
-    if (c[1] == 0)[0] or np.isnan(c).any(): 
-        print(band, "[Hz] band: regression failed. T would be inf.")
+    if (c[1] == 0)[0] or np.isnan(c).any():
+        if not suppressWarnings:
+            print(band, "[Hz] band: regression failed. T would be inf.")
         return returnTuple
 
     # 4) preliminary intersection
     crossingPoint = (bgNoiseLevel - c[0]) / c[1]  # [s]
     if (crossingPoint > 2*(timeLength + sampleShift/samplingRate))[0]:
-        print(band, "[Hz] band: preliminary intersection point between",
-              "bgNoiseLevel and the decay slope greater than signal length.")
+        if not suppressWarnings:
+            print(band, "[Hz] band: preliminary intersection point between",
+                  "bgNoiseLevel and the decay slope greater than signal length.")
         return returnTuple
 
     # 5) new local time interval length
@@ -223,8 +238,9 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
         # where returns empty
         if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:
-            print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
-                "low. Skipping!")
+            if not suppressWarnings:
+                print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
+                    "low. Skipping!")
             # c[1] = np.inf
             c[1] = 0
             break
@@ -235,8 +251,9 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                             rcond=-1)[0]
         
         if (c[1] >= 0)[0]:
-            print(band, "[Hz] band: regression did not work, T -> inf.",
-                "Setting slope to 0!")
+            if not suppressWarnings:
+                print(band, "[Hz] band: regression did not work, T -> inf.",
+                    "Setting slope to 0!")
             # c[1] = np.inf
             c[1] = 0
             break
@@ -247,8 +264,9 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
         loopCounter += 1
         if loopCounter > 30:
-            print(band, "[Hz] band: more than 30 iterations on regression.",
-                "Canceling!")
+            if not suppressWarnings:
+                print(band, "[Hz] band: more than 30 iterations on regression.",
+                    "Canceling!")
             break
 
     interIdx = crossingPoint * samplingRate # [sample]
@@ -257,14 +275,15 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
-                             numSamples, numChannels, timeLength):
+                             numSamples, numChannels, timeLength, suppressWarnings=True):
     lundebyParams = \
         T_Lundeby_correction(band,
                              timeSignal,
                              samplingRate,
                              numSamples,
                              numChannels,
-                             timeLength)
+                             timeLength,
+                             suppressWarnings=suppressWarnings)
     _, c1, interIdx, BGL = lundebyParams
     lateRT = -60/c1 if c1 != 0 else 0
 
@@ -286,6 +305,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
 
 def cumulative_integration(inputSignal,
                            plotLundebyResults,
+                           suppressWarnings=True,
                            **kwargs):
 
     def plot_lundeby():
@@ -294,12 +314,15 @@ def cumulative_integration(inputSignal,
         ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
                             projection='rectilinear', xscale='linear')
         line = c1*timeVector + c0
-        ax.plot(timeVector, 10*np.log10(timeSignal**2),label='IR')
-        ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise')
-        ax.plot(timeVector, line,label='Late slope')
-        ax.axvline(x=interIdx/samplingRate, label='Truncation point')
+        ax.plot(timeVector, 10*np.log10(timeSignal**2), label='IR')
+        ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise', c='red')
+        ax.plot(timeVector, line,label='Late slope', c='black')
+        ax.axvline(x=interIdx/samplingRate, label='Truncation point', c='green')
+        ax.grid()
+        ax.set_xlabel('Time [s]')
+        ax.set_ylabel('Amplitude [dBFS]')
         plt.title('{0:.0f} [Hz]'.format(band))
-        ax.legend(loc='upper center', shadow=True, fontsize='x-large')
+        ax.legend(loc='best', shadow=True, fontsize='x-large')
     
     timeSignal = inputSignal.timeSignal[:]
     # Substituted by SignalObj.crop in analyse function
@@ -329,7 +352,8 @@ def cumulative_integration(inputSignal,
                                      samplingRate,
                                      numSamples,
                                      numChannels,
-                                     timeLength)
+                                     timeLength,
+                                     suppressWarnings=suppressWarnings)
         listEDC.append((energyDecay, energyVector))
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
@@ -661,7 +685,9 @@ def crop_IR(SigObj, IREndManualCut):
 
 def analyse(obj, *params,
             plotLundebyResults=False,
-            IREndManualCut=None, **kwargs):
+            IREndManualCut=None,
+            suppressWarnings=False,
+            **kwargs):
     """analyse
     
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
@@ -695,6 +721,10 @@ def analyse(obj, *params,
     :param plotLundebyResults: plot the Lundeby correction parameters, defaults
     to False
     :type plotLundebyResults: bool, optional
+
+    :param suppressWarnings: suppress the warnings fro mthe Lundeby correction, defaults
+    to False
+    :type suppressWarnings: bool, optional
     
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
@@ -732,6 +762,7 @@ def analyse(obj, *params,
 
     listEDC = cumulative_integration(SigObj,
                                      plotLundebyResults,
+                                     suppressWarnings=suppressWarnings,
                                      **kwargs)
     for prm in params:
         if 'RT' == prm:
