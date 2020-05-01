@@ -1068,10 +1068,11 @@ class MeasurementData(object):
             if not isinstance(msdThng, MeasuredThing):
                 raise TypeError("'roomir.calibrate_res' only works with " +
                                 "MeasuredThing objects.")
-            elif msdThng.kind not in ['roomres', 'noisefloor']:
+            elif msdThng.kind not in ['roomres', 'noisefloor',
+                                      'sourcerecalibration']:
                 print("-- Calibrated room response can only be calculated " + 
-                      "from a MeasuredThing of 'roomres' " +
-                      "kind.")
+                      "from a MeasuredThing of 'roomres', 'noisefloor', or " +
+                      "'sourcerecalibration' kind")
                 continue
             kind = msdThng.kind
 
@@ -1162,11 +1163,7 @@ class MeasurementData(object):
 
             # Construct the MeasuredThing
             print('- Constructing the new MeasuredThing.')
-            if kind == 'roomres':
-                newKind = 'calibrated-roomres'
-            if kind == 'noisefloor':
-                newKind = 'calibrated-noisefloor'
-
+            newKind = 'calibrated-' + kind
             CalibMsdThng = MeasuredThing(kind=newKind,
                                       arrayName=msdThng.arrayName,
                                       sourcePos=msdThng.sourcePos,
@@ -1735,13 +1732,16 @@ class MeasurementPostProcess(object):
         finalLpss = {}
         for name, Lpss in Lps_avgs.items():            
             sum4avg = Lpss[0]
+            LpsWindowLimits = [Lpss[0].windowLimits, Lpss[1].windowLimits]
             for Lps in Lpss[1:]:
                 sum4avg += Lps
+                LpsWindowLimits.append(Lps.windowLimits)
             Lps = sum4avg/len(Lpss)
             Lps.errorLabel = 'Confiança 95% dist. T-Student'
             Lps.error = Lps_CI[name]
             Lps.dataLabel = name
             Lps.creation_name = 'Lps_' + name
+            Lps.windowLimits = LpsWindowLimits
             finalLpss[name] = Lps
         finalLpss['dictName'] = creation_name
         return finalLpss
@@ -1768,6 +1768,10 @@ class MeasurementPostProcess(object):
         roomirs = roomirsGetDict
         Lpe_avgs = {}
         for roomir in roomirs.values():
+            roomir.sourcePos = \
+                'Sx' if roomir.sourcePos is None else roomir.sourcePos
+            roomir.receiverPos = \
+                'Rx' if roomir.receiverPos is None else roomir.receiverPos
             SR = roomir.sourcePos + roomir.receiverPos
             if SR not in Lpe_avgs:
                 Lpe_avgs[SR] = []

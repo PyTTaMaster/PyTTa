@@ -677,6 +677,7 @@ class SignalObj(_base.PyTTaObj):
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chNum].CF
             self.channels[chNum].calibCheck = True
+            self._fft()
         else:
             raise IndexError('chIndex greater than channels number')
         return
@@ -713,6 +714,7 @@ class SignalObj(_base.PyTTaObj):
             self.timeSignal[:, chIndex] = self.timeSignal[:, chIndex]\
                 * self.channels[chNum].CF
             self.channels[chNum].calibCheck = True
+            self._fft()
         else:
             raise IndexError('chIndex greater than channels number')
         return

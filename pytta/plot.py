@@ -234,7 +234,7 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_time_dB(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
+        dBSignal = 20*np.log10(np.abs(data['y']/np.sqrt(2))/data['dBRef'])
         ax.plot(data['x'], dBSignal, label=data['label'])
         yLimData = cp.copy(dBSignal)
         yLimData[np.isinf(yLimData)] = 0
@@ -378,7 +378,7 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_freq(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(data['y']/data['dBRef'])
+        dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
 
         if smooth:
             dBSignal = ss.savgol_filter(dBSignal, 31, 3)
@@ -465,7 +465,7 @@ def _curve_data_extractor_freq(sigObjs):
     return curveData
 
 def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
-         errorStyle, forceZeroCentering):
+         errorStyle, forceZeroCentering, overlapBars, color):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
@@ -503,11 +503,25 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
         * forceZeroCentering ('False'), bool:
             force centered bars at Y zero.
 
+        * overlapBars ('False'), bool:
+            overlap bars. No side by side bars of different data.
+
+        * color (None), list:
+            list containing the color of each Analysis.
+
+
     Return:
     --------
 
         matplotlib.figure.Figure object.
     """
+    if isinstance(color, list):
+        if len(color) != len(analyses):
+            raise ValueError("'color' must be a list with the same number of " +
+                             "elements than analyses.")
+    else:
+        color = [None for an in analyses]
+
     if errorStyle == 'laza':
         ecolor='limegreen'
         elinewidth=20
@@ -582,10 +596,16 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
         if negativeCounter < (len(data['data'])*dataSetLen)//2 or \
             forceZeroCentering:
             minVal = 0
-        
-        ax.bar(fbar + barWidth*dtIdx/dataSetLen,
-            -minVal + data['data'],
-            width=barWidth/dataSetLen, label=label, zorder=-1)
+        if overlapBars:
+            ax.bar(fbar,
+                -minVal + data['data'],
+                width=barWidth, label=label, zorder=-1,
+                color=color[dtIdx])
+        else:
+            ax.bar(fbar + barWidth*dtIdx/dataSetLen,
+                -minVal + data['data'],
+                width=barWidth/dataSetLen, label=label, zorder=-1,
+                color=color[dtIdx])
 
         if data['error'] is not None:
             ax.errorbar(fbar + barWidth*dtIdx/dataSetLen,

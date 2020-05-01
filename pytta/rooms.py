@@ -160,7 +160,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                    np.log10(
                             np.mean(timeWinData[-int(timeWinData.size/10):]))
 
-    # 3) regression
+    # 3) Calculate premilinar slope
     startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
     stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
                                   >= bgNoiseLevel + dBtoNoise)[0][-1]
@@ -565,14 +565,16 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
                        maxBand=float(bands[-1]), data=Lps,
                        comment='Source recalibration method IR')
     LpsAnal.creation_name = creation_name
+    LpsAnal.windowLimits = ((sampleShift)/SigObj.samplingRate,
+                            (sampleShift+windowEnd)/SigObj.samplingRate)
     # Plot IR cutting
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                            projection='rectilinear', xscale='linear')
-    ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
-    ax.axvline(x=(sampleShift)/SigObj.samplingRate, linewidth=4, color='k')
-    ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate, linewidth=4, color='k')
-    ax.set_xlim([(sampleShift-100)/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
+    # fig = plt.figure(figsize=(10, 5))
+    # ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+    #                         projection='rectilinear', xscale='linear')
+    # ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
+    # ax.axvline(x=(sampleShift)/SigObj.samplingRate, linewidth=4, color='k')
+    # ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate, linewidth=4, color='k')
+    # ax.set_xlim([(sampleShift-100)/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
     return LpsAnal
 
 
