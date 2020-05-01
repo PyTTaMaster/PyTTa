@@ -429,7 +429,7 @@ class Analysis(RICI):
                             "reverberation time, and must be a str value.")
         elif newType not in anTypes:
             raise ValueError(newType + " type not supported. May be 'RT, " +
-                             "'C' or 'D'.")
+                             "'C', 'D', 'G', 'L', or 'mixed'.")
         self.unit = anTypes[newType][0]
         self.anName = anTypes[newType][1]
         self._anType = newType
@@ -726,7 +726,8 @@ class Analysis(RICI):
                   xLabel:str=None, yLabel:str=None,
                   yLim:list=None, title:str=None, decimalSep:str=',',
                   barWidth:float=0.75, errorStyle:str=None,
-                  forceZeroCentering:bool=False):
+                  forceZeroCentering:bool=False, overlapBars:bool=False,
+                  color:list=None):
         """Plot the analysis data in fractinal octave bands.
 
         Parameters (default), (type):
@@ -767,6 +768,13 @@ class Analysis(RICI):
             * forceZeroCentering ('False'), bool:
                 force centered bars at Y zero.
 
+            * overlapBars ('False'), bool:
+                overlap bars. No side by side bars of different data.
+
+            * color (None), list:
+                list containing the color of each Analysis.
+
+
         Return:
         --------
 
@@ -802,5 +810,5 @@ class Analysis(RICI):
 
         fig = plot.bars((self,), xLabel, yLabel, yLim,
                         self.title, decimalSep, barWidth, errorStyle,
-                        forceZeroCentering)
+                        forceZeroCentering, overlapBars, color)
         return fig
