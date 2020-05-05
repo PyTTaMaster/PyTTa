@@ -269,6 +269,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         i += i
         if c[1][0] != 0:
             repeat = False
+        if i > 5:
+            return returnTuple
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
