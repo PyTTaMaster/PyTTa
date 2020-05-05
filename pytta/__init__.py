@@ -55,6 +55,7 @@ from .classes import SignalObj, ImpulsiveResponse,\
     Analysis
 
 from . import generate
+from . import utils
 from . import h5utils
 from . import rooms
 from . import iso3741
