@@ -270,6 +270,8 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         if c[1][0] != 0:
             repeat = False
         if i > 5:
+            if not suppressWarnings:
+                print("Too many iterations to find winTimeLength.", "Canceling!")
             return returnTuple
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
@@ -299,7 +301,8 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
         energyDecayFull = np.cumsum(sqrInv)[::-1] + C
         energyDecay = energyDecayFull/energyDecayFull[0]
     else:
-        print(band, "[Hz] band: could not estimate C factor")
+        if not suppressWarnings:
+            print(band, "[Hz] band: could not estimate C factor")
         C = 0
         energyDecay = np.zeros(truncatedTimeVector.size)
     return (energyDecay, truncatedTimeVector, lundebyParams)
