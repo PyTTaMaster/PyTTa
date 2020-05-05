@@ -271,7 +271,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
             repeat = False
         if i > 5:
             if not suppressWarnings:
-                print("Too many iterations to find winTimeLength.", "Canceling!")
+                print(band, "[Hz] band: too many iterations to find winTimeLength.", "Canceling!")
             return returnTuple
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
