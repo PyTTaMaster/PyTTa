@@ -28,7 +28,7 @@ Classes:
 from .signal import SignalObj, ImpulsiveResponse
 #from .signal import plot_SignalObjs
 from .measurement import RecMeasure, PlayRecMeasure, FRFMeasure
-from .streaming import Streaming, Recorder
+from .streaming import Streaming, Recorder, Monitor
 from .filter import OctFilter, weighting
 from .analysis import Analysis
 
@@ -39,6 +39,7 @@ __all__ = [ # Classes
            'PlayRecMeasure',
            'FRFMeasure',
            'Streaming',
+           'Monitor',
            'Recorder',
            'OctFilter',
            'weighting',
