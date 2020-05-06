@@ -41,6 +41,7 @@ import scipy.signal as ss
 import scipy.fftpack as sfft
 import zipfile as zf
 import h5py
+from typing import Union, List
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
                     Analysis
@@ -62,6 +63,27 @@ def list_devices():
 
     """
     return sd.query_devices()
+
+
+def get_device_from_user() -> Union[List[int], int]:
+    """
+    Print the device list and query for a number input of the device, or devices.
+
+    Returns
+    -------
+    Union[List[int], int]
+        Practical interface for querying devices to be used within scripts.
+
+    """
+    print(list_devices())
+    device = [int(dev.strip()) for dev in input("Input the device number: ").split(',')]
+    if len(device) == 1:
+        device = device[0]
+        text = "Device is:"
+    else:
+        text = "Devices are:"
+    print(text, device)
+    return device
 
 
 def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
@@ -111,7 +133,7 @@ def write_wav(fileName, signalIn):
     """
     samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
-    return wf.write(fileName, samplingRate, data)
+    return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
 
 
 # Refactor for new SignalObj's channelsList
