@@ -50,7 +50,7 @@ from .properties import default
 
 from .classes import SignalObj, ImpulsiveResponse,\
     RecMeasure, PlayRecMeasure, FRFMeasure,\
-    Streaming, Recorder,\
+    Streaming, Monitor,\
     OctFilter, weighting,\
     Analysis
 
@@ -61,7 +61,7 @@ from . import rooms
 from . import iso3741
 from . import plot
 
-from .functions import read_wav, write_wav, merge, list_devices,\
+from .functions import read_wav, write_wav, merge, list_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, fft_degree, plot_time, plot_time_dB, plot_freq,\
     plot_bars, plot_spectrogram, plot_waterfall
@@ -76,6 +76,7 @@ __all__ = [  # Apps
 
            # Submodules
            'generate',
+           'utils',
            'frequtils',
            'h5utils',
            'iso3741',
@@ -88,6 +89,7 @@ __all__ = [  # Apps
            'read_wav',
            'write_wav',
            'list_devices',
+           'get_device_from_user',
            'find_delay',
            'resample',
            'corr_coef',
@@ -111,6 +113,7 @@ __all__ = [  # Apps
            'ImpulsiveResponse',
            'Analysis',
            'OctFilter',
+           'Monitor',
            'Streaming',
            'Recorder',
 
