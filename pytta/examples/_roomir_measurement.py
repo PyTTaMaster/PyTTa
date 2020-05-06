@@ -14,6 +14,7 @@ import numpy as np
 import scipy.io as io
 import matplotlib.pyplot as plt
 
+
 # %% Muda o current working directory do Python para a pasta onde este script
 # se encontra
 cwd = os.path.dirname(__file__) # Pega a pasta de trabalho atual
@@ -41,6 +42,7 @@ excitationSignals['varredura18'] = pytta.generate.sweep(
         method='logarithmic',
         windowing='hann',
         samplingRate=44100)
+
 excitationSignals['varredura17'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
         freqMin=20,
@@ -51,28 +53,30 @@ excitationSignals['varredura17'] = pytta.generate.sweep(
         method='logarithmic',
         windowing='hann',
         samplingRate=44100)
-# Carregando sinal de música
-excitationSignals['musica'] = pytta.read_wav(
-        'audio/Piano Over the rainbow Mic2 SHORT_edited.wav')
-# Carregando sinal de fala
-excitationSignals['fala'] = pytta.read_wav(
-        'audio/Voice Sabine Short_edited.WAV')
+
+# # Carregando sinal de música
+# excitationSignals['musica'] = pytta.read_wav(
+#         'data/Piano Over the rainbow Mic2 SHORT_edited.wav')
+
+# # Carregando sinal de fala
+# excitationSignals['fala'] = pytta.read_wav(
+#         'data/Voice Sabine Short_edited.WAV')
 
 # %% Carrega sensibilidade do microfone para compensação na cadeia de entrada
-loadtxt = np.loadtxt(fname='14900_no_header.txt')
-mSensFreq = loadtxt[:,0]
-mSensdBMag = loadtxt[:,1]
-# plt.semilogx(mSensFreq, mSensdBMag)
+# loadtxt = np.loadtxt(fname='14900_no_header.txt')
+# mSensFreq = loadtxt[:,0]
+# mSensdBMag = loadtxt[:,1]
+# # plt.semilogx(mSensFreq, mSensdBMag)
 
 # %% Carrega resposta da fonte para compensação na cadeia de saida
-matLoad = io.loadmat('hcorrDodecCTISM2m_Brum.mat')
-ir = pytta.SignalObj(matLoad['hcorrDodecCTISM2m'],'time',44100)
-sSensFreq = ir.freqVector
-sourceSens = 1/np.abs(ir.freqSignal)[:,0]
-normIdx = np.where(sSensFreq > 1000)[0][0]
-sourceSens = sourceSens/sourceSens[normIdx]
-sSensdBMag = 20*np.log10(sourceSens)
-# plt.semilogx(sSensFreq, sSensdBMag)
+# matLoad = io.loadmat('hcorrDodecCTISM2m_Brum.mat')
+# ir = pytta.SignalObj(matLoad['hcorrDodecCTISM2m'],'time',44100)
+# sSensFreq = ir.freqVector
+# sourceSens = 1/np.abs(ir.freqSignal)[:,0]
+# normIdx = np.where(sSensFreq > 1000)[0][0]
+# sourceSens = sourceSens/sourceSens[normIdx]
+# sSensdBMag = 20*np.log10(sourceSens)
+# # plt.semilogx(sSensFreq, sSensdBMag)
 
 # %% Cria novo setup de medição e inicializa objeto de dados, que gerencia o
 # MeasurementSetup e os dados da medição em disco
@@ -82,19 +86,18 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
                           #   device=[0, 1],  # PC laza
-                          device=4,  # Saffire Pro 40 laza
+                          # device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
-                        #   device=0,  # Firebox laza
-                          # [s] tempo de gravação do ruído de fundo
-                          noiseFloorTp=5,
-                          # [s] tempo de gravação do sinal de calibração
-                          calibrationTp=2,
-                          # Sinais de excitação
-                          excitationSignals=excitationSignals,
+                          # device=0,  # Firebox laza
+                          device=pytta.get_device_number(),
+                          noiseFloorTp=5,  # [s] tempo de gravação do ruído de fundo
+                          calibrationTp=2,  # [s] tempo de gravação do sinal de calibração
+                          excitationSignals=excitationSignals,  # Sinais de excitação
                           averages=2,  # Número de médias por medição
                           pause4Avg=False,  # Pausa entre as médias
                           freqMin=20,  # [Hz]
                           freqMax=20000,  # [Hz]
+                          
                           # Dicionário com códigos e canais de saída associados
                           inChannels={'OE': (4, 'Orelha E'),
                                       'OD': (3, 'Orelha D'),
@@ -103,15 +106,17 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                                       'groups': {'HATS': (4, 3)}},
                           # Dicionário com códigos dos canais e compensações
                           # associadas à cadeia de entrada
-                          inCompensations={'Mic1': (mSensFreq, mSensdBMag)},
+                          # inCompensations={'Mic1': (mSensFreq, mSensdBMag)},
+                          inCompensations={},
+                          
                           # Dicionário com códigos e canais de saída associados
                           outChannels={'O1': (1, 'Dodecaedro 1'),
                                        'O2': (2, 'Dodecaedro 2'),
                                        'O3': (4, 'Sistema da sala')},
                           # Dicionário com códigos dos canais e compensações
                           # associadas à cadeia de saída
-                          outCompensations={'O2': (sSensFreq, sSensdBMag)})
-                        #   outCompensations={})
+                          # outCompensations={'O2': (sSensFreq, sSensdBMag)})
+                          outCompensations={})
 D = rmr.MeasurementData(MS)
 
 # %% Cria nova tomada de medição
