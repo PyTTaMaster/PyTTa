@@ -7,8 +7,10 @@ Created on Tue May  5 00:34:36 2020
 """
 
 import numpy as np
+import numba as nb
 
 
+@nb.njit
 def maxabs(arr: np.array) -> int or float:
     """
     Maximum of the absolute of array values.
@@ -23,6 +25,7 @@ def maxabs(arr: np.array) -> int or float:
     return np.max(np.abs(arr))
 
 
+@nb.njit
 def arr2rms(arr: np.array) -> float:
     """
     Root of the mean of a squared array.
@@ -37,6 +40,7 @@ def arr2rms(arr: np.array) -> float:
     return (np.mean(arr**2))**0.5
 
 
+@nb.njit
 def rms2dB(rms: float, power: bool = False, ref: float = 1.0) -> float:
     """
     RMS to decibel.
@@ -53,6 +57,7 @@ def rms2dB(rms: float, power: bool = False, ref: float = 1.0) -> float:
     return (10 if power else 20) * np.log10(rms / ref)
 
 
+@nb.njit
 def arr2dB(arr: np.array, power: bool = False, ref: float = 1.) -> float:
     """
     Calculate the decibel level of an array of data.
@@ -67,5 +72,3 @@ def arr2dB(arr: np.array, power: bool = False, ref: float = 1.) -> float:
 
     """
     return rms2dB(arr2rms(arr), power, ref)
-
-
