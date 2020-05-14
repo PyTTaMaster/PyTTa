@@ -464,7 +464,7 @@ def _curve_data_extractor_freq(sigObjs):
             })
     return curveData
 
-def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
+def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
          errorStyle, forceZeroCentering, overlapBars, color):
     """Plot the analysis data in fractinal octave bands.
 
@@ -484,6 +484,11 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
             inferior and superior limits.
 
             >>> yLim = [-100, 100]
+        
+        * xLim (), (list):
+            bands limits.
+
+            >>> xLim = [100, 10000]
 
         * title (), (str):
             plot title
@@ -562,9 +567,18 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     plt.title(title, fontsize=20)
 
     yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
-
+    
     curveData = _curve_data_extractor_bars(analyses)
     
+    
+    xLimIdx0 = np.where(curveData[0]['bands']<=xLim[0])
+    xLimIdx0 = 0 if len(xLimIdx0[0]) == 0 else xLimIdx0[0][-1]
+    xLimIdx1 = np.where(curveData[0]['bands']>=xLim[1])
+    xLimIdx1 = len(curveData[0]['bands'])-1 \
+                      if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]
+
+    xLimIdx = [xLimIdx0, xLimIdx1]
+
     dataSetLen = len(curveData)
     # checking negative plot necessity
     minVal = np.inf
@@ -625,14 +639,14 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
 
         ylimInfData = -minVal + data['data'] - error
         ylimInfData = \
-            [value for value in ylimInfData if not np.isinf(value)]
+            [value for value in ylimInfData[xLimIdx[0]:xLimIdx[1]+1] if not np.isinf(value)]
         ylimInfMargin = \
             np.abs((np.nanmax(ylimInfData) - np.nanmin(ylimInfData)) / 20)
         ylimInf = np.nanmin(ylimInfData) - ylimInfMargin
     
         ylimSupData = -minVal + data['data'] + error
         ylimSupData = \
-            [value for value in ylimSupData if not np.isinf(value)]
+            [value for value in ylimSupData[xLimIdx[0]:xLimIdx[1]+1] if not np.isinf(value)]
         ylimSupMargin = \
             np.abs((np.nanmax(ylimSupData) - np.nanmin(ylimSupData)) / 20)
         ylimSup = np.nanmax(ylimSupData) + ylimSupMargin
@@ -644,6 +658,7 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
     ax.set_ylim(yLim)
+    
     ax.autoscale(enable=True, axis='x', tight=True)
     
     ax.grid(color='gray', linestyle='-.', linewidth=0.4)
@@ -659,6 +674,9 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     formatter = ticker.FuncFormatter(neg_tick)
     ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
     ax.yaxis.set_major_formatter(formatter)
+
+    if xLim is not None:
+        ax.set_xlim([xLimIdx[0],xLimIdx[1]+1])
 
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)        

@@ -724,7 +724,7 @@ class Analysis(RICI):
 
     def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
                   xLabel:str=None, yLabel:str=None,
-                  yLim:list=None, title:str=None, decimalSep:str=',',
+                  yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
                   barWidth:float=0.75, errorStyle:str=None,
                   forceZeroCentering:bool=False, overlapBars:bool=False,
                   color:list=None):
@@ -747,8 +747,13 @@ class Analysis(RICI):
 
             * yLim (), (list):
                 inferior and superior limits.
-
+        
                 >>> yLim = [-100, 100]
+
+            * xLim (), (list):
+                bands limits.
+
+                >>> xLim = [100, 10000]
 
             * title (), (str):
                 plot title
@@ -808,7 +813,7 @@ class Analysis(RICI):
                 if self.barsTitle is not None:
                     title = self.barsTitle
 
-        fig = plot.bars((self,), xLabel, yLabel, yLim,
+        fig = plot.bars((self,), xLabel, yLabel, yLim, xLim,
                         self.title, decimalSep, barWidth, errorStyle,
                         forceZeroCentering, overlapBars, color)
         return fig

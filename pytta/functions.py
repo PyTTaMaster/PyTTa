@@ -372,7 +372,7 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
         return
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
-              yLim:list=None, title:str=None, decimalSep:str=',',
+              yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
               barWidth:float=0.75, errorStyle:str=None,
               forceZeroCentering:bool=False, overlapBars:bool=False,
               color:list=None):
@@ -394,6 +394,11 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
             inferior and superior limits.
 
             >>> yLim = [-100, 100]
+        
+        * xLim (), (list):
+            bands limits.
+
+            >>> xLim = [100, 10000]
 
         * title (), (str):
             plot title
@@ -428,7 +433,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 
     analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
     if len(analyses) > 0:
-        fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
+        fig = plot.bars(analyses, xLabel, yLabel, yLim, xLim, title,
             decimalSep, barWidth, errorStyle, forceZeroCentering, overlapBars,
             color)
         return fig
