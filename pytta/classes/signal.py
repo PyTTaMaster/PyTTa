@@ -381,7 +381,7 @@ class SignalObj(_base.PyTTaObj):
 
     def plot_time(self, xLabel:str=None, yLabel:str=None,
                 yLim:list=None, xLim:list=None, title:str=None,
-                decimalSep:str=','):
+                decimalSep:str=',',timeUnit:str='s'):
         """Plots the signal in time domain.
 
         xLabel, yLabel, and title are saved for the next plots when provided.
@@ -412,6 +412,10 @@ class SignalObj(_base.PyTTaObj):
                 may be dot or comma.
 
                 >>> decimalSep = ',' # in Brazil
+            
+             * timeUnit ('s'), (str):
+                'ms' or 's'.
+
 
         Return:
         --------
@@ -439,12 +443,13 @@ class SignalObj(_base.PyTTaObj):
                 if self.timeTitle is not None:
                     title = self.timeTitle
 
-        fig = plot.time((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time((self,), xLabel, yLabel, yLim, xLim, title, decimalSep,
+                        timeUnit)
         return fig
 
     def plot_time_dB(self, xLabel:str=None, yLabel:str=None,
                 yLim:list=None, xLim:list=None, title:str=None,
-                decimalSep:str=','):
+                decimalSep:str=',', timeUnit:str='s'):
         """Plots the signal in decibels in time domain.
 
         xLabel, yLabel, and title are saved for the next plots when provided.
@@ -476,6 +481,10 @@ class SignalObj(_base.PyTTaObj):
 
                 >>> decimalSep = ',' # in Brazil
 
+            * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
         Return:
         --------
 
@@ -502,7 +511,8 @@ class SignalObj(_base.PyTTaObj):
                 if self.timedBTitle is not None:
                     title = self.timedBTitle
 
-        fig = plot.time_dB((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time_dB((self,), xLabel, yLabel, yLim, xLim, title,
+                           decimalSep, timeUnit)
         return fig
 
     def plot_freq(self, smooth:bool=False, xLabel:str=None, yLabel:str=None,
@@ -1475,11 +1485,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
         del f
         return S12, S11
 
+
 def _make_rms_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
     newFreqSignal[:,:] = freqSignal / 2**(1/2)
     newFreqSignal[0,:] = freqSignal[0,:] * 2**(1/2)
     return newFreqSignal
+
 
 def _make_pk_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)

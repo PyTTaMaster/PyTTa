@@ -226,7 +226,8 @@ def peak_time(signal):
         return peaks_time[0]
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in time domain.
 
     Saves xLabel, yLabel, and title when provided for the next plots.
@@ -261,6 +262,9 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
     Return:
     --------
 
@@ -268,13 +272,15 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     """
     realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
     if len(realSigObjs) > 0:
-        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep, timeUnit)
         return fig
     else:
         return
 
 def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in decibels in time domain.
     
     Parameters (default), (type):
@@ -307,6 +313,10 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
     Return:
     --------
 
@@ -316,7 +326,7 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
     if len(realSigObjs) > 0:
         fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
-                           decimalSep)
+                           decimalSep, timeUnit)
         return fig
     else:
         return
