@@ -3,5 +3,6 @@ h5py==2.10.0
 numba==0.46.0
 numpy==1.17.4
 scipy==1.3.3
+libportaudio2>=19
 sounddevice==0.3.14
 SoundFile==0.10.3.post1
