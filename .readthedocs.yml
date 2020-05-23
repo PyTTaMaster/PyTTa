@@ -14,9 +14,7 @@ sphinx:
 #  configuration: mkdocs.yml
 
 # Optionally build your docs in additional formats such as PDF
-formats:
-  - html
-  - pdf
+formats: all
 
 # Manually added conda environment configuration
 conda:
