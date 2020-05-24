@@ -726,9 +726,9 @@ def analyse(obj, *params,
     else:
         SigObj = obj
     
-    if obj.numChannels > 1:
+    if SigObj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
-    samplingRate = obj.samplingRate
+    samplingRate = SigObj.samplingRate
     
     SigObj = crop_IR(SigObj, IREndManualCut)
 

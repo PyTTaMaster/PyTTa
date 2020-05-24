@@ -74,11 +74,11 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
     Parameters:
     ------------
 
-        timeLength (float = 0):
+        * timeLength (float = 0):
             Value, in seconds, of the time duration of the signal or
             recording.
 
-        samplingRate (int = 1):
+        * samplingRate (int = 1):
             Value, in samples per second, that the data will be captured
             or emitted.
 
@@ -235,7 +235,7 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel (None), (str):
@@ -286,7 +286,7 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel ('Time [s]'), (str):
@@ -340,7 +340,7 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
         
         * xLabel ('Time [s]'), (str):
@@ -391,7 +391,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
     Parameters (default), (type):
     -----------------------------
 
-        * *analyses (), (SignalObj):
+        * analyses (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
         
         * xLabel ('Time [s]'), (str):
@@ -460,7 +460,7 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * winType ('hann'), (str):
