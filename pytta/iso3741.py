@@ -95,8 +95,8 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
-        # if not sigObj.channels[firstChNum].calibCheck:
-        #     raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
+        if not sigObj.channels[firstChNum].calibCheck:
+            raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
         # Cutting the IR
         if IRManualCut is not None:
             sigObj.crop(0, IRManualCut)
@@ -111,12 +111,9 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
                     maxFreq=maxFreq)[:,1]
         Leq = []
         for chIndex in range(hSignal.numChannels):
-            # Leq.append(
-            #     10*np.log10(np.mean(hSignal.timeSignal[:,chIndex]**2)/
-            #                 (2e-5**2)))
             Leq.append(
-                10*np.log10(np.trapz(y=hSignal.timeSignal[:,chIndex]**2/(2e-5**2),
-                                     x=hSignal.timeVector)))
+                10*np.log10(np.mean(hSignal.timeSignal[:,chIndex]**2)/
+                            (2e-5**2)))
         Leq = Analysis(anType='mixed', nthOct=nthOct,
                            minBand=float(bands[0]),
                            maxBand=float(bands[-1]), data=Leq,
