@@ -6,9 +6,16 @@ PyTTa ISO3741 Analysis:
     the acoustic power of a source.
 
     For now only the calculation of the mean time-average sound pressure level
-    among the microphone positions is implemented. In the future we hope the community
-    keep developing this module in order to provide all the calculation needed
-    for measurements acordding to this standard.
+    among the microphone positions is implemented. In the future we hope the
+    community keep developing this module in order to provide all the
+    calculation needed for measurements acordding to this standard.
+
+    Available functions:
+    ---------------------
+
+        >>> pytta.iso3741.Lp_ST()
+
+    For further information, check the function specific documentation.
 
 """
 
@@ -39,10 +46,34 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     Calculate from the provided list of one channel SignalObjs the mean 
     one-third-octave band time-averaged sound pressure level in the test room
     with the noise source under test in operation, Lp(ST), and the standard
-    deviation, Sm, for the preliminary measurements.
+    deviation, Sm, for the preliminary measurements, located at error property
+    of the returned pytta.Analysis.
 
     Correction for background noise not implemented because of the UFSM
     reverberation chamber's good isolation.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * sigObjList (), (list):
+            A list containing SignalObjs of each measurement position.
+
+        * nthOct (), (int):
+            The number of fractions per octave;
+        
+        * minFreq (), (int | float):
+            The exact or approximated start band frequency;
+        
+        * maxFreq (), (int | float):
+            The exact or approximated stop band frequency;
+
+        * IRManualCut (None), (int | float):
+            Optional manual IR cut in seconds.
+
+    Returns:
+    ---------
+
+        pytta.Analysis object.
 
     """
     # Code snippet to guarantee that generated object name is
@@ -64,8 +95,8 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
-        # if not sigObj.channels[firstChNum].calibCheck:
-        #     raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
+        if not sigObj.channels[firstChNum].calibCheck:
+            raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
         # Cutting the IR
         if IRManualCut is not None:
             sigObj.crop(0, IRManualCut)

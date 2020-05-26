@@ -85,7 +85,17 @@ class Analysis(RICI):
 
         * bands (NumPy array):
             The bands central frequencies.
+
+
+    Properties:
+    -----------
+
+        * minBand, (int | float):
+            When a new limit is setted data is automatic adjusted.
         
+        * maxBand, (int | float):
+            When a new limit is setted data is automatic adjusted.
+    
     
     Methods:
     --------
@@ -113,8 +123,8 @@ class Analysis(RICI):
         super().__init__()
         self.anType = anType
         self.nthOct = nthOct
-        self.minBand = minBand
-        self.maxBand = maxBand
+        self._minBand = minBand
+        self._maxBand = maxBand
         self.data = data
         self.dataLabel = dataLabel
         self.error = error
@@ -419,7 +429,7 @@ class Analysis(RICI):
                             "reverberation time, and must be a str value.")
         elif newType not in anTypes:
             raise ValueError(newType + " type not supported. May be 'RT, " +
-                             "'C' or 'D'.")
+                             "'C', 'D', 'G', 'L', or 'mixed'.")
         self.unit = anTypes[newType][0]
         self.anName = anTypes[newType][1]
         self._anType = newType
@@ -459,39 +469,63 @@ class Analysis(RICI):
     def minBand(self):
         """minimum octave fraction band.
 
+        When a new limit is setted data is automatic adjusted.
+
         Return:
         -------
 
             float.
         """
-        return self._bandMin
+        return self._minBand
 
     @minBand.setter
     def minBand(self, new):
         if type(new) is not int and type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
-        self._bandMin = new
+        if new in self.bands:
+            print("ATENTION! Deleting data below " + str(new) + " [Hz].")
+            self._minBand = new
+            self.data = self.data[int(np.where(self.bands==new)[-1]):]
+        else:
+            adjNew = self.bands[int(np.where(self.bands<=new)[-1])]
+            print("'" + str(new) + "' is not a valid band. " +
+                  "Taking the closest band: " + str(adjNew) + " [Hz].")
+            self._minBand = adjNew
+            self.data = self.data[int(np.where(self.bands==adjNew)[-1]):]
         return
 
     @property
     def maxBand(self):
         """maximum octave fraction band.
 
+        When a new limit is setted data is automatic adjusted.
+
         Return:
         -------
 
             float.
         """
-        return self._bandMax
+        return self._maxBand
 
     @maxBand.setter
     def maxBand(self, new):
         if type(new) is not int and type(new) is not float:
             raise TypeError("Frequency range values must \
                             be either int or float.")
-        self._bandMax = new
+        if new in self.bands:
+            print("ATENTION! Deleting data above " + str(new) + " [Hz].")
+            self._maxBand = new
+            self.data = self.data[:int(np.where(self.bands==new)[-1])+1]
+        else:
+            adjNew = self.bands[int(np.where(self.bands<=new)[-1])]
+            print("'" + str(new) + "' is not a valid band. " +
+                  "Taking the closest band: " + str(adjNew) + " [Hz].")
+            self._maxBand = adjNew
+            self.data = self.data[:int(np.where(self.bands==adjNew)[-1])+1]
         return
+        # self._bandMax = new
+        # return
     
     @property
     def range(self):
@@ -517,8 +551,8 @@ class Analysis(RICI):
         bands = FOF(nthOct=self.nthOct,
                     minFreq=self.minBand,
                     maxFreq=self.maxBand)[:,1]
-        self.minBand = float(bands[0])
-        self.maxBand = float(bands[-1])
+        self._minBand = float(bands[0])
+        self._maxBand = float(bands[-1])
         if not isinstance(newData, list) and \
             not isinstance(newData, np.ndarray):
             raise TypeError("'data' must be provided as a list or " +
@@ -690,9 +724,10 @@ class Analysis(RICI):
 
     def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
                   xLabel:str=None, yLabel:str=None,
-                  yLim:list=None, title:str=None, decimalSep:str=',',
+                  yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
                   barWidth:float=0.75, errorStyle:str=None,
-                  forceZeroCentering:bool=False):
+                  forceZeroCentering:bool=False, overlapBars:bool=False,
+                  color:list=None):
         """Plot the analysis data in fractinal octave bands.
 
         Parameters (default), (type):
@@ -712,8 +747,13 @@ class Analysis(RICI):
 
             * yLim (), (list):
                 inferior and superior limits.
-
+        
                 >>> yLim = [-100, 100]
+
+            * xLim (), (list):
+                bands limits.
+
+                >>> xLim = [100, 10000]
 
             * title (), (str):
                 plot title
@@ -732,6 +772,13 @@ class Analysis(RICI):
 
             * forceZeroCentering ('False'), bool:
                 force centered bars at Y zero.
+
+            * overlapBars ('False'), bool:
+                overlap bars. No side by side bars of different data.
+
+            * color (None), list:
+                list containing the color of each Analysis.
+
 
         Return:
         --------
@@ -766,7 +813,7 @@ class Analysis(RICI):
                 if self.barsTitle is not None:
                     title = self.barsTitle
 
-        fig = plot.bars((self,), xLabel, yLabel, yLim,
+        fig = plot.bars((self,), xLabel, yLabel, yLim, xLim,
                         self.title, decimalSep, barWidth, errorStyle,
-                        forceZeroCentering)
+                        forceZeroCentering, overlapBars, color)
         return fig

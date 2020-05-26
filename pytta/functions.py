@@ -96,11 +96,11 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
     Parameters:
     ------------
 
-        timeLength (float = 0):
+        * timeLength (float = 0):
             Value, in seconds, of the time duration of the signal or
             recording.
 
-        samplingRate (int = 1):
+        * samplingRate (int = 1):
             Value, in samples per second, that the data will be captured
             or emitted.
 
@@ -248,7 +248,8 @@ def peak_time(signal):
         return peaks_time[0]
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in time domain.
 
     Saves xLabel, yLabel, and title when provided for the next plots.
@@ -256,7 +257,7 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel (None), (str):
@@ -283,6 +284,9 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
     Return:
     --------
 
@@ -290,19 +294,21 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     """
     realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
     if len(realSigObjs) > 0:
-        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep, timeUnit)
         return fig
     else:
         return
 
 def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in decibels in time domain.
     
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel ('Time [s]'), (str):
@@ -329,6 +335,10 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
     Return:
     --------
 
@@ -338,7 +348,7 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
     if len(realSigObjs) > 0:
         fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
-                           decimalSep)
+                           decimalSep, timeUnit)
         return fig
     else:
         return
@@ -352,7 +362,7 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
         
         * xLabel ('Time [s]'), (str):
@@ -394,15 +404,16 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
         return
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
-              yLim:list=None, title:str=None, decimalSep:str=',',
+              yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
               barWidth:float=0.75, errorStyle:str=None,
-              forceZeroCentering:bool=False):
+              forceZeroCentering:bool=False, overlapBars:bool=False,
+              color:list=None):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
     -----------------------------
 
-        * *analyses (), (SignalObj):
+        * analyses (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
         
         * xLabel ('Time [s]'), (str):
@@ -415,6 +426,11 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
             inferior and superior limits.
 
             >>> yLim = [-100, 100]
+        
+        * xLim (), (list):
+            bands limits.
+
+            >>> xLim = [100, 10000]
 
         * title (), (str):
             plot title
@@ -433,6 +449,13 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 
         * forceZeroCentering ('False'), bool:
             force centered bars at Y zero.
+        
+        * overlapBars ('False'), bool:
+            overlap bars. No side by side bars of different data.
+
+        * color (None), list:
+            list containing the color of each Analysis.
+
 
     Return:
     --------
@@ -442,8 +465,9 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 
     analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
     if len(analyses) > 0:
-        fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
-            decimalSep, barWidth, errorStyle, forceZeroCentering)
+        fig = plot.bars(analyses, xLabel, yLabel, yLim, xLim, title,
+            decimalSep, barWidth, errorStyle, forceZeroCentering, overlapBars,
+            color)
         return fig
     else:
         return
@@ -458,7 +482,7 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * winType ('hann'), (str):

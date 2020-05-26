@@ -10,7 +10,6 @@ from pytta.classes._base import ChannelObj, ChannelsList
 from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse, Analysis
 from pytta import rooms
-from pytta import iso3741
 from pytta.functions import __h5_unpack as pyttah5unpck
 from pytta import h5utils as _h5
 import time
@@ -1068,10 +1067,11 @@ class MeasurementData(object):
             if not isinstance(msdThng, MeasuredThing):
                 raise TypeError("'roomir.calibrate_res' only works with " +
                                 "MeasuredThing objects.")
-            elif msdThng.kind not in ['roomres', 'noisefloor']:
+            elif msdThng.kind not in ['roomres', 'noisefloor',
+                                      'sourcerecalibration']:
                 print("-- Calibrated room response can only be calculated " + 
-                      "from a MeasuredThing of 'roomres' " +
-                      "kind.")
+                      "from a MeasuredThing of 'roomres', 'noisefloor', or " +
+                      "'sourcerecalibration' kind")
                 continue
             kind = msdThng.kind
 
@@ -1162,11 +1162,7 @@ class MeasurementData(object):
 
             # Construct the MeasuredThing
             print('- Constructing the new MeasuredThing.')
-            if kind == 'roomres':
-                newKind = 'calibrated-roomres'
-            if kind == 'noisefloor':
-                newKind = 'calibrated-noisefloor'
-
+            newKind = 'calibrated-' + kind
             CalibMsdThng = MeasuredThing(kind=newKind,
                                       arrayName=msdThng.arrayName,
                                       sourcePos=msdThng.sourcePos,
@@ -1695,6 +1691,70 @@ class MeasurementPostProcess(object):
         self.minFreq = minFreq
         self.maxFreq = maxFreq
 
+    def RT(self, roomirsGetDict, decay=20, IREndManualCut=None):
+        # Code snippet to guarantee that generated object name is
+        # the declared at global scope
+        # for frame, line in traceback.walk_stack(None):
+        for framenline in traceback.walk_stack(None):
+            # varnames = frame.f_code.co_varnames
+            varnames = framenline[0].f_code.co_varnames
+            if varnames is ():
+                break
+        # creation_file, creation_line, creation_function, \
+        #     creation_text = \
+        extracted_text = \
+            traceback.extract_stack(framenline[0], 1)[0]
+            # traceback.extract_stack(frame, 1)[0]
+        # creation_name = creation_text.split("=")[0].strip()
+        creation_name = extracted_text[3].split("=")[0].strip()
+
+        # TR in all positions and averagßes
+        # TR_avgs = {'S1R1': [Analysis_avg1, An_avg2, ..., An_avgn]}
+        TR_avgs = {}
+        roomirs = roomirsGetDict
+        for roomir in roomirs.values():
+            roomir.sourcePos = \
+                'Sx' if roomir.sourcePos is None else roomir.sourcePos
+            roomir.receiverPos = \
+                'Rx' if roomir.receiverPos is None else roomir.receiverPos
+            SR = roomir.sourcePos + roomir.receiverPos
+            if SR not in TR_avgs:
+                TR_avgs[SR] = []
+            for IR in roomir.measuredSignals:
+                TR_avgs[SR].append(rooms.analyse(IR, 'RT', decay,
+                                                 nthOct=self.nthOct,
+                                                 minFreq=self.minFreq,
+                                                 maxFreq=self.maxFreq,
+                                                 IREndManualCut=IREndManualCut))
+
+        # Statistics for TR
+        TR_CI = {}
+        for SR, TRs in TR_avgs.items():
+            TR_CI[SR] = []
+            if len(TRs) < 2:
+                TR_CI[SR] = None
+                continue
+            data = np.vstack([an.data for an in TRs])
+            for bandIdx in range(data.shape[1]):
+                TR_CI[SR].append(mean_confidence_interval(data[:,bandIdx])[1])
+
+        # Calculate mean G value
+        TR = {}
+        for SR, TRs in TR_avgs.items():
+            TRs[0].anType = 'L'
+            sum4avg = TRs[0]
+            for TRan in TRs[1:]:
+                TRan.anType = 'L'
+                sum4avg += TRan
+            meanTR = sum4avg/len(TRs)
+            meanTR.errorLabel = 'Confiança 95% dist. T-Student'
+            meanTR.error = TR_CI[SR]
+            meanTR.dataLabel = SR
+            TR[SR] = meanTR
+
+        TR['dictName'] = creation_name
+        return TR
+
     def G_Lps(self, recalibirsGetDict):
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -1735,13 +1795,16 @@ class MeasurementPostProcess(object):
         finalLpss = {}
         for name, Lpss in Lps_avgs.items():            
             sum4avg = Lpss[0]
+            LpsWindowLimits = [Lpss[0].windowLimits, Lpss[1].windowLimits]
             for Lps in Lpss[1:]:
                 sum4avg += Lps
+                LpsWindowLimits.append(Lps.windowLimits)
             Lps = sum4avg/len(Lpss)
             Lps.errorLabel = 'Confiança 95% dist. T-Student'
             Lps.error = Lps_CI[name]
             Lps.dataLabel = name
             Lps.creation_name = 'Lps_' + name
+            Lps.windowLimits = LpsWindowLimits
             finalLpss[name] = Lps
         finalLpss['dictName'] = creation_name
         return finalLpss
@@ -1768,6 +1831,10 @@ class MeasurementPostProcess(object):
         roomirs = roomirsGetDict
         Lpe_avgs = {}
         for roomir in roomirs.values():
+            roomir.sourcePos = \
+                'Sx' if roomir.sourcePos is None else roomir.sourcePos
+            roomir.receiverPos = \
+                'Rx' if roomir.receiverPos is None else roomir.receiverPos
             SR = roomir.sourcePos + roomir.receiverPos
             if SR not in Lpe_avgs:
                 Lpe_avgs[SR] = []
@@ -1795,12 +1862,26 @@ class MeasurementPostProcess(object):
         creation_name = extracted_text[3].split("=")[0].strip()
 
         SigObjs = []
-        for msdThng in roomirsGetDict.values():
-            SigObjs.extend([IR.systemSignal for IR in msdThng.measuredSignals])
-        Lpe_revCh = iso3741.Lp_ST(SigObjs, self.nthOct, self.minFreq,
-                                  self.maxFreq, IREndManualCut)
-        Lpe_revCh.creation_name = creation_name
-        return Lpe_revCh
+        if isinstance(roomirsGetDict, dict):
+            for msdThng in roomirsGetDict.values():
+                SigObjs.extend([IR.systemSignal for IR in msdThng.measuredSignals])
+        elif isinstance(roomirsGetDict, list):
+            SigObjs = roomirsGetDict
+        
+        Lpe_avgs = []
+        for IR in SigObjs:
+            Lpe_avgs.append(rooms.G_Lpe(IR, self.nthOct, self.minFreq,
+                                        self.maxFreq, IREndManualCut))
+        
+        Leq = 0
+        for L in Lpe_avgs:
+            Leq =  L + Leq
+        Lpe = Leq / len(Lpe_avgs)
+        Lpe.anType = 'mixed'
+        Lpe.unit = 'dB'
+        Lpe.creation_name = creation_name
+        
+        return Lpe
 
     def G(self, Lpe_avgs, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
         # Code snippet to guarantee that generated object name is
@@ -1859,7 +1940,7 @@ class MeasurementPostProcess(object):
         G['dictName'] = creation_name
         return G
     
-    def G_T_revCh(self, roomirsGetDict, IREndManualCut=None):
+    def G_T_revCh(self, roomirsGetDict, IREndManualCut=None, T=20):
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -1883,7 +1964,7 @@ class MeasurementPostProcess(object):
             for idx, avg in enumerate(msdThng.measuredSignals):
                 print("Calculating average {}".format(idx))
                 sigObj = avg.systemSignal
-                TR = rooms.analyse(sigObj, 'RT', 15, nthOct=self.nthOct,
+                TR = rooms.analyse(sigObj, 'RT', T, nthOct=self.nthOct,
                                    minFreq=self.minFreq,
                                    maxFreq=self.maxFreq,
                                    plotLundebyResults=False,

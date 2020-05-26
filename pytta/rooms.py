@@ -148,7 +148,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                    np.log10(
                             np.mean(timeWinData[-int(timeWinData.size/10):]))
 
-    # 3) regression
+    # 3) Calculate premilinar slope
     startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
     stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
                                   >= bgNoiseLevel + dBtoNoise)[0][-1]
@@ -418,8 +418,12 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
     #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
-
-    SigObj = cp.copy(IR.systemSignal)
+    if isinstance(IR, SignalObj):
+        SigObj = cp.copy(IR)
+    elif isinstance(IR, ImpulsiveResponse):
+        SigObj = cp.copy(IR.systemSignal)
+    else:
+        raise TypeError("'IR' must be an ImpulsiveResponse or SignalObj.")
     # Cutting the IR
     if IREndManualCut is not None:
         SigObj.crop(0, IREndManualCut)
@@ -494,7 +498,12 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
     #     raise ValueError("'IR' must be a calibrated ImpulsiveResponse")
-    SigObj = IR.systemSignal
+    if isinstance(IR, SignalObj):
+        SigObj = IR
+    elif isinstance(IR, ImpulsiveResponse):
+        SigObj = IR.systemSignal
+    else:
+        raise TypeError("'IR' must be an ImpulsiveResponse or SignalObj.")
     # Windowing the IR
     # dBtoOnSet = 20
     # dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
@@ -532,14 +541,16 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
                        maxBand=float(bands[-1]), data=Lps,
                        comment='Source recalibration method IR')
     LpsAnal.creation_name = creation_name
+    LpsAnal.windowLimits = ((sampleShift)/SigObj.samplingRate,
+                            (sampleShift+windowEnd)/SigObj.samplingRate)
     # Plot IR cutting
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                            projection='rectilinear', xscale='linear')
-    ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
-    ax.axvline(x=(sampleShift)/SigObj.samplingRate, linewidth=4, color='k')
-    ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate, linewidth=4, color='k')
-    ax.set_xlim([(sampleShift-100)/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
+    # fig = plt.figure(figsize=(10, 5))
+    # ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
+    #                         projection='rectilinear', xscale='linear')
+    # ax.plot(SigObj.timeVector, 10*np.log10(SigObj.timeSignal**2/2e-5**2))
+    # ax.axvline(x=(sampleShift)/SigObj.samplingRate, linewidth=4, color='k')
+    # ax.axvline(x=(sampleShift+windowEnd)/SigObj.samplingRate, linewidth=4, color='k')
+    # ax.set_xlim([(sampleShift-100)/SigObj.samplingRate, (sampleShift+windowEnd+100)/SigObj.samplingRate])
     return LpsAnal
 
 
@@ -715,9 +726,9 @@ def analyse(obj, *params,
     else:
         SigObj = obj
     
-    if obj.numChannels > 1:
+    if SigObj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
-    samplingRate = obj.samplingRate
+    samplingRate = SigObj.samplingRate
     
     SigObj = crop_IR(SigObj, IREndManualCut)
 

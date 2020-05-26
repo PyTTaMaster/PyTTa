@@ -31,8 +31,9 @@ import locale
 import numpy as np
 import scipy.signal as ss
 import copy as cp
+import decimal
 
-def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
+def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     """Plots a signal in time domain.
 
     Parameters (default), (type):
@@ -65,6 +66,9 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
             >>> decimalSep = ',' # in Brazil
 
+         * timeUnit ('s'), (str):
+            'ms' or 's'.
+
     Return:
     --------
 
@@ -79,8 +83,17 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
     else:
         raise ValueError("'decimalSep' must be the string '.' or ','.")
 
+    if timeUnit in ['s', 'seconds', 'S']:
+        timeScale = 1
+        timeUnit = 's'
+    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+        timeScale = 1000
+        timeUnit = 'ms'
+    else:
+        raise ValueError("'timeUnit' must be the string 's' or 'ms'.")
+
     if xLabel is None:
-        xLabel = 'Time [s]'
+        xLabel = 'Time ['+timeUnit+']'
     if yLabel is None:
         yLabel = 'Amplitude'
     if title is None:
@@ -99,8 +112,8 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
     curveData = _curve_data_extrator_time(sigObjs)
 
     for data in curveData:
-        ax.plot(data['x'], data['y'], label=data['label'])
-        yLimData = cp.copy(data['y'])
+        ax.plot(timeScale*data['x'], data['y'], label=data['label'])
+        yLimData = timeScale*cp.copy(data['y'])
         yLimData[np.isinf(yLimData)] = 0
         yLims = \
             np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
@@ -168,7 +181,7 @@ def _curve_data_extrator_time(sigObjs):
             })
     return curveData
 
-def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
+def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     """Plots a signal in decibels in time domain.
 
     Parameters (default), (type):
@@ -201,6 +214,10 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
     Return:
     --------
 
@@ -215,8 +232,17 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
     else:
         raise ValueError("'decimalSep' must be the string '.' or ','.")
 
+    if timeUnit in ['s', 'seconds', 'S']:
+        timeScale = 1
+        timeUnit = 's'
+    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+        timeScale = 1000
+        timeUnit = 'ms'
+    else:
+        raise ValueError("'timeUnit' must be the string 's' or 'ms'.")
+
     if xLabel is None:
-        xLabel = 'Time [s]'
+        xLabel = 'Time ['+timeUnit+']'
     if yLabel is None:
         yLabel = 'Magnitude'
     if title is None:
@@ -234,14 +260,15 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_time_dB(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
-        ax.plot(data['x'], dBSignal, label=data['label'])
+        dBSignal = 20*np.log10(np.abs(data['y']/np.sqrt(2))/data['dBRef'])
+        ax.plot(timeScale*data['x'], dBSignal, label=data['label'])
         yLimData = cp.copy(dBSignal)
         yLimData[np.isinf(yLimData)] = 0
         yLims = \
             np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
         xLims = \
-            np.vstack((xLims, [data['x'][0], data['x'][-1]]))
+            np.vstack((xLims, [timeScale*data['x'][0],
+                               timeScale*data['x'][-1]]))
     
     ax.set_xlabel(xLabel, fontsize=16)
     ax.set_ylabel(yLabel, fontsize=16)
@@ -378,7 +405,7 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_freq(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(data['y']/data['dBRef'])
+        dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
 
         if smooth:
             dBSignal = ss.savgol_filter(dBSignal, 31, 3)
@@ -464,8 +491,8 @@ def _curve_data_extractor_freq(sigObjs):
             })
     return curveData
 
-def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
-         errorStyle, forceZeroCentering):
+def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
+         errorStyle, forceZeroCentering, overlapBars, color):
     """Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
@@ -484,6 +511,11 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
             inferior and superior limits.
 
             >>> yLim = [-100, 100]
+        
+        * xLim (), (list):
+            bands limits.
+
+            >>> xLim = [100, 10000]
 
         * title (), (str):
             plot title
@@ -502,12 +534,26 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
         
         * forceZeroCentering ('False'), bool:
             force centered bars at Y zero.
+        
+        * overlapBars ('False'), bool:
+            overlap bars. No side by side bars of different data.
+        
+        * color (None), list:
+            list containing the color of each Analysis.
+
 
     Return:
     --------
 
         matplotlib.figure.Figure object.
     """
+    if isinstance(color, list):
+        if len(color) != len(analyses):
+            raise ValueError("'color' must be a list with the same number of " +
+                             "elements than analyses.")
+    else:
+        color = [None for an in analyses]
+
     if errorStyle == 'laza':
         ecolor='limegreen'
         elinewidth=20
@@ -548,9 +594,19 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     plt.title(title, fontsize=20)
 
     yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
-
+    
     curveData = _curve_data_extractor_bars(analyses)
     
+    if xLim is not None:
+        xLimIdx0 = np.where(curveData[0]['bands']<=xLim[0])
+        xLimIdx0 = 0 if len(xLimIdx0[0]) == 0 else xLimIdx0[0][-1]
+        xLimIdx1 = np.where(curveData[0]['bands']>=xLim[1])
+        xLimIdx1 = len(curveData[0]['bands'])-1 \
+                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]    
+        xLimIdx = [xLimIdx0, xLimIdx1+1]
+    else:
+        xLimIdx = [0, len(curveData[0]['data'])]
+
     dataSetLen = len(curveData)
     # checking negative plot necessity
     minVal = np.inf
@@ -582,10 +638,16 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
         if negativeCounter < (len(data['data'])*dataSetLen)//2 or \
             forceZeroCentering:
             minVal = 0
-        
-        ax.bar(fbar + barWidth*dtIdx/dataSetLen,
-            -minVal + data['data'],
-            width=barWidth/dataSetLen, label=label, zorder=-1)
+        if overlapBars:
+            ax.bar(fbar,
+                -minVal + data['data'],
+                width=barWidth, label=label, zorder=-1,
+                color=color[dtIdx])
+        else:
+            ax.bar(fbar + barWidth*dtIdx/dataSetLen,
+                -minVal + data['data'],
+                width=barWidth/dataSetLen, label=label, zorder=-1,
+                color=color[dtIdx])
 
         if data['error'] is not None:
             ax.errorbar(fbar + barWidth*dtIdx/dataSetLen,
@@ -605,18 +667,24 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
 
         ylimInfData = -minVal + data['data'] - error
         ylimInfData = \
-            [value for value in ylimInfData if not np.isinf(value)]
+            [value for value in ylimInfData[xLimIdx[0]:xLimIdx[1]] if not np.isinf(value)]
         ylimInfMargin = \
             np.abs((np.nanmax(ylimInfData) - np.nanmin(ylimInfData)) / 20)
         ylimInf = np.nanmin(ylimInfData) - ylimInfMargin
     
         ylimSupData = -minVal + data['data'] + error
         ylimSupData = \
-            [value for value in ylimSupData if not np.isinf(value)]
+            [value for value in ylimSupData[xLimIdx[0]:xLimIdx[1]] if not np.isinf(value)]
         ylimSupMargin = \
             np.abs((np.nanmax(ylimSupData) - np.nanmin(ylimSupData)) / 20)
         ylimSup = np.nanmax(ylimSupData) + ylimSupMargin
-
+        
+        if ylimSup == ylimInf:
+            if ylimSup > 0:
+                ylimInf = 0
+            else:
+                ylimSup = 0
+        
         yLims = \
             np.vstack((yLims,
                         [ylimInf, ylimSup]))
@@ -624,6 +692,7 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
     ax.set_ylim(yLim)
+    
     ax.autoscale(enable=True, axis='x', tight=True)
     
     ax.grid(color='gray', linestyle='-.', linewidth=0.4)
@@ -634,11 +703,15 @@ def bars(analyses, xLabel, yLabel, yLim, title, decimalSep, barWidth,
     ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                         rotation=45, fontsize=14)
 
-    def neg_tick(x, pos):
-        return '%.1f' % (x + minVal if x != minVal else 0)
-    formatter = ticker.FuncFormatter(neg_tick)
+    # def neg_tick(x, pos):
+    #     return '%.1f' % (x + minVal if x != minVal else 0)
+    # formatter = ticker.FuncFormatter(neg_tick)
+    formatter = ticker.ScalarFormatter()
     ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
     ax.yaxis.set_major_formatter(formatter)
+
+    if xLim is not None:
+        ax.set_xlim([xLimIdx[0],xLimIdx[1]+1])
 
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)        
