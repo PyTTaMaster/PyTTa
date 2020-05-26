@@ -7,12 +7,16 @@ Welcome to PyTTa's documentation!
 =================================
 
 .. automodule:: pytta
-   :members:
-   
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   generate
+   functions
+   rooms
+   plot
+   properties
+   classes/index
+   apps/index
+   
 
 
 
@@ -22,3 +26,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
