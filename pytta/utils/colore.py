@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+Módulo simples para colorir textos
+
+@author: João Vitor G. Paes
+"""
+
 
 
 __STRCLR = {
@@ -50,14 +56,10 @@ _COLORS = {
 
 
 class Error(Exception):
-    """Error interface."""
-
     pass
 
 
 class ColorNameError(Error):
-    """Color name error."""
-
     def __init__(self):
         """
         Error raised if color not implemented.
@@ -70,78 +72,7 @@ class ColorNameError(Error):
         return
 
 
-def _color_code(which: str, color: str) -> str:
-    return f'\x1b[{_LINEOBJ[which]}{_COLORS[color]}m'
-
-
-def _color_clear() -> str:
-    return _color_code("clear", "clear")
-
-
-def _pintor(text: str, which: str, color: str) -> str or Error:
-    try:
-        return f'{_color_code(which, color)}{text}{_color_clear()}'
-    except KeyError:
-        raise ColorNameError
-
-
-def pinta_texto(text: str, color: str) -> str:
-    """
-    Pinta o texto com a cor escolhida.
-
-    Args:
-        text (str): O texto em si.
-        color (str): A cor escolhida.
-
-    Returns:
-        str: Texto colorido.
-
-    """
-    return _pintor(text, "font", color)
-
-
-def pinta_fundo(text: str, color: str) -> str:
-    """
-    Pinta o fundo do texto com a cor escolhida.
-
-    Args:
-        text (str): O texto em si.
-        color (str): A cor escolhida.
-
-    Returns:
-        str: Texto com fundo colorido.
-
-    """
-    return _pintor(text, "background", color)
-
-
-def colorir(texto: str, fntclr: str = None, bgrclr: str = None) -> str:
-    """
-    Retorna o texto colorido nas cores escolhidas.
-
-    Caso nenhuma cor seja informada, retorna o texto sem alterações.
-
-    Args:
-        texto (str): DESCRIPTION.
-        fntclr (str, optional): Font color. Defaults to None.
-        bgrclr (str, optional): Background color. Defaults to None.
-
-    Returns:
-        texto (str): Colored font and background.
-
-    """
-    if fntclr is None:
-        fntclr = "clear"
-    elif bgrclr is None:
-        bgrclr = "clear"
-    texto = pinta_texto(texto, fntclr)
-    texto = pinta_fundo(texto, bgrclr)
-    return texto
-
-
 class ColorStr(object):
-    """Colore textos."""
-
     def __init__(self, font: str = "clear", back: str = "clear") -> None:
         """
         Pintor de linhas.
@@ -221,3 +152,74 @@ class ColorStr(object):
     def back(self) -> str:
         """Alias for bgrclr."""
         return self.bgrclr
+
+
+def _color_code(which: str, color: str) -> str:
+    return f'\x1b[{_LINEOBJ[which]}{_COLORS[color]}m'
+
+
+def _color_clear() -> str:
+    return _color_code("clear", "clear")
+
+
+def _pintor(text: str, which: str, color: str) -> str or Error:
+    try:
+        return f'{_color_code(which, color)}{text}{_color_clear()}'
+    except KeyError:
+        raise ColorNameError
+
+
+def pinta_texto(text: str, color: str) -> str:
+    """
+    Pinta o texto com a cor escolhida.
+
+    Args:
+        text (str): O texto em si.
+        color (str): A cor escolhida.
+
+    Returns:
+        str: Texto colorido.
+
+    """
+    return _pintor(text, "font", color)
+
+
+def pinta_fundo(text: str, color: str) -> str:
+    """
+    Pinta o fundo do texto com a cor escolhida.
+
+    Args:
+        text (str): O texto em si.
+        color (str): A cor escolhida.
+
+    Returns:
+        str: Texto com fundo colorido.
+
+    """
+    return _pintor(text, "background", color)
+
+
+def colorir(texto: str, fntclr: str = None, bgrclr: str = None) -> str:
+    """
+    Retorna o texto colorido nas cores escolhidas.
+
+    Caso nenhuma cor seja informada, retorna o texto sem alterações.
+
+    Args:
+        texto (str): DESCRIPTION.
+        fntclr (str, optional): Font color. Defaults to None.
+        bgrclr (str, optional): Background color. Defaults to None.
+
+    Returns:
+        texto (str): Colored font and background.
+
+    """
+    if fntclr is None:
+        fntclr = "clear"
+    elif bgrclr is None:
+        bgrclr = "clear"
+    texto = pinta_texto(texto, fntclr)
+    texto = pinta_fundo(texto, bgrclr)
+    return texto
+
+

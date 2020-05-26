@@ -9,14 +9,14 @@ Welcome to PyTTa's documentation!
 .. automodule:: pytta
 
 .. toctree::
-   generate
-   functions
-   rooms
-   plot
-   properties
-   classes/index
-   apps/index
-   utils/index   
+   pyttadoc/generate
+   pyttadoc/functions
+   pyttadoc/rooms
+   pyttadoc/plot
+   pyttadoc/properties
+   pyttadoc/classes/index
+   pyttadoc/apps/index
+   pyttadoc/utils/index   
 
 
 
