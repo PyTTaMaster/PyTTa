@@ -44,7 +44,7 @@ extensions = [
     'sphinx.ext.napoleon'
     ]
 
-autoclass_content = 'init'
+#autoclass_content = 'init'
 autodoc_member_order = 'bysource'
 
 # Napoleon settings

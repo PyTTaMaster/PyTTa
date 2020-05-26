@@ -73,6 +73,8 @@ class ColorNameError(Error):
 
 
 class ColorStr(object):
+    """Color string"""
+    
     def __init__(self, font: str = "clear", back: str = "clear") -> None:
         """
         Pintor de linhas.
@@ -95,9 +97,6 @@ class ColorStr(object):
         self.fntclr = font
         self.bgrclr = back
         return
-
-    # def __str__(self):
-    #     return
 
     def __call__(self, text: str = None) -> str:
         """
