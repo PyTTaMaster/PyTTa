@@ -16,7 +16,7 @@ Welcome to PyTTa's documentation!
    properties
    classes/index
    apps/index
-   
+   utils/index   
 
 
 
