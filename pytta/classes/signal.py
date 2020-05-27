@@ -13,7 +13,7 @@ from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
 from pytta import h5utils as _h5
-from pytta.frequtils import fractional_octave_frequencies as FOF
+from pytta.utils import fractional_octave_frequencies as FOF
 from pytta import plot
 import copy as cp
 
@@ -242,7 +242,7 @@ class SignalObj(_base.PyTTaObj):
     @property
     def freqSignal(self):
         """
-        Return half of the RMS spectrum. Normalized in case of a power signal.  
+        Return half of the RMS spectrum. Normalized in case of a power signal.
         """
         return self._freqSignal
 
@@ -412,7 +412,7 @@ class SignalObj(_base.PyTTaObj):
                 may be dot or comma.
 
                 >>> decimalSep = ',' # in Brazil
-            
+
              * timeUnit ('s'), (str):
                 'ms' or 's'.
 
@@ -1084,9 +1084,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
         * regularization (bool), (True):
             Do Kirkeby regularization with a packing filter for the impulsive
-            response's time signature. Details in 'Advancements in impulsive 
+            response's time signature. Details in 'Advancements in impulsive
             response measurements by sine sweeps' Farina, 2007.
-    
+
         * ir (SignalObj) (optional):
             An calculated impulsive response. Optional if 'excitation' and
             'recording' are provided;

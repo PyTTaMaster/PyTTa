@@ -1,48 +1,52 @@
 # -*- coding: utf-8 -*-
 """
-Object Oriented Python in Technical Acoustics
-==============================================
+This is a package developed to perform acoustic and vibration measurements
+and signal analysis.
 
-Autores:
+Our current dependencies are:
+
+    * Numpy
+    * Scipy
+    * Matplotlib
+    * Numba
+    * h5py
+    * SoundDevice
+    * SoundFile
+
+We recommend using the Anaconda Python distribution.
+
+
+You can install directly from PyPI for a stable but rarely updated version:
+
+    ~ $ pip install pytta
+
+Or directly from the repository with:
+
+    ~ $ pip install git+https://github.com/pyttamaster/pytta.git
+
+
+The documentation is available at:
+
+    https://pytta.readthedocs.io/
+
+
+To get started, try:
+
+    >>> import pytta
+    >>> pytta.default()
+    >>> pytta.list_devices()
+
+
+For further information, check the documentation.
+
+
+Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
     Matheus Lazarin Alberto, matheus.lazarin@eac.ufsm.br
 
-
-PyTTa:
-
-    This is a package developed to perform acoustic and vibration measurements
-    and signal analysis. In order to provide such functionalities we require a
-    few packages to be installed:
-
-    - Numpy
-    - Scipy
-    - Matplotlib
-    - PortAudio API
-    - Sounddevice
-
-    We also recommend using the Anaconda Python distribution, it's not a
-    mandatory issue, but you should.
-
-
-    To begin, try:
-
-        >>> import pytta
-        >>> pytta.default()
-        >>> pytta.list_devices()
-
-    You can find out everything available reading the submodules documentation:
-
-        >>> pytta.classes
-        >>> pytta.generate
-        >>> pytta.functions
-        >>> pytta.properties
-
-For further information, check the specific module, class, method or function
-documentation.
 """
 
 # Importing .py files as submodules
-from . import frequtils
 from .properties import default
 
 # Instantiate the Default parameters to be loaded by other
@@ -77,7 +81,6 @@ __all__ = [  # Apps
            # Submodules
            'generate',
            'utils',
-           'frequtils',
            'h5utils',
            'iso3741',
            'rooms',

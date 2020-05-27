@@ -3,8 +3,8 @@
 import numpy as np
 from scipy import signal as ss
 from pytta.classes import SignalObj
-from pytta.frequtils import fractional_octave_frequencies, freq_to_band, \
-                            normalize_frequencies, freqs_to_center_and_edges
+from pytta.utils import fractional_octave_frequencies, freq_to_band, \
+                        normalize_frequencies, freqs_to_center_and_edges
 
 class OctFilter(object):
     """
@@ -53,8 +53,8 @@ class OctFilter(object):
 
     def get_sos_filters(self) -> np.ndarray:
         freqs = fractional_octave_frequencies(self.nthOct,
-                                              self.minFreq,
-                                              self.maxFreq,
+                                              (self.minFreq,
+                                               self.maxFreq),
                                               self.refFreq,
                                               self.base)
         self.center, edges = freqs_to_center_and_edges(freqs)
