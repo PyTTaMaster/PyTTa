@@ -1,3 +1,5 @@
+Properties
+==========
 
 .. currentmodule:: pytta
 

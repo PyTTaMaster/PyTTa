@@ -1,3 +1,5 @@
+Generate
+========
 
 .. currentmodule:: pytta
 

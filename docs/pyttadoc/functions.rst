@@ -1,3 +1,5 @@
+Functions
+=========
 
 .. currentmodule:: pytta
 

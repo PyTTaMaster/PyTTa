@@ -1,3 +1,5 @@
+Plot
+====
 
 .. currentmodule:: pytta
 
