@@ -1,34 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Generate:
-----------
+This submodule provides the tools for instantiating the measurement and
+signal objects to be used. We strongly recommend the use of this submodule
+instead of directly instantiating classes, except when necessary.
 
-@Autores:
+The signal generating functions already have set up a few good practices
+on signal generation and reproduction through audio IO interfaces, like
+silences at beginning and ending of the signal, as well as fade ins and
+fade out to avoid abrupt audio currents from flowing and causing undesired
+peaks at start/ending of reproduction.
+
+On the measurement side, it tries to set up the environment by already
+giving excitation signals, or by generating a SWEEP from default values
+
+User intended functions:
+
+    >>> pytta.generate.sin()
+    >>> pytta.generate.sweep()
+    >>> pytta.generate.noise()
+    >>> pytta.generate.impulse()
+    >>> pytta.generate.measurement()
+
+For further information see the specific function documentation
+
+@authors:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 
-    This submodule provides the tools for instantiating the measurement and
-    signal objects to be used. We strongly recommend the use of this submodule
-    instead of directly instantiating classes, except when necessary.
-
-    The signal generating functions already have set up a few good practices
-    on signal generation and reproduction through audio IO interfaces, like
-    silences at beginning and ending of the signal, as well as fade ins and
-    fade out to avoid abrupt audio currents from flowing and causing undesired
-    peaks at start/ending of reproduction.
-
-    On the measurement side, it tries to set up the environment by already
-    giving excitation signals, or by generating a SWEEP from default values
-
-    User intended functions:
-
-        >>> pytta.generate.sin()
-        >>> pytta.generate.sweep()
-        >>> pytta.generate.noise()
-        >>> pytta.generate.impulse()
-        >>> pytta.generate.measurement()
-
-    For further information see the specific function documentation
 """
 
 

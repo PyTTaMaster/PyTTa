@@ -1,23 +1,23 @@
-""" 
-plot:
-------
-
-    This plot module receives organized raw data (numpy arrays, lists and
-    strings) and plot it through its functions. It is used by the function,
-    signal, and analysis modules.
-
-    Available functions:
-    ---------------------
-
-        >>> plot.time(curveData, xLabel, yLabel, yLim, xLim, title, decimalSep)
-        >>> plot.freq(curveData, smooth, xLabel, yLabel, yLim, xLim, title,
-                      decimalSep)
-        >>> plot.bars(curveData, xLabel, yLabel, yLim, title, decimalSep,
-                      barWidth, errorStyle)
-
-    For further information check the function especific documentation.
-    
 """
+Data visualization module.
+
+This plot module receives organized raw data (numpy arrays, lists and
+strings) and plot it through its functions. It is used by the function,
+signal, and analysis modules.
+
+Available functions:
+---------------------
+
+    >>> plot.time(curveData, xLabel, yLabel, yLim, xLim, title, decimalSep)
+    >>> plot.freq(curveData, smooth, xLabel, yLabel, yLim, xLim, title,
+                  decimalSep)
+    >>> plot.bars(curveData, xLabel, yLabel, yLim, title, decimalSep,
+                  barWidth, errorStyle)
+
+For further information check the function especific documentation.
+
+"""
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from matplotlib.collections import PolyCollection, LineCollection
@@ -33,15 +33,17 @@ import scipy.signal as ss
 import copy as cp
 import decimal
 
+
 def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
-    """Plots a signal in time domain.
+    """
+    Plots a signal in time domain.
 
     Parameters (default), (type):
     ------------------------------
 
         * sigObjs (), (list):
             a list with SignalObjs
-        
+
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -119,7 +121,7 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
             np.vstack((yLims, [np.nanmin(yLimData), np.nanmax(yLimData)]))
         xLims = \
             np.vstack((xLims, [data['x'][0], data['x'][-1]]))
-    
+
     ax.set_xlabel(xLabel, fontsize=16)
     ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
@@ -140,12 +142,13 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)
-    
+
     return fig
+
 
 def _curve_data_extrator_time(sigObjs):
     """
-    Extracts data from all curves from each SignalObj
+    Extracts data from all curves from each SignalObj.
 
     Parameter (default), (type):
     -----------------------------
@@ -173,7 +176,7 @@ def _curve_data_extrator_time(sigObjs):
             label = '{} [{}]'.format(sigObj.channels[chNum].name,
                                      sigObj.channels[chNum].unit)
             x = sigObj.timeVector
-            y = sigObj.timeSignal[:, chIndex]            
+            y = sigObj.timeSignal[:, chIndex]
             curveData.append({
                 'label':label,
                 'x':x,
@@ -181,15 +184,17 @@ def _curve_data_extrator_time(sigObjs):
             })
     return curveData
 
+
 def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
-    """Plots a signal in decibels in time domain.
+    """
+    Plots a signal in decibels in time domain.
 
     Parameters (default), (type):
     ------------------------------
 
         * sigObjs (), (list):
             a list with SignalObjs.
-        
+
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -269,7 +274,7 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
         xLims = \
             np.vstack((xLims, [timeScale*data['x'][0],
                                timeScale*data['x'][-1]]))
-    
+
     ax.set_xlabel(xLabel, fontsize=16)
     ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
@@ -290,12 +295,13 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)
-    
+
     return fig
+
 
 def _curve_data_extractor_time_dB(sigObjs):
     """
-    Extracts data from all curves from each SignalObj
+    Extracts data from all curves from each SignalObj.
 
     Parameter (default), (type):
     -----------------------------
@@ -336,8 +342,10 @@ def _curve_data_extractor_time_dB(sigObjs):
             })
     return curveData
 
+
 def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
-    """Plots a signal decibel magnitude in frequency domain.
+    """
+    Plots a signal decibel magnitude in frequency domain.
 
     Parameters (default), (type):
     -----------------------------
@@ -409,7 +417,7 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
         if smooth:
             dBSignal = ss.savgol_filter(dBSignal, 31, 3)
-        
+
         ax.semilogx(data['x'], dBSignal, label=data['label'])
 
         yLimData = dBSignal
@@ -438,12 +446,13 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)
-    
+
     return fig
+
 
 def _curve_data_extractor_freq(sigObjs):
     """
-    Extracts data from all curves from each SignalObj
+    Extracts data from all curves from each SignalObj.
 
     Parameter (default), (type):
     -----------------------------
@@ -491,16 +500,18 @@ def _curve_data_extractor_freq(sigObjs):
             })
     return curveData
 
+
 def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
          errorStyle, forceZeroCentering, overlapBars, color):
-    """Plot the analysis data in fractinal octave bands.
+    """
+    Plot the analysis data in fractinal octave bands.
 
     Parameters (default), (type):
     -----------------------------
 
        * analyses (), (list):
             a list with Analyses.
-        
+
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -511,7 +522,7 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
             inferior and superior limits.
 
             >>> yLim = [-100, 100]
-        
+
         * xLim (), (list):
             bands limits.
 
@@ -526,18 +537,18 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
             >>> decimalSep = ',' # in Brazil
 
         * barWidth (0.75), float:
-            width of the bars from one fractional octave band. 
+            width of the bars from one fractional octave band.
             0 < barWidth < 1.
 
         * errorStyle ('standard'), str:
             error curve style. May be 'laza' or None/'standard'.
-        
+
         * forceZeroCentering ('False'), bool:
             force centered bars at Y zero.
-        
+
         * overlapBars ('False'), bool:
             overlap bars. No side by side bars of different data.
-        
+
         * color (None), list:
             list containing the color of each Analysis.
 
@@ -581,10 +592,10 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
 
     if yLabel is None:
         yLabel = 'Modulus'
-    
+
     if title is None:
         title = ''
-    
+
     fig = plt.figure(figsize=(10, 5))
     ax = fig.add_axes([0.10, 0.21, 0.88, 0.72], polar=False,
                         projection='rectilinear', xscale='linear')
@@ -594,15 +605,15 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     plt.title(title, fontsize=20)
 
     yLims = np.array([np.nan, np.nan], dtype=float, ndmin=2)
-    
+
     curveData = _curve_data_extractor_bars(analyses)
-    
+
     if xLim is not None:
         xLimIdx0 = np.where(curveData[0]['bands']<=xLim[0])
         xLimIdx0 = 0 if len(xLimIdx0[0]) == 0 else xLimIdx0[0][-1]
         xLimIdx1 = np.where(curveData[0]['bands']>=xLim[1])
         xLimIdx1 = len(curveData[0]['bands'])-1 \
-                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]    
+                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]
         xLimIdx = [xLimIdx0, xLimIdx1+1]
     else:
         xLimIdx = [0, len(curveData[0]['data'])]
@@ -671,20 +682,20 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         ylimInfMargin = \
             np.abs((np.nanmax(ylimInfData) - np.nanmin(ylimInfData)) / 20)
         ylimInf = np.nanmin(ylimInfData) - ylimInfMargin
-    
+
         ylimSupData = -minVal + data['data'] + error
         ylimSupData = \
             [value for value in ylimSupData[xLimIdx[0]:xLimIdx[1]] if not np.isinf(value)]
         ylimSupMargin = \
             np.abs((np.nanmax(ylimSupData) - np.nanmin(ylimSupData)) / 20)
         ylimSup = np.nanmax(ylimSupData) + ylimSupMargin
-        
+
         if ylimSup == ylimInf:
             if ylimSup > 0:
                 ylimInf = 0
             else:
                 ylimSup = 0
-        
+
         yLims = \
             np.vstack((yLims,
                         [ylimInf, ylimSup]))
@@ -692,9 +703,9 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
     ax.set_ylim(yLim)
-    
+
     ax.autoscale(enable=True, axis='x', tight=True)
-    
+
     ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
     ax.set_xticks(fbar+barWidth*(dataSetLen-1)/dataSetLen-
@@ -714,15 +725,16 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         ax.set_xlim([xLimIdx[0],xLimIdx[1]+1])
 
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
-        item.set_fontsize(14)        
-    
+        item.set_fontsize(14)
+
     ax.legend(loc='best', fontsize=13, framealpha=0.6)
-    
+
     return fig
+
 
 def _curve_data_extractor_bars(analyses):
     """
-    Extracts data from from each Analysis
+    Extracts data from from each Analysis.
 
     Parameter (default), (type):
     -----------------------------
@@ -742,7 +754,7 @@ def _curve_data_extractor_bars(analyses):
             - 'dataLabel', (), (str): data label;
             - 'error', (), (ndarray): error for each fractional octave band;
             - 'errorLabel', (), (str): error label;
-            
+
             >>> curveData = [{'bands':[100, 200, 400], 'data':[1, 5 ,7],
                             'dataLabel':'my precious data',
                             'error':[2e-5, 1, 3],
@@ -763,10 +775,12 @@ def _curve_data_extractor_bars(analyses):
             'errorLabel':errorLabel})
     return curveData
 
+
 def spectrogram(sigObjs, winType, winSize,
                 overlap, xLabel, yLabel, xLim, yLim,
                 title, decimalSep):
-    """Plots a signal spectrogram in frequency domain.
+    """
+    Plots a signal spectrogram in frequency domain.
 
     Parameters (default), (type):
     -----------------------------
@@ -847,8 +861,8 @@ def spectrogram(sigObjs, winType, winSize,
         ax.xaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=10))
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
         for item in (ax.get_xticklabels() + ax.get_yticklabels()):
-            item.set_fontsize(14)        
-        
+            item.set_fontsize(14)
+
         ax.set_xlabel(xLabel, fontsize=16)
         ax.set_ylabel(yLabel, fontsize=16)
 
@@ -858,9 +872,10 @@ def spectrogram(sigObjs, winType, winSize,
 
     return figs
 
+
 def _curve_data_extractor_spectrogram(sigObjs):
     """
-    Extracts data from all curves from each SignalObj
+    Extracts data from all curves from each SignalObj.
 
     Parameter (default), (type):
     -----------------------------
@@ -912,7 +927,8 @@ def _curve_data_extractor_spectrogram(sigObjs):
                 'maxFreq':maxFreq
             })
     return curveData
-    
+
+
 def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
                       winSize, dBRef):
     window = eval('ss.windows.' + winType)(winSize)
@@ -938,6 +954,7 @@ def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
             _spectrogram[:, N] = 20*np.log10(sliceMag)
 
     return _spectrogram, _specTime, _specFreq
+
 
 def waterfall(sigObjs, step=10, xLim:list=None,
               Pmin=20, Pmax=None, tmin=0, tmax=None, azim=-72, elev=14,
@@ -1115,9 +1132,10 @@ def waterfall(sigObjs, step=10, xLim:list=None,
             plt.rcParams.update(matplotlib.rcParamsDefault)
     return figs
 
+
 def _curve_data_extractor_waterfall(sigObjs):
     """
-    Extracts data from all curves from each SignalObj
+    Extracts data from all curves from each SignalObj.
 
     Parameter (default), (type):
     -----------------------------
@@ -1161,6 +1179,7 @@ def _curve_data_extractor_waterfall(sigObjs):
             })
     return curveData
 
+
 def _colored_lines(fig, ax, X, Y, Z, label, cmap='jet', bar=True):
     """
     Make a waterfall plot
@@ -1199,6 +1218,7 @@ def _colored_lines(fig, ax, X, Y, Z, label, cmap='jet', bar=True):
     cbar_ax = fig.axes[-1]
     cbar_ax.tick_params(labelsize=12)
 
+
 def _find_nearest(array, value):
     """
     Function to find closest frequency in frequency array.
@@ -1207,6 +1227,7 @@ def _find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return array[idx], idx
+
 
 def _polygon_under_graph(xlist, ylist, Pmin):
     """

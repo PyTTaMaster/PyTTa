@@ -1,47 +1,43 @@
 # -*- coding: utf-8 -*-
 """
-Properties:
-------------
+As to provide an user friendly signal measurement package, a few default
+values where assigned to the main classes and functions.
 
-@Autores:
+These values where set using a dict called "default", and are passed to all
+PyTTa functions through the Default class object
+
+    >>> import pytta
+    >>> pytta.default()
+
+The default values can be set differently using both declaring method, or
+the set_default() function
+
+    >>> pytta.default.propertyName = propertyValue
+    >>> pytta.default.set_defaults(propertyName1 = propertyValue1,
+    >>>                            ... ,
+    >>>                            propertyNameN = propertyValueN
+    >>>                            )
+
+The main difference is that using the set_default() function, a list of
+properties can be set at the same time
+
+The default device start as the one set default at the user's OS. We
+recommend changing it's value to the desired audio in/out device, as it
+can be identified using list_devices() method
+
+    >>> pytta.list_devices()
+
+@author:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-
-
-PyTTa Default Properties:
--------------------------
-
-    As to provide an user friendly signal measurement package, a few default
-    values where assigned to the main classes and functions.
-
-    These values where set using a dict called "default", and are passed to all
-    PyTTa functions through the Default class object
-
-        >>> import pytta
-        >>> pytta.default()
-
-    The default values can be set differently using both declaring method, or
-    the set_default() function
-
-        >>> pytta.default.propertyName = propertyValue
-        >>> pytta.default.set_defaults(propertyName1 = propertyValue1,
-        >>>                            ... ,
-        >>>                            propertyNameN = propertyValueN
-        >>>                            )
-
-    The main difference is that using the set_default() function, a list of
-    properties can be set at the same time
-
-    The default device start as the one set default at the user's OS. We
-    recommend changing it's value to the desired audio in/out device, as it
-    can be identified using list_devices() method
-
-        >>> pytta.list_devices()
 
 """
 import sounddevice as sd
+from typing import Any
+
 
 __default_device = [sd.default.device[0], sd.default.device[1]]
 """ Used only to hold the default audio I/O device at pytta import time"""
+
 
 default_ = {'samplingRate': 44100,
             'lengthDomain': 'samples',
@@ -59,59 +55,8 @@ default_ = {'samplingRate': 44100,
             }
 
 
-
 class Default(object):
-    """
-    Default:
-    ========
-
-        Holds default parameter values for the <pytta.generate> submodule's functions.
-
-
-    Attributes:
-    -----------
-
-        samplingRate:
-            Sampling frequency of the signal;
-        lengthDomain:
-            Information about the recording length. May be 'time' or 'samples';
-        fftDegree:
-            Adjusts the total number of samples to a base 2 number (numSamples = 2**fftDegree);
-        timeLength:
-            Total time duration of the signal (numSamples = samplingRate * timeLength);
-        _freqMin:
-            Smallest signal frequency of interest;
-        _freqMax:
-            Greatest signal frequency of interest;
-        freqLims['min', 'max']:
-            Frequencies of interest bandwidth limits;
-        device:
-            Devices used for input and output streaming of signals (Measurements only);
-        inputChannels:
-            Stream input channels of the input device in use (Measurements only);
-        outputChannels:
-            Stream output channels of the output device in use (Measurements only);
-        _startMargin:
-            Amount of silence time at signal's beginning (Signals only);
-        _stopMargin:
-            Amount of silence time at signal's ending (Signals only);
-        margins['start', 'stop']:
-            Beginning and ending's amount of time left for silence (Signals only);
-        comments:
-            Any commentary about the signal or measurement the user wants to add.
-
-
-    Methods:
-    --------
-
-        set_defaults(attribute1 = value1, attribute2 = value2, ... , attributeN = valueN):
-            Changes attributes values to the ones assigned at the function call. Useful for changing several attributes
-            at once.
-
-        reset():
-            Attributes goes back to "factory default".
-
-    """
+    """Holds default parameter values."""
 
     _samplingRate = []
     _lengthDomain = []
@@ -126,130 +71,177 @@ class Default(object):
     _stopMargin = []
     _startMargin = []
     _comment = []
+    _instance = None
 
     def __init__(self):
-        """
-        Changing "factory" default preferences:
-        ========================================
-
-            If wanted, the user can set different "factory default" values by changing
-            the properties.default dictionary which is used to hold the values that
-            the __init__() method loads into the class object at import time
-        """
-
+        """Singleton with properties used accross PyTTa."""
         for name, value in default_.items():
             vars(self)['_'+name] = value
+        return
 
-    def __setattr__(self,name,value):
-        if name in dir(self) and name!= 'device':
+    def __new__(cls):
+        """Instance created only once."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def __setattr__(self, name: str, value: Any):
+        """
+        Allow assign operation on attributes.
+
+        Parameters
+        ----------
+        name : str
+            Attribute name as string.
+        value : Any
+            New attribute value.
+
+        Raises
+        ------
+        AttributeError
+            If attribute does not exist.
+
+        Returns
+        -------
+        None.
+
+        """
+        if name in dir(self) and name != 'device':
             vars(self)['_'+name] = value
-        elif name in ['device','devices']:
-            self.set_defaults(device = value)
+        elif name in ['device', 'devices']:
+            self.set_defaults(device=value)
         else:
-            raise AttributeError ('There is no default settings for '+repr(name))
-
+            raise AttributeError('There is no default settings for ' + repr(name))
 
     def __call__(self):
+        """Good view of attributes."""
         for name, value in vars(self).items():
-            if len(name)<=8:
-                print(name[1:]+'\t\t =',value)
+            if len(name) <= 8:
+                print(name[1:]+'\t\t =', value)
             else:
-                print(name[1:]+'\t =',value)
+                print(name[1:]+'\t =', value)
 
-
-    def set_defaults(self,**namevalues):
+    def set_defaults(self, **namevalues):
         """
-    	Change the values of the "Default" object's properties
+        Change the values of the "Default" object's properties.
 
-    	>>> pytta.Default.set_defaults(property1 = value1,
-    	>>>                            property2 = value2,
-    	>>>                            propertyN = valueN)
+            >>> pytta.Default.set_defaults(property1 = value1,
+            >>>                            property2 = value2,
+            >>>                            propertyN = valueN)
 
-        The default values can be set differently using both declaring method, or
-        the set_defaults() function
+        The default values can be set differently using both declaring
+        method, or the set_defaults() function
 
-        >>> pytta.Default.propertyName = propertyValue
-        >>> pytta.Default.set_defaults(propertyName = propertyValue)
+            >>> pytta.Default.propertyName = propertyValue
+            >>> pytta.Default.set_defaults(propertyName = propertyValue)
 
-    	"""
-
-        for name, value in namevalues.items(): # iterate over the (propertyName = propertyValue) pairs
+        """
+        for name, value in namevalues.items():  # iterate over the (propertyName = propertyValue) pairs
             try:
-                if vars(self)['_'+name] != value: # Check if user value are different from the ones already set up
-                    if name in ['device','devices']: # Check if user is changing default audio IO device
+                if vars(self)['_'+name] != value:  # Check if user value are different from the ones already set
+                    if name in ['device', 'devices']:  # Check if user is changing default audio IO device
                         sd.default.device = value    # If True, changes the sounddevice default audio IO device
-                        vars(self)['_'+name] = sd.default.device # Then loads to PyTTa default device
+                        vars(self)['_'+name] = sd.default.device  # Then loads to PyTTa default device
                     else:
-                        vars(self)['_'+name] = value # otherwise, just assign the new value to the desired property
+                        vars(self)['_'+name] = value  # otherwise, assign the new value to the desired property
             except KeyError:
                 print('You\'ve probably mispelled something.\n' + 'Checkout the property names:\n')
                 self.__call__()
 
     def reset(self):
+        """Reset attributes to "factory"."""
         vars(self).clear()
         self.__init__()
-
+        return
 
     @property
     def samplingRate(self):
+        """Sample rate of the signal."""
         return self._samplingRate
 
     @property
     def lengthDomain(self):
+        """
+        Information about the recording length.
+
+        May be 'time' or 'samples'.
+        """
         return self._lengthDomain
 
     @property
     def fftDegree(self):
+        """
+        Adjust the total number of samples to a base 2 number.
+
+            >>> numSamples = 2**fftDegree
+
+        """
         return self._fftDegree
 
     @property
     def timeLength(self):
+        """
+        Total time duration of the signal.
+
+            >>> numSamples = samplingRate * timeLength
+
+        """
         return self._timeLength
 
     @property
     def integration(self):
+        """Time interval to integrate for real time analysis."""
         return self._integration
 
     @property
     def freqMin(self):
+        """Minimum frequency."""
         return self._freqMin
 
     @property
     def freqMax(self):
+        """Maximum frequency."""
         return self._freqMax
 
     @property
     def freqLims(self):
+        """Frequency range."""
         return {'min': self._freqMin, 'max': self._freqMax}
 
     @property
     def device(self):
+        """Audio device."""
         return self._device
 
     @property
     def inChannel(self):
+        """List of input channels."""
         return self._inChannel
 
     @property
     def outChannel(self):
+        """List of output channels."""
         return self._outChannel
 
     @property
     def startMargin(self):
+        """Silence duration on signal beginning, in seconds."""
         return self._startMargin
 
     @property
     def stopMargin(self):
+        """Silence duration on signal ending, in seconds."""
         return self._stopMargin
 
     @property
     def margins(self):
+        """Silence duration on signal beginning and ending, in seconds."""
         return {'start': self._startMargin, 'stop': self._stopMargin}
 
     @property
     def comment(self):
+        """Commentary."""
         return self._comment
-
 
 
 default = Default()
