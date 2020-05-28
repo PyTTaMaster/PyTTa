@@ -1,8 +1,8 @@
+.. currentmodule:: pytta
+
 Generate
 ========
 
-.. currentmodule:: pytta
-
 .. automodule:: pytta.generate
    :members:
-   
+

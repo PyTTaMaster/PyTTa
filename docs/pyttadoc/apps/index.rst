@@ -1,7 +1,7 @@
+.. currentmodule:: pytta
+
 Apps
 ====
-
-.. currentmodule:: pytta
 
 .. automodule:: pytta.apps
 

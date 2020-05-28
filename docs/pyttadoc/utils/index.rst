@@ -1,7 +1,7 @@
+.. currentmodule:: pytta
+
 Utilities
 =========
-
-.. currentmodule:: pytta
 
 .. automodule:: pytta.utils
 

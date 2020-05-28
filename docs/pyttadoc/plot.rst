@@ -1,8 +1,8 @@
+.. currentmodule:: pytta
+
 Plot
 ====
 
-.. currentmodule:: pytta
-
 .. automodule:: pytta.plot
    :members:
-   
+

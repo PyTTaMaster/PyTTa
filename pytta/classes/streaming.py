@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+"""
+Provide real time audio playback and recording, with special classes to
+concurrently read input audio.
+
+"""
+
 
 import numpy as np
 import sounddevice as sd
@@ -20,6 +26,28 @@ class Monitor(object):
                  numchannels: List[int] = [len(default.inChannel),
                                            len(default.outChannel)],
                  datatype: str = 'float32'):
+        """
+        Default Monitor class.
+
+        Subclasses must override `setup`, `callback` and `tear_down` methods.
+
+        Parameters
+        ----------
+        numsamples : int
+            DESCRIPTION.
+        samplingrate : int, optional
+            DESCRIPTION. The default is default.samplingRate.
+        numchannels : List[int], optional
+            DESCRIPTION.
+            The default is [len(default.inChannel), len(default.outChannel)].
+        datatype : str, optional
+            DESCRIPTION. The default is 'float32'.
+
+        Returns
+        -------
+        None.
+
+        """
         self.samplingRate = samplingrate
         self.numChannels = numchannels
         self.numSamples = numsamples
@@ -27,9 +55,7 @@ class Monitor(object):
         return
 
     def setup(self):
-        """
-        Start up widgets, threads, anything that will be used during audio processing
-        """
+        """Start up widgets, threads, anything that will be used during audio processing."""
         self.inData = np.empty((self.numSamples, self.numChannels[0]), dtype=self.dtype)
         self.outData = np.empty((self.numSamples, self.numChannels[1]), dtype=self.dtype)
         self.red = utils.ColorStr("white", "red")
@@ -38,15 +64,14 @@ class Monitor(object):
         return
 
     def reset(self):
+        """Reset write counter."""
         self.counter = int()
         return
 
     def callback(self, frames: int,
                  indata: np.ndarray,
                  outdata: Optional[np.ndarray] = None):
-        """
-        The audio processing itself, will be called for every chunk of data taken from the queue
-        """
+        """The audio processing itself, will be called for every chunk of data taken from the queue."""
         if self.inData.shape[0] >= self.samplingRate//8:
             indB = utils.arr2dB(self.inData)
             outdB = utils.arr2dB(self.outData)
@@ -71,15 +96,13 @@ class Monitor(object):
         return
 
     def tear_down(self):
-        """
-        Finish any started object here, like GUI members, to allow the Monitor parallel process be joined
-        """
+        """Finish any started object here, like GUI members, to allow the Monitor parallel process be joined."""
         pass
 
 
 # Streaming class
 class Streaming(PyTTaObj):
-    """    """
+    """Stream control."""
 
     def __init__(self,
                  IO: str,
@@ -90,8 +113,7 @@ class Streaming(PyTTaObj):
                  monitor: Optional[Monitor] = None,
                  *args, **kwargs):
         """
-        Streaming:
-        ---------
+        Manage input and output of audio.
 
         Args:
             IO (str): DESCRIPTION.

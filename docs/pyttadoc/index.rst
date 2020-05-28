@@ -3,10 +3,11 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. currentmodule:: pytta
+
+
 API documentation
 =================
-
-.. currentmodule:: pytta
 
 .. toctree::
    generate
@@ -16,6 +17,6 @@ API documentation
    properties
    classes/index
    apps/index
-   utils/index   
+   utils/index
 
 

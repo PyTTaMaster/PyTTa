@@ -1,8 +1,8 @@
+.. currentmodule:: pytta
+
 Functions
 =========
 
-.. currentmodule:: pytta
-
 .. automodule:: pytta.functions
    :members:
-   
+
