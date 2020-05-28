@@ -9,15 +9,10 @@ Welcome to PyTTa's documentation!
 .. automodule:: pytta
 
 .. toctree::
-   pyttadoc/generate
-   pyttadoc/functions
-   pyttadoc/rooms
-   pyttadoc/plot
-   pyttadoc/properties
-   pyttadoc/classes/index
-   pyttadoc/apps/index
-   pyttadoc/utils/index   
-
+   install
+   getstarted
+   pyttadoc/index   
+   examples
 
 
 Indices and tables

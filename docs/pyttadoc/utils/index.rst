@@ -8,4 +8,5 @@ Utilities
 .. toctree::
    maths
    colore
+   freq
 
