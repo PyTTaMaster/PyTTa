@@ -22,7 +22,7 @@ project = 'PyTTa'
 copyright = '2020, ' + author
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0b8'
+release = '0.1.0b9'
 
 
 # -- General configuration ---------------------------------------------------

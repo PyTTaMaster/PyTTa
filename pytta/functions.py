@@ -5,7 +5,6 @@ using PyTTa, like reading and writing wave files, seeing the audio IO
 devices available and some signal processing tools.
 
 Available functions:
----------------------
 
     >>> pytta.list_devices()
     >>> pytta.fft_degree(timeLength, samplingRate)

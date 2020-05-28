@@ -6,7 +6,6 @@ strings) and plot it through its functions. It is used by the function,
 signal, and analysis modules.
 
 Available functions:
----------------------
 
     >>> plot.time(curveData, xLabel, yLabel, yLim, xLim, title, decimalSep)
     >>> plot.freq(curveData, smooth, xLabel, yLabel, yLim, xLim, title,
