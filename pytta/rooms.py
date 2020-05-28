@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
+
 """
-PyTTa Room Analysis:
-----------------------
+This module does calculations compliant to ISO 3382-1 in order to obtain room
+acoustic paramters.
 
-    This module does calculations compliant to ISO 3382-1 in order to obtain
-    room acoustic paramters.
-
-    It has an implementation of Lundeby et al. [1] algorithm to estimate the
-    correction factor for the cumulative integral, as suggested by the ISO
-    3382-1.
+It has an implementation of Lundeby et al. [1] algorithm to estimate the
+correction factor for the cumulative integral, as suggested by the ISO 3382-1.
 
 """
 
@@ -37,10 +34,10 @@ def _filter(signal,
                    base=base)
     result = of.filter(signal)
     return result[0]
-    
+
 
 @njit
-def T_level_profile(timeSignal, samplingRate,
+def _level_profile(timeSignal, samplingRate,
                     numSamples, numChannels, blockSamples=None):
     """
     Gets h(t) in octave bands and do the local time averaging in nblocks.
@@ -68,7 +65,7 @@ def T_level_profile(timeSignal, samplingRate,
 
 
 @njit
-def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
+def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     squaredIR = timeSignal**2
     # assume the last 10% of the IR is noise, and calculate its noise level
     last10Idx = -int(len(squaredIR)//10)
@@ -107,7 +104,7 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
             else:
                 thresholdShift += 1
         if thresholdShift > 0:
-            print("T_start_sample_ISO3382: 20 dB threshold too high. " +
+            print("_start_sample_ISO3382: 20 dB threshold too high. " +
                   "Decreasing it.")
         if lastBelowThreshold > 0:
             startSample = lastBelowThreshold
@@ -117,18 +114,18 @@ def T_start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
 
 
 @njit
-def T_circular_time_shift(timeSignal, threshold=20):
+def _circular_time_shift(timeSignal, threshold=20):
     # find the first sample where inputSignal level > 20 dB or > bgNoise level
-    startSample = T_start_sample_ISO3382(timeSignal, threshold)
+    startSample = _start_sample_ISO3382(timeSignal, threshold)
     newTimeSignal = timeSignal[startSample:]
     return (newTimeSignal, startSample)
 
 
 @njit
-def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
+def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                          numChannels, timeLength):
     returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
-    timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+    timeSignal, sampleShift = _circular_time_shift(timeSignal)
     if sampleShift is None:
         return returnTuple
     winTimeLength = 0.03  # 30 ms window
@@ -139,7 +136,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
     # 1) local time average:
     blockSamples = int(winTimeLength * samplingRate)
-    timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
+    timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
                                               numSamples, numChannels,
                                               blockSamples)
 
@@ -165,7 +162,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
     c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
                         rcond=-1)[0]
 
-    if (c[1] == 0)[0] or np.isnan(c).any(): 
+    if (c[1] == 0)[0] or np.isnan(c).any():
         print(band, "[Hz] band: regression failed. T would be inf.")
         return returnTuple
 
@@ -183,7 +180,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
     blockSamples = int(samplingRate * dynRangeTime[0] / nBlocksInDecay)
 
     # 6) average
-    timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
+    timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
                                               numSamples, numChannels,
                                               blockSamples)
 
@@ -211,7 +208,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
             stopIdx = 0
         else:
             stopIdx = int(np.where(timeVecWin >= stopTime)[0][0])
-        
+
         startTime = (bgNoiseLevel + dBtoNoise + useDynRange - c[0])/c[1]
         if (startTime < timeVecWin[0])[0]:
             startIdx = 0
@@ -233,7 +230,7 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
         X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
         c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
                             rcond=-1)[0]
-        
+
         if (c[1] >= 0)[0]:
             print(band, "[Hz] band: regression did not work, T -> inf.",
                 "Setting slope to 0!")
@@ -258,8 +255,9 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
                              numSamples, numChannels, timeLength):
+    """Calculate the Energy Decay Curve."""
     lundebyParams = \
-        T_Lundeby_correction(band,
+        _Lundeby_correction(band,
                              timeSignal,
                              samplingRate,
                              numSamples,
@@ -287,6 +285,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
 def cumulative_integration(inputSignal,
                            plotLundebyResults,
                            **kwargs):
+    """Cumulative integration with proper corrections."""
 
     def plot_lundeby():
         c0, c1, interIdx, BGL = lundebyParams
@@ -300,10 +299,10 @@ def cumulative_integration(inputSignal,
         ax.axvline(x=interIdx/samplingRate, label='Truncation point')
         plt.title('{0:.0f} [Hz]'.format(band))
         ax.legend(loc='upper center', shadow=True, fontsize='x-large')
-    
+
     timeSignal = inputSignal.timeSignal[:]
     # Substituted by SignalObj.crop in analyse function
-    # timeSignal, sampleShift = T_circular_time_shift(timeSignal)
+    # timeSignal, sampleShift = _circular_time_shift(timeSignal)
     # del sampleShift
     hSignal = SignalObj(timeSignal,
                         inputSignal.lengthDomain,
@@ -339,6 +338,7 @@ def cumulative_integration(inputSignal,
 
 @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
+    """Interpolate the EDT to get the reverberation time."""
     if not np.any(energyDecay):
         return 0
     first = np.where(10*np.log10(energyDecay) >= upperLim)[0][-1]
@@ -353,9 +353,7 @@ def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
 
 
 def reverberation_time(decay, nthOct, samplingRate, listEDC):
-    """
-
-    """
+    """Call the reverberation time regression."""
     try:
         decay = int(decay)
         y1 = -5
@@ -376,14 +374,13 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
 
 
 def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
-    """G_Lpe 
-    
-    Calculates the energy level from the room impulsive response.
+    """
+    Calculate the energy level from the room impulsive response.
 
     Reference:
         Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
         SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
-    
+
     :param IR: one channel impulsive response
     :type IR: ImpulsiveResponse
 
@@ -427,7 +424,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     # Cutting the IR
     if IREndManualCut is not None:
         SigObj.crop(0, IREndManualCut)
-    timeSignal, _ = T_circular_time_shift(SigObj.timeSignal[:,0])
+    timeSignal, _ = _circular_time_shift(SigObj.timeSignal[:,0])
     # Bands filtering
     # hSignal = SignalObj(SigObj.timeSignal[:,0],
     hSignal = SignalObj(timeSignal,
@@ -451,19 +448,18 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
 
 
 def G_Lps(IR, nthOct, minFreq, maxFreq):
-    """G_Lps 
-    
-    Calculates the recalibration level, for both in-situ and
+    """
+    Calculate the recalibration level, for both in-situ and
     reverberation chamber. Lps is applyied for G calculation.
 
-    During the recalibration: source height and mic heigth must be >= 1 [m], 
+    During the recalibration: source height and mic heigth must be >= 1 [m],
     while the distance between source and mic must be <= 1 [m]. The distances
     must be the same for in-situ and reverberation chamber measurements.
 
     Reference:
         Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
         SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
-    
+
     :param IR: one channel impulsive response
     :type IR: ImpulsiveResponse
 
@@ -475,7 +471,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
 
     :param maxFreq: analysis superior frequency limit
     :type maxFreq: float
-    
+
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
@@ -508,10 +504,10 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     # dBtoOnSet = 20
     # dBIR = 10*np.log10((SigObj.timeSignal[:,0]**2)/((2e-5)**2))
     # windowStart = np.where(dBIR > (max(dBIR) - dBtoOnSet))[0][0]
-    
+
     broadBandTimeSignal = cp.copy(SigObj.timeSignal[:,0])
     broadBandTimeSignalNoStart, sampleShift = \
-        T_circular_time_shift(broadBandTimeSignal)
+        _circular_time_shift(broadBandTimeSignal)
     windowLength = 0.0032 # [s]
     windowEnd = int(windowLength*SigObj.samplingRate)
 
@@ -528,7 +524,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     Lps = []
     for chIndex in range(hSignal.numChannels):
         timeSignal = cp.copy(hSignal.timeSignal[:,chIndex])
-        # timeSignalNoStart, sampleShift = T_circular_time_shift(timeSignal)
+        # timeSignalNoStart, sampleShift = _circular_time_shift(timeSignal)
         # windowLength = 0.0032 # [s]
         # windowEnd = int(windowLength*SigObj.samplingRate)
 
@@ -569,7 +565,7 @@ def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     terms = [10*np.log10(term) if term != 0 else 0 for term in terms]
 
     revChTerm = Analysis(anType='mixed', nthOct=nthOct, minBand=float(bands[0]),
-                            maxBand=float(bands[-1]), data=terms)
+                         maxBand=float(bands[-1]), data=terms)
     Lpe.anType = 'mixed'
     Lpe_revCh.anType = 'mixed'
     Lps_revCh.anType = 'mixed'
@@ -580,7 +576,7 @@ def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     return G
 
 
-def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
+def _clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     """
 
     """
@@ -601,7 +597,7 @@ def clarity(temp, signalObj, nthOct, **kwargs):  # TODO
     pass
 
 
-def definition(temp, signalObj, nthOct, **kwargs):  # TODO
+def _definition(temp, signalObj, nthOct, **kwargs):  # TODO
     """
 
     """
@@ -623,6 +619,7 @@ def definition(temp, signalObj, nthOct, **kwargs):  # TODO
     pass
 
 def crop_IR(SigObj, IREndManualCut):
+    """Cut the impulse response at background noise level."""
     timeSignal = cp.copy(SigObj.timeSignal)
     timeVector = SigObj.timeVector
     samplingRate = SigObj.samplingRate
@@ -638,7 +635,7 @@ def crop_IR(SigObj, IREndManualCut):
         meanSize = 5  # [blocks]
         dBtoReplica = 6  # [dB]
         blockSamples = int(winTimeLength * samplingRate)
-        timeWinData, timeVecWin = T_level_profile(timeSignal, samplingRate,
+        timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
                                                 numSamples, numChannels,
                                                 blockSamples)
         endTimeCut = timeVector[-1]
@@ -654,7 +651,7 @@ def crop_IR(SigObj, IREndManualCut):
     endTimeCutIdx = np.where(timeVector >= endTimeCut)[0][0]
     timeSignal = timeSignal[:endTimeCutIdx]
     # Cut the start automatically
-    timeSignal, _ = T_circular_time_shift(timeSignal)
+    timeSignal, _ = _circular_time_shift(timeSignal)
     result = SignalObj(timeSignal,
                        'time',
                        samplingRate,
@@ -664,8 +661,7 @@ def crop_IR(SigObj, IREndManualCut):
 def analyse(obj, *params,
             plotLundebyResults=False,
             IREndManualCut=None, **kwargs):
-    """analyse
-    
+    """
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
     room acoustic parameters especified in the positional input arguments.
 
@@ -684,7 +680,7 @@ def analyse(obj, *params,
 
     Input parameters for strength factor, 'G':
         TODO
-    
+
     :param nthOct: number of fractions per octave
     :type nthOct: int
 
@@ -694,12 +690,12 @@ def analyse(obj, *params,
     :param maxFreq: analysis superior frequency limit
     :type maxFreq: float
 
-    :param plotLundebyResults: plot the Lundeby correction parameters, defaults
-    to False
+    :param plotLundebyResults: plot the Lundeby correction parameters, defaults to False
     :type plotLundebyResults: bool, optional
-    
+
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
+
     """
     # Code snippet to guarantee that generated object name is
     # the declared at global scope
@@ -713,30 +709,29 @@ def analyse(obj, *params,
     #     creation_text = \
     extracted_text = \
         traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
+    # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
 
-    if not isinstance(obj, SignalObj) and not isinstance(obj,
-                                                         ImpulsiveResponse):
-        raise TypeError("'obj' must be an one channel SignalObj or " +
-                        "ImpulsiveResponse.")
+    if not isinstance(obj, SignalObj) and not isinstance(obj, ImpulsiveResponse):
+        raise TypeError("'obj' must be an one channel SignalObj or" +
+                        " ImpulsiveResponse.")
     if isinstance(obj, ImpulsiveResponse):
         SigObj = obj.systemSignal
     else:
         SigObj = obj
-    
+
     if SigObj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
     samplingRate = SigObj.samplingRate
-    
+
     SigObj = crop_IR(SigObj, IREndManualCut)
 
     listEDC = cumulative_integration(SigObj,
                                      plotLundebyResults,
                                      **kwargs)
     for prm in params:
-        if 'RT' == prm:
+        if 'RT' in params:
             RTdecay = params[params.index('RT')+1]
             nthOct = kwargs['nthOct']
             RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
@@ -744,9 +739,9 @@ def analyse(obj, *params,
                               minBand=kwargs['minFreq'],
                               maxBand=kwargs['maxFreq'],
                               data=RT)
-            result.creation_name = creation_name
         # if 'C' in prm:
         #     Ctemp = prm[1]
         # if 'D' in prm:
         #     Dtemp = prm[1]
+    result.creation_name = creation_name
     return result
