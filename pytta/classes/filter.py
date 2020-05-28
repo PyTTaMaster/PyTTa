@@ -8,6 +8,7 @@ from pytta.utils import fractional_octave_frequencies, freq_to_band, \
 
 class OctFilter(object):
     """
+    Octave filter.
     """
     def __init__(self,
                  order: int = None,
@@ -17,6 +18,32 @@ class OctFilter(object):
                  maxFreq: float = None,
                  refFreq: float = None,
                  base: int = None) -> None:
+        """
+
+
+        Parameters
+        ----------
+        order : int, optional
+            DESCRIPTION. The default is None.
+        nthOct : int, optional
+            DESCRIPTION. The default is None.
+        samplingRate : int, optional
+            DESCRIPTION. The default is None.
+        minFreq : float, optional
+            DESCRIPTION. The default is None.
+        maxFreq : float, optional
+            DESCRIPTION. The default is None.
+        refFreq : float, optional
+            DESCRIPTION. The default is None.
+        base : int, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None
+            DESCRIPTION.
+
+        """
         self.order = order
         self.nthOct = nthOct
         self.samplingRate = samplingRate
@@ -61,6 +88,21 @@ class OctFilter(object):
         return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
     def filter(self, signalObj):
+        """
+        Filter the signal object.
+
+        For each channel inside the input signalObj, will be generated a new
+        SignalObj with the channel filtered signal.
+
+        Args:
+            signalObj: SignalObj
+
+        Return:
+            output: List
+                A list containing one SignalObj with the filtered data for each
+                channel in the original signalObj.
+
+        """
         if self.samplingRate != signalObj.samplingRate:
             raise ValueError("SignalObj must have same sampling\
                              rate of filter to be filtered.")
@@ -189,22 +231,40 @@ def __D(freq):
     return D
 
 
-categories = ['20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160',
-              '200', '250', '315', '400', '500', '630', '800', '1000', '1250',
-              '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000',
-              '10000', '12500', '16000', '20000']
+_categories = ['20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160',
+               '200', '250', '315', '400', '500', '630', '800', '1000', '1250',
+               '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000',
+               '10000', '12500', '16000', '20000']
 
 
 def weighting(kind='A', nth=None, freqs=None):
+    """
+    Level weighting curve.
+
+    Parameters
+    ----------
+    kind : TYPE, optional
+        DESCRIPTION. The default is 'A'.
+    nth : TYPE, optional
+        DESCRIPTION. The default is None.
+    freqs : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    np.ndarray
+        The weighting curve in dB.
+
+    """
     out = []
     if freqs is not None:
         for freq in freqs:
             out.append(eval('__' + kind + '(' + freq + ')'))
     elif nth is not None:
         if nth == 1:
-            for val in categories[2::3]:
+            for val in _categories[2::3]:
                 out.append(eval('__' + kind + '(' + val + ')'))
         elif nth == 3:
-            for val in categories:
+            for val in _categories:
                 out.append(eval(kind+'('+val+')'))
     return np.asarray(out, ndmin=2).T

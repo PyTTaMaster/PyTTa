@@ -24,14 +24,14 @@ class Analysis(RICI):
     """
     Objects belonging to the Analysis class holds fractional octave band data.
 
-    It does conveniently the operations linearly between Analyses of the type 
+    It does conveniently the operations linearly between Analyses of the type
     'Level'. Therefore those operations do not occur with values in dB scale.
 
     Available Analysis' types below.
-    
+
     For more information see each parameter/attribute/method specific
     documentation.
- 
+
     Creation parameters:
     --------------------
 
@@ -43,42 +43,42 @@ class Analysis(RICI):
                 - 'G' for 'Strength factor' in dB;
                 - 'L' for any 'Level' Analysis in dB (e.g: SPL);
                 - 'mixed' for any combination between the types above.
-        
+
         * nthOct, (int):
             The number of fractions per octave;
-        
+
         * minBand, (int | float):
             The exact or approximated start frequency;
-        
+
         * maxBand, (int | float):
             The exact or approximated stop frequency;
 
         * data, (list | numpy array):
             The data with the exact number of bands between the spcified minimum
             (minBand) and maximum band (maxBand);
-        
+
         * dataLabel (''), (string):
             Label for plots;
-        
+
         * error, (list | numpy array):
             The error with the exact number of bands between the spcified
             minimum (minBand) and maximum band (maxBand);
 
         * errorLabel (''), (string):
             Label for plots;
-        
+
         * comment ('No comments.'), (string):
             Some comment about the object.
 
         * xLabel (None), (string):
             x axis plot label;
-        
+
         * yLabel (None), (string):
             y axis plot label;
-        
+
         * title (None), (string):
             plot title.
-    
+
 
     Attributes:
     -----------
@@ -92,17 +92,17 @@ class Analysis(RICI):
 
         * minBand, (int | float):
             When a new limit is setted data is automatic adjusted.
-        
+
         * maxBand, (int | float):
             When a new limit is setted data is automatic adjusted.
-    
-    
+
+
     Methods:
     --------
-    
+
         * plot_bars():
             Generates a bar plot.
-        
+
     """
 
     # Magic methods
@@ -166,12 +166,12 @@ class Analysis(RICI):
                 elif other.anType in ['mixed', 'C', 'D', 'RT']:
                     data = self.data + other.data
                     anType = 'mixed'
-                else: 
+                else:
                     raise NotImplementedError("Operation not implemented " +
                                               "for Analysis types " +
                                               anTypes[self.anType][1] +
                                               " and " +
-                                              anTypes[other.anType][1] + 
+                                              anTypes[other.anType][1] +
                                               ".")
             else:
                 data = self.data + other.data
@@ -192,7 +192,7 @@ class Analysis(RICI):
             else 'Analysis 1'
         if hasattr(other,'dataLabel'):
             if other.dataLabel is not None:
-                otherDataLabel = other.dataLabel 
+                otherDataLabel = other.dataLabel
             else:
                 otherDataLabel = 'Analysis 2'
         else:
@@ -224,12 +224,12 @@ class Analysis(RICI):
                 elif other.anType in ['mixed', 'C', 'D', 'RT']:
                     data = self.data - other.data
                     anType = 'mixed'
-                else: 
+                else:
                     raise NotImplementedError("Operation not implemented " +
                                               "for Analysis types " +
                                               anTypes[self.anType][1] +
                                               " and " +
-                                              anTypes[other.anType][1] + 
+                                              anTypes[other.anType][1] +
                                               ".")
             else:
                 data = self.data - other.data
@@ -250,7 +250,7 @@ class Analysis(RICI):
             else 'Analysis 1'
         if hasattr(other,'dataLabel'):
             if other.dataLabel is not None:
-                otherDataLabel = other.dataLabel 
+                otherDataLabel = other.dataLabel
             else:
                 otherDataLabel = 'Analysis 2'
         else:
@@ -283,7 +283,7 @@ class Analysis(RICI):
             else 'Analysis 1'
         if hasattr(other,'dataLabel'):
             if other.dataLabel is not None:
-                otherDataLabel = other.dataLabel 
+                otherDataLabel = other.dataLabel
             else:
                 otherDataLabel = 'Analysis 2'
         else:
@@ -307,15 +307,15 @@ class Analysis(RICI):
                 elif other.anType in ['mixed', 'C', 'D', 'RT']:
                     data = other.data / self.data
                     anType = 'mixed'
-                else: 
+                else:
                     raise NotImplementedError("Operation not implemented " +
                                               "for Analysis types " +
                                               anTypes[self.anType][1] +
                                               " and " +
-                                              anTypes[other.anType][1] + 
+                                              anTypes[other.anType][1] +
                                               ".")
             else:
-                data = other.data / self.data   
+                data = other.data / self.data
                 anType = 'mixed'
         elif isinstance(other, (int, float)):
             if self.anType == 'L':
@@ -333,7 +333,7 @@ class Analysis(RICI):
             else 'Analysis 1'
         if hasattr(other,'dataLabel'):
             if other.dataLabel is not None:
-                otherDataLabel = other.dataLabel 
+                otherDataLabel = other.dataLabel
             else:
                 otherDataLabel = 'Analysis 2'
         else:
@@ -347,7 +347,7 @@ class Analysis(RICI):
                         xLabel=self.xLabel, yLabel=self.yLabel,
                         title=None)
         return result
-        
+
 
     def __truediv__(self, other):
         if isinstance(other, Analysis):
@@ -358,12 +358,12 @@ class Analysis(RICI):
                 elif other.anType in ['mixed', 'C', 'D', 'RT']:
                     data = self.data / other.data
                     anType = 'mixed'
-                else: 
+                else:
                     raise NotImplementedError("Operation not implemented " +
                                               "for Analysis types " +
                                               anTypes[self.anType][1] +
                                               " and " +
-                                              anTypes[other.anType][1] + 
+                                              anTypes[other.anType][1] +
                                               ".")
             else:
                 data = self.data / other.data
@@ -384,7 +384,7 @@ class Analysis(RICI):
             else 'Analysis 1'
         if hasattr(other,'dataLabel'):
             if other.dataLabel is not None:
-                otherDataLabel = other.dataLabel 
+                otherDataLabel = other.dataLabel
             else:
                 otherDataLabel = 'Analysis 2'
         else:
@@ -405,7 +405,7 @@ class Analysis(RICI):
     @property
     def anType(self):
         """Type of the Analysis.
-        
+
         May be:
             - 'RT' for 'Reverberation time' Analysis in [s];
             - 'C' for 'Clarity' in dB;
@@ -526,7 +526,7 @@ class Analysis(RICI):
         return
         # self._bandMax = new
         # return
-    
+
     @property
     def range(self):
         return (self.minBand, self.maxBand)
@@ -538,7 +538,7 @@ class Analysis(RICI):
         data must be a list or NumPy ndarray with the same number of elements
         than bands between the spcified minimum (minBand) and maximum band
         (maxBand).
-        
+
         Return:
         -------
 
@@ -562,7 +562,7 @@ class Analysis(RICI):
                              "then the existant bands betwen " +
                              "{} and {} [Hz].".format(self.minBand,
                                                       self.maxBand))
-        
+
         # ...
         self._data = np.array(newData)
         self._bands = bands
@@ -584,7 +584,7 @@ class Analysis(RICI):
             NumPy ndarray.
         """
         return self._error
-    
+
     @error.setter
     def error(self, newError):
         if not isinstance(newError, np.ndarray) and \
@@ -612,7 +612,7 @@ class Analysis(RICI):
             str.
         """
         return self._dataLabel
-    
+
     @dataLabel.setter
     def dataLabel(self, newLabel):
         if newLabel is not None and not isinstance(newLabel, str):
@@ -632,7 +632,7 @@ class Analysis(RICI):
             str.
         """
         return self._errorLabel
-    
+
     @errorLabel.setter
     def errorLabel(self, newLabel):
         if newLabel is not None and not isinstance(newLabel, str):
@@ -643,7 +643,7 @@ class Analysis(RICI):
     @property
     def bands(self):
         """The octave fraction bands central frequencies.
-        
+
         Return:
         -------
 
@@ -706,7 +706,7 @@ class Analysis(RICI):
                 >>> decimalSep = ',' # in Brazil
 
             * barWidth (0.75), float:
-                width of the bars from one fractional octave band. 
+                width of the bars from one fractional octave band.
                 0 < barWidth < 1.
 
             * errorStyle ('standard'), str:
@@ -722,7 +722,7 @@ class Analysis(RICI):
         """
         return self.plot_bars(**kwargs)
 
-    def plot_bars(self, dataLabel:str=None, errorLabel:str=None, 
+    def plot_bars(self, dataLabel:str=None, errorLabel:str=None,
                   xLabel:str=None, yLabel:str=None,
                   yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
                   barWidth:float=0.75, errorStyle:str=None,
@@ -747,7 +747,7 @@ class Analysis(RICI):
 
             * yLim (), (list):
                 inferior and superior limits.
-        
+
                 >>> yLim = [-100, 100]
 
             * xLim (), (list):
@@ -764,7 +764,7 @@ class Analysis(RICI):
                 >>> decimalSep = ',' # in Brazil
 
             * barWidth (0.75), float:
-                width of the bars from one fractional octave band. 
+                width of the bars from one fractional octave band.
                 0 < barWidth < 1.
 
             * errorStyle ('standard'), str:

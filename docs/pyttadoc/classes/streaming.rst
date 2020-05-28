@@ -1,4 +1,4 @@
-.. currentmodule:: pytta
+.. currentmodule:: pytta.classes
 
 AudioIO Objects
 ===============

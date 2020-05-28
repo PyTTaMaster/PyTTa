@@ -8,4 +8,7 @@ Classes
 .. toctree::
    signal
    measurement
+   analysis
    streaming
+   filter
+
