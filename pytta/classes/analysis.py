@@ -549,8 +549,7 @@ class Analysis(RICI):
     @data.setter
     def data(self, newData):
         bands = FOF(nthOct=self.nthOct,
-                    minFreq=self.minBand,
-                    maxFreq=self.maxBand)[:,1]
+                    freqRange=(self.minBand, self.maxBand))[:,1]
         self._minBand = float(bands[0])
         self._maxBand = float(bands[-1])
         if not isinstance(newData, list) and \
