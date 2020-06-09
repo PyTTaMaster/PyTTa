@@ -8,7 +8,7 @@ import sounddevice as sd
 import time
 from pytta.classes import _base
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
-from pytta import h5utils as _h5
+from pytta import _h5utils as _h5
 import traceback
 
 

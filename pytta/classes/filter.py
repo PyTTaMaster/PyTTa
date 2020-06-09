@@ -3,7 +3,7 @@
 import numpy as np
 from scipy import signal as ss
 from pytta.classes import SignalObj
-from pytta.frequtils import fractional_octave_frequencies, freq_to_band, \
+from pytta._frequtils import fractional_octave_frequencies, freq_to_band, \
                             normalize_frequencies, freqs_to_center_and_edges
 
 class OctFilter(object):

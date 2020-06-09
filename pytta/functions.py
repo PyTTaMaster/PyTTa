@@ -46,10 +46,10 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
-from pytta import h5utils as _h5
+from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
-from pytta import plot
+from pytta import _plot as plot
 
 
 def list_devices():

@@ -35,6 +35,9 @@ PyTTa:
         >>> pytta.classes
         >>> pytta.generate
         >>> pytta.functions
+        >>> pytta.rooms
+        >>> pytta.iso3741
+        >>> pytta.apps
         >>> pytta.properties
 
 For further information, check the specific module, class, method or function
@@ -42,7 +45,7 @@ documentation.
 """
 
 # Importing .py files as submodules
-from . import frequtils
+from . import _frequtils
 from .properties import default
 
 # Instantiate the Default parameters to be loaded by other
@@ -55,10 +58,10 @@ from .classes import SignalObj, ImpulsiveResponse,\
     Analysis
 
 from . import generate
-from . import h5utils
+from . import _h5utils
 from . import rooms
 from . import iso3741
-from . import plot
+from . import _plot
 
 from .functions import read_wav, write_wav, merge, list_devices,\
     fft_convolve, find_delay, corr_coef, resample,\
@@ -75,10 +78,11 @@ __all__ = [  # Apps
 
            # Submodules
            'generate',
-           'frequtils',
-           'h5utils',
            'iso3741',
-           'plot',
+           'properties',
+           '_frequtils',
+           '_h5utils',
+           '_plot',
 
            # Functions
            'merge',
