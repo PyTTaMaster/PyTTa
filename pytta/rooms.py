@@ -257,24 +257,33 @@ def T_Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
-                             numSamples, numChannels, timeLength):
-    lundebyParams = \
-        T_Lundeby_correction(band,
-                             timeSignal,
-                             samplingRate,
-                             numSamples,
-                             numChannels,
-                             timeLength)
-    _, c1, interIdx, BGL = lundebyParams
-    lateRT = -60/c1 if c1 != 0 else 0
+                             numSamples, numChannels, timeLength, bypassLundeby):
+    if not bypassLundeby:
+        lundebyParams = \
+            T_Lundeby_correction(band,
+                                 timeSignal,
+                                 samplingRate,
+                                 numSamples,
+                                 numChannels,
+                                 timeLength)
+        _, c1, interIdx, BGL = lundebyParams
+        lateRT = -60/c1 if c1 != 0 else 0
+    else:
+        interIdx = 0
+        lateRT = 1
+        
 
     if interIdx == 0:
         interIdx = -1
+
     truncatedTimeSignal = timeSignal[:interIdx, 0]
     truncatedTimeVector = timeVector[:interIdx]
 
     if lateRT != 0.0:
-        C = samplingRate*BGL*lateRT/(6*np.log(10))
+        if not bypassLundeby:
+            C = samplingRate*BGL*lateRT/(6*np.log(10))
+        else:
+            C = 0
         sqrInv = truncatedTimeSignal[::-1]**2
         energyDecayFull = np.cumsum(sqrInv)[::-1] + C
         energyDecay = energyDecayFull/energyDecayFull[0]
@@ -285,6 +294,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
     return (energyDecay, truncatedTimeVector, lundebyParams)
 
 def cumulative_integration(inputSignal,
+                           bypassLundeby,
                            plotLundebyResults,
                            **kwargs):
 
@@ -329,7 +339,8 @@ def cumulative_integration(inputSignal,
                                      samplingRate,
                                      numSamples,
                                      numChannels,
-                                     timeLength)
+                                     timeLength,
+                                     bypassLundeby)
         listEDC.append((energyDecay, energyVector))
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
@@ -662,6 +673,7 @@ def crop_IR(SigObj, IREndManualCut):
     return result
 
 def analyse(obj, *params,
+            bypassLundeby=False,
             plotLundebyResults=False,
             IREndManualCut=None, **kwargs):
     """analyse
@@ -693,6 +705,10 @@ def analyse(obj, *params,
 
     :param maxFreq: analysis superior frequency limit
     :type maxFreq: float
+    
+    :param bypassLundeby: bypass lundeby correction
+    to False
+    :type bypassLundeby: bool, optional
 
     :param plotLundebyResults: plot the Lundeby correction parameters, defaults
     to False
@@ -733,6 +749,7 @@ def analyse(obj, *params,
     SigObj = crop_IR(SigObj, IREndManualCut)
 
     listEDC = cumulative_integration(SigObj,
+                                     bypassLundeby,
                                      plotLundebyResults,
                                      **kwargs)
     for prm in params:
