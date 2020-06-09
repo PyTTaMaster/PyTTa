@@ -39,6 +39,7 @@ from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
 from scipy import signal as ss
 import numpy as np
 import traceback
+from warnings import warn
 
 
 def sin(Arms=0.5,
@@ -666,8 +667,13 @@ def stream(IO='IO',
     stream.creation_name = creation_name
     return stream
 
+def filter(*args, **kwargs) -> OctFilter:
+    warn(DeprecationWarning("'pytta.generate.filter' DEPRECATED and being " +
+                                "replaced by 'pytta.generate.octfilter'."))
+    return octfilter(*args, **kwargs)
 
-def filter(order: int = 4,
+
+def octfilter(order: int = 4,
            nthOct: int = 3,
            samplingRate: int = 44100,
            minFreq: float = 20,
