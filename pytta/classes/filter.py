@@ -1,12 +1,41 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from copy import copy
 from scipy import signal as ss
 from pytta.classes import SignalObj
+from pytta.classes._base import ChannelsList
 from pytta.utils import fractional_octave_frequencies, freq_to_band, \
                         normalize_frequencies, freqs_to_center_and_edges
 
-class OctFilter(object):
+
+class FilterBase(object):
+    """Base class for filters."""
+
+    def __init__(self, order: int, samplingrate: int):
+        self.samplingRate = samplingrate
+        self.order = order
+        return
+
+    def __call__(self, sigobj: SignalObj):
+        """
+        Filter the signal object.
+
+        For each channel inside the input signalObj, will be generated a new SignalObj with the channel filtered signal.
+
+        Args:
+            sigobj: SignalObj
+
+        Return:
+            output: List
+                A list containing one SignalObj with the filtered data for each channel in the original signalObj.
+
+        """
+        return self._filter(sigobj)
+
+
+
+class OctFilter(FilterBase):
     """
     Octave filter.
     """
@@ -44,9 +73,8 @@ class OctFilter(object):
             DESCRIPTION.
 
         """
-        self.order = order
+        FilterBase.__init__(self, order, samplingRate)
         self.nthOct = nthOct
-        self.samplingRate = samplingRate
         self.minFreq = minFreq
         self.minBand = freq_to_band(minFreq, nthOct, refFreq, base)
         self.maxFreq = maxFreq
@@ -87,7 +115,11 @@ class OctFilter(object):
         self.center, edges = freqs_to_center_and_edges(freqs)
         return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
-    def filter(self, signalObj):
+    def filter(self, sigobj):
+        print(":WARNING: `OctFilter.filter` method will soon be deprecated.")
+        return self._filter(sigobj)
+
+    def _filter(self, sigobj):
         """
         Filter the signal object.
 
@@ -95,7 +127,7 @@ class OctFilter(object):
         SignalObj with the channel filtered signal.
 
         Args:
-            signalObj: SignalObj
+            sigobj: SignalObj
 
         Return:
             output: List
@@ -103,26 +135,35 @@ class OctFilter(object):
                 channel in the original signalObj.
 
         """
-        if self.samplingRate != signalObj.samplingRate:
-            raise ValueError("SignalObj must have same sampling\
-                             rate of filter to be filtered.")
+        if self.samplingRate != sigobj.samplingRate:
+            raise ValueError("SignalObj must have same sampling rate of filter to be filtered.")
         n = self.sos.shape[2]
         output = []
-        for ch in range(signalObj.numChannels):
-            filtered = np.zeros((signalObj.numSamples, n))
+        chl = []
+        for ch in range(sigobj.numChannels):
+            sobj = sigobj[ch]
+            filtered = np.zeros((sobj.numSamples, n))
             for k in range(n):
-                cContigousArray = signalObj.timeSignal[:, ch].copy(order='C')
+                cContigousArray = sobj.timeSignal[:].copy(order='C')
                 filtered[:, k] = ss.sosfilt(self.sos[:, :, k].copy(order='C'),
                                             cContigousArray,
                                             axis=0).T
+                chl.append(copy(sobj.channels[sobj.channels.mapping[0]]))
+                chl[-1].num = k+1
+                chl[-1].name = f'Band {k+1}'
+                chl[-1].code = f'B{k+1}'
             signalDict = {'signalArray': filtered,
                           'domain': 'time',
                           'samplingRate': self.samplingRate,
-                          'freqMin': self.minFreq,
-                          'freqMax': self.maxFreq}
-            output.append(SignalObj(**signalDict))
-        else:
-            return output
+                          'freqMin': sigobj.freqMin,
+                          'freqMax': sigobj.freqMax,
+                          }
+            out = SignalObj(**signalDict)
+            out.channels = ChannelsList(chl)
+            # out.timeSignal = out.timeSignal * out.channels.CFlist()
+            output.append(out)
+            chl.clear()
+        return output
 
 
 

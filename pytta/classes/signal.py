@@ -961,7 +961,10 @@ class SignalObj(_base.PyTTaObj):
             raise IndexError("Index out of bounds.")
         elif key < 0:
             key += self.numChannels
-        return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
+        ret = SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
+        chnum = self.channels.mapping[key]
+        ret.channels[1] = self.channels[chnum]
+        return ret
 
     def _fft(self):
         """fft do the transformation to the frequency domain of the current
