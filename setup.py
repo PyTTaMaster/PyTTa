@@ -21,9 +21,9 @@ settings = {
     'license': 'MIT',
     'install_requires': ['numpy', 'scipy', 'matplotlib',
         'sounddevice', 'soundfile', 'h5py', 'numba'],
-    'packages': ['pytta', 'pytta.classes', 'pytta.apps'],
+    'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
     'package_dir': {'classes': 'pytta'},
-    'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
+    # 'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
 }
 
 setup(**settings)
