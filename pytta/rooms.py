@@ -465,7 +465,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     """G_Lps 
     
     Calculates the recalibration level, for both in-situ and
-    reverberation chamber. Lps is applyied for G calculation.
+    reverberation chamber. Lps is applied for G calculation.
 
     During the recalibration: source height and mic heigth must be >= 1 [m], 
     while the distance between source and mic must be <= 1 [m]. The distances
