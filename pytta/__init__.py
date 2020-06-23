@@ -47,7 +47,7 @@ Authors:
 """
 
 # Importing .py files as submodules
-from .properties import default
+from ._properties import default
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
