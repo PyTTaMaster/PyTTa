@@ -11,7 +11,7 @@ from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse, Analysis
 from pytta import rooms
 from pytta.functions import __h5_unpack as pyttah5unpck
-from pytta import h5utils as _h5
+from pytta import _h5utils as _h5
 import time
 import numpy as np
 import scipy.stats

@@ -14,7 +14,7 @@ from pytta import default
 from pytta.classes import _base
 from pytta import h5utils as _h5
 from pytta.utils import fractional_octave_frequencies as FOF
-from pytta import plot
+from pytta import _plot as plot
 import copy as cp
 
 # filterwarnings("default", category=DeprecationWarning)

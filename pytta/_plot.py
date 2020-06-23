@@ -612,8 +612,8 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         xLimIdx0 = 0 if len(xLimIdx0[0]) == 0 else xLimIdx0[0][-1]
         xLimIdx1 = np.where(curveData[0]['bands']>=xLim[1])
         xLimIdx1 = len(curveData[0]['bands'])-1 \
-                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]
-        xLimIdx = [xLimIdx0, xLimIdx1+1]
+                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]    
+        xLimIdx = [xLimIdx0, xLimIdx1]
     else:
         xLimIdx = [0, len(curveData[0]['data'])]
 
@@ -621,7 +621,15 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     # checking negative plot necessity
     minVal = np.inf
     negativeCounter = 0
+    allBands = []
     for data in curveData:
+        # merge bands
+        list_1 = allBands
+        list_2 = data['bands']
+        set_1 = set(list_1)
+        set_2 = set(list_2)
+        list_2_items_not_in_list_1 = list(set_2 - set_1)
+        allBands = list_1 + list_2_items_not_in_list_1
         # minimum value
         newMinVal = np.amin(data['data'])
         marginData = \
@@ -636,31 +644,45 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         for value in data['data']:
             if value < 0:
                 negativeCounter += 1
-
+    # Sort merged bands
+    sortedIdxs = sorted(range(len(allBands)), key=lambda k: allBands[k])
+    sortedList = []
+    for idx in sortedIdxs:
+        sortedList.append(allBands[idx])
+    allBands = np.array(sortedList)
+    
+    fbar = np.arange(0,len(allBands))
+    lowerBand = 0
+    higherBand = np.inf
     for dtIdx, data in enumerate(curveData):
         errorLabel = \
             'Error' if data['errorLabel'] is None else data['errorLabel']
         label = \
             '' if data['dataLabel'] is None else data['dataLabel']
 
-        fbar = np.arange(0,len(data['data']))
-
+        # fbar = np.arange(0,len(data['data']))
+        fbarRange = [np.where(allBands<=data['bands'][0])[0][-1],
+                     np.where(allBands>=data['bands'][-1])[0][0]]
+        if allBands[fbarRange[0]] > lowerBand:
+            lowerBand = allBands[fbarRange[0]]
+        if allBands[fbarRange[1]] > higherBand:
+            higherBand = allBands[fbarRange[1]]
         if negativeCounter < (len(data['data'])*dataSetLen)//2 or \
             forceZeroCentering:
             minVal = 0
         if overlapBars:
-            ax.bar(fbar,
+            ax.bar(fbar[fbarRange[0]:fbarRange[1]+1],
                 -minVal + data['data'],
                 width=barWidth, label=label, zorder=-1,
                 color=color[dtIdx])
         else:
-            ax.bar(fbar + barWidth*dtIdx/dataSetLen,
+            ax.bar(fbar[fbarRange[0]:fbarRange[1]+1] + dtIdx*barWidth/dataSetLen,
                 -minVal + data['data'],
                 width=barWidth/dataSetLen, label=label, zorder=-1,
                 color=color[dtIdx])
 
         if data['error'] is not None:
-            ax.errorbar(fbar + barWidth*dtIdx/dataSetLen,
+            ax.errorbar(fbar[fbarRange[0]:fbarRange[1]+1] + dtIdx*barWidth/dataSetLen,
                     -minVal + data['data'],
                     yerr=data['error'], fmt='none',
                     ecolor=ecolor,
@@ -702,16 +724,18 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
     ax.set_ylim(yLim)
-
-    ax.autoscale(enable=True, axis='x', tight=True)
-
+    
     ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
-    ax.set_xticks(fbar+barWidth*(dataSetLen-1)/dataSetLen-
-        barWidth*(dataSetLen-1)/(2*dataSetLen))
-    xticks = data['bands']
+    # ax.set_xticks(fbar+barWidth*(dataSetLen-1)/dataSetLen-
+    #     barWidth*(dataSetLen-1)/(2*dataSetLen))
+    ax.set_xticks(fbar+barWidth/2-barWidth/(dataSetLen*2))
+    # ax.set_xticks(fbar)
+    xticks = allBands
     ax.set_xticklabels(['{:n}'.format(tick) for tick in xticks],
                         rotation=45, fontsize=14)
+
+    ax.autoscale(enable=True, axis='x', tight=True)
 
     # def neg_tick(x, pos):
     #     return '%.1f' % (x + minVal if x != minVal else 0)
@@ -721,7 +745,9 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     ax.yaxis.set_major_formatter(formatter)
 
     if xLim is not None:
-        ax.set_xlim([xLimIdx[0],xLimIdx[1]+1])
+        # ax.set_xlim([xLimIdx[0],
+        ax.set_xlim([xLimIdx[0]-barWidth/(dataSetLen*2),
+                     xLimIdx[1]+barWidth/(dataSetLen*2)+(dataSetLen-1)*barWidth/dataSetLen])
 
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)

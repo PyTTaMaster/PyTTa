@@ -13,7 +13,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
 from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
-from pytta.classes.filter import fractional_octave_frequencies as FOF
+from pytta.utils import fractional_octave_frequencies as FOF
 import traceback
 import copy as cp
 
@@ -254,25 +254,33 @@ def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
-                             numSamples, numChannels, timeLength):
+                             numSamples, numChannels, timeLength, bypassLundeby):
     """Calculate the Energy Decay Curve."""
-    lundebyParams = \
-        _Lundeby_correction(band,
-                             timeSignal,
-                             samplingRate,
-                             numSamples,
-                             numChannels,
-                             timeLength)
-    _, c1, interIdx, BGL = lundebyParams
-    lateRT = -60/c1 if c1 != 0 else 0
+    if not bypassLundeby:
+        lundebyParams = \
+            _Lundeby_correction(band,
+                                timeSignal,
+                                samplingRate,
+                                numSamples,
+                                numChannels,
+                                timeLength)
+        _, c1, interIdx, BGL = lundebyParams
+        lateRT = -60/c1 if c1 != 0 else 0
+    else:
+        interIdx = 0
+        lateRT = 1
 
     if interIdx == 0:
         interIdx = -1
+
     truncatedTimeSignal = timeSignal[:interIdx, 0]
     truncatedTimeVector = timeVector[:interIdx]
 
     if lateRT != 0.0:
-        C = samplingRate*BGL*lateRT/(6*np.log(10))
+        if not bypassLundeby:
+            C = samplingRate*BGL*lateRT/(6*np.log(10))
+        else:
+            C = 0
         sqrInv = truncatedTimeSignal[::-1]**2
         energyDecayFull = np.cumsum(sqrInv)[::-1] + C
         energyDecay = energyDecayFull/energyDecayFull[0]
@@ -283,6 +291,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
     return (energyDecay, truncatedTimeVector, lundebyParams)
 
 def cumulative_integration(inputSignal,
+                           bypassLundeby,
                            plotLundebyResults,
                            **kwargs):
     """Cumulative integration with proper corrections."""
@@ -309,8 +318,7 @@ def cumulative_integration(inputSignal,
                         inputSignal.samplingRate)
     hSignal = _filter(hSignal, **kwargs)
     bands = FOF(nthOct=kwargs['nthOct'],
-                minFreq=kwargs['minFreq'],
-                maxFreq=kwargs['maxFreq'])[:,1]
+                freqRange=[kwargs['minFreq'],kwargs['maxFreq']])[:,1]
     listEDC = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
@@ -328,7 +336,8 @@ def cumulative_integration(inputSignal,
                                      samplingRate,
                                      numSamples,
                                      numChannels,
-                                     timeLength)
+                                     timeLength,
+                                     bypassLundeby)
         listEDC.append((energyDecay, energyVector))
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
@@ -433,8 +442,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
                       maxFreq=maxFreq)
     bands = FOF(nthOct=nthOct,
-                minFreq=minFreq,
-                maxFreq=maxFreq)[:,1]
+                freqRange=[minFreq,maxFreq])[:,1]
     Lpe = []
     for chIndex in range(hSignal.numChannels):
         Lpe.append(
@@ -448,9 +456,10 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
 
 
 def G_Lps(IR, nthOct, minFreq, maxFreq):
-    """
-    Calculate the recalibration level, for both in-situ and
-    reverberation chamber. Lps is applyied for G calculation.
+    """G_Lps 
+    
+    Calculates the recalibration level, for both in-situ and
+    reverberation chamber. Lps is applied for G calculation.
 
     During the recalibration: source height and mic heigth must be >= 1 [m],
     while the distance between source and mic must be <= 1 [m]. The distances
@@ -519,8 +528,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
                       maxFreq=maxFreq)
     bands = FOF(nthOct=nthOct,
-                minFreq=minFreq,
-                maxFreq=maxFreq)[:,1]
+                freqRange=[minFreq,maxFreq])[:,1]
     Lps = []
     for chIndex in range(hSignal.numChannels):
         timeSignal = cp.copy(hSignal.timeSignal[:,chIndex])
@@ -659,6 +667,7 @@ def crop_IR(SigObj, IREndManualCut):
     return result
 
 def analyse(obj, *params,
+            bypassLundeby=False,
             plotLundebyResults=False,
             IREndManualCut=None, **kwargs):
     """
@@ -689,6 +698,10 @@ def analyse(obj, *params,
 
     :param maxFreq: analysis superior frequency limit
     :type maxFreq: float
+    
+    :param bypassLundeby: bypass lundeby correction
+    to False
+    :type bypassLundeby: bool, optional
 
     :param plotLundebyResults: plot the Lundeby correction parameters, defaults to False
     :type plotLundebyResults: bool, optional
@@ -728,6 +741,7 @@ def analyse(obj, *params,
     SigObj = crop_IR(SigObj, IREndManualCut)
 
     listEDC = cumulative_integration(SigObj,
+                                     bypassLundeby,
                                      plotLundebyResults,
                                      **kwargs)
     for prm in params:

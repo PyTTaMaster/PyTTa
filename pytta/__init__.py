@@ -54,7 +54,7 @@ from .properties import default
 
 from .classes import SignalObj, ImpulsiveResponse,\
     RecMeasure, PlayRecMeasure, FRFMeasure,\
-    Streaming, Monitor,\
+    Streaming, Monitor, Recorder,\
     OctFilter, weighting,\
     Analysis
 
@@ -63,7 +63,7 @@ from . import utils
 from . import h5utils
 from . import rooms
 from . import iso3741
-from . import plot
+from . import _plot
 
 from .functions import read_wav, write_wav, merge, list_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
@@ -84,7 +84,7 @@ __all__ = [  # Apps
            'h5utils',
            'iso3741',
            'rooms',
-           'plot',
+           '_plot',
 
            # Functions
            'merge',
