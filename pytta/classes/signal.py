@@ -12,7 +12,7 @@ import time
 from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
-from pytta import h5utils as _h5
+from pytta import _h5utils as _h5
 from pytta.utils import fractional_octave_frequencies as FOF
 from pytta import _plot as plot
 import copy as cp

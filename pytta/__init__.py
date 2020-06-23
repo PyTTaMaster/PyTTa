@@ -58,12 +58,12 @@ from .classes import SignalObj, ImpulsiveResponse,\
     OctFilter, weighting,\
     Analysis
 
+from . import _h5utils
+from . import _plot
 from . import generate
 from . import utils
-from . import h5utils
 from . import rooms
 from . import iso3741
-from . import _plot
 
 from .functions import read_wav, write_wav, merge, list_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
@@ -81,10 +81,8 @@ __all__ = [  # Apps
            # Submodules
            'generate',
            'utils',
-           'h5utils',
            'iso3741',
            'rooms',
-           '_plot',
 
            # Functions
            'merge',

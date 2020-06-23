@@ -744,7 +744,7 @@ def analyse(obj, *params,
                                      bypassLundeby,
                                      plotLundebyResults,
                                      **kwargs)
-    for prm in params:
+    for _ in params:
         if 'RT' in params:
             RTdecay = params[params.index('RT')+1]
             nthOct = kwargs['nthOct']
