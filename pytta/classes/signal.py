@@ -260,9 +260,9 @@ class SignalObj(_base.PyTTaObj):
                 self._numSamples = len(self.timeSignal)
             else:
                 freqLen = len(self.freqSignal)
-                self._numSamples = int((freqLen*2) + 1) \
+                self._numSamples = int((freqLen-1)*2 + 1) \
                                    if freqLen % 2 == 0 \
-                                   else int((freqLen+1)*2)
+                                   else int((freqLen*2) - 2)
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
             self._freqVector = np.linspace(0, (self.numSamples-1) *

@@ -861,6 +861,7 @@ def spectrogram(sigObjs, winType, winSize,
     curveData = _curve_data_extractor_spectrogram(sigObjs)
     for data in curveData:
         fig = plt.figure(figsize=(10, 5))
+        figs.append(fig)
         ax = fig.add_axes([0.10, 0.15, 0.93, 0.77], polar=False,
                         projection='rectilinear')
         ax.set_snap(False)
