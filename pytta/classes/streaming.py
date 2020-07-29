@@ -62,7 +62,7 @@ class Monitor(object):
         self.green = utils.ColorStr("white", "green")
         self.yellow = utils.ColorStr("black", "yellow")
         self.reset()
-        print('\r\tinput: 00.00 dB\toutput: 00.00 dB\t', end='\r')
+        #print('\r\tinput: 00.00 dB\toutput: 00.00 dB\t', end='\r')
         return
 
     def reset(self):
@@ -78,17 +78,17 @@ class Monitor(object):
             indB = utils.arr2dB(self.inData)
             outdB = utils.arr2dB(self.outData)
             if indB >= -3:
-                indBstr = self.red(f'{indB:.1f}')
+                indBstr = self.red(f'{indB: ^8.1f}')
             elif indB >= -10 and indB < -3:
-                indBstr = self.yellow(f'{indB:.1f}')
+                indBstr = self.yellow(f'{indB: ^8.1f}')
             else:
-                indBstr = self.green(f'{indB:.1f}')
+                indBstr = self.green(f'{indB: ^8.1f}')
             if outdB >= -3:
-                outdBstr = self.red(f'{outdB:.1f}')
+                outdBstr = self.red(f'{outdB: ^8.1f}')
             elif outdB >= -10 and outdB < -3:
-                outdBstr = self.yellow(f'{outdB:.1f}')
+                outdBstr = self.yellow(f'{outdB: ^8.1f}')
             else:
-                outdBstr = self.green(f'{outdB:.1f}')
+                outdBstr = self.green(f'{outdB: ^8.1f}')
             print(f'\r\tinput: {indBstr} dB\toutput: {outdBstr} dB\t', end='\r')
             self.reset()
         else:
