@@ -60,7 +60,7 @@ class Monitor(object):
         self.outData = np.empty((self.numSamples, self.numChannels[1]), dtype=self.dtype)
         self.red = utils.ColorStr("white", "red")
         self.green = utils.ColorStr("white", "green")
-        self.yellow = utils.ColorStr("black", "blue")
+        self.yellow = utils.ColorStr("black", "yellow")
         self.reset()
         print('\r\tinput: 00.00 dB\toutput: 00.00 dB\t', end='\r')
         return
@@ -78,17 +78,17 @@ class Monitor(object):
             indB = utils.arr2dB(self.inData)
             outdB = utils.arr2dB(self.outData)
             if indB >= -3:
-                indBstr = self.red(f'{indB:.2f}')
+                indBstr = self.red(f'{indB:.1f}')
             elif indB >= -10 and indB < -3:
-                indBstr = self.yellow(f'{indB:.2f}')
+                indBstr = self.yellow(f'{indB:.1f}')
             else:
-                indBstr = self.green(f'{indB:.2f}')
+                indBstr = self.green(f'{indB:.1f}')
             if outdB >= -3:
-                outdBstr = self.red(f'{outdB:.2f}')
+                outdBstr = self.red(f'{outdB:.1f}')
             elif outdB >= -10 and outdB < -3:
-                outdBstr = self.yellow(f'{outdB:.2f}')
+                outdBstr = self.yellow(f'{outdB:.1f}')
             else:
-                outdBstr = self.green(f'{outdB:.2f}')
+                outdBstr = self.green(f'{outdB:.1f}')
             print(f'\r\tinput: {indBstr} dB\toutput: {outdBstr} dB\t', end='\r')
             self.reset()
         else:
