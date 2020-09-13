@@ -5,8 +5,6 @@ Room Impulsive Response
 
 .. automodule:: pytta.apps.roomir
 
-.. autoclass:: pytta.roomir.MeasurementChList
-   :members:
 
 .. autoclass:: pytta.roomir.MeasurementSetup
    :members:
