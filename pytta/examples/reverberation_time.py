@@ -21,5 +21,5 @@ if __name__ == "__main__":
     # myIRsignal = pytta.load(path + name + hdf5)
     
     myRT = pytta.rooms.RT(20, myIRsignal, 3)
-    myD50 = pytta.rooms.D(50, myIRsignal, 1)
-    myC80 = pytta.rooms.C(80, myIRsignal, 6)
+    # myD50 = pytta.rooms.D(50, myIRsignal, 1)
+    # myC80 = pytta.rooms.C(80, myIRsignal, 6)

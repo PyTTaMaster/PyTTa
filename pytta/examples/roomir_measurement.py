@@ -6,6 +6,7 @@ Created on Sun Jun 23 15:08:25 2019
 @author: mtslazarin
 """
 # %% Initializating
+
 import pytta
 from pytta import roomir as rmr
 import os
@@ -17,20 +18,23 @@ import matplotlib.pyplot as plt
 
 # %% Muda o current working directory do Python para a pasta onde este script
 # se encontra
+
 cwd = os.path.dirname(__file__) # Pega a pasta de trabalho atual
 os.chdir(cwd)
 
-# %%
-# Cria objeto para stream de dados com o LabJack U3 com o sensor
+# %% Cria objeto para stream de dados com o LabJack U3 com o sensor
 # de temperatura e umidade EI1050
+
 # tempHumid = lju3ei1050.main()
 tempHumid = None  # Para testes com LabJack offline
 
 # %% Caso já tenha uma medição em curso, carregue o MeasurementSetup e 
 # MeasurementData
+
 MS, D = rmr.med_load('med-teste')
 
 # %% Carrega sinais de excitação e cria dicionário para o setup da medição
+
 excitationSignals = {}
 excitationSignals['varredura18'] = pytta.generate.sweep(
         # Geração do sweep (também pode ser carregado projeto prévio)
@@ -63,12 +67,14 @@ excitationSignals['varredura17'] = pytta.generate.sweep(
 #         'data/Voice Sabine Short_edited.WAV')
 
 # %% Carrega sensibilidade do microfone para compensação na cadeia de entrada
+
 # loadtxt = np.loadtxt(fname='14900_no_header.txt')
 # mSensFreq = loadtxt[:,0]
 # mSensdBMag = loadtxt[:,1]
 # # plt.semilogx(mSensFreq, mSensdBMag)
 
 # %% Carrega resposta da fonte para compensação na cadeia de saida
+
 # matLoad = io.loadmat('hcorrDodecCTISM2m_Brum.mat')
 # ir = pytta.SignalObj(matLoad['hcorrDodecCTISM2m'],'time',44100)
 # sSensFreq = ir.freqVector
@@ -78,14 +84,16 @@ excitationSignals['varredura17'] = pytta.generate.sweep(
 # sSensdBMag = 20*np.log10(sourceSens)
 # # plt.semilogx(sSensFreq, sSensdBMag)
 
-# %% Cria novo setup de medição e inicializa objeto de dados, que gerencia o
+# %% Cria novo setup de medição e inicializa objeto de dados, o qual gerencia o
 # MeasurementSetup e os dados da medição em disco
+
 MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           samplingRate=44100,  # [Hz]
+                          # Interface de áudio
                           # Sintaxe : device = [<in>,<out>] ou <in/out>
                           # Utilize pytta.list_devices() para listar
                           # os dispositivos do seu computador.
-                          #   device=[0, 1],  # PC laza
+                          # device=[0, 1],  # PC laza
                           # device=4,  # Saffire Pro 40 laza
                           # device=[1, 3], # PC Leo
                           # device=0,  # Firebox laza
@@ -93,12 +101,17 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           noiseFloorTp=5,  # [s] tempo de gravação do ruído de fundo
                           calibrationTp=2,  # [s] tempo de gravação do sinal de calibração
                           excitationSignals=excitationSignals,  # Sinais de excitação
-                          averages=2,  # Número de médias por medição
+                          
+                          # Número de médias por tomada de medição: para grande
+                          # número de médias recomenda-se dividí-las em algumas
+                          # tomadas distintas.
+                          averages=2,  
                           pause4Avg=False,  # Pausa entre as médias
                           freqMin=20,  # [Hz]
                           freqMax=20000,  # [Hz]
                           
-                          # Dicionário com códigos e canais de saída associados
+                          # Dicionário com canais de saída, códigos associados
+                          # e grupos de canal (arranjos)
                           inChannels={'OE': (4, 'Orelha E'),
                                       'OD': (3, 'Orelha D'),
                                       'Mic1': (1, 'Mic 1'),
@@ -120,6 +133,7 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
 D = rmr.MeasurementData(MS)
 
 # %% Cria nova tomada de medição
+
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
@@ -148,6 +162,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               sourcePos='S1')
 
 # %% Cria nova tomada de medição do ruído de fundo
+
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
@@ -165,6 +180,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               receiversPos=['R1'])
 
 # %% Cria nova tomada de medição para recalibração de fonte
+
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
@@ -182,6 +198,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               outputAmplification=-6) # [dB]
 
 # %% Cria nova tomada de medição para calibração do microfone
+
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
@@ -192,6 +209,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               inChSel=['Mic1'])
 
 # %% Cria nova tomada de medição para calibração de canal
+
 takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Passa objeto de comunicação
                               # com o LabJack U3 + EI1050 probe
@@ -207,65 +225,11 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               outChSel='O1',
                               # Ganho na saída
                               outputAmplification=-30) # [dB]
+
 # %% Inicia tomada de medição/aquisição de dados
+
 takeMeasure.run()
 
 # %% Salva tomada de medição no disco
+
 D.save_take(takeMeasure)
-
-# %% Carrega um dicionário com MeasuredThings de acordo com as tags fornecidas
-# e faz algum processamento
-a = D.get('channelcalibir', 'Mic1')
-# msdThing = a['roomres_S1-R1_O1-Mic1_varredura_1']
-msdThing = a['channelcalibir_O1-Mic1_varredura_1']
-msdThing.measuredSignals[0].plot_time()
-msdThing.measuredSignals[0].plot_freq()
-# %% Calcula respostas impulsivas aplicando calibrações e salva em disco
-a = D.get('roomres', 'Mic1')
-# a = D.get('channelcalibration', 'Mic1')
-b = D.calculate_ir(a,
-                   calibrationTake=1,
-                   skipInCompensation=False, # Ok
-                   skipOutCompensation=False, # Ok
-                   whereToOutComp='excitation',
-                   skipBypCalibration=False, # Ok
-                   skipIndCalibration=False, # Ok
-                   skipRegularization=False, # Ok
-                   IREndManualCut=None,
-                   IRStartManualCut=None,
-                   skipSave=False)
-for name, IR in b.items():
-        print(name)
-        # IR.measuredSignals[0].plot_time()
-        # prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[60,100])
-        prot1 = IR.measuredSignals[0].plot_freq(xlim=[1, 24000], ylim=[0,85])
-        # prot1 = IR.measuredSignals[0].plot_freq(xlim=[20, 20000], ylim=[20,96])
-        # prot1 = IR.measuredSignals[0].plot_freq(xlim=None)
-        prot2 = IR.measuredSignals[0].plot_time_dB(xlim=None)
-        # prot2 = IR.measuredSignals[0].plot_time(xlim=[-0.01, 0.3])
-
-# %% Calcula respostas ao sinal de excitação calibradas e salva em disco
-a = D.get('roomres', 'Mic1')
-b = D.calibrate_res(a,
-                    calibrationTake=1,
-                    skipInCompensation=True,
-                    skipSave=False)
-for name, res in b.items():
-        print(name)
-        # res.measuredSignals[0].plot_time()
-        res.measuredSignals[0].plot_freq(ylim=[-13,50])
-
-# %% Formas alternativas de carregar dados na memória
-
-# %% Carrega MS e todas as MeasuredThings
-a = rmr.h5_load(MS.name + '/MeasurementData.hdf5')
-
-# %% Carrega sinais de excitação utilizados
-a = rmr.h5_load(MS.name + '/MeasurementData.hdf5', skip=['MeasuredThing'])
-loadedExcitationSignals = a['MeasurementSetup'].excitationSignals
-loadedExcitationSignals['varredura'].plot_freq()
-
-# %%
-b['roomir_S1-R1_O1-Mic1_varredura_1'].measuredSignals[0].systemSignal.plot_time_dB()
-
-# %%

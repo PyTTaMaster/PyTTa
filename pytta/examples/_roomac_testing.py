@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 # -*-coding = utf-8 -*-
+
+# TO DO: create unit test from this and move to tests folder at bib root
+
 # %%
 import pytta
 import matplotlib.pyplot as plt
