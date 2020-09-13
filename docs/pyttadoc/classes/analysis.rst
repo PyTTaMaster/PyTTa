@@ -1,8 +1,10 @@
-.. currentmodule:: pytta.classes
+.. currentmodule:: pytta
 
 Analysis Objects
 ================
 
 .. automodule:: pytta.classes.analysis
+
+.. autoclass:: pytta.Analysis
    :members:
 

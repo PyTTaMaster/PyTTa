@@ -3,6 +3,8 @@
 Properties
 ==========
 
-.. automodule:: pytta.properties
-   :members:
+.. automodule:: pytta._properties
 
+.. autoclass:: pytta.default
+   :members:
+   
