@@ -23,7 +23,6 @@ from shutil import rmtree
 import copy as cp
 import traceback
 
-
 # Dict with the measurementKinds
 # TO DO FUTURE: add 'inchcalibration', 'outchcalibration'
 # Roomir measurement versus pytta basic i/o
@@ -32,7 +31,6 @@ measurementKinds = {'roomres': 'PlayRecMeasure',
                     'miccalibration': 'RecMeasure',
                     'sourcerecalibration': 'PlayRecMeasure',
                     'channelcalibration': 'PlayRecMeasure'}
-
 
 class _MeasurementChList(ChannelsList):
 
@@ -158,6 +156,8 @@ class _MeasurementChList(ChannelsList):
                     pass
         self.groups = groups
 
+# Workaraound for class name change. If removed old roomir files won't load.
+MeasurementChList = _MeasurementChList
 
 class MeasurementSetup(object):
     # TO DO: docs
