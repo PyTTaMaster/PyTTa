@@ -10,11 +10,10 @@ API documentation
 =================
 
 .. toctree::
+   properties
    generate
    functions
    rooms
-   plot
-   properties
    classes/index
    apps/index
    utils/index
