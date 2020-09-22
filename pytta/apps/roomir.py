@@ -1,25 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul  2 10:35:05 2019
+RooomIR application.
 
-@author: mtslazarin
+This application was developed using the toolbox's existent functionalities, 
+and is aimed to give support to acquire and post-process impulsive responses, 
+and calculate room acoustics parameters.
+
+The functionalities comprise tools for data acquisition (MeasurementSetup,
+MeasurementData, and TakeMeasure classes) and post-processing
+(MeasurementPostProcess class). All measured responses and the post-processed
+impulsive responses are stored by MeasuredThing class objects, while the
+calculated results in Analysis class objects. All data is stored in the HDF5
+file scheme designed to the toolbox. For more information about the specific
+file scheme for the MeasurementData.hdf5 file check the MeasurementData class
+documentation.
+
+It is also possible to use the LabJack U3 hardware with the EI 1050 probe to
+acquire humidity and temperature values during the measurement. Check the
+TakeMeasure class documentation for more information.
+
+The usage of this app is shown in the files present in the examples folder.
+
+Available classes:
+    
+    >>> pytta.roomir.MeasurementSetup
+    >>> pytta.roomir.MeasurementData
+    >>> pytta.roomir.TakeMeasure
+    >>> pytta.roomir.MeasurementPostProcess
+    >>> pytta.roomir.MeasuredThing
+    
+Available functions:
+    
+    >> MS, D = pytta.roomir.med_load('med-name')
+    
+For further information, check the class-specific or function documentation.
+
 """
 
 from pytta.classes._base import ChannelObj, ChannelsList
-from pytta.classes.filter import AntiAliasingFilter
 from pytta import generate, SignalObj, ImpulsiveResponse, Analysis
 from pytta import rooms
 from pytta.functions import __h5_unpack as pyttah5unpck
 from pytta import _h5utils as _h5
-import time
 import numpy as np
 import scipy.stats
 from scipy import interpolate
 import h5py
 from os import getcwd, listdir, mkdir
 from os.path import isfile, join, exists
-from shutil import rmtree
 import copy as cp
 import traceback
 
@@ -1224,6 +1253,9 @@ class MeasurementData(object):
 
 
 class TakeMeasure(object):
+    """
+    ....LabJack U3 + EI1050 detais...
+    """
     # TO DO: docs
     # TO DO: add @property .measuredThings
     # Magic methods

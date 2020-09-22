@@ -50,7 +50,10 @@ class SignalObj(_base.PyTTaObj):
 
     Attributes:
     ------------
-
+    
+        * attribute (default), (data type):
+            description;    
+        
         * timeSignal (ndarray), (NumPy array):
             signal at time domain;
 
@@ -93,6 +96,7 @@ class SignalObj(_base.PyTTaObj):
 
     Methods:
     ---------
+    
         * crop(startTime, endTime):
             crops the timeSignal within the provided time interval;
 
@@ -1501,3 +1505,4 @@ def _make_pk_spectra(freqSignal):
     newFreqSignal[:,:] = freqSignal * 2**(1/2)
     newFreqSignal[0,:] = freqSignal[0,:] / 2**(1/2)
     return newFreqSignal
+
