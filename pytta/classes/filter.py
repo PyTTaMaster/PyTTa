@@ -1,13 +1,43 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from copy import copy
 from scipy import signal as ss
 from pytta.classes import SignalObj
-from pytta.frequtils import fractional_octave_frequencies, freq_to_band, \
-                            normalize_frequencies, freqs_to_center_and_edges
+from pytta.classes._base import ChannelsList
+from pytta.utils import fractional_octave_frequencies, freq_to_band, \
+                        normalize_frequencies, freqs_to_center_and_edges
 
-class OctFilter(object):
+
+class FilterBase(object):
+    """Base class for filters."""
+
+    def __init__(self, order: int, samplingrate: int):
+        self.samplingRate = samplingrate
+        self.order = order
+        return
+
+    def __call__(self, sigobj: SignalObj):
+        """
+        Filter the signal object.
+
+        For each channel inside the input signalObj, will be generated a new SignalObj with the channel filtered signal.
+
+        Args:
+            sigobj: SignalObj
+
+        Return:
+            output: List
+                A list containing one SignalObj with the filtered data for each channel in the original signalObj.
+
+        """
+        return self._filter(sigobj)
+
+
+
+class OctFilter(FilterBase):
     """
+    Octave filter.
     """
     def __init__(self,
                  order: int = None,
@@ -17,9 +47,34 @@ class OctFilter(object):
                  maxFreq: float = None,
                  refFreq: float = None,
                  base: int = None) -> None:
-        self.order = order
+        """
+
+
+        Parameters
+        ----------
+        order : int, optional
+            DESCRIPTION. The default is None.
+        nthOct : int, optional
+            DESCRIPTION. The default is None.
+        samplingRate : int, optional
+            DESCRIPTION. The default is None.
+        minFreq : float, optional
+            DESCRIPTION. The default is None.
+        maxFreq : float, optional
+            DESCRIPTION. The default is None.
+        refFreq : float, optional
+            DESCRIPTION. The default is None.
+        base : int, optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None
+            DESCRIPTION.
+
+        """
+        FilterBase.__init__(self, order, samplingRate)
         self.nthOct = nthOct
-        self.samplingRate = samplingRate
         self.minFreq = minFreq
         self.minBand = freq_to_band(minFreq, nthOct, refFreq, base)
         self.maxFreq = maxFreq
@@ -53,34 +108,62 @@ class OctFilter(object):
 
     def get_sos_filters(self) -> np.ndarray:
         freqs = fractional_octave_frequencies(self.nthOct,
-                                              self.minFreq,
-                                              self.maxFreq,
+                                              (self.minFreq,
+                                               self.maxFreq),
                                               self.refFreq,
                                               self.base)
         self.center, edges = freqs_to_center_and_edges(freqs)
         return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
-    def filter(self, signalObj):
-        if self.samplingRate != signalObj.samplingRate:
-            raise ValueError("SignalObj must have same sampling\
-                             rate of filter to be filtered.")
+    def filter(self, sigobj):
+        print(":WARNING: `OctFilter.filter` method will soon be deprecated.")
+        return self._filter(sigobj)
+
+    def _filter(self, sigobj):
+        """
+        Filter the signal object.
+
+        For each channel inside the input signalObj, will be generated a new
+        SignalObj with the channel filtered signal.
+
+        Args:
+            sigobj: SignalObj
+
+        Return:
+            output: List
+                A list containing one SignalObj with the filtered data for each
+                channel in the original signalObj.
+
+        """
+        if self.samplingRate != sigobj.samplingRate:
+            raise ValueError("SignalObj must have same sampling rate of filter to be filtered.")
         n = self.sos.shape[2]
         output = []
-        for ch in range(signalObj.numChannels):
-            filtered = np.zeros((signalObj.numSamples, n))
+        chl = []
+        for ch in range(sigobj.numChannels):
+            sobj = sigobj[ch]
+            filtered = np.zeros((sobj.numSamples, n))
             for k in range(n):
-                cContigousArray = signalObj.timeSignal[:, ch].copy(order='C')
+                cContigousArray = sobj.timeSignal[:].copy(order='C')
                 filtered[:, k] = ss.sosfilt(self.sos[:, :, k].copy(order='C'),
                                             cContigousArray,
                                             axis=0).T
+                chl.append(copy(sobj.channels[sobj.channels.mapping[0]]))
+                chl[-1].num = k+1
+                chl[-1].name = f'Band {k+1}'
+                chl[-1].code = f'B{k+1}'
             signalDict = {'signalArray': filtered,
                           'domain': 'time',
                           'samplingRate': self.samplingRate,
-                          'freqMin': self.minFreq,
-                          'freqMax': self.maxFreq}
-            output.append(SignalObj(**signalDict))
-        else:
-            return output
+                          'freqMin': sigobj.freqMin,
+                          'freqMax': sigobj.freqMax,
+                          }
+            out = SignalObj(**signalDict)
+            out.channels = ChannelsList(chl)
+            # out.timeSignal = out.timeSignal * out.channels.CFlist()
+            output.append(out)
+            chl.clear()
+        return output
 
 
 
@@ -189,22 +272,40 @@ def __D(freq):
     return D
 
 
-categories = ['20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160',
-              '200', '250', '315', '400', '500', '630', '800', '1000', '1250',
-              '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000',
-              '10000', '12500', '16000', '20000']
+_categories = ['20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160',
+               '200', '250', '315', '400', '500', '630', '800', '1000', '1250',
+               '1600', '2000', '2500', '3150', '4000', '5000', '6300', '8000',
+               '10000', '12500', '16000', '20000']
 
 
 def weighting(kind='A', nth=None, freqs=None):
+    """
+    Level weighting curve.
+
+    Parameters
+    ----------
+    kind : TYPE, optional
+        DESCRIPTION. The default is 'A'.
+    nth : TYPE, optional
+        DESCRIPTION. The default is None.
+    freqs : TYPE, optional
+        DESCRIPTION. The default is None.
+
+    Returns
+    -------
+    np.ndarray
+        The weighting curve in dB.
+
+    """
     out = []
     if freqs is not None:
         for freq in freqs:
             out.append(eval('__' + kind + '(' + freq + ')'))
     elif nth is not None:
         if nth == 1:
-            for val in categories[2::3]:
+            for val in _categories[2::3]:
                 out.append(eval('__' + kind + '(' + val + ')'))
         elif nth == 3:
-            for val in categories:
+            for val in _categories:
                 out.append(eval(kind+'('+val+')'))
     return np.asarray(out, ndmin=2).T

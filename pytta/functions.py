@@ -1,33 +1,30 @@
 # -*- coding: utf-8 -*-
 """
-Functions:
------------
+This submodule carries a set of useful functions of general purpouses when
+using PyTTa, like reading and writing wave files, seeing the audio IO
+devices available and some signal processing tools.
 
-    This submodule carries a set of useful functions of general purpouses when
-    using PyTTa, like reading and writing wave files, seeing the audio IO
-    devices available and some signal processing tools.
+Available functions:
 
-    Available functions:
-    ---------------------
+    >>> pytta.list_devices()
+    >>> pytta.fft_degree(timeLength, samplingRate)
+    >>> pytta.read_wav(fileName)
+    >>> pytta.write_wav(fileName, signalObject)
+    >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.fft_convolve(signalObj1, signalObj2)
+    >>> pytta.find_delay(signalObj1, signalObj2)
+    >>> pytta.corr_coef(signalObj1, signalObj2)
+    >>> pytta.resample(signalObj, newSamplingRate)
+    >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.save(fileName, obj1, ..., objN)
+    >>> pytta.load(fileName)
 
-        >>> pytta.list_devices()
-        >>> pytta.fft_degree(timeLength, samplingRate)
-        >>> pytta.read_wav(fileName)
-        >>> pytta.write_wav(fileName, signalObject)
-        >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.fft_convolve(signalObj1, signalObj2)
-        >>> pytta.find_delay(signalObj1, signalObj2)
-        >>> pytta.corr_coef(signalObj1, signalObj2)
-        >>> pytta.resample(signalObj, newSamplingRate)
-        >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
-        >>> pytta.save(fileName, obj1, ..., objN)
-        >>> pytta.load(fileName)
+For further information, check the function specific documentation.
 
-    For further information, check the function specific documentation.
 """
 
 import os
@@ -41,15 +38,16 @@ import scipy.signal as ss
 import scipy.fftpack as sfft
 import zipfile as zf
 import h5py
+from typing import Union, List
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
                     Analysis
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
-from pytta import h5utils as _h5
+from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
-from pytta import plot
+from pytta import _plot as plot
 
 
 def list_devices():
@@ -64,6 +62,27 @@ def list_devices():
     return sd.query_devices()
 
 
+def get_device_from_user() -> Union[List[int], int]:
+    """
+    Print the device list and query for a number input of the device, or devices.
+
+    Returns
+    -------
+    Union[List[int], int]
+        Practical interface for querying devices to be used within scripts.
+
+    """
+    print(list_devices())
+    device = [int(dev.strip()) for dev in input("Input the device number: ").split(',')]
+    if len(device) == 1:
+        device = device[0]
+        text = "Device is:"
+    else:
+        text = "Devices are:"
+    print(text, device)
+    return device
+
+
 def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
     """
     Returns the power of two value that can be used to calculate the total
@@ -74,11 +93,11 @@ def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
     Parameters:
     ------------
 
-        timeLength (float = 0):
+        * timeLength (float = 0):
             Value, in seconds, of the time duration of the signal or
             recording.
 
-        samplingRate (int = 1):
+        * samplingRate (int = 1):
             Value, in samples per second, that the data will be captured
             or emitted.
 
@@ -111,7 +130,7 @@ def write_wav(fileName, signalIn):
     """
     samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
-    return wf.write(fileName, samplingRate, data)
+    return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
 
 
 # Refactor for new SignalObj's channelsList
@@ -226,15 +245,16 @@ def peak_time(signal):
         return peaks_time[0]
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in time domain.
 
     Saves xLabel, yLabel, and title when provided for the next plots.
-    
+
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel (None), (str):
@@ -261,6 +281,9 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
     Return:
     --------
 
@@ -268,19 +291,21 @@ def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
     """
     realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time:')
     if len(realSigObjs) > 0:
-        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                        decimalSep, timeUnit)
         return fig
     else:
         return
 
 def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
-              xLim:list=None, title:str=None, decimalSep:str=','):
+              xLim:list=None, title:str=None, decimalSep:str=',',
+              timeUnit:str='s'):
     """Plot provided SignalObjs togheter in decibels in time domain.
-    
+
     Parameters (default), (type):
     -----------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * xLabel ('Time [s]'), (str):
@@ -307,6 +332,10 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
 
             >>> decimalSep = ',' # in Brazil
 
+        * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
     Return:
     --------
 
@@ -316,11 +345,11 @@ def plot_time_dB(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_time_dB:')
     if len(realSigObjs) > 0:
         fig = plot.time_dB(realSigObjs, xLabel, yLabel, yLim, xLim, title,
-                           decimalSep)
+                           decimalSep, timeUnit)
         return fig
     else:
         return
-                               
+
 
 def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
               yLim:list=None, xLim:list=None, title:str=None,
@@ -330,9 +359,9 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
-        
+
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -372,7 +401,7 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
         return
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
-              yLim:list=None, title:str=None, decimalSep:str=',',
+              yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',
               barWidth:float=0.75, errorStyle:str=None,
               forceZeroCentering:bool=False, overlapBars:bool=False,
               color:list=None):
@@ -381,9 +410,9 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
     Parameters (default), (type):
     -----------------------------
 
-        * *analyses (), (SignalObj):
+        * analyses (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
-        
+
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -395,6 +424,11 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 
             >>> yLim = [-100, 100]
 
+        * xLim (), (list):
+            bands limits.
+
+            >>> xLim = [100, 10000]
+
         * title (), (str):
             plot title
 
@@ -404,7 +438,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
             >>> decimalSep = ',' # in Brazil
 
         * barWidth (0.75), float:
-            width of the bars from one fractional octave band. 
+            width of the bars from one fractional octave band.
             0 < barWidth < 1.
 
         * errorStyle ('standard'), str:
@@ -428,7 +462,7 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 
     analyses = _remove_non_(Analysis, analyses, msgPrefix='plot_bars:')
     if len(analyses) > 0:
-        fig = plot.bars(analyses, xLabel, yLabel, yLim, title,
+        fig = plot.bars(analyses, xLabel, yLabel, yLim, xLim, title,
             decimalSep, barWidth, errorStyle, forceZeroCentering, overlapBars,
             color)
         return fig
@@ -445,7 +479,7 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     Parameters (default), (type):
     -----------------------------
 
-        * *sigObjs (), (SignalObj):
+        * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
         * winType ('hann'), (str):
@@ -505,7 +539,7 @@ def plot_waterfall(*sigObjs, step=10, xLim:list=None,
     """This function was gently sent by Rinaldi Polese Petrolli.
 
     # TO DO
-    
+
     Keyword Arguments:
         step {int} -- [description] (default: {10})
         xLim {list} -- [description] (default: {None})
@@ -530,7 +564,7 @@ def plot_waterfall(*sigObjs, step=10, xLim:list=None,
         size {int} -- [description] (default: {3})
         lcol {[type]} -- [description] (default: {None})
         filtered {bool} -- [description] (default: {True})
-    
+
     Returns:
         [type] -- [description]
     """
@@ -726,15 +760,15 @@ def h5_save(fileName: str, *PyTTaObjs):
 
     Dictionaries can also be passed as a PyTTa object. An hdf5 group will be
     created for each dictionary and its PyTTa objects will be saved. To ensure
-    the diciontary name will be saved, create the key 'dictName' inside it with 
+    the diciontary name will be saved, create the key 'dictName' inside it with
     its name in a string as the value. This function will take this key and use
-    as variable name for the dict. 
+    as variable name for the dict.
 
-    Lists can also be passed as a PyTTa object. An hdf5 group will be created 
+    Lists can also be passed as a PyTTa object. An hdf5 group will be created
     for each list and its PyTTa objects will be saved. To ensure the list name
     will be saved, append to the list a string containing its name. This
     function will take the first string found and use it as variable name for
-    the list. 
+    the list.
     """
     # Checking if filename has .hdf5 extension
     if fileName.split('.')[-1] != 'hdf5':
@@ -804,7 +838,7 @@ def __h5_pack(rootH5Group, pObj, objDesc):
                 totalPObjCount + packTotalPObjCount, \
                     savedPObjCount + packSavedPObjCount
         return (totalPObjCount, savedPObjCount)
-    
+
     elif isinstance(pObj, list):
         # Creation name
         creationName = None
@@ -1073,6 +1107,6 @@ def __h5_unpack(objH5Group):
         for idx in range(maxIdx+1):
             listObj.append(dictObj[idx])
         return listObj
-        
+
     else:
         raise NotImplementedError

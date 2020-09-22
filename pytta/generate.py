@@ -1,34 +1,32 @@
 # -*- coding: utf-8 -*-
 """
-Generate:
-----------
+This submodule provides the tools for instantiating the measurement and
+signal objects to be used. We strongly recommend the use of this submodule
+instead of directly instantiating classes, except when necessary.
 
-@Autores:
+The signal generating functions already have set up a few good practices
+on signal generation and reproduction through audio IO interfaces, like
+silences at beginning and ending of the signal, as well as fade ins and
+fade out to avoid abrupt audio currents from flowing and causing undesired
+peaks at start/ending of reproduction.
+
+On the measurement side, it tries to set up the environment by already
+giving excitation signals, or by generating a SWEEP from default values
+
+User intended functions:
+
+    >>> pytta.generate.sin()
+    >>> pytta.generate.sweep()
+    >>> pytta.generate.noise()
+    >>> pytta.generate.impulse()
+    >>> pytta.generate.measurement()
+
+For further information see the specific function documentation
+
+@authors:
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 - Matheus Lazarin Alberto, mtslazarin@gmail.com
 
-    This submodule provides the tools for instantiating the measurement and
-    signal objects to be used. We strongly recommend the use of this submodule
-    instead of directly instantiating classes, except when necessary.
-
-    The signal generating functions already have set up a few good practices
-    on signal generation and reproduction through audio IO interfaces, like
-    silences at beginning and ending of the signal, as well as fade ins and
-    fade out to avoid abrupt audio currents from flowing and causing undesired
-    peaks at start/ending of reproduction.
-
-    On the measurement side, it tries to set up the environment by already
-    giving excitation signals, or by generating a SWEEP from default values
-
-    User intended functions:
-
-        >>> pytta.generate.sin()
-        >>> pytta.generate.sweep()
-        >>> pytta.generate.noise()
-        >>> pytta.generate.impulse()
-        >>> pytta.generate.measurement()
-
-    For further information see the specific function documentation
 """
 
 
@@ -39,6 +37,7 @@ from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
 from scipy import signal as ss
 import numpy as np
 import traceback
+from warnings import warn
 
 
 def sin(Arms=0.5,
@@ -103,7 +102,7 @@ def sin(Arms=0.5,
     return sinSigObj
 
 #FIXME: por que não passar valores padrão pré preenchidos? Linhas 147-158 economia
-def sweep(freqMin=None, 
+def sweep(freqMin=None,
           freqMax=None,
           samplingRate=None,
           fftDegree=None,
@@ -263,7 +262,7 @@ def noise(kind='white',
     silence at the beginning and ending of the signal, plus a fade in to avoid
     abrupt speaker excursioning. All noises have normalized amplitude.
 
-        White noise is generated using numpy.randn between [[1];[-1]]; 
+        White noise is generated using numpy.randn between [[1];[-1]];
         # FIXME: This looks incorrect because the signal has normal
         # distribution, so no limits but an average and standard deviation.
 
@@ -373,6 +372,15 @@ def impulse(samplingRate=None,
         fftDegree = default.fftDegree
 
     numSamples = 2**fftDegree
+    # FIXME: I don't know why you created this way. I guess it would be better
+    # to just create a vector of zeros and then substitute the first sample by
+    # 1.
+    # =========================================================================
+    #     impulseSignal = (numSamples / samplingRate) \
+    #         * np.ones(numSamples) + 1j * np.random.randn(numSamples)
+    #     impulseSignal = np.real(np.fft.ifft(impulseSignal))
+    #     impulseSignal = impulseSignal / max(impulseSignal)
+    # =========================================================================
     impulseSignal = np.zeros(numSamples)
     impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,
@@ -666,8 +674,13 @@ def stream(IO='IO',
     stream.creation_name = creation_name
     return stream
 
+def filter(*args, **kwargs) -> OctFilter:
+    warn(DeprecationWarning("'pytta.generate.filter' DEPRECATED and being " +
+                                "replaced by 'pytta.generate.octfilter'."))
+    return octfilter(*args, **kwargs)
 
-def filter(order: int = 4,
+
+def octfilter(order: int = 4,
            nthOct: int = 3,
            samplingRate: int = 44100,
            minFreq: float = 20,

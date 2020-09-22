@@ -35,6 +35,8 @@ The | represents the cursor position to press "ctrl+i" to use the Spyder help wi
 
 Inside each submodule, the user will find instructions on the available tools, and how to access them.
 
+The documentation is also available at Read The Docs: https://pytta.readthedocs.io/
+
 ### Dependencies
 
 - Numpy;

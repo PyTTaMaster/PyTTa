@@ -1,3 +1,8 @@
+# -*- coding: utf-8 -*-
+
+# TO DO: rename this module to labjack and merge ei1050.py. Then adjust 
+#        roomir examples.
+
 import sys
 from queue import Queue
 
@@ -10,7 +15,30 @@ except:
                       Please install the UD driver (Windows) or Exodriver (Linux and Mac OS X) from www.labjack.com')
     
 class main():
+    """
+    Class for comunication with the Labjack U3 hardware with the probe EI1050
+    to acquire temperature and relative humidity. 
     
+    The UD driver (Windows) or Exodriver (Linux and Mac OS X) from
+    www.labjack.com must be installed.
+    
+    Methods:
+    ---------
+    
+        * start():
+            start communication;
+        
+        * stop():
+            stop communication;
+            
+        * read():
+            gets the latest reading from the readings queue and display it;
+            
+        * instructions():
+            show information for connections between the EI1050 probe and the 
+            Labjack U3hardware;
+            
+    """    
     def __init__(self):
         # Ensure the exsistance of a thread, queue, and device variable
         self.targetQueue = Queue()

@@ -1,66 +1,71 @@
 # -*- coding: utf-8 -*-
 """
-Object Oriented Python in Technical Acoustics
-==============================================
+This is a package developed to perform acoustic and vibration measurements
+and signal analysis.
 
-Autores:
+Our current dependencies are:
+
+    * Numpy
+    * Scipy
+    * Matplotlib
+    * Numba
+    * h5py
+    * SoundDevice
+    * SoundFile
+
+We recommend using the Anaconda Python distribution.
+
+
+You can install directly from PyPI for a stable but rarely updated version:
+
+    ~ $ pip install pytta
+
+Or directly from the repository with:
+
+    ~ $ pip install git+https://github.com/pyttamaster/pytta.git
+
+
+The documentation is available at:
+
+    https://pytta.readthedocs.io/
+
+
+To get started, try:
+
+    >>> import pytta
+    >>> pytta.default()
+    >>> pytta.list_devices()
+
+
+For further information, check the documentation.
+
+
+Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-    Matheus Lazarin Alberto, matheus.lazarin@eac.ufsm.br
+    Matheus Lazarin, matheus.lazarin@eac.ufsm.br
 
-
-PyTTa:
-
-    This is a package developed to perform acoustic and vibration measurements
-    and signal analysis. In order to provide such functionalities we require a
-    few packages to be installed:
-
-    - Numpy
-    - Scipy
-    - Matplotlib
-    - PortAudio API
-    - Sounddevice
-
-    We also recommend using the Anaconda Python distribution, it's not a
-    mandatory issue, but you should.
-
-
-    To begin, try:
-
-        >>> import pytta
-        >>> pytta.default()
-        >>> pytta.list_devices()
-
-    You can find out everything available reading the submodules documentation:
-
-        >>> pytta.classes
-        >>> pytta.generate
-        >>> pytta.functions
-        >>> pytta.properties
-
-For further information, check the specific module, class, method or function
-documentation.
 """
 
 # Importing .py files as submodules
-from . import frequtils
-from .properties import default
+from ._properties import default
 
 # Instantiate the Default parameters to be loaded by other
 # methods and function calls
 
 from .classes import SignalObj, ImpulsiveResponse,\
     RecMeasure, PlayRecMeasure, FRFMeasure,\
-    Streaming, Recorder,\
+    Streaming, Monitor,\
     OctFilter, weighting,\
     Analysis
 
+from . import _h5utils
+from . import _plot
 from . import generate
-from . import h5utils
+from . import utils
 from . import rooms
 from . import iso3741
-from . import plot
 
-from .functions import read_wav, write_wav, merge, list_devices,\
+from .functions import read_wav, write_wav, merge, list_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, fft_degree, plot_time, plot_time_dB, plot_freq,\
     plot_bars, plot_spectrogram, plot_waterfall
@@ -75,10 +80,9 @@ __all__ = [  # Apps
 
            # Submodules
            'generate',
-           'frequtils',
-           'h5utils',
+           'utils',
            'iso3741',
-           'plot',
+           'rooms',
 
            # Functions
            'merge',
@@ -86,6 +90,7 @@ __all__ = [  # Apps
            'read_wav',
            'write_wav',
            'list_devices',
+           'get_device_from_user',
            'find_delay',
            'resample',
            'corr_coef',
@@ -109,8 +114,8 @@ __all__ = [  # Apps
            'ImpulsiveResponse',
            'Analysis',
            'OctFilter',
+           'Monitor',
            'Streaming',
-           'Recorder',
 
            # Objects
            'default']

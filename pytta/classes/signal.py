@@ -12,9 +12,9 @@ import time
 from warnings import warn  # , filterwarnings
 from pytta import default
 from pytta.classes import _base
-from pytta import h5utils as _h5
-from pytta.frequtils import fractional_octave_frequencies as FOF
-from pytta import plot
+from pytta import _h5utils as _h5
+from pytta.utils import fractional_octave_frequencies as FOF
+from pytta import _plot as plot
 import copy as cp
 
 # filterwarnings("default", category=DeprecationWarning)
@@ -242,7 +242,7 @@ class SignalObj(_base.PyTTaObj):
     @property
     def freqSignal(self):
         """
-        Return half of the RMS spectrum. Normalized in case of a power signal.  
+        Return half of the RMS spectrum. Normalized in case of a power signal.
         """
         return self._freqSignal
 
@@ -260,9 +260,9 @@ class SignalObj(_base.PyTTaObj):
                 self._numSamples = len(self.timeSignal)
             else:
                 freqLen = len(self.freqSignal)
-                self._numSamples = int((freqLen*2) + 1) \
+                self._numSamples = int((freqLen-1)*2 + 1) \
                                    if freqLen % 2 == 0 \
-                                   else int((freqLen+1)*2)
+                                   else int((freqLen*2) - 2)
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
             self._freqVector = np.linspace(0, (self.numSamples-1) *
@@ -381,7 +381,7 @@ class SignalObj(_base.PyTTaObj):
 
     def plot_time(self, xLabel:str=None, yLabel:str=None,
                 yLim:list=None, xLim:list=None, title:str=None,
-                decimalSep:str=','):
+                decimalSep:str=',',timeUnit:str='s'):
         """Plots the signal in time domain.
 
         xLabel, yLabel, and title are saved for the next plots when provided.
@@ -413,6 +413,10 @@ class SignalObj(_base.PyTTaObj):
 
                 >>> decimalSep = ',' # in Brazil
 
+             * timeUnit ('s'), (str):
+                'ms' or 's'.
+
+
         Return:
         --------
 
@@ -439,12 +443,13 @@ class SignalObj(_base.PyTTaObj):
                 if self.timeTitle is not None:
                     title = self.timeTitle
 
-        fig = plot.time((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time((self,), xLabel, yLabel, yLim, xLim, title, decimalSep,
+                        timeUnit)
         return fig
 
     def plot_time_dB(self, xLabel:str=None, yLabel:str=None,
                 yLim:list=None, xLim:list=None, title:str=None,
-                decimalSep:str=','):
+                decimalSep:str=',', timeUnit:str='s'):
         """Plots the signal in decibels in time domain.
 
         xLabel, yLabel, and title are saved for the next plots when provided.
@@ -476,6 +481,10 @@ class SignalObj(_base.PyTTaObj):
 
                 >>> decimalSep = ',' # in Brazil
 
+            * timeUnit ('s'), (str):
+            'ms' or 's'.
+
+
         Return:
         --------
 
@@ -502,7 +511,8 @@ class SignalObj(_base.PyTTaObj):
                 if self.timedBTitle is not None:
                     title = self.timedBTitle
 
-        fig = plot.time_dB((self,), xLabel, yLabel, yLim, xLim, title, decimalSep)
+        fig = plot.time_dB((self,), xLabel, yLabel, yLim, xLim, title,
+                           decimalSep, timeUnit)
         return fig
 
     def plot_freq(self, smooth:bool=False, xLabel:str=None, yLabel:str=None,
@@ -951,7 +961,10 @@ class SignalObj(_base.PyTTaObj):
             raise IndexError("Index out of bounds.")
         elif key < 0:
             key += self.numChannels
-        return SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
+        ret = SignalObj(self.timeSignal[:, key], 'time', self.samplingRate)
+        chnum = self.channels.mapping[key]
+        ret.channels[1] = self.channels[chnum]
+        return ret
 
     def _fft(self):
         """fft do the transformation to the frequency domain of the current
@@ -1074,9 +1087,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
         * regularization (bool), (True):
             Do Kirkeby regularization with a packing filter for the impulsive
-            response's time signature. Details in 'Advancements in impulsive 
+            response's time signature. Details in 'Advancements in impulsive
             response measurements by sine sweeps' Farina, 2007.
-    
+
         * ir (SignalObj) (optional):
             An calculated impulsive response. Optional if 'excitation' and
             'recording' are provided;
@@ -1475,11 +1488,13 @@ class ImpulsiveResponse(_base.PyTTaObj):
         del f
         return S12, S11
 
+
 def _make_rms_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
     newFreqSignal[:,:] = freqSignal / 2**(1/2)
     newFreqSignal[0,:] = freqSignal[0,:] * 2**(1/2)
     return newFreqSignal
+
 
 def _make_pk_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
