@@ -42,7 +42,7 @@ For further information, check the documentation.
 
 Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
-    Matheus Lazarin Alberto, matheus.lazarin@eac.ufsm.br
+    Matheus Lazarin, matheus.lazarin@eac.ufsm.br
 
 """
 

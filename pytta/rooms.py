@@ -11,6 +11,11 @@ SignalObj or ImpulsiveResponse and calculate the room acoustic parameters
 especified in the positional input arguments. For more information check
 pytta.rooms.analyse's documentation.
 
+Authors:
+    João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
+    Matheus Lazarin, matheus.lazarin@eac.ufsm.br
+    Rinaldi Petrolli, rinaldi.petrolli@eac.ufsm.br
+    
 """
 
 import numpy as np
@@ -127,138 +132,159 @@ def _circular_time_shift(timeSignal, threshold=20):
 
 @njit
 def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
-                         numChannels, timeLength):
+                        numChannels, timeLength, suppressWarnings=True):
     returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
     timeSignal, sampleShift = _circular_time_shift(timeSignal)
     if sampleShift is None:
         return returnTuple
-    winTimeLength = 0.03  # 30 ms window
+
     numSamples -= sampleShift  # discount shifted samples
     numParts = 5  # number of parts per 10 dB decay. N = any([3, 10])
     dBtoNoise = 7  # stop point 10 dB above first estimated background noise
     useDynRange = 15  # dynamic range
 
-    # 1) local time average:
-    blockSamples = int(winTimeLength * samplingRate)
-    timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
-                                              numSamples, numChannels,
-                                              blockSamples)
+    # Window length - 10 to 50 ms, longer periods for lower frequencies and vice versa
+    repeat = True
+    i = 0
+    winTimeLength = 0.01
+    while repeat: # loop to find proper winTimeLength
+        winTimeLength = winTimeLength + 0.01*i
+        # 1) local time average:
+        blockSamples = int(winTimeLength * samplingRate)
+        timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
+                                                  numSamples, numChannels,
+                                                  blockSamples)
 
-    # 2) estimate noise from h^2_averaged(block):
-    bgNoiseLevel = 10 * \
-                   np.log10(
-                            np.mean(timeWinData[-int(timeWinData.size/10):]))
+        # 2) estimate noise from h^2_averaged(block):
+        bgNoiseLevel = 10 * \
+                       np.log10(
+                                np.mean(timeWinData[-int(timeWinData.size/10):]))
 
-    # 3) Calculate premilinar slope
-    startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
-    stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
-                                  >= bgNoiseLevel + dBtoNoise)[0][-1]
-    dynRange = 10*np.log10(timeWinData[stopIdx]) \
-        - 10*np.log10(timeWinData[startIdx])
-    if (stopIdx == startIdx) or (dynRange > -5)[0]:
-        print(band, "[Hz] band: SNR too low for the preliminar slope",
-              "calculation.")
-        return returnTuple
+        # 3) Calculate premilinar slope
+        startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
+        stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
+                                      >= bgNoiseLevel + dBtoNoise)[0][-1]
+        dynRange = 10*np.log10(timeWinData[stopIdx]) \
+            - 10*np.log10(timeWinData[startIdx])
+        if (stopIdx == startIdx) or (dynRange > -5)[0]:
+            if not suppressWarnings:
+                print(band, "[Hz] band: SNR too low for the preliminar slope",
+                  "calculation.")
+            # return returnTuple
 
-    # X*c = EDC (energy decaying curve)
-    X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
-    X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
-    c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
-                        rcond=-1)[0]
-
-    if (c[1] == 0)[0] or np.isnan(c).any():
-        print(band, "[Hz] band: regression failed. T would be inf.")
-        return returnTuple
-
-    # 4) preliminary intersection
-    crossingPoint = (bgNoiseLevel - c[0]) / c[1]  # [s]
-    if (crossingPoint > 2*(timeLength + sampleShift/samplingRate))[0]:
-        print(band, "[Hz] band: preliminary intersection point between",
-              "bgNoiseLevel and the decay slope greater than signal length.")
-        return returnTuple
-
-    # 5) new local time interval length
-    nBlocksInDecay = numParts * dynRange[0] / -10
-
-    dynRangeTime = timeVecWin[stopIdx] - timeVecWin[startIdx]
-    blockSamples = int(samplingRate * dynRangeTime[0] / nBlocksInDecay)
-
-    # 6) average
-    timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
-                                              numSamples, numChannels,
-                                              blockSamples)
-
-    oldCrossingPoint = 11+crossingPoint  # arbitrary higher value to enter loop
-    loopCounter = 0
-
-    while (np.abs(oldCrossingPoint - crossingPoint) > 0.001)[0]:
-        # 7) estimate background noise level (BGL)
-        bgNoiseMargin = 7
-        idxLast10Percent = int(len(timeWinData)-(len(timeWinData)//10))
-        bgStartTime = crossingPoint - bgNoiseMargin/c[1]
-        if (bgStartTime > timeVecWin[-1:][0])[0]:
-            idx10dBDecayBelowCrossPoint = len(timeVecWin)-1
-        else:
-            idx10dBDecayBelowCrossPoint = \
-                np.where(timeVecWin >= bgStartTime)[0][0]
-        BGL = np.mean(timeWinData[np.min(
-                np.array([idxLast10Percent,
-                          idx10dBDecayBelowCrossPoint])):])
-        bgNoiseLevel = 10*np.log10(BGL)
-
-        # 8) estimate late decay slope
-        stopTime = (bgNoiseLevel + dBtoNoise - c[0])/c[1]
-        if (stopTime > timeVecWin[-1])[0]:
-            stopIdx = 0
-        else:
-            stopIdx = int(np.where(timeVecWin >= stopTime)[0][0])
-
-        startTime = (bgNoiseLevel + dBtoNoise + useDynRange - c[0])/c[1]
-        if (startTime < timeVecWin[0])[0]:
-            startIdx = 0
-        else:
-            startIdx = int(np.where(timeVecWin <= startTime)[0][0])
-
-        lateDynRange = np.abs(10*np.log10(timeWinData[stopIdx]) \
-            - 10*np.log10(timeWinData[startIdx]))
-
-        # where returns empty
-        if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:
-            print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
-                "low. Skipping!")
-            # c[1] = np.inf
-            c[1] = 0
-            break
-
+        # X*c = EDC (energy decaying curve)
         X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
         X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
         c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
                             rcond=-1)[0]
 
-        if (c[1] >= 0)[0]:
-            print(band, "[Hz] band: regression did not work, T -> inf.",
-                "Setting slope to 0!")
-            # c[1] = np.inf
-            c[1] = 0
-            break
+        if (c[1] == 0)[0] or np.isnan(c).any():
+            if not suppressWarnings:
+                print(band, "[Hz] band: regression failed. T would be inf.")
+            # return returnTuple
 
-        # 9) find crosspoint
-        oldCrossingPoint = crossingPoint
-        crossingPoint = (bgNoiseLevel - c[0]) / c[1]
+        # 4) preliminary intersection
+        crossingPoint = (bgNoiseLevel - c[0]) / c[1]  # [s]
+        if (crossingPoint > 2*(timeLength + sampleShift/samplingRate))[0]:
+            if not suppressWarnings:
+                print(band, "[Hz] band: preliminary intersection point between",
+                      "bgNoiseLevel and the decay slope greater than signal length.")
+            # return returnTuple
 
-        loopCounter += 1
-        if loopCounter > 30:
-            print(band, "[Hz] band: more than 30 iterations on regression.",
-                "Canceling!")
-            break
+        # 5) new local time interval length
+        nBlocksInDecay = numParts * dynRange[0] / -10
 
-    interIdx = crossingPoint * samplingRate # [sample]
+        dynRangeTime = timeVecWin[stopIdx] - timeVecWin[startIdx]
+        blockSamples = int(samplingRate * dynRangeTime[0] / nBlocksInDecay)
+
+        # 6) average
+        timeWinData, timeVecWin = _level_profile(timeSignal, samplingRate,
+                                                 numSamples, numChannels,
+                                                 blockSamples)
+
+        oldCrossingPoint = 11+crossingPoint  # arbitrary higher value to enter loop
+        loopCounter = 0
+
+        while (np.abs(oldCrossingPoint - crossingPoint) > 0.001)[0]:
+            # 7) estimate background noise level (BGL)
+            bgNoiseMargin = 7
+            idxLast10Percent = int(len(timeWinData)-(len(timeWinData)//10))
+            bgStartTime = crossingPoint - bgNoiseMargin/c[1]
+            if (bgStartTime > timeVecWin[-1:][0])[0]:
+                idx10dBDecayBelowCrossPoint = len(timeVecWin)-1
+            else:
+                idx10dBDecayBelowCrossPoint = \
+                    np.where(timeVecWin >= bgStartTime)[0][0]
+            BGL = np.mean(timeWinData[np.min(
+                    np.array([idxLast10Percent,
+                              idx10dBDecayBelowCrossPoint])):])
+            bgNoiseLevel = 10*np.log10(BGL)
+
+            # 8) estimate late decay slope
+            stopTime = (bgNoiseLevel + dBtoNoise - c[0])/c[1]
+            if (stopTime > timeVecWin[-1])[0]:
+                stopIdx = 0
+            else:
+                stopIdx = int(np.where(timeVecWin >= stopTime)[0][0])
+
+            startTime = (bgNoiseLevel + dBtoNoise + useDynRange - c[0])/c[1]
+            if (startTime < timeVecWin[0])[0]:
+                startIdx = 0
+            else:
+                startIdx = int(np.where(timeVecWin <= startTime)[0][0])
+
+            lateDynRange = np.abs(10*np.log10(timeWinData[stopIdx]) \
+                - 10*np.log10(timeWinData[startIdx]))
+
+            # where returns empty
+            if stopIdx == startIdx or (lateDynRange < useDynRange)[0]:
+                if not suppressWarnings:
+                    print(band, "[Hz] band: SNR for the Lundeby late decay slope too",
+                        "low. Skipping!")
+                # c[1] = np.inf
+                c[1] = 0
+                i += 1
+                break
+
+            X = np.ones((stopIdx-startIdx, 2), dtype=np.float32)
+            X[:, 1] = timeVecWin[startIdx:stopIdx, 0]
+            c = np.linalg.lstsq(X, 10*np.log10(timeWinData[startIdx:stopIdx]),
+                                rcond=-1)[0]
+
+            if (c[1] >= 0)[0]:
+                if not suppressWarnings:
+                    print(band, "[Hz] band: regression did not work, T -> inf.",
+                        "Setting slope to 0!")
+                # c[1] = np.inf
+                c[1] = 0
+                i += 1
+                break
+
+            # 9) find crosspoint
+            oldCrossingPoint = crossingPoint
+            crossingPoint = (bgNoiseLevel - c[0]) / c[1]
+
+            loopCounter += 1
+            if loopCounter > 30:
+                if not suppressWarnings:
+                    print(band, "[Hz] band: more than 30 iterations on regression.",
+                        "Canceling!")
+                break
+
+        interIdx = crossingPoint * samplingRate # [sample]
+        i += i
+        if c[1][0] != 0:
+            repeat = False
+        if i > 5:
+            if not suppressWarnings:
+                print(band, "[Hz] band: too many iterations to find winTimeLength.", "Canceling!")
+            return returnTuple
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
 @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
-                             numSamples, numChannels, timeLength, bypassLundeby):
+                             numSamples, numChannels, timeLength, bypassLundeby, suppressWarnings=True):
     """Calculate the Energy Decay Curve."""
     if not bypassLundeby:
         lundebyParams = \
@@ -267,7 +293,8 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
                                 samplingRate,
                                 numSamples,
                                 numChannels,
-                                timeLength)
+                                timeLength,
+                                suppressWarnings=suppressWarnings)
         _, c1, interIdx, BGL = lundebyParams
         lateRT = -60/c1 if c1 != 0 else 0
     else:
@@ -289,7 +316,8 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
         energyDecayFull = np.cumsum(sqrInv)[::-1] + C
         energyDecay = energyDecayFull/energyDecayFull[0]
     else:
-        print(band, "[Hz] band: could not estimate C factor")
+        if not suppressWarnings:
+            print(band, "[Hz] band: could not estimate C factor")
         C = 0
         energyDecay = np.zeros(truncatedTimeVector.size)
     return (energyDecay, truncatedTimeVector, lundebyParams)
@@ -297,6 +325,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
 def cumulative_integration(inputSignal,
                            bypassLundeby,
                            plotLundebyResults,
+                           suppressWarnings=True,
                            **kwargs):
     """Cumulative integration with proper corrections."""
 
@@ -306,13 +335,16 @@ def cumulative_integration(inputSignal,
         ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
                             projection='rectilinear', xscale='linear')
         line = c1*timeVector + c0
-        ax.plot(timeVector, 10*np.log10(timeSignal**2),label='IR')
-        ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise')
-        ax.plot(timeVector, line,label='Late slope')
-        ax.axvline(x=interIdx/samplingRate, label='Truncation point')
+        ax.plot(timeVector, 10*np.log10(timeSignal**2), label='IR')
+        ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise', c='red')
+        ax.plot(timeVector, line,label='Late slope', c='black')
+        ax.axvline(x=interIdx/samplingRate, label='Truncation point', c='green')
+        ax.grid()
+        ax.set_xlabel('Time [s]')
+        ax.set_ylabel('Amplitude [dBFS]')
         plt.title('{0:.0f} [Hz]'.format(band))
-        ax.legend(loc='upper center', shadow=True, fontsize='x-large')
-
+        ax.legend(loc='best', shadow=True, fontsize='x-large')
+    
     timeSignal = inputSignal.timeSignal[:]
     # Substituted by SignalObj.crop in analyse function
     # timeSignal, sampleShift = _circular_time_shift(timeSignal)
@@ -322,7 +354,8 @@ def cumulative_integration(inputSignal,
                         inputSignal.samplingRate)
     hSignal = _filter(hSignal, **kwargs)
     bands = FOF(nthOct=kwargs['nthOct'],
-                freqRange=[kwargs['minFreq'],kwargs['maxFreq']])[:,1]
+                minFreq=kwargs['minFreq'],
+                maxFreq=kwargs['maxFreq'])[:,1]
     listEDC = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
@@ -341,7 +374,8 @@ def cumulative_integration(inputSignal,
                                      numSamples,
                                      numChannels,
                                      timeLength,
-                                     bypassLundeby)
+                                     bypassLundeby,
+                                     suppressWarnings=suppressWarnings)
         listEDC.append((energyDecay, energyVector))
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
@@ -460,6 +494,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
 
 
 def G_Lps(IR, nthOct, minFreq, maxFreq):
+    # TODO: Fix documentation format
     """G_Lps 
     
     Calculates the recalibration level, for both in-situ and
@@ -673,7 +708,9 @@ def crop_IR(SigObj, IREndManualCut):
 def analyse(obj, *params,
             bypassLundeby=False,
             plotLundebyResults=False,
+            suppressWarnings=False,
             IREndManualCut=None, **kwargs):
+    #TODO: Fix formating
     """
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
     room acoustic parameters especified in the positional input arguments.
@@ -710,6 +747,10 @@ def analyse(obj, *params,
     :param plotLundebyResults: plot the Lundeby correction parameters, defaults to False
     :type plotLundebyResults: bool, optional
 
+    :param suppressWarnings: suppress the warnings fro mthe Lundeby correction, defaults
+    to False
+    :type suppressWarnings: bool, optional
+    
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
 
@@ -747,6 +788,7 @@ def analyse(obj, *params,
     listEDC = cumulative_integration(SigObj,
                                      bypassLundeby,
                                      plotLundebyResults,
+                                     suppressWarnings=suppressWarnings,
                                      **kwargs)
     for _ in params:
         if 'RT' in params:
