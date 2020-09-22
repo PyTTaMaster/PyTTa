@@ -354,8 +354,7 @@ def cumulative_integration(inputSignal,
                         inputSignal.samplingRate)
     hSignal = _filter(hSignal, **kwargs)
     bands = FOF(nthOct=kwargs['nthOct'],
-                minFreq=kwargs['minFreq'],
-                maxFreq=kwargs['maxFreq'])[:,1]
+                freqRange=[kwargs['minFreq'], kwargs['maxFreq']])[:,1]
     listEDC = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
