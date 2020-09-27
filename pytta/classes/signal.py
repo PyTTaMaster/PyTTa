@@ -22,7 +22,7 @@ class SignalObj(_base.PyTTaObj):
     """
     Signal object class.
 
-    Creation parameters:
+    Creation parameters (default), (type):
     ------------
 
         * signalArray (ndarray | list), (NumPy array):
@@ -133,6 +133,9 @@ class SignalObj(_base.PyTTaObj):
 
         * save_mat(filename):
             save a SignalObj to a .mat file;
+            
+    For further information on methods see its specific documentation.
+    
     """
 
     def __init__(self,

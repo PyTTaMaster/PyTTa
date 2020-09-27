@@ -32,10 +32,10 @@ class Analysis(RICI):
     For more information see each parameter/attribute/method specific
     documentation.
 
-    Creation parameters:
-    --------------------
+    Creation parameters (default), (type):
+    --------------------------------------
 
-        * anType, (string):
+        * anType (), (string):
             Type of the Analysis. May be:
                 - 'RT' for 'Reverberation time' Analysis in [s];
                 - 'C' for 'Clarity' in dB;

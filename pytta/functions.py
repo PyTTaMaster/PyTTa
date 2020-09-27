@@ -11,6 +11,7 @@ Available functions:
     >>> pytta.read_wav(fileName)
     >>> pytta.write_wav(fileName, signalObject)
     >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.slipt(signalObj)  # TO DO
     >>> pytta.fft_convolve(signalObj1, signalObj2)
     >>> pytta.find_delay(signalObj1, signalObj2)
     >>> pytta.corr_coef(signalObj1, signalObj2)
@@ -133,7 +134,6 @@ def write_wav(fileName, signalIn):
     return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
 
 
-# Refactor for new SignalObj's channelsList
 def merge(signal1, *signalObjects):
     """
     Gather all of the input argument signalObjs into a single
@@ -170,6 +170,7 @@ def merge(signal1, *signalObjects):
     return newSignal
 
 
+# TO DO
 # def split(signal):
 #    return 0
 
@@ -536,7 +537,8 @@ def plot_waterfall(*sigObjs, step=10, xLim:list=None,
                    lines=False, alpha=1, figsize=(20, 8), winAlpha=0,
                    removeGridLines=False, saveFig=False, bar=False, width=0.70,
                    size=3, lcol=None, filtered=True):
-    """This function was gently sent by Rinaldi Polese Petrolli.
+    """
+    This function was gently sent by Rinaldi Polese Petrolli.
 
     # TO DO
 

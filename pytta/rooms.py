@@ -597,6 +597,13 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
 
 
 def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
+    """
+    Reference:
+        Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
+        SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
+    """
+
+    # TO DO: docs
     S0 = 1 # [m2]
 
     bands = T_revCh.bands
@@ -709,49 +716,67 @@ def analyse(obj, *params,
             plotLundebyResults=False,
             suppressWarnings=False,
             IREndManualCut=None, **kwargs):
-    #TODO: Fix formating
     """
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
     room acoustic parameters especified in the positional input arguments.
-
-    :param obj: one channel impulsive response
-    :type obj: SignalObj or ImpulsiveResponse
-
-    Input parameters for reverberation time, 'RT':
-        :param RTdecay: decay interval for RT calculation. e.g. 20
-        :type RTdecay: int
-
-    Input parameters for clarity, 'C':
-        TODO
-
-    Input parameters for definition, 'D':
-        TODO
-
-    Input parameters for strength factor, 'G':
-        TODO
-
-    :param nthOct: number of fractions per octave
-    :type nthOct: int
-
-    :param minFreq: analysis inferior frequency limit
-    :type minFreq: float
-
-    :param maxFreq: analysis superior frequency limit
-    :type maxFreq: float
+    Calculates reverberation time, definition and clarity.
     
-    :param bypassLundeby: bypass lundeby correction
-    to False
-    :type bypassLundeby: bool, optional
-
-    :param plotLundebyResults: plot the Lundeby correction parameters, defaults to False
-    :type plotLundebyResults: bool, optional
-
-    :param suppressWarnings: suppress the warnings fro mthe Lundeby correction, defaults
-    to False
-    :type suppressWarnings: bool, optional
+    The method for strength factor calculation implies in many input parameters
+    and specific procedures, as the sound source's power estimation.
+    The pytta.roomir app was designed aiming to support this room parameter
+    measurement. For further information check pytta.roomir's and
+    pytta.rooms.strength_factor's docstrings.
     
-    :return: Analysis object with the calculated parameter
-    :rtype: Analysis
+    Input arguments (default), (type):
+    -----------------------------------
+
+        * obj (), (SignalObj | ImpulsiveResponse):
+            one channel impulsive response
+
+        * non-keyworded argument pairs:
+            Pair for 'RT' (reverberation time):
+                
+                - RTdecay (20), (int):
+                    Decay interval for RT calculation. e.g. 20
+
+            Pair for 'C' (clarity):  # TODO
+                
+                - Cparam (50), (int):
+                    ...
+                
+            Pair for 'D' (definition):  # TODO
+                
+                - Dparam (50), (int):
+                    ...
+
+        * nthOct (), (int): 
+            Number of bands per octave;
+    
+        * minFreq (), (int | float):
+            Analysis' inferior frequency limit;
+    
+        * maxFreq (), (int | float):
+            Analysis' superior frequency limit;
+        
+        * bypassLundeby (false), (bool):
+            Bypass lundeby correction
+    
+        * plotLundebyResults (false), (bool):
+            Plot the Lundeby correction parameters;
+    
+        * suppressWarnings (false), (bool):
+            Suppress the warnings from the Lundeby correction;
+        
+        
+    Return (type):
+    --------------
+    
+    
+        * Analyses (Analysis | list):
+            Analysis object with the calculated parameter or a list of 
+            Analyses for more than one parameter.
+            
+    For usage example check the examples folder.
 
     """
     # Code snippet to guarantee that generated object name is
@@ -783,25 +808,51 @@ def analyse(obj, *params,
     samplingRate = SigObj.samplingRate
 
     SigObj = crop_IR(SigObj, IREndManualCut)
+    
+    calcEDC = False
+    result = []
+    
+    for param in params:
+        if param in ['RT']:  # 'C', 'D']:
+            calcEDC = True
+            break
+    
+    if calcEDC:
+        listEDC = cumulative_integration(SigObj,
+                                         bypassLundeby,
+                                         plotLundebyResults,
+                                         suppressWarnings=suppressWarnings,
+                                         **kwargs)
 
-    listEDC = cumulative_integration(SigObj,
-                                     bypassLundeby,
-                                     plotLundebyResults,
-                                     suppressWarnings=suppressWarnings,
-                                     **kwargs)
-    for _ in params:
-        if 'RT' in params:
-            RTdecay = params[params.index('RT')+1]
-            nthOct = kwargs['nthOct']
-            RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
-            result = Analysis(anType='RT', nthOct=nthOct,
-                              minBand=kwargs['minFreq'],
-                              maxBand=kwargs['maxFreq'],
-                              data=RT)
-        # if 'C' in prm:
-        #     Ctemp = prm[1]
-        # if 'D' in prm:
-        #     Dtemp = prm[1]
-    result.creation_name = creation_name
+    if 'RT' in params:
+        RTdecay = params[params.index('RT')+1]
+        if not isinstance(RTdecay,(int)):
+            RTdecay = 20
+        nthOct = kwargs['nthOct']
+        RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
+        RTtemp = Analysis(anType='RT', nthOct=nthOct,
+                          minBand=kwargs['minFreq'],
+                          maxBand=kwargs['maxFreq'],
+                          data=RT)
+        RTtemp.creation_name = creation_name
+        result.append(RTtemp)
+        
+    # if 'C' in params:
+    #     Cparam = params[params.index('C')+1]
+    #     if not isinstance(Cparam,(int)):
+    #         Cparam = 50
+    #     Ctemp = None
+    #     result.append(Ctemp)
+    
+    # if 'D' in params:
+    #     Dparam = params[params.index('D')+1]
+    #     if not isinstance(Dparam,(int)):
+    #         Dparam = 50
+    #     Dtemp = None
+    #     result.append(Dtemp)
+    
+    if len(result) == 1:
+        result = result[0]
+    
     return result
 

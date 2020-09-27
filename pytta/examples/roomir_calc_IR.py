@@ -42,7 +42,6 @@ b = D.calculate_ir(a,
                    calibrationTake=1,
                    skipInCompensation=False, # Ok
                    skipOutCompensation=False, # Ok
-                   whereToOutComp='excitation',
                    skipBypCalibration=False, # Ok
                    skipIndCalibration=False, # Ok
                    skipRegularization=False, # Ok
