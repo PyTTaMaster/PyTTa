@@ -15,7 +15,7 @@ For further information see the specific class, or method, documentation
 
 from .signal import SignalObj, ImpulsiveResponse
 #from .signal import plot_SignalObjs
-from .measurement import RecMeasure, PlayRecMeasure, FRFMeasure
+from .measurement import Measurement, RecMeasure, PlayRecMeasure, FRFMeasure
 from .streaming import Streaming, Monitor
 from .filter import OctFilter, weighting
 from .analysis import Analysis

@@ -7,13 +7,14 @@ import numpy as np
 import sounddevice as sd
 import time
 from pytta.classes import _base
+from pytta.classes.streaming import Monitor, Streaming
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 from pytta import _h5utils as _h5
 import traceback
 
 
 # Measurement class
-class Measurement(_base.PyTTaObj):
+class _MeasurementBase(_base.PyTTaObj):
     """
     Measurement object class created to define some properties and methods to
     be used by the playback, recording and processing classes. It is a private
@@ -167,8 +168,118 @@ class Measurement(_base.PyTTaObj):
         return
 
 
+class Measurement(_MeasurementBase):
+    """
+    Measurement object class created to define some properties and methods to
+    be used by the playback, recording and processing classes. It is a private
+    class
+
+    Properties(self): (default), (dtype), meaning;
+
+        * device (system default), (list/int):
+            list of input and output devices;
+
+        * inChannels ([1]), (ChannelsList | list[int]):
+            list of device's input channel used for recording;
+
+        * outChannels ([1]), (ChannelsList | list[int]):
+            list of device's output channel used for playing/reproducing\
+            a signalObj;
+
+    Properties inherited (default), (dtype): meaning;
+
+        * samplingRate (44100), (int):
+            signal's sampling rate;
+
+        * lengthDomain ('time'), (str):
+            signal's length domain. May be 'time' or 'samples';
+
+        * timeLength (seconds), (float):
+            signal's time length in seconds for lengthDomain = 'time';
+
+        * fftDegree (fftDegree), (float):
+            2**fftDegree signal's number of samples for
+            lengthDomain = 'samples';
+
+        * numSamples (samples), (int):
+            signal's number of samples
+
+        * freqMin (20), (int):
+            minimum frequency bandwidth limit;
+
+        * freqMax (20000), (int):
+            maximum frequency bandwidth limit;
+
+        * comment ('No comments.'), (str):
+            some commentary about the signal or measurement object;
+    """
+
+    def __init__(self,
+                 device=None,
+                 inChannels=None,
+                 outChannels=None,
+                 blocking=True,
+                 *args,
+                 **kwargs):
+        super().__init__(device, inChannels, outChannels, blocking, *args, **kwargs)
+        return
+
+    def play(self, monitor = Monitor(5512)):
+        """
+        Play SignalObj.
+
+        Returns
+        -------
+        None.
+
+        """
+        with Streaming('O',
+                       self.samplingRate,
+                       self.device,
+                       'float32',
+                       0,
+                       None,
+                       self.outChannels,
+                       self.excitation,
+                       None,
+                       self.numSamples,
+                       monitor) as strm:
+            strm.play()
+        return
+
+    def record(self, monitor = Monitor(5512)):
+        with Streaming('I',
+                       self.samplingRate,
+                       self.device,
+                       'float32',
+                       0,
+                       self.inChannels,
+                       None,
+                       None,
+                       None,
+                       self.numSamples,
+                       monitor) as strm:
+            rec = strm.record()
+        return SignalObj(rec, 'time', self.samplingRate)
+
+    def playrec(self, monitor = Monitor(5512)):
+        with Streaming('IO',
+                       self.samplingRate,
+                       self.device,
+                       'float32',
+                       0,
+                       self.inChannels,
+                       self.outChannels,
+                       self.excitation,
+                       None,
+                       self.numSamples,
+                       monitor) as strm:
+            rec = strm.playrec()
+        return SignalObj(rec, 'time', self.samplingRate)
+
+
 # RecMeasure class
-class RecMeasure(Measurement):
+class RecMeasure(_MeasurementBase):
     """
     Recording object
 
@@ -313,7 +424,7 @@ class RecMeasure(Measurement):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -346,7 +457,7 @@ class RecMeasure(Measurement):
 
 
 # PlayRecMeasure class
-class PlayRecMeasure(Measurement):
+class PlayRecMeasure(_MeasurementBase):
     """
     Playback and Record object
 
@@ -451,7 +562,7 @@ class PlayRecMeasure(Measurement):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -702,7 +813,7 @@ class FRFMeasure(PlayRecMeasure):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \

@@ -53,7 +53,7 @@ from ._properties import default
 # methods and function calls
 
 from .classes import SignalObj, ImpulsiveResponse,\
-    RecMeasure, PlayRecMeasure, FRFMeasure,\
+    Measurement, RecMeasure, PlayRecMeasure, FRFMeasure,\
     Streaming, Monitor,\
     OctFilter, weighting,\
     Analysis
