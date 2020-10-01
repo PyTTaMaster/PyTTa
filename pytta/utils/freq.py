@@ -144,3 +144,76 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
     center = freqs[:, 1].T
     edges = np.array([freqs[:, 0], freqs[:, 2]]).T
     return center, edges
+
+
+def filter_alpha(freq, alpha, nthOct = 3, plot = True):
+	bands = fractional_octave_frequencies(nthOct=nthOct)
+	result = np.array([0], float)
+	"""
+	Filter sound absorption coefficient into octave bands
+	
+    The returned arrays corresponde to the center frequency for each band 
+	and the filtered sound absorption coefficient. 
+	
+	
+	@author: Caroline Gaudeoso
+	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
+	Created on Thu Sep 17 20:08:08 2020
+
+	Function
+    ----------
+	a, b = filter_alpha(freq, alpha, nthOct = 3, plot = True)
+	
+	Parameters
+    ----------
+    freq : array of int
+        The frequency values.
+	alpha : array of float
+		The sound absorption coefficient you would like to filter.
+    nthOct : int
+        How many bands per octave. Default is 3 = 1/3 octave band.
+	plot : Boolean
+        Do you want the fuction to plot the results? Default is True.
+
+    Returns
+    -------
+    a: array of float
+        The center frequency for each band.
+	b: array of float
+		The filtered sound absorption coefficient.
+    """
+	# Compute the acoustic absorption coefficient per octave band
+	for a in np.arange(1,len(bands)):
+		result = np.append(result, 0) #band[a] = 0
+		idx = np.argwhere((freq >= bands[a,0]) & (freq < bands[a,2]))
+		# If we have no 'alpha' point in this band
+		if (len(idx)==0):
+			print('Warning: no point found in band centered at',bands[a,1])
+		# If we have only 1 'alpha' point in this band
+		elif (len(idx)==1):
+			print('Warning: only one point found in band centered at ',bands[a,1])
+			result[a] = alpha[idx]
+		# If we have more than 1 'alpha' point in this band
+		elif (len(idx)>1):
+			for b in np.arange(len(idx)-1):
+				result[a] = result[a] + (freq[idx[0]+b] - freq[idx[0] + b-1])*abs(alpha[idx[1]+b] + alpha[idx[0]+b-1]) / 2
+			result[a] = result[a]/(freq[idx[len(idx)-1]] - freq[idx[0]])
+
+	# Plot
+	if plot:
+		import matplotlib.pyplot as plt
+		if nthOct == 1:
+			nthOct = 'octave bands'
+		elif nthOct == 3:
+			nthOct = '1/3 octave bands'
+			
+		plt.figure()
+		plt.plot(freq, alpha, label='Narrow bands')
+		plt.plot (bands[:,1],result, 'o', label= nthOct)
+		plt.xscale('log')
+		plt.ylabel('Sound absorption coefficient')
+		plt.xlabel('Frequency [Hz]')
+		plt.legend()
+		plt.show()
+
+	return bands[:,1], result
