@@ -176,7 +176,6 @@ def filter_alpha(freq, alpha, nthOct = 3, plot = True):
 	b: array of float
 		The filtered sound absorption coefficient.
     """
-
 	bands = fractional_octave_frequencies(nthOct=nthOct)
 	result = np.array([0], float)
 	
