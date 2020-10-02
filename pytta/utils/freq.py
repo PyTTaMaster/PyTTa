@@ -146,35 +146,33 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
     return center, edges
 
 
-def filter_alpha(freq, alpha, nthOct = 3, plot = True):
+def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True):
 	"""
-	Filter sound absorption coefficient into octave bands
+	Filter sound absorption coefficient into octave bands.
+	@author: Caroline Gaudeoso
+	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com	
 	
     The returned arrays corresponde to the center frequency for each band 
 	and the filtered sound absorption coefficient. 
 	
-	
-	@author: Caroline Gaudeoso
-	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
-	Created on Thu Sep 17 20:08:08 2020
-	
 	Parameters
     ----------
-    freq : array of int
+    freq : np.array
         The frequency values.
-	alpha : array of float
+	alpha : np.array
 		The sound absorption coefficient you would like to filter.
-    nthOct : int
-        How many bands per octave. Default is 3 = 1/3 octave band.
-	plot : Boolean
+    nthOct : int, optional
+        bands of octave/nthOct. The default is 3.
+	plot : bool, optional
         Do you want the fuction to plot the results? Default is True.
 
     Returns
     -------
-    a: array of float
+    center: np.array
         The center frequency for each band.
-	b: array of float
+	alpha: np.array
 		The filtered sound absorption coefficient.
+		
     """
 	bands = fractional_octave_frequencies(nthOct=nthOct)
 	result = np.array([0], float)
