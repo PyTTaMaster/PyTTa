@@ -170,21 +170,13 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
 	
 	Filter sound absorption coefficient into octave bands.
     
-	>>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True) # filter to 1 octave band
-    
-    Parameters
-    ----------
-    freq : np.array
-	   The frequency values.
-    nthOct : int
-	   How many bands per octave.
-		
-	   
+	>>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True)
+    			   
     :param freq: the frequency values.
-    :type freq: array
+    :type freq: np.array
  	
     :param alpha: the sound absorption coefficient you would like to filter.
-    :type alpha: array
+    :type alpha: np.array
  	
     :param nthOct: bands of octave/nthOct. The default is 3.
     :type nthOct: int, optional
@@ -193,7 +185,7 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
     :type plot: bool, optional
 
     :return: the center frequency for each band and the filtered sound absorption coefficient.
-    :rtype: array
+    :rtype: np.array
 	
 	""" 	
 		
