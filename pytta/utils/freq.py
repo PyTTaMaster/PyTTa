@@ -167,35 +167,35 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
 
 def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True):
 	"""filter_alpha
-
-    >>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True) # filter to 1 octave band
+	
+	Filter sound absorption coefficient into octave bands.
     
-    Filter sound absorption coefficient into octave bands.
+	>>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True) # filter to 1 octave band
     
-	Parameters
-	----------
-	freq : np.array
-		The frequency values.
-	nthOct : int
-		How many bands per octave.
+    Parameters
+    ----------
+    freq : np.array
+	   The frequency values.
+    nthOct : int
+	   How many bands per octave.
 		
-	"""
-		
-#     :param freq: the frequency values.
-#     :type freq: array
-# 	
-# 	:param alpha: the sound absorption coefficient you would like to filter.
-#     :type alpha: array
-# 	
-# 	:param nthOct: bands of octave/nthOct. The default is 3.
-#     :type nthOct: int, optional
-# 	
-# 	:param plot: do you want the fuction to plot the results? Default is True.
-#     :type plot: bool, optional
+	   
+    :param freq: the frequency values.
+    :type freq: array
+ 	
+    :param alpha: the sound absorption coefficient you would like to filter.
+    :type alpha: array
+ 	
+    :param nthOct: bands of octave/nthOct. The default is 3.
+    :type nthOct: int, optional
+ 	
+    :param plot: do you want the fuction to plot the results? Default is True.
+    :type plot: bool, optional
 
-#     :return: the center frequency for each band and the filtered sound absorption coefficient.
-#     :rtype: array
-# 	
+    :return: the center frequency for each band and the filtered sound absorption coefficient.
+    :rtype: array
+	
+	""" 	
 		
 	bands = fractional_octave_frequencies(nthOct=nthOct)
 	result = np.array([0], float)
