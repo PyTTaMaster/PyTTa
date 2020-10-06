@@ -1,7 +1,27 @@
 """
-Provides frequency and fractional octave frequency bands functionalities.
+Frequency utilities.
 
-@author: João Vitor G. Paes
+This utility provides frequency and fractional octave frequency bands functionalities.
+
+For syntax purposes you should start with:
+	
+	>>> from pytta import utils as utils
+
+Available functions:
+	
+	>>> utils.freq_to_band(freq: float, nthOct: int, ref: float, base: int)
+    >>> utils.fractional_octave_frequencies(nthOct: int = 3, freqRange: Tuple[float] = (20., 20000.), refFreq: float = 1000., base: int = 10)
+    >>> utils.normalize_frequencies(freqs: np.ndarray, samplingRate: int = 44100)
+    >>> utils.freqs_to_center_and_edges(freqs: np.ndarray)
+    >>> utils.filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True)
+
+For further information, check the docstrings for each function 
+mentioned above.
+
+Authors:
+	João Vitor G. Paes joao.paes@eac.ufsm.br
+	Caroline Gaudeoso caroline.gaudeoso@eac.ufsm.br
+
 """
 
 import numpy as np
@@ -147,31 +167,31 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
 
 
 def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True):
-	"""
-	Filter sound absorption coefficient into octave bands.
-	
-    The returned arrays corresponde to the center frequency for each band 
-	and the filtered sound absorption coefficient. 
-	
-	Parameters
-    ----------
-    freq : np.array
-        The frequency values.
-	alpha : np.array
-		The sound absorption coefficient you would like to filter.
-    nthOct : int, optional
-        bands of octave/nthOct. The default is 3.
-	plot : bool, optional
-        Do you want the fuction to plot the results? Default is True.
+	"""filter_alpha
 
-    Returns
-    -------
-    center: np.array
-        The center frequency for each band.
-	alpha: np.array
-		The filtered sound absorption coefficient.
-		
+    >>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True) # filter to one octave band
+    
+    Filter sound absorption coefficient into octave bands.
+    
+    :param freq: the frequency values.
+    :type freq: np.array
+	
+	:param alpha: the sound absorption coefficient you would like to filter.
+    :type alpha: np.array
+	
+	:param nthOct: bands of octave/nthOct. The default is 3.
+    :type nthOct: int, optional
+	
+	:param plot: do you want the fuction to plot the results? Default is True.
+    :type plot: bool, optional
+
+    :return: the center frequency for each band and the filtered sound absorption coefficient.
+    :rtype: np.array
+	
+	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
+	
     """
+		
 	bands = fractional_octave_frequencies(nthOct=nthOct)
 	result = np.array([0], float)
 	
@@ -210,6 +230,3 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
 		plt.show()
 
 	return bands[:,1], result
-
-# 	@author: Caroline Gaudeoso
-# 	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com	
