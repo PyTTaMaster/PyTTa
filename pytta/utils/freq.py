@@ -1,5 +1,4 @@
 """
-Frequency utilities.
 
 This utility provides frequency and fractional octave frequency bands functionalities.
 
@@ -9,17 +8,17 @@ For syntax purposes you should start with:
 
 Available functions:
 	
-	>>> utils.freq_to_band(freq: float, nthOct: int, ref: float, base: int)
-    >>> utils.fractional_octave_frequencies(nthOct: int = 3, freqRange: Tuple[float] = (20., 20000.), refFreq: float = 1000., base: int = 10)
-    >>> utils.normalize_frequencies(freqs: np.ndarray, samplingRate: int = 44100)
-    >>> utils.freqs_to_center_and_edges(freqs: np.ndarray)
-    >>> utils.filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True)
+	>>> utils.freq_to_band(freq, nthOct, ref, base)
+    >>> utils.fractional_octave_frequencies(nthOct = 3, freqRange = (20., 20000.), refFreq = 1000., base = 10)
+    >>> utils.normalize_frequencies(freqs, samplingRate = 44100)
+    >>> utils.freqs_to_center_and_edges(freqs)
+    >>> utils.filter_alpha(freq, alpha, nthOct = 3, plot = True)
 
 For further information, check the docstrings for each function 
 mentioned above.
 
 Authors:
-	João Vitor G. Paes joao.paes@eac.ufsm.br
+	João Vitor G. Paes joao.paes@eac.ufsm.br and
 	Caroline Gaudeoso caroline.gaudeoso@eac.ufsm.br
 
 """
@@ -174,10 +173,10 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
     Filter sound absorption coefficient into octave bands.
     
     :param freq: the frequency values.
-    :type freq: np.array
+    :type freq: array
 	
 	:param alpha: the sound absorption coefficient you would like to filter.
-    :type alpha: np.array
+    :type alpha: array
 	
 	:param nthOct: bands of octave/nthOct. The default is 3.
     :type nthOct: int, optional
@@ -186,9 +185,7 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
     :type plot: bool, optional
 
     :return: the center frequency for each band and the filtered sound absorption coefficient.
-    :rtype: np.array
-	
-	ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
+    :rtype: array
 	
     """
 		
@@ -230,3 +227,5 @@ def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = 
 		plt.show()
 
 	return bands[:,1], result
+
+# ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
