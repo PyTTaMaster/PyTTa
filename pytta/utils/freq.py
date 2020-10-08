@@ -1,7 +1,26 @@
 """
-Provides frequency and fractional octave frequency bands functionalities.
 
-@author: João Vitor G. Paes
+This utility provides frequency and fractional octave frequency bands functionalities.
+
+For syntax purposes you should start with:
+	
+	>>> from pytta import utils as utils
+
+Available functions:
+	
+	>>> utils.freq_to_band(freq, nthOct, ref, base)
+	>>> utils.fractional_octave_frequencies(nthOct = 3, freqRange = (20., 20000.), refFreq = 1000., base = 10)
+	>>> utils.normalize_frequencies(freqs, samplingRate = 44100)
+	>>> utils.freqs_to_center_and_edges(freqs)
+	>>> utils.filter_alpha(freq, alpha, nthOct = 3, plot = True)
+
+For further information, check the docstrings for each function 
+mentioned above.
+
+Authors:
+	João Vitor G. Paes joao.paes@eac.ufsm.br and
+	Caroline Gaudeoso caroline.gaudeoso@eac.ufsm.br
+
 """
 
 import numpy as np
@@ -144,3 +163,69 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
     center = freqs[:, 1].T
     edges = np.array([freqs[:, 0], freqs[:, 2]]).T
     return center, edges
+
+
+def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3, plot: bool = True):
+	"""filter_alpha
+	
+	Filter sound absorption coefficient into octave bands.
+    
+	>>> center, result = filter_alpha(freq, alpha, nthOct = 1, plot = True)
+    			   
+    :param freq: the frequency values.
+    :type freq: np.array
+ 	
+    :param alpha: the sound absorption coefficient you would like to filter.
+    :type alpha: np.array
+ 	
+    :param nthOct: bands of octave/nthOct. The default is 3.
+    :type nthOct: int, optional
+ 	
+    :param plot: do you want the fuction to plot the results? Default is True.
+    :type plot: bool, optional
+
+    :return: the center frequency for each band and the filtered sound absorption coefficient.
+    :rtype: np.array
+	
+	""" 	
+		
+	bands = fractional_octave_frequencies(nthOct=nthOct)
+	result = np.array([0], float)
+	
+	# Compute the acoustic absorption coefficient per octave band
+	for a in np.arange(1,len(bands)):
+		result = np.append(result, 0) #band[a] = 0
+		idx = np.argwhere((freq >= bands[a,0]) & (freq < bands[a,2]))
+		# If we have no 'alpha' point in this band
+		if (len(idx)==0):
+			print('Warning: no point found in band centered at',bands[a,1])
+		# If we have only 1 'alpha' point in this band
+		elif (len(idx)==1):
+			print('Warning: only one point found in band centered at ',bands[a,1])
+			result[a] = alpha[idx]
+		# If we have more than 1 'alpha' point in this band
+		elif (len(idx)>1):
+			for b in np.arange(len(idx)-1):
+				result[a] = result[a] + (freq[idx[0]+b] - freq[idx[0] + b-1])*abs(alpha[idx[1]+b] + alpha[idx[0]+b-1]) / 2
+			result[a] = result[a]/(freq[idx[len(idx)-1]] - freq[idx[0]])
+
+	# Plot
+	if plot:
+		import matplotlib.pyplot as plt
+		if nthOct == 1:
+			nthOct = 'octave bands'
+		elif nthOct == 3:
+			nthOct = '1/3 octave bands'
+			
+		plt.figure()
+		plt.plot(freq, alpha, label='Narrow bands')
+		plt.plot (bands[:,1],result, 'o', label= nthOct)
+		plt.xscale('log')
+		plt.ylabel('Sound absorption coefficient')
+		plt.xlabel('Frequency [Hz]')
+		plt.legend()
+		plt.show()
+
+	return bands[:,1], result
+
+# ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
