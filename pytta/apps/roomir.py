@@ -2682,26 +2682,33 @@ class MeasurementPostProcess(object):
         return T_revCh
 
 def med_load(medname):
-    # TO DO: docs
-    """med_load
-
-    >>> MS, D = roomir.med_load('measurement name')
+    """
+    Loads a measurement to continue measuring or either post processing.
     
-    Load a measurement in progress.
+    Usage:
     
-    :param medname: the measurement name
-    :type medname: str
+        >>> MS, D = roomir.med_load('measurement name')
+    
+    Parameters (defualt), (type):
+    -----------------------------
+    
+        * medname (), (str):
+            the measurement name given in the MeasurementSetup object
+            instantiation;
 
-    :return: MeasurementSetup and MeasurementData objects
-    :rtype: tuple (MeasurementSetup, MeasurementData) 
+    Return (type):
+    --------------
+        
+        * (roomir.MeasurementSetup, roomir.MeasurementData) (tuple)
+    
     """
     if not exists(medname + '/MeasurementData.hdf5'):
         raise NameError('{} measurement doens\'t exist.'.format(medname))
     print('Loading the MeasurementSetup from MeasurementData.hdf5.')
     load = _h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
-    Data = MeasurementData(MS, skipFileInit=True)
-    return MS, Data
+    D = MeasurementData(MS, skipFileInit=True)
+    return MS, D
 
 
 def _h5_save(fileName: str, *PyTTaObjs):
