@@ -2320,7 +2320,6 @@ class MeasurementPostProcess(object):
                 level;
               
         """
-        # TO DO: docs
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2402,8 +2401,6 @@ class MeasurementPostProcess(object):
                 key;
                 
         """
-            
-        # TO DO: docs
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):

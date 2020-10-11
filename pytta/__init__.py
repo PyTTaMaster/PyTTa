@@ -3,6 +3,16 @@
 This is a package developed to perform acoustic and vibration measurements
 and signal analysis.
 
+To get started, try:
+
+    >>> import pytta
+    >>>
+    >>> pytta.default()
+    >>> pytta.list_devices()
+    >>>
+    >>> mySignal = pytta.generate.sweep()
+    >>> mySignal.plot_freq()  # same as pytta.plot_freq(mySignal)
+
 Our current dependencies are:
 
     * Numpy
@@ -13,34 +23,68 @@ Our current dependencies are:
     * SoundDevice
     * SoundFile
 
-We recommend using the Anaconda Python distribution.
+PyTTa is now a multi-paradigm toolbox, which may change in the future. We aim
+from now on to be more Pythonic, and therefore more object-oriented. For now,
+we have classes and functions operating together to provide a working
+environment for acoustical measurements and post-processing. 
+
+The toolbox' structure is presented next.
 
 
-You can install directly from PyPI for a stable but rarely updated version:
+Sub-packages:
+-------------
 
-    ~ $ pip install pytta
+    * pytta.classes:
+        main classes intended to do measurements (Rec, PlayRec and
+        FRFMeasurement), handle signals/processed data (SignalObj and
+        Analysis), handle streaming functionalities (Monitor and Streaming),
+        filter (OctFilter), communicate with some hardware (LJU3EI1050),
+        and also intended for new features whose should have an
+        object-oriented implementation. The main classes are called from the
+        toolbox's top-level (e.g. pytta.SignalObj, pytta.Analysis, ...);
+    
+    * pytta.utils:
+        contains simple tools which help to keep things modularized and make
+        more accessible the reuse of some operations. Intended to hold tools
+        (classes and functions) whose operate built-in python classes, NumPy
+        arrays, and other stuff not contained by the pytta.classes subpackage;
+        
+    * pytta.apps:
+        applications built from the toolbox's functionalities. The apps
+        are called from the top-level (e.g. pytta.roomir);
+        
 
-Or directly from the repository with:
+Modules:
+--------
 
-    ~ $ pip install git+https://github.com/pyttamaster/pytta.git
+    * pytta.functions:
+        assistant functions intended to manipulate and visualize multiple
+        signals and analyses stored as SignalObj and Analysis objects. These
+        functions are called from the toolbox's top-level (e.g. 
+        pytta.plot_time, pytta.plot_waterfall, ...);
+        
+    * pytta.generate:
+        functions for signal synthesis and measurement configuration;
+        
+    * pytta.rooms:
+        room acoustics parameters calculation according to ISO 3382-1;
+        
+    * pytta.iso3741:
+        calculations according to the standard;
+        
 
+You can find usage examples in the toolbox's examples folder.
 
-The documentation is available at:
+For further information, check the sub-packages' and modules' documentation.
+
+The documentation is also available at:
 
     https://pytta.readthedocs.io/
 
 
-To get started, try:
+Created on Sun Oct 27 06:29:00 2018
 
-    >>> import pytta
-    >>> pytta.default()
-    >>> pytta.list_devices()
-
-
-For further information, check the documentation.
-
-
-Authors:
+@authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
     Matheus Lazarin, matheus.lazarin@eac.ufsm.br
 
@@ -65,14 +109,15 @@ from . import utils
 from . import rooms
 from . import iso3741
 
-from .functions import read_wav, write_wav, merge, list_devices, get_device_from_user,\
+from .functions import read_wav, write_wav, merge, list_devices,\
+    get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, fft_degree, plot_time, plot_time_dB, plot_freq,\
     plot_bars, plot_spectrogram, plot_waterfall
 
 from .apps import roomir
 
-__version__ = '0.1.0b8'  # package version
+__version__ = '0.1.0b9'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps

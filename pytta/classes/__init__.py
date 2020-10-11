@@ -1,14 +1,37 @@
 """
-The manipulation of the classes are documented here, but their instantiation
-should be used through the `Generate` submodule:
+Classes/Core sub-package.
 
-    >>> pytta.generate.sweep()
-    >>> pytta.generate.noise()
-    >>> pytta.generate.measurement('playrec')
-    >>> pytta.generate.measurement('rec', lengthDomain='time', timeLen=5)
+Main classes intended to do measurements (Rec, PlayRec and FRFMeasurement),
+handle signals/processed data (SignalObj and Analysis), handle streaming
+functionalities (Monitor and Streaming), filter (OctFilter), communicate with
+some hardware (LJU3EI1050), and also intended for new features whose should
+have an object-oriented implementation. Called from the toolbox's top-level
+(e.g. pytta.SignalObj, pytta.Analysis, ...).
 
-This way, the default settings will be loaded into any object.
-For further information see the specific class, or method, documentation
+Available classes:
+
+    * SignalObj
+    * ImpulsiveResponse
+    * Analysis
+    * RecMeasure
+    * PlayRecMeasure
+    * FRFMeasure
+    * Streaming
+    * Monitor
+    * OctFilter
+
+The instantiation of some classes should be done through the 'generate'
+submodule, as for measurements and signal synthesis. This way, the default
+settings will be loaded into those objects. E.g.:
+
+    >>> mySweepSignalObj = pytta.generate.sweep()
+    >>> myNoiseSignalObj = pytta.generate.random_noise()
+    >>> myMeasurementdObj1 = pytta.generate.measurement('playrec')
+    >>> myMeasurementdObj2 = pytta.generate.measurement('rec',
+    >>>                                                 lengthDomain='time',
+    >>>                                                 timeLen=5)
+
+For further information, see the specific class documentation.
 
 """
 
@@ -20,17 +43,15 @@ from .streaming import Streaming, Monitor
 from .filter import OctFilter, weighting
 from .analysis import Analysis
 
-__all__ = [ # Classes
+__all__ = [# Classes
            'SignalObj',
            'ImpulsiveResponse',
+           'Analysis',
            'RecMeasure',
            'PlayRecMeasure',
            'FRFMeasure',
            'Streaming',
            'Monitor',
            'OctFilter',
-           'weighting',
-           'Analysis']#,
-
-        #    # Functions
-        #   'plot_SignalObjs']
+           # Functions
+           'weighting']

@@ -6,7 +6,7 @@ import pytta
 
 if __name__ == "__main__":
 
-#    mySignal = pytta.generate.noise()  # Generates a SignalObj with a "white noise" random array of data
+#    mySignal = pytta.generate.random_noise()  # Generates a SignalObj with a "white noise" random array of data
     mySignal = pytta.generate.sweep()  # Generates a SignalObj with a sine wave with exponential frequency sweeo
 
     # SignalObj data visualization

@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Utilities module.
+Utilities sub-package.
 
-[TODO] docs [COULD MENTION]:
-    - utils é um módulo destinado a ferramentas que operam classes que não são do pytta
-    - para usar em tipos built in
-    - E numpy arrays
-    - Contém ferramentas simples que ajudam a modularizar e reutilizar algumas operações
+Contains simple tools which help to keep things modularized and make
+accessible the reuse of some operations. Intended to hold tools (classes and
+functions) whose operate built-in python classes, NumPy arrays, and other
+stuff not contained by the pytta.classes sub-package.
 
-Created on Tue May  5 00:31:42 2020
+
+Available modules:
+------------------
+
+    * colore
+    * freq
+    * maths
+    
+
+Created on Tue May 5 00:31:42 2020
 
 @author: João Vitor G. Paes
+
 """
 
 from .colore import ColorStr, colorir, pinta_texto, pinta_fundo
