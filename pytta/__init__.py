@@ -6,10 +6,10 @@ and signal analysis.
 To get started, try:
 
     >>> import pytta
-    >>>
+    
     >>> pytta.default()
     >>> pytta.list_devices()
-    >>>
+
     >>> mySignal = pytta.generate.sweep()
     >>> mySignal.plot_freq()  # same as pytta.plot_freq(mySignal)
 
@@ -82,7 +82,7 @@ The documentation is also available at:
     https://pytta.readthedocs.io/
 
 
-Created on Sun Oct 27 06:29:00 2018
+Created on Fri May 25 2018
 
 @authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br

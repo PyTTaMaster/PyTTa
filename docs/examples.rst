@@ -38,5 +38,4 @@ Create a measurement object that plays a signal and records microphone input sim
 More examples
 -------------
 
-Still to be done.
-
+Check the toolbox's 'examples' folder.
