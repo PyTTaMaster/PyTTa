@@ -109,7 +109,7 @@ from . import utils
 from . import rooms
 from . import iso3741
 
-from .functions import read_wav, write_wav, merge, list_devices,\
+from .functions import read_wav, write_wav, merge, split, list_devices,\
     get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, fft_degree, plot_time, plot_time_dB, plot_freq,\
@@ -131,6 +131,7 @@ __all__ = [  # Apps
 
            # Functions
            'merge',
+           'split',
            'fft_convolve',
            'read_wav',
            'write_wav',

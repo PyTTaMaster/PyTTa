@@ -48,23 +48,23 @@ class SignalObj(_base.PyTTaObj):
             some commentary about the signal or measurement object;
 
 
-    Attributes:
-    ------------
-    
-        * attribute (default), (data type):
-            description;    
+    Attributes (default), (data type):
+    -----------------------------------
         
-        * timeSignal (ndarray), (NumPy array):
+        * timeSignal (), (NumPy ndarray):
             signal at time domain;
 
-        * timeVector (ndarray), (NumPy array):
+        * timeVector (), (NumPy ndarray):
             time reference vector for timeSignal;
 
-        * freqSignal (ndarray), (NumPy array):
+        * freqSignal (), (NumPy ndarray):
             signal at frequency domain;
 
-        * freqVector (ndarray), (NumPy array):
+        * freqVector (), (NumPy ndarray):
             frequency reference vector for freqSignal;
+            
+        * channels (), (_base.ChannelsList()):
+            ChannelsList object with info about each SignalObj channel;
 
         * unit (None), (str):
             signal's unit. May be 'V' or 'Pa';
@@ -312,6 +312,60 @@ class SignalObj(_base.PyTTaObj):
         return self.numChannels
 
     # SignalObj Methods
+    
+    def split(self, channels: list = None) -> list:
+        """
+        Split the SignalObj channels into several SignalObjs. If the 'channels'
+        input argument is given split the specified channel numbers, otherwise
+        split all channels.
+        
+        Arguments (default), (type):
+        -----------------------------
+        
+            * channels (None), (list):
+                specified channels to split from the SignalObj;
+                
+        Return (type):
+        --------------
+        
+            * spltdChs (list):
+                a list containing SignalObjs for each specified/all channels;        
+            
+        """
+        
+        if channels is None:
+            channels = self.channels.mapping
+            
+        else:
+            treta = False
+            inexistantChs = []
+            for chNum in channels:
+                if chNum not in self.channels.mapping:
+                    treta = True
+                    inexistantChs.append(chNum)
+            if treta:
+                raise IndexError("Channel number(s) " + str(inexistantChs) +
+                                 " don't exist.")
+        
+        indexes = [self.channels.mapping.index(chNum) for chNum in channels]
+            
+        spltdChs = []
+        
+        idx = 0;
+        for chNum in channels:
+            newSignal = SignalObj(self.timeSignal[:,indexes[idx]],
+                                  domain='time',
+                                  samplingRate=self.samplingRate,
+                                  freqMin=self.freqMin,
+                                  freqMax=self.freqMax,
+                                  comment=self.comment)
+            newSignal.channels[1] = self.channels[chNum]
+            
+            spltdChs.append(newSignal)
+            
+            idx += 1
+                    
+        return spltdChs
 
     def crop(self, startTime, endTime):
         """crop crop the signal duration in the specified interval
@@ -376,6 +430,20 @@ class SignalObj(_base.PyTTaObj):
     def play(self, outChannels=None, latency='low', **kwargs):
         """
         Play method
+        
+        Parameters (default), (type):
+        ------------------------------
+        
+            * outChannels (None), (list):
+                list of channel numbers (starting with 1) where the channels 
+                of the SignalObj shall be played back on. Must have the same
+                length as number of SignalObj's channels (except if SignalObj 
+                is mono, in which case the signal is played back on all 
+                possible output channels). Each channel number may only appear
+                once in outChannels;
+                
+        For more information check sounddevice.play docstrings.
+        
         """
         if outChannels is None:
             if self.numChannels <= 1:
