@@ -427,31 +427,71 @@ class SignalObj(_base.PyTTaObj):
             inputArray = self.timeSignal[:]
         return np.size(inputArray.shape)
 
-    def play(self, outChannels=None, latency='low', **kwargs):
+    def play(self,
+             channels: list = None, 
+             mapping: list = None,
+             atency='low',
+             **kwargs):
         """
-        Play method
+        Play method.
+        
+        Only one SignalObj channel can be played trhough each sound card
+        output channel. Check the input parameters below
+        
+        For usage insights, check the examples folder.
         
         Parameters (default), (type):
         ------------------------------
         
-            * outChannels (None), (list):
-                list of channel numbers (starting with 1) where the channels 
-                of the SignalObj shall be played back on. Must have the same
-                length as number of SignalObj's channels (except if SignalObj 
-                is mono, in which case the signal is played back on all 
-                possible output channels). Each channel number may only appear
-                once in outChannels;
+            * channels (None), (list):
+                list of channel numbers to play. If not specified all existent
+                channels will be choosen;
+        
+            * mapping (None), (list):
+                list of channel numbers of your sound card (starting with 1)
+                where the specified channels of the SignalObj shall be played
+                back on. Must have the same length as number of SignalObj's
+                specified channels (except if SignalObj is mono, in which case
+                the signal is played back on all possible output channels).
+                Each channel number may only appear once in mapping;
                 
-        For more information check sounddevice.play docstrings.
         
         """
-        if outChannels is None:
+        if channels is None:
+            channels = self.channels.mapping
+            
+        else:
+            treta = False
+            inexistantChs = []
+            for chNum in channels:
+                if chNum not in self.channels.mapping:
+                    treta = True
+                    inexistantChs.append(chNum)
+            if treta:
+                raise IndexError("SignalObj channel number(s) " +
+                                 str(inexistantChs) +
+                                 " don't exist.")
+        
+        indexes = [self.channels.mapping.index(chNum) for chNum in channels]
+        
+        timeSignalSel = self.timeSignal[:,indexes[0]]
+        
+        if len(channels) > 1: 
+            for idx in indexes[1:]:
+                timeSignalSel = np.vstack((timeSignalSel,
+                                           self.timeSignal[:,idx]))
+        
+        timeSignalSel = timeSignalSel.T
+        
+        if mapping is None:
             if self.numChannels <= 1:
-                outChannels = default.outChannel
+                mapping = default.outChannel
             elif self.numChannels > 1:
-                outChannels = np.arange(1, self.numChannels+1)
-        sd.play(self.timeSignal, self.samplingRate,
-                mapping=outChannels, **kwargs)
+                mapping = np.arange(1, self.numChannels+1)
+                
+        sd.play(timeSignalSel, self.samplingRate,
+                mapping=mapping, **kwargs)
+        
         return
 
     def plot_time(self, xLabel:str=None, yLabel:str=None,
