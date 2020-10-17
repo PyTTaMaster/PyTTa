@@ -33,7 +33,8 @@ For further information see the specific function documentation
 # Import modules
 from pytta import default
 from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
-                          PlayRecMeasure, Streaming, OctFilter
+                          PlayRecMeasure, Streaming
+from pytta.classes import OctFilter as _OctFilter
 from scipy import signal as ss
 import numpy as np
 import traceback
@@ -661,19 +662,19 @@ def stream(IO='IO',
     stream.creation_name = creation_name
     return stream
 
-def filter(*args, **kwargs) -> OctFilter:
+def filter(*args, **kwargs) -> _OctFilter:
     warn(DeprecationWarning("'pytta.generate.filter' DEPRECATED and being " +
                                 "replaced by 'pytta.generate.octfilter'."))
     return octfilter(*args, **kwargs)
 
 
 def octfilter(order: int = 4,
-           nthOct: int = 3,
-           samplingRate: int = 44100,
-           minFreq: float = 20,
-           maxFreq: float = 20000,
-           refFreq: float = 1000,
-           base: int = 10) -> OctFilter:
+              nthOct: int = 3,
+              samplingRate: int = 44100,
+              minFreq: float = 20,
+              maxFreq: float = 20000,
+              refFreq: float = 1000,
+              base: int = 10) -> _OctFilter:
     # Code snippet to guarantee that generated object name is
     # the declared at global scope
     # for frame, line in traceback.walk_stack(None):
@@ -690,7 +691,7 @@ def octfilter(order: int = 4,
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
 
-    of = OctFilter(order, nthOct, samplingRate, minFreq,
+    of = _OctFilter(order, nthOct, samplingRate, minFreq,
                    maxFreq, refFreq, base)
     of.creation_name = creation_name
     return of

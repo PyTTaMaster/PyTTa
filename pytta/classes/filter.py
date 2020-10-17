@@ -31,7 +31,7 @@ class FilterBase(object):
                 A list containing one SignalObj with the filtered data for each channel in the original signalObj.
 
         """
-        return self._filter(sigobj)
+        return self.filter(sigobj)
 
 
 
@@ -48,7 +48,6 @@ class OctFilter(FilterBase):
                  refFreq: float = None,
                  base: int = None) -> None:
         """
-
 
         Parameters
         ----------
@@ -115,11 +114,11 @@ class OctFilter(FilterBase):
         self.center, edges = freqs_to_center_and_edges(freqs)
         return self.__design_sos_butter(edges, self.order, self.samplingRate)
 
-    def filter(self, sigobj):
-        print(":WARNING: `OctFilter.filter` method will soon be deprecated.")
-        return self._filter(sigobj)
+    # def filter(self, sigobj):
+    #     print(":WARNING: `OctFilter.filter` method will soon be deprecated.")
+    #     return self._filter(sigobj)
 
-    def _filter(self, sigobj):
+    def filter(self, sigobj):
         """
         Filter the signal object.
 
