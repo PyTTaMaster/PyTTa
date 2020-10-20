@@ -11,7 +11,7 @@ Available functions:
     >>> pytta.read_wav(fileName)
     >>> pytta.write_wav(fileName, signalObject)
     >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
-    >>> pytta.slipt(signalObj)  # TO DO
+    >>> pytta.slipt(signalObj)
     >>> pytta.fft_convolve(signalObj1, signalObj2)
     >>> pytta.find_delay(signalObj1, signalObj2)
     >>> pytta.corr_coef(signalObj1, signalObj2)
@@ -136,9 +136,8 @@ def write_wav(fileName, signalIn):
 
 def merge(signal1, *signalObjects):
     """
-    Gather all of the input argument signalObjs into a single
-    signalObj and place the respective timeSignal of each
-    as a column of the new object
+    Gather all channels of the signalObjs given as input arguments into a
+    single SignalObj.
     """
     j = 1
     freqMin = cp.deepcopy(signal1.freqMin)
@@ -170,9 +169,35 @@ def merge(signal1, *signalObjects):
     return newSignal
 
 
-# TO DO
-# def split(signal):
-#    return 0
+def split(*signalObjects,
+          channels: list = None) -> list:    
+    """
+    Split the provided SignalObjs' channels into several SignalObjs. If the
+    'channels' input argument is given, split the specified channel numbers of
+    each SignalObj, otherwise split all channels.
+    
+    Arguments (default), (type):
+    -----------------------------
+    
+        * non-keyworded arguments (), (SignalObj)
+        
+        * channels (None), (list):
+            specified channels to split from the provided SignalObjs;
+            
+    Return (type):
+    --------------
+    
+        * spltdChs (list):
+            a list containing SignalObjs for each splited channel;        
+            
+    """
+    spltdChs = []
+    
+    for sigObj in signalObjects:
+        moreSpltdChs = sigObj.split(channels=channels)
+        spltdChs.extend(moreSpltdChs)    
+    
+    return spltdChs
 
 
 def fft_convolve(signal1, signal2):

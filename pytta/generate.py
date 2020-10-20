@@ -17,7 +17,7 @@ User intended functions:
 
     >>> pytta.generate.sin()
     >>> pytta.generate.sweep()
-    >>> pytta.generate.noise()
+    >>> pytta.generate.random_noise()
     >>> pytta.generate.impulse()
     >>> pytta.generate.measurement()
 
@@ -33,7 +33,8 @@ For further information see the specific function documentation
 # Import modules
 from pytta import default
 from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
-                          PlayRecMeasure, Streaming, OctFilter
+                          PlayRecMeasure, Streaming
+from pytta.classes import OctFilter as _OctFilter
 from scipy import signal as ss
 import numpy as np
 import traceback
@@ -101,13 +102,12 @@ def sin(Arms=0.5,
     sinSigObj.creation_name = creation_name
     return sinSigObj
 
-#FIXME: por que não passar valores padrão pré preenchidos? Linhas 147-158 economia
-def sweep(freqMin=None,
-          freqMax=None,
-          samplingRate=None,
-          fftDegree=None,
-          startMargin=None,
-          stopMargin=None,
+def sweep(freqMin=default.freqMin,
+          freqMax=default.freqMax,
+          samplingRate=default.samplingRate,
+          fftDegree=default.fftDegree,
+          startMargin=default.startMargin,
+          stopMargin=default.stopMargin,
           method='logarithmic',
           windowing='hann'):
     """
@@ -127,6 +127,26 @@ def sweep(freqMin=None,
     for the fade in and last half for the fade out. Different number of points
     are used for each fade, so the number of time samples during each frequency
     is respected.
+    
+    Input arguments (default), (type):
+    ------------------------
+    
+        * freqMin (20), (float)
+        
+        * freqMax (20), (float)
+          
+        * samplingRate (44100), (int)
+        
+        * fftDegree (18), (float)
+        
+        * startMargin (0.3), (float)
+        
+        * stopMargin (0.7), (float)
+        
+        * method (logarithmic'), (string)
+                  
+        * windowing ('hann'), (string)
+
 
     """
     # Code snippet to guarantee that generated object name is
@@ -144,19 +164,6 @@ def sweep(freqMin=None,
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
-
-    if freqMin is None:
-        freqMin = default.freqMin
-    if freqMax is None:
-        freqMax = default.freqMax
-    if samplingRate is None:
-        samplingRate = default.samplingRate
-    if fftDegree is None:
-        fftDegree = default.fftDegree
-    if startMargin is None:
-        startMargin = default.startMargin
-    if stopMargin is None:
-        stopMargin = default.stopMargin
 
     # frequency limits [Hz]
     freqLimits = {'freqMin': freqMin / (2**(1/6)),
@@ -250,12 +257,13 @@ def __do_sweep_windowing(inputSweep,
     newSweep = fullWindow * inputSweep
     return newSweep
 
-# FIXME: change name to random_noise
-def noise(kind='white',
-          samplingRate=None,
-          fftDegree=None,
-          startMargin=None,
-          stopMargin=None,
+# FIXME: This looks incorrect because the signal has normal
+#        distribution, so no limits but an average and standard deviation.
+def random_noise(kind='white',
+          samplingRate=default.samplingRate,
+          fftDegree=default.fftDegree,
+          startMargin=default.startMargin,
+          stopMargin=default.stopMargin,
           windowing='hann'):
     """
     Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a
@@ -263,8 +271,6 @@ def noise(kind='white',
     abrupt speaker excursioning. All noises have normalized amplitude.
 
         White noise is generated using numpy.randn between [[1];[-1]];
-        # FIXME: This looks incorrect because the signal has normal
-        # distribution, so no limits but an average and standard deviation.
 
         Pink noise is still in progress;
 
@@ -285,16 +291,7 @@ def noise(kind='white',
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
-
-    if samplingRate is None:
-        samplingRate = default.samplingRate
-    if fftDegree is None:
-        fftDegree = default.fftDegree
-    if startMargin is None:
-        startMargin = default.startMargin
-    if stopMargin is None:
-        stopMargin = default.stopMargin
-
+    
     # [samples] initial silence number of samples
     stopSamples = round(stopMargin*samplingRate)
 
@@ -372,15 +369,6 @@ def impulse(samplingRate=None,
         fftDegree = default.fftDegree
 
     numSamples = 2**fftDegree
-    # FIXME: I don't know why you created this way. I guess it would be better
-    # to just create a vector of zeros and then substitute the first sample by
-    # 1.
-    # =========================================================================
-    #     impulseSignal = (numSamples / samplingRate) \
-    #         * np.ones(numSamples) + 1j * np.random.randn(numSamples)
-    #     impulseSignal = np.real(np.fft.ifft(impulseSignal))
-    #     impulseSignal = impulseSignal / max(impulseSignal)
-    # =========================================================================
     impulseSignal = np.zeros(numSamples)
     impulseSignal[0] = 1.0
     impulseSignal = SignalObj(signalArray=impulseSignal,
@@ -674,19 +662,19 @@ def stream(IO='IO',
     stream.creation_name = creation_name
     return stream
 
-def filter(*args, **kwargs) -> OctFilter:
+def filter(*args, **kwargs) -> _OctFilter:
     warn(DeprecationWarning("'pytta.generate.filter' DEPRECATED and being " +
                                 "replaced by 'pytta.generate.octfilter'."))
     return octfilter(*args, **kwargs)
 
 
 def octfilter(order: int = 4,
-           nthOct: int = 3,
-           samplingRate: int = 44100,
-           minFreq: float = 20,
-           maxFreq: float = 20000,
-           refFreq: float = 1000,
-           base: int = 10) -> OctFilter:
+              nthOct: int = 3,
+              samplingRate: int = 44100,
+              minFreq: float = 20,
+              maxFreq: float = 20000,
+              refFreq: float = 1000,
+              base: int = 10) -> _OctFilter:
     # Code snippet to guarantee that generated object name is
     # the declared at global scope
     # for frame, line in traceback.walk_stack(None):
@@ -703,7 +691,7 @@ def octfilter(order: int = 4,
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
 
-    of = OctFilter(order, nthOct, samplingRate, minFreq,
+    of = _OctFilter(order, nthOct, samplingRate, minFreq,
                    maxFreq, refFreq, base)
     of.creation_name = creation_name
     return of

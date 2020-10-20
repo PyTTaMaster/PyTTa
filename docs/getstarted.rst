@@ -3,15 +3,14 @@
 Getting Started
 ===============
 
-First you should try:
+To get started, try:
 
     >>> import pytta
-    >>> print(pytta.list_devices())
-
-    -------
-
+    
     >>> pytta.default()
+    >>> pytta.list_devices()
 
-
-See `Examples` for more instructions
-
+    >>> mySignal = pytta.generate.sweep()
+    >>> mySignal.plot_freq()  # same as pytta.plot_freq(mySignal)
+    
+See `Examples` for more instructions.

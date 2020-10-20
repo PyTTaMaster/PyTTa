@@ -6,10 +6,18 @@ acoustic paramters. It has an implementation of Lundeby et al. [1] algorithm
 to estimate the correction factor for the cumulative integral, as suggested 
 by the ISO 3382-1.
 
-Use this module through the function analyse, which receives an one channel
+Use this module through the function 'analyse', which receives an one channel
 SignalObj or ImpulsiveResponse and calculate the room acoustic parameters 
 especified in the positional input arguments. For more information check
 pytta.rooms.analyse's documentation.
+
+Available functions:
+    
+    >>> pytta.rooms.crop_IR(SignalObj | ImpulsiveResponse, ...)
+    >>> pytta.rooms.Analyse(SignalObj, ...)
+    >>> pytta.rooms.strength_factor(...)
+    >>> pytta.rooms.G_Lpe
+    >>> pytta.rooms.G_Lps
 
 Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -776,7 +784,17 @@ def analyse(obj, *params,
             Analysis object with the calculated parameter or a list of 
             Analyses for more than one parameter.
             
-    For usage example check the examples folder.
+    Usage example:
+                
+        >>> myRT = pytta.rooms.analyse(IR,
+                                       'RT', 20',
+                                       'C', 50,
+                                       'D', 80,
+                                       nthOct=3,
+                                       minFreq=100,
+                                       maxFreq=10000)
+            
+    For more tips check the examples folder.
 
     """
     # Code snippet to guarantee that generated object name is

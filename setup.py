@@ -13,11 +13,11 @@ from setuptools import setup
 
 settings = {
     'name': 'PyTTa',
-    'version': '0.1.0b8',
+    'version': '0.1.0b9',
     'description': 'Signal processing tools for acoustics and vibrations in ' +
         'python, development package.',
     'url': 'http://github.com/PyTTAmaster/PyTTa',
-    'author': 'Marcos Reis, Matheus Lazarin, João Vitor Paes',
+    'author': 'João Vitor Paes, Matheus Lazarin, Marcos Reis',
     'author_email': 'pytta@eac.ufsm.br',
     'license': 'MIT',
     'install_requires': ['numpy', 'scipy', 'matplotlib',

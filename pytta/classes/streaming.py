@@ -5,7 +5,6 @@ concurrently read input audio.
 
 """
 
-
 import numpy as np
 import sounddevice as sd
 #import multiprocessing as mp
@@ -16,6 +15,7 @@ from pytta import default, utils
 from pytta.classes._base import PyTTaObj, ChannelsList
 from pytta.classes.signal import SignalObj
 
+# TO DO: format docs
 
 class Monitor(object):
     """PyTTa default Monitor base class."""
