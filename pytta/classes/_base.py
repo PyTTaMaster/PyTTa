@@ -15,6 +15,7 @@ import numpy as np
 from scipy import io
 import time
 from pytta import _h5utils as _h5
+from typing import List
 
 
 class PyTTaObj(RICI):
@@ -353,6 +354,7 @@ class ChannelObj(object):
         self.calibCheck = calibCheck
         self.coordinates = coordinates
         self.orientation = orientation
+        self.active = False
         return
 
     def __repr__(self):
@@ -544,6 +546,16 @@ class ChannelObj(object):
                             ' 4]), or a CoordinatesObj.')
         return
 
+    @property
+    def active(self):
+        """Boolean that tells the Streamer if the channel is active or not."""
+        return self._active
+
+    @active.setter
+    def active(self, a):
+        self._active = bool(a)
+        return
+
     def _to_dict(self):
         out = {'calib': [self.CF, self.calibCheck],
                'unit': self.unit,
@@ -694,7 +706,7 @@ class ChannelsList(object):
                 if len(self) != len(otherList):
                     raise ValueError("Both ChannelsList-like objects must \
                                      have the same number of channels.")
-                
+
                 newChList = ChannelsList([self[self.mapping[idx]]/
                                           otherList[otherList.mapping[idx]]
                                           for idx in range(len(self))])
@@ -732,6 +744,22 @@ class ChannelsList(object):
     @property
     def codes(self):
         return [ch.code for ch in self._channels]
+
+    def enable(self, mapping: List[int]):
+        """Activates the channels which nums correspond to given mapping."""
+        for num in mapping:
+            for ch in self._channels:
+                if ch.num == num:
+                    ch.active = True
+        return
+
+    def disable(self, mapping: List[int]):
+        """Deactivates the channels which nums correspond to given mapping."""
+        for num in mapping:
+            for ch in self._channels:
+                if ch.num == num:
+                    ch.active = False
+        return
 
     def CFlist(self):
         out = []
