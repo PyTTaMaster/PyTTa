@@ -70,10 +70,29 @@ class Monitor(object):
         self.counter = int()
         return
 
+
     def callback(self, frames: int,
-                 indata: np.ndarray,
+                 indata: Optional[np.ndarray] = None,
                  outdata: Optional[np.ndarray] = None):
-        """The audio processing itself, will be called for every chunk of data taken from the queue."""
+        """
+        The audio processing / exhibiting function
+
+        This will be called for every chunk of data taken from the queue.
+
+        Parameters
+        ----------
+        frames : int
+            Number of audio samples in each channel.
+        indata : np.ndarray
+            The recorded audio data, frames x numchannels.
+        outdata : Optional[np.ndarray], optional
+            DESCRIPTION. The default is None.
+
+        Returns
+        -------
+        None.
+
+        """
         if self.counter >= self.samplingRate//8:
             indB = utils.arr2dB(self.inData)
             outdB = utils.arr2dB(self.outData)
@@ -111,6 +130,49 @@ class Monitor(object):
         return
 
 
+
+class Streamer(object):
+    """Analog to digital and digital to analog device abstraction class."""
+
+    def __init__(self, idx, blocksize, samplingRate = None):
+        self._dict = sd.query_devices(idx)
+        self._bs = blocksize
+        self._samplingRate = (self._dict['default_samplerate']
+                              if samplingRate is None
+                              else samplingRate)
+        self._inChannels = ChannelsList([ch + 1 for ch in range(self.numInChannels)])
+        self._outChannels = ChannelsList([ch + 1 for ch in range(self.numOutChannels)])
+        return
+
+    @property
+    def name(self):
+        """Device name."""
+        return self._dict['name']
+
+    @property
+    def inChannels(self):
+        """List of input channels."""
+        return self._inChannels
+
+    @property
+    def numInChannels(self):
+        """Amount of input channels."""
+        return self._dict['max_input_channels']
+
+    @property
+    def outChannels(self):
+        """List of output channels."""
+        return self._outChannels
+
+    @property
+    def numOutChannels(self):
+        """Amount of output channels."""
+        return self._dict['max_output_channels']
+
+
+
+
+
 # Streaming class
 class Streaming(PyTTaObj):
     """Stream control."""
@@ -119,10 +181,10 @@ class Streaming(PyTTaObj):
                  IO: str,
                  samplingRate: int,
                  device: int,
+                 inChannels: ChannelsList,
+                 outChannels: ChannelsList,
                  datatype: str = 'float32',
                  blocksize: int = 0,
-                 inChannels: Optional[ChannelsList] = None,
-                 outChannels: Optional[ChannelsList] = None,
                  excitation: Optional[SignalObj] = None,
                  duration: Optional[float] = None,
                  numSamples: Optional[int] = None,
@@ -173,6 +235,7 @@ class Streaming(PyTTaObj):
             self.outChannels = outChannels
             self.playData = excitation.timeSignal[:]
         self.dataCount = int(0)
+        self.dulldata = np.zeros((self.durationInSamples, 1), dtype=self.dataType)
         self.set_monitoring(monitor)
         return
 
@@ -312,22 +375,22 @@ class Streaming(PyTTaObj):
         return
 
     def _register_input_data(self, cbInput, frames):
-        writesLeft = self.recData.shape[0] - self.dataCount - 1
-        framesWrite = writesLeft+1 if writesLeft < frames else frames
-        self.recData[self.dataCount:framesWrite + self.dataCount, :] = cbInput[:framesWrite]
+        writesLeft = self.recData.shape[0] - self.dataCount
+        framesWrite = writesLeft if writesLeft <= frames else frames
+        self.recData[self.dataCount:framesWrite + self.dataCount, :] = cbInput[:framesWrite, [m-1 for m in self.inChannels.mapping]]
         return
 
     def _register_output_data(self, cbOutput, frames):
-        readsLeft = self.playData.shape[0] - self.dataCount - 1
-        framesRead = readsLeft+1 if readsLeft < frames else frames
-        cbOutput[:framesRead] = self.playData[self.dataCount:framesRead + self.dataCount, :]
+        readsLeft = self.playData.shape[0] - self.dataCount
+        framesRead = readsLeft if readsLeft <= frames else frames
+        cbOutput[:framesRead, [m-1 for m in self.outChannels.mapping]] = self.playData[self.dataCount:framesRead + self.dataCount, :]
         cbOutput[framesRead:].fill(0.)
         return
 
     def _end_of_callback(self, indata, outdata, frames, status):
         if self.hasMonitor.is_set():
-            self.queue.put_nowait([indata.copy() if indata is not None else None,
-                                   outdata.copy() if outdata is not None else None,
+            self.queue.put_nowait([indata.copy(),
+                                   outdata.copy(),
                                    frames, status])
         self.dataCount += frames
         if self.dataCount >= self.durationInSamples:
@@ -342,14 +405,14 @@ class Streaming(PyTTaObj):
                        times: type, status: sd.CallbackFlags):
         """This method will be called from the stream, as stated on sounddevice's documentation."""
         self._register_input_data(indata, frames)
-        self._end_of_callback(indata, None, frames, status)
+        self._end_of_callback(indata, self.dulldata, frames, status)
         return
 
     def output_callback(self, outdata: np.ndarray, frames: int,
                       times: type, status: sd.CallbackFlags):
         """This method will be called from the stream, as stated on sounddevice's documentation."""
         self._register_output_data(outdata, frames)
-        self._end_of_callback(None, outdata, frames, status)
+        self._end_of_callback(self.dulldata, outdata, frames, status)
         return
 
     def stream_callback(self, indata: np.ndarray, outdata: np.ndarray,
@@ -361,12 +424,12 @@ class Streaming(PyTTaObj):
         return
 
     def play(self):
-        self.runner(sd.OutputStream, self.output_callback, self.numOutChannels)
+        self.runner(sd.OutputStream, self.output_callback, max(self.outChannels.mapping))
         self.dataCount = int()
         return
 
     def record(self):
-        self.runner(sd.InputStream, self.input_callback, self.numInChannels)
+        self.runner(sd.InputStream, self.input_callback, max(self.inChannels.mapping))
         self.dataCount = int()
         return self.recData
 
