@@ -52,6 +52,7 @@ default_ = {'samplingRate': 44100,
             'stopMargin': 0.7,
             'startMargin': 0.3,
             'comment': 'No comments.',
+            'dtype': 'float32'
             }
 
 
@@ -71,6 +72,7 @@ class Default(object):
     _stopMargin = []
     _startMargin = []
     _comment = []
+    _dtype = []
     _instance = None
 
     def __init__(self):
@@ -207,6 +209,10 @@ class Default(object):
     def freqLims(self):
         """Frequency range."""
         return {'min': self._freqMin, 'max': self._freqMax}
+
+    @property
+    def dtype(self):
+        return self._dtype
 
     @property
     def device(self):
