@@ -93,6 +93,7 @@ def sin(Arms=0.5,
 
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
+        
     t = np.linspace(0,
                     timeLength - (1/samplingRate),
                     int(samplingRate*timeLength))
@@ -102,12 +103,12 @@ def sin(Arms=0.5,
     sinSigObj.creation_name = creation_name
     return sinSigObj
 
-def sweep(freqMin=default.freqMin,
-          freqMax=default.freqMax,
-          samplingRate=default.samplingRate,
-          fftDegree=default.fftDegree,
-          startMargin=default.startMargin,
-          stopMargin=default.stopMargin,
+def sweep(freqMin=None,
+          freqMax=None,
+          samplingRate=None,
+          fftDegree=None,
+          startMargin=None,
+          stopMargin=None,
           method='logarithmic',
           windowing='hann'):
     """
@@ -164,6 +165,27 @@ def sweep(freqMin=default.freqMin,
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
+    
+    
+    # It was done like this because a function default argument is a value
+    # assigned at import time, and PyTTa have a default object that handles
+    # default values for all functions and all classes across all submodules.
+    # In order to it work as expected, the values should be reassigned at
+    # every function call to get updated default values. Otherwise, despite
+    # how the default has it's properties values changed, it won't change
+    # for the function calls.
+    if freqMin is None:
+        freqMin = default.freqMin
+    if freqMax is None:
+        freqMax = default.freqMax
+    if samplingRate is None:
+        samplingRate = default.samplingRate
+    if fftDegree is None:
+        fftDegree = default.fftDegree
+    if startMargin is None:
+        startMargin = default.startMargin
+    if stopMargin is None:
+        stopMargin = default.stopMargin
 
     # frequency limits [Hz]
     freqLimits = {'freqMin': freqMin / (2**(1/6)),
@@ -260,11 +282,11 @@ def __do_sweep_windowing(inputSweep,
 # FIXME: This looks incorrect because the signal has normal
 #        distribution, so no limits but an average and standard deviation.
 def random_noise(kind='white',
-          samplingRate=default.samplingRate,
-          fftDegree=default.fftDegree,
-          startMargin=default.startMargin,
-          stopMargin=default.stopMargin,
-          windowing='hann'):
+                 samplingRate=None,
+                 fftDegree=None,
+                 startMargin=None,
+                 stopMargin=None,
+                 windowing='hann'):
     """
     Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a
     silence at the beginning and ending of the signal, plus a fade in to avoid
@@ -291,6 +313,22 @@ def random_noise(kind='white',
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
+    
+    # It was done like this because a function default argument is a value
+    # assigned at import time, and PyTTa have a default object that handles
+    # default values for all functions and all classes across all submodules.
+    # In order to it work as expected, the values should be reassigned at
+    # every function call to get updated default values. Otherwise, despite
+    # how the default has it's properties values changed, it won't change
+    # for the function calls.
+    if samplingRate is None:
+        samplingRate = default.samplingRate
+    if fftDegree is None:
+        fftDegree = default.fftDegree
+    if startMargin is None:
+        startMargin = default.startMargin
+    if stopMargin is None:
+        stopMargin = default.stopMargin
     
     # [samples] initial silence number of samples
     stopSamples = round(stopMargin*samplingRate)

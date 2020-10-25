@@ -4,7 +4,7 @@ Base classes:
 --------------
 
 @Autores:
-- Matheus Lazarin Alberto, mtslazarin@gmail.com
+- Matheus Lazarin Alberto, matheus.lazarin@eac.ufsm.br
 - João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
 
 """
