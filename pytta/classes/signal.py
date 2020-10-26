@@ -63,7 +63,7 @@ class SignalObj(_base.PyTTaObj):
         * freqVector (), (NumPy ndarray):
             frequency reference vector for freqSignal;
             
-        * channels (), (_base.ChannelsList()):
+        * channels (), (_base.ChannelsList):
             ChannelsList object with info about each SignalObj channel;
 
         * unit (None), (str):
