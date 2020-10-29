@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-This submodule carries a set of useful functions of general purpouses when
-using PyTTa, like reading and writing wave files, seeing the audio IO
-devices available and some signal processing tools.
+Set of useful functions of general purpouses when using PyTTa.
+
+Includes reading and writing wave files, seeing the audio IO
+devices available and few signal processing tools.
 
 Available functions:
 
     >>> pytta.list_devices()
-    >>> pytta.fft_degree(timeLength, samplingRate)
     >>> pytta.read_wav(fileName)
     >>> pytta.write_wav(fileName, signalObject)
     >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
@@ -43,7 +43,7 @@ from typing import Union, List
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
                     Analysis
-from pytta.classes._base import ChannelsList, ChannelObj
+# from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
 from pytta import _h5utils as _h5
 import copy as cp
@@ -53,9 +53,10 @@ from pytta import _plot as plot
 
 def list_devices():
     """
-    Shortcut to sounddevice.query_devices(). Made to exclude the need of
-    importing Sounddevice directly just to find out which audio devices can be
-    used.
+    Shortcut to sounddevice.query_devices().
+
+    Made to exclude the need of importing Sounddevice directly
+    just to find out which audio devices can be used.
 
         >>> pytta.list_devices()
 
@@ -84,38 +85,8 @@ def get_device_from_user() -> Union[List[int], int]:
     return device
 
 
-def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
-    """
-    Returns the power of two value that can be used to calculate the total
-    number of samples of the signal.
-
-        >>> numSamples = 2**fftDegree
-
-    Parameters:
-    ------------
-
-        * timeLength (float = 0):
-            Value, in seconds, of the time duration of the signal or
-            recording.
-
-        * samplingRate (int = 1):
-            Value, in samples per second, that the data will be captured
-            or emitted.
-
-    Returns:
-    ---------
-
-        fftDegree (float = 0):
-            Power of 2 that can be used to calculate number of samples.
-
-    """
-    return np.log2(timeLength*samplingRate)
-
-
 def read_wav(fileName):
-    """
-    Reads a wave file into a SignalObj
-    """
+    """Read a wave file into a SignalObj."""
     samplingRate, data = wf.read(fileName)
     if data.dtype == 'int16':
         data = data/(2**15)
@@ -126,19 +97,14 @@ def read_wav(fileName):
 
 
 def write_wav(fileName, signalIn):
-    """
-    Writes a SignalObj into a single wave file
-    """
+    """Write a SignalObj into a single wave file."""
     samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
     return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
 
 
 def merge(signal1, *signalObjects):
-    """
-    Gather all channels of the signalObjs given as input arguments into a
-    single SignalObj.
-    """
+    """Gather all channels of the signalObjs given as input arguments into a single SignalObj."""
     j = 1
     freqMin = cp.deepcopy(signal1.freqMin)
     freqMax = cp.deepcopy(signal1.freqMax)
@@ -170,39 +136,40 @@ def merge(signal1, *signalObjects):
 
 
 def split(*signalObjects,
-          channels: list = None) -> list:    
+          channels: list = None) -> list:
     """
-    Split the provided SignalObjs' channels into several SignalObjs. If the
-    'channels' input argument is given, split the specified channel numbers of
+    Split the provided SignalObjs' channels into several SignalObjs.
+
+    If the 'channels' input argument is given, split the specified channel numbers of
     each SignalObj, otherwise split all channels.
-    
+
     Arguments (default), (type):
     -----------------------------
-    
+
         * non-keyworded arguments (), (SignalObj)
-        
+
         * channels (None), (list):
             specified channels to split from the provided SignalObjs;
-            
+
     Return (type):
     --------------
-    
+
         * spltdChs (list):
-            a list containing SignalObjs for each splited channel;        
-            
+            a list containing SignalObjs for each splited channel;
+
     """
     spltdChs = []
-    
+
     for sigObj in signalObjects:
         moreSpltdChs = sigObj.split(channels=channels)
-        spltdChs.extend(moreSpltdChs)    
-    
+        spltdChs.extend(moreSpltdChs)
+
     return spltdChs
 
 
 def fft_convolve(signal1, signal2):
     """
-    Uses scipy.signal.fftconvolve() to convolve two time domain signals.
+    Use scipy.signal.fftconvolve() to convolve two time domain signals.
 
         >>> convolution = pytta.fft_convolve(signal1,signal2)
 
@@ -215,8 +182,9 @@ def fft_convolve(signal1, signal2):
 
 def find_delay(signal1, signal2):
     """
-    Cross Correlation alternative, more efficient fft based method to calculate
-    time shift between two signals.
+    Cross Correlation alternative.
+
+    More efficient fft based method to calculate time shift between two signals.
 
         >>> shift = pytta.find_delay(signal1,signal2)
 
@@ -234,10 +202,7 @@ def find_delay(signal1, signal2):
 
 
 def corr_coef(signal1, signal2):
-    """
-    Finds the correlation coeficient between two SignalObjs using
-    the numpy.corrcoef() function.
-    """
+    """Finds the correlation coeficient between two SignalObjs using the numpy.corrcoef() function."""
     coef = np.corrcoef(signal1.timeSignal, signal2.timeSignal)
     return coef[0, 1]
 
