@@ -61,7 +61,7 @@ def list_devices():
         >>> pytta.list_devices()
 
     """
-    return sd.query_devices()
+    return print(sd.query_devices())
 
 
 def get_device_from_user() -> Union[List[int], int]:
