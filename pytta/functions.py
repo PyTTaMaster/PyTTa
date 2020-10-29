@@ -49,6 +49,8 @@ from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
 from pytta import _plot as plot
+# For backwards compatibility purposes. Planned to get out of here
+from pytta.utils.maths import fft_degree as new_fft_degree
 
 
 def list_devices():
@@ -234,6 +236,11 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+    
+def fft_degree(*args,**kwargs):
+    warn(DeprecationWarning("Function 'pytta.fft_degree' is DEPRECATED and " +
+                            "being replaced by pytta.utils.maths.fft_degree."))
+    return new_fft_degree(*args, **kwargs)
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
               xLim:list=None, title:str=None, decimalSep:str=',',
@@ -598,7 +605,7 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     extension is provided choose the default file format.
 
     For more information on saving PyTTa objects in .hdf5 format see
-    pytta.functions.h5_save' documentation.
+    pytta.functions._h5_save' documentation.
 
     For more information on saving PyTTa objects in .pytta format see
     pytta.functions.pytta_save' documentation. (DEPRECATED)
@@ -607,7 +614,7 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     defaultFormat = '.hdf5'
     # Checking the choosed file format
     if fileName.split('.')[-1] == 'hdf5':
-        h5_save(fileName, *PyTTaObjs)
+        _h5_save(fileName, *PyTTaObjs)
     elif fileName.split('.')[-1] == 'pytta': # DEPRECATED
         warn(DeprecationWarning("'.pytta' format is DEPRECATED and being " +
                                 "replaced by '.hdf5'."))
@@ -743,12 +750,12 @@ def __parse_channels(chDict, chList):
     return chList
 
 
-def h5_save(fileName: str, *PyTTaObjs):
+def _h5_save(fileName: str, *PyTTaObjs):
     """
     Open an hdf5 file, create groups for each PyTTa object, pass it to
     the own object and it saves itself inside the group.
 
-    >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    >>> pytta._h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
 
     Dictionaries can also be passed as a PyTTa object. An hdf5 group will be
     created for each dictionary and its PyTTa objects will be saved. To ensure
@@ -804,7 +811,7 @@ def __h5_pack(rootH5Group, pObj, objDesc):
         # create obj's group
         objH5Group = rootH5Group.create_group(creationName)
         # save the obj inside its group
-        pObj.h5_save(objH5Group)
+        pObj._h5_save(objH5Group)
         return (1, 1)
 
     elif isinstance(pObj, dict):

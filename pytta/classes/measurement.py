@@ -97,7 +97,7 @@ class _MeasurementBase(_base.PyTTaObj):
                'outChannels': self.outChannels._to_dict()}
         return out
 
-    def h5_save(self, h5group):
+    def _h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file.
         """
@@ -105,7 +105,7 @@ class _MeasurementBase(_base.PyTTaObj):
         h5group.attrs['inChannels'] = repr(self.inChannels)
         h5group.attrs['outChannels'] = repr(self.outChannels)
         h5group.attrs['blocking'] = self.blocking
-        super().h5_save(h5group)
+        super()._h5_save(h5group)
         pass
 
 # Measurement Properties
@@ -372,13 +372,13 @@ class RecMeasure(_MeasurementBase):
             zdir.write('RecMeasure.json')
         return name
 
-    def h5_save(self, h5group, setClass=True):
+    def _h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
+        pytta._h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to RecMeasure.
 
-        >>> RecMeasure.h5_save(h5group, setClass=True)
+        >>> RecMeasure._h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
@@ -386,7 +386,7 @@ class RecMeasure(_MeasurementBase):
         h5group.attrs['lengthDomain'] = _h5.none_parser(self.lengthDomain)
         h5group.attrs['fftDegree'] = _h5.none_parser(self.fftDegree)
         h5group.attrs['timeLength'] = _h5.none_parser(self.timeLength)
-        super().h5_save(h5group)
+        super()._h5_save(h5group)
         pass
 
 # Rec Properties
@@ -617,20 +617,20 @@ class PlayRecMeasure(_MeasurementBase):
             os.remove('PlayRecMeasure.json')
         return name
 
-    def h5_save(self, h5group, setClass=True):
+    def _h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
+        pytta._h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to PlayRecMeasure.
 
-        >>> PlayRecMeasure.h5_save(h5group, setClass=True)
+        >>> PlayRecMeasure._h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
             h5group.attrs['class'] = 'PlayRecMeasure'
-        self.excitation.h5_save(h5group.create_group('excitation'))
+        self.excitation._h5_save(h5group.create_group('excitation'))
         h5group.attrs['outputAmplification'] = self.outputAmplification
-        super().h5_save(h5group)
+        super()._h5_save(h5group)
         pass
 
 # PlayRec Properties
@@ -784,13 +784,13 @@ class FRFMeasure(PlayRecMeasure):
             os.remove('FRFMeasure.json')
         return name
 
-    def h5_save(self, h5group, setClass=True):
+    def _h5_save(self, h5group, setClass=True):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.h5_save(...). Use setClass=True if the attribute 'class' must be
+        pytta._h5_save(...). Use setClass=True if the attribute 'class' must be
         seted to FRFMeasure.
 
-        >>> FRFMeasure.h5_save(h5group, setClass=True)
+        >>> FRFMeasure._h5_save(h5group, setClass=True)
 
         """
         if setClass is True:
@@ -799,7 +799,7 @@ class FRFMeasure(PlayRecMeasure):
         h5group.attrs['winType'] = _h5.none_parser(self.winType)
         h5group.attrs['winSize'] = _h5.none_parser(self.winSize)
         h5group.attrs['overlap'] = _h5.none_parser(self.overlap)
-        super().h5_save(h5group, setClass=False)
+        super()._h5_save(h5group, setClass=False)
         pass
 
     def run(self):

@@ -868,7 +868,7 @@ class SignalObj(_base.PyTTaObj):
             os.remove(filename)
         return dirname + '.pytta'
 
-    def h5_save(self, h5group):
+    def _h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
         pytta.save(...).
@@ -877,7 +877,7 @@ class SignalObj(_base.PyTTaObj):
         h5group.attrs['channels'] = repr(self.channels)
         h5group.attrs['signalType'] = _h5.attr_parser(self.signalType)
         h5group['timeSignal'] = self.timeSignal
-        super().h5_save(h5group)
+        super()._h5_save(h5group)
         pass
 
     def __truediv__(self, other):
@@ -1314,17 +1314,17 @@ class ImpulsiveResponse(_base.PyTTaObj):
             os.remove('ImpulsiveResponse.json')
         return dirname + '.pytta'
 
-    def h5_save(self, h5group):
+    def _h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
-        pytta.h5_save(...)
+        pytta._h5_save(...)
         """
         h5group.attrs['class'] = 'ImpulsiveResponse'
         h5group.attrs['method'] = _h5.none_parser(self.methodInfo['method'])
         h5group.attrs['winType'] = _h5.none_parser(self.methodInfo['winType'])
         h5group.attrs['winSize'] = _h5.none_parser(self.methodInfo['winSize'])
         h5group.attrs['overlap'] = _h5.none_parser(self.methodInfo['overlap'])
-        self.systemSignal.h5_save(h5group.create_group('systemSignal'))
+        self.systemSignal._h5_save(h5group.create_group('systemSignal'))
         pass
 
     def plot_time(self, *args, **kwargs):

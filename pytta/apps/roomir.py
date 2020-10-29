@@ -385,7 +385,7 @@ class MeasurementSetup(object):
 
         h5group.create_group('excitationSignals')
         for name, excitationSignal in self.excitationSignals.items():
-            excitationSignal.h5_save(h5group.create_group('excitationSignals' +
+            excitationSignal._h5_save(h5group.create_group('excitationSignals' +
                                                           '/' + name))
         pass
 
@@ -2110,7 +2110,7 @@ class MeasuredThing(object):
         h5group['tempHumids'] = self.tempHumids
         h5group.create_group('measuredSignals')
         for idx, msdSignal in enumerate(self.measuredSignals):
-            msdSignal.h5_save(h5group.create_group('measuredSignals/' +
+            msdSignal._h5_save(h5group.create_group('measuredSignals/' +
                                                    str(idx)))
         pass
 
