@@ -238,8 +238,34 @@ def peak_time(signal):
         return peaks_time[0]
     
 def fft_degree(*args,**kwargs):
+    """
+    DEPRECATED
+    ----------
+        Being replaced by pytta.utils.maths.fft_degree on version 0.1.0.
+    
+    Power-of-two value that can be used to calculate the total number of samples of the signal.
+
+        >>> numSamples = 2**fftDegree
+
+    Parameters
+    ----------
+        * timeLength (float = 0):
+            Value, in seconds, of the time duration of the signal or
+            recording.
+
+        * samplingRate (int = 1):
+            Value, in samples per second, that the data will be captured
+            or emitted.
+
+    Returns
+    -------
+        fftDegree (float = 0):
+            Power of 2 that can be used to calculate number of samples.
+
+    """
     warn(DeprecationWarning("Function 'pytta.fft_degree' is DEPRECATED and " +
-                            "being replaced by pytta.utils.maths.fft_degree."))
+                            "being replaced by pytta.utils.maths.fft_degree" +
+                            " on version 0.1.0"))
     return new_fft_degree(*args, **kwargs)
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
