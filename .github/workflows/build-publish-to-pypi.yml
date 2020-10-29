@@ -1,0 +1,44 @@
+# GitHub Action for building and publishing PyTTa distribution package to PyPI automatically.
+# Tagged commits with a tag starting with letter 'v' are published as releases to PyPI (https://pypi.org/).
+
+name: (If commit contains version tag) Build and publish PyTTa distribution package to PyPI
+
+on:
+
+  # Trigger this workflow on push
+  push:
+
+    # and for tags starting with v 
+    tags:
+      - 'v*'        # Push event to v0.0, v0.1, v0.2, ... , and so on  
+
+jobs:
+
+  build-n-publish:
+    name: Build and publish PyTTa distribution package to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # Checks-out PyTTa repository, so this workflow can access it
+    - uses: actions/checkout@v2
+
+    # Setup latest Python stable version
+    - name: Set up Python 3.x (latest stable version)
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+
+    - name: Install and upgrade build dependencies 
+      run: |
+        python3 -m pip install --upgrade pip setuptools wheel
+
+    - name: Build a binary wheel and a source tarball for PyTTa distribution package
+      run: |
+        python3 setup.py sdist bdist_wheel
+
+    - name: Publish Pytta distribution package to PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
