@@ -62,8 +62,24 @@ def list_devices():
 
         >>> pytta.list_devices()
 
+    Returns
+    -------
+        A tuple containing all available audio devices.
+
     """
-    return print(sd.query_devices())
+    return sd.query_devices()
+
+
+def print_devices():
+    """
+    Print the devices list to stdout.
+
+    Returns
+    -------
+    None.
+
+    """
+    return print(list_devices())
 
 
 def get_device_from_user() -> Union[List[int], int]:
@@ -76,7 +92,7 @@ def get_device_from_user() -> Union[List[int], int]:
         Practical interface for querying devices to be used within scripts.
 
     """
-    print(list_devices())
+    print_devices()
     device = [int(dev.strip()) for dev in input("Input the device number: ").split(',')]
     if len(device) == 1:
         device = device[0]
@@ -236,13 +252,13 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
-    
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
     ----------
         Being replaced by pytta.utils.maths.fft_degree on version 0.1.0.
-    
+
     Power-of-two value that can be used to calculate the total number of samples of the signal.
 
         >>> numSamples = 2**fftDegree
@@ -924,7 +940,7 @@ def _h5_load(fileName: str):
     if fileName.split('.')[-1] != 'hdf5':
         raise ValueError("_h5_load function only works with *.hdf5 files")
     f = h5py.File(fileName, 'r')
-    
+
     # Check if it is a PyTTa-like hdf5 file
     try:
         if 'GENERATED_BY' not in f.attrs.keys() or  \
@@ -932,7 +948,7 @@ def _h5_load(fileName: str):
             raise NotImplementedError
     except:
         raise NotImplementedError("Only PyTTa-like hdf5 files can be loaded.")
-        
+
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
     totCount = 0  # Counter for total groups

@@ -109,12 +109,12 @@ from . import utils
 from . import rooms
 from . import iso3741
 
-from .functions import read_wav, write_wav, merge, split, list_devices,\
-    get_device_from_user,\
+from .functions import read_wav, write_wav, merge, split, \
+    list_devices, print_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, plot_time, plot_time_dB, plot_freq,\
     plot_bars, plot_spectrogram, plot_waterfall
-    
+
 # Must go on v0.1.0 (DEPRECATED)
 from .functions import fft_degree
 
@@ -139,6 +139,7 @@ __all__ = [  # Apps
            'read_wav',
            'write_wav',
            'list_devices',
+           'print_devices',
            'get_device_from_user',
            'find_delay',
            'resample',
