@@ -14,7 +14,6 @@ If you want to contribute to this project and make it better, your help is very 
 - If the project has tests run them!
 - Write or adapt tests as needed.
 - Add or change the documentation as needed.
-- Squash your commits into a single commit with git's [interactive rebase](https://help.github.com/articles/interactive-rebase). Create a new branch if necessary.
 - Push your branch to your fork on Github, the remote `origin`.
 - From your fork open a pull request in the correct branch. Target the `development` branch!
 - If further changes are requested, just push them to your branch. The PR will be updated automatically.
