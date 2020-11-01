@@ -107,12 +107,7 @@ sending us a message.
 
 ### Contributing as a developer
 
-Our workflow consists of parallel development of submodules, either
-complementing an existing one or creating a new. Thus, one must create a new
-branch from the development branch. Its name should contain dev- as the suffix,
-named accordingly with the project intent. After the new branch is ready and
-coding finished, we would be glad to receive a pull request. Consider reading
-our CodingGuidelines.
+Please read our [CodingGuidelines](https://github.com/PyTTAmaster/PyTTa/blob/development/CodingGuidelines) and [Contributing](https://github.com/PyTTAmaster/PyTTa/blob/development/Contributing.md) files.
 
 ### Contact
 
