@@ -652,7 +652,7 @@ class Analysis(RICI):
 
     # Methods
 
-    def h5_save(self, h5group):
+    def _h5_save(self, h5group):
         """
         Saves itself inside a hdf5 group from an already openned file via
         pytta.save(...).

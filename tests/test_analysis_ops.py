@@ -28,11 +28,11 @@ class TestAnalysisOperations(unittest.TestCase):
         self.a = pytta.Analysis(anType='RT', nthOct=self.nthOct,
                                 minBand=self.minFreq,
                                 maxBand=self.maxFreq,
-                                data=[2, 0, -1])
+                                data=[2, 1, -1])
         self.b = pytta.Analysis(anType='RT', nthOct=self.nthOct,
                                 minBand=self.minFreq,
                                 maxBand=self.maxFreq,
-                                data=[3, 0, -2])
+                                data=[3, 1, -2])
 
     def tearDown(self):
         """
@@ -42,9 +42,9 @@ class TestAnalysisOperations(unittest.TestCase):
 
     def test_add(self):
         test = self.a+self.b
-        self.assertEqual(test.data.tolist(), [5,0,-3])
+        self.assertEqual(test.data.tolist(), [5,2,-3])
         test = self.b+self.a
-        self.assertEqual(test.data.tolist(), [5,0,-3])
+        self.assertEqual(test.data.tolist(), [5,2,-3])
 
     def test_sub(self):
         test = self.a-self.b
@@ -55,15 +55,15 @@ class TestAnalysisOperations(unittest.TestCase):
 
     def test_mul(self):
         test = self.a*self.b
-        self.assertEqual(test.data.tolist(), [6,0,2])
+        self.assertEqual(test.data.tolist(), [6,1,2])
         test = self.b*self.a
-        self.assertEqual(test.data.tolist(), [6,0,2])
+        self.assertEqual(test.data.tolist(), [6,1,2])
 
     def test_div(self):
         test = self.a/self.b
-        self.assertEqual(test.data.tolist(), [2/3,0,1/2])
+        self.assertEqual(test.data.tolist(), [2/3,1,1/2])
         test = self.b/self.a
-        self.assertEqual(test.data.tolist(), [3/2,0,2])
+        self.assertEqual(test.data.tolist(), [3/2,1,2])
 
 
 if __name__ == '__main__':

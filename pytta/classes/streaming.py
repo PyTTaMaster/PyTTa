@@ -5,7 +5,6 @@ concurrently read input audio.
 
 """
 
-
 import numpy as np
 import sounddevice as sd
 #import multiprocessing as mp
@@ -13,10 +12,10 @@ from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Optional, Callable, List, Type, Union
 from pytta import default, utils
-from pytta.classes._base import PyTTaObj
-from pytta.classes.measurement import Measurement
+from pytta.classes._base import PyTTaObj, ChannelsList
 from pytta.classes.signal import SignalObj
 
+# TO DO: format docs
 
 class Monitor(object):
     """PyTTa default Monitor base class."""
@@ -51,6 +50,7 @@ class Monitor(object):
         self.samplingRate = samplingrate
         self.numChannels = numchannels
         self.numSamples = numsamples
+        self.loopDuration = self.numSamples / self.samplingRate
         self.dtype = datatype
         return
 
@@ -117,10 +117,15 @@ class Streaming(PyTTaObj):
 
     def __init__(self,
                  IO: str,
-                 msmnt: Measurement,
+                 samplingRate: int,
+                 device: int,
                  datatype: str = 'float32',
                  blocksize: int = 0,
+                 inChannels: Optional[ChannelsList] = None,
+                 outChannels: Optional[ChannelsList] = None,
+                 excitation: Optional[SignalObj] = None,
                  duration: Optional[float] = None,
+                 numSamples: Optional[int] = None,
                  monitor: Optional[Monitor] = None,
                  *args, **kwargs):
         """
@@ -144,15 +149,15 @@ class Streaming(PyTTaObj):
         super().__init__(*args, **kwargs)
         self._IO = IO.upper()
 
-        self._samplingRate = msmnt.samplingRate  # registers samples per second
+        self._samplingRate = samplingRate  # registers samples per second
         self._dataType = datatype  # registers data type
         self._blockSize = blocksize  # registers blocksize
-        self._device = msmnt.device
+        self._device = device
 
         if (type(duration) is float) or (type(duration) is int):
-            self._durationInSamples = int(np.ceil(duration*msmnt.samplingRate))
+            self._durationInSamples = int(np.ceil(duration*self.samplingRate))
         else:
-            self._durationInSamples = msmnt.numSamples
+            self._durationInSamples = numSamples
         self._duration = self.durationInSamples / self.samplingRate
 
         self.isFinished = Event()  # block untill finished
@@ -160,17 +165,23 @@ class Streaming(PyTTaObj):
         self.isRunning = Event()   # stream and monitor synchronization
 
         self.statuses = []  # will register statuses passed by stream
+        if 'I' in self.IO:
+            self.inChannels = inChannels
+            self.recData = np.empty((self.durationInSamples, self.numInChannels),
+                                    dtype=self.dataType)
+        if 'O' in self.IO:
+            self.outChannels = outChannels
+            self.playData = excitation.timeSignal[:]
+        self.dataCount = int(0)
         self.set_monitoring(monitor)
-        self.set_io_properties(msmnt)
         return
 
     def __enter__(self):
         """
         Provide context functionality, the `with` keyword, e.g.
 
-            >>> with Recorder(Measurement) as rec:  # <-- called here
-            ...     rec.set_monitoring(Callable)
-            ...     rec.run()
+            >>> with Streaming(*args, **kwargs) as strm:  # <-- called here
+            ...     strm.playrec()
             ...
             >>>
 
@@ -181,9 +192,8 @@ class Streaming(PyTTaObj):
         """
         Provide context functionality, the `with` keyword, e.g.
 
-            >>> with Streaming('play', Measurement) as strm:
-            ...     strm.set_monitoring(Callable)
-            ...     strm.run()
+            >>> with Streaming(*args, **kwargs) as strm:
+            ...     strm.playrec()
             ...                             # <-- called here
             >>>
         """
@@ -192,7 +202,7 @@ class Streaming(PyTTaObj):
         else:
             return
 
-    def set_io_properties(self, msmnt, io: str = None):
+    def set_io_properties(self, io: str, channels: ChannelsList):
         """
         Allocate memory for input and output of data, set counter.
 
@@ -203,16 +213,6 @@ class Streaming(PyTTaObj):
             None.
 
         """
-        if io is not None:
-            self._IO = io.upper()
-        if 'I' in self.IO:
-            self.inChannels = msmnt.inChannels
-            self.recData = np.empty((self.durationInSamples, self.numInChannels),
-                                    dtype=self.dataType)
-        if 'O' in self.IO:
-            self.outChannels = msmnt.outChannels
-            self.playData = msmnt.excitation.timeSignal[:]
-        self.dataCount = int(0)
         return
 
     def set_monitoring(self,
@@ -247,7 +247,7 @@ class Streaming(PyTTaObj):
         self.monitor = monitor
         return
 
-    def monitoring_thread_loop(self, monitor, running, queue, statuses):
+    def _monitoring_thread_loop(self, monitor, running, queue, statuses):
         """
         Monitor loop.
 
@@ -262,7 +262,7 @@ class Streaming(PyTTaObj):
         monitor.setup()    # calls the Monitor function to set up itself
         running.wait()
         while running.is_set():
-            sd.sleep(125)  # TODO: integration time
+            sd.sleep(int(monitor.loopDuration * 1000))
             while True:
                 try:
                     indata, outdata, frames, status = queue.get_nowait()  # get from queue
@@ -279,8 +279,8 @@ class Streaming(PyTTaObj):
         """
         Do the work.
 
-        Instantiates a sounddevice.*Stream and calls for a parallel process
-        if any monitoring is set up.
+        Instantiates a sounddevice.*Stream and calls for a threading.Thread
+        if any Monitor is set up.
         Then turn on the monitorCheck Event, and starts the stream.
         Waits for it to finish, unset the event
         And terminates the process
@@ -290,7 +290,7 @@ class Streaming(PyTTaObj):
         """
         self.isFinished.clear()
         if self.hasMonitor.is_set():
-            t = Thread(target=self.monitoring_thread_loop,
+            t = Thread(target=self._monitoring_thread_loop,
                        args=(self.monitor, self.isRunning,
                              self.queue, self.statuses))
             t.start()
@@ -416,18 +416,3 @@ class Streaming(PyTTaObj):
         elif self.IO == 'IO':
             return self.numInChannels, self.numOutChannels
 
-
-if __name__ == "__main__":
-
-    ms = Measurement(samplingRate=44100, numSamples=2**18, device=0, inChannels=2, outChannels=2)
-    mon = Monitor(ms.samplingRate//8)
-    stm = Streaming('I', ms, 'float32', 256, monitor=mon)
-
-    print("\nRecording:")
-    audio = stm.record()
-
-    ms.excitation = SignalObj(audio, 'time', stm.samplingRate)
-    stm.set_io_properties(ms, 'IO')
-
-    print("\nPlaying:")
-    stm.play()

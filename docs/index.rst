@@ -6,8 +6,6 @@
 Welcome to PyTTa's documentation!
 =================================
 
-.. automodule:: pytta
-
 .. toctree::
    install
    getstarted

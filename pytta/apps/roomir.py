@@ -385,7 +385,7 @@ class MeasurementSetup(object):
 
         h5group.create_group('excitationSignals')
         for name, excitationSignal in self.excitationSignals.items():
-            excitationSignal.h5_save(h5group.create_group('excitationSignals' +
+            excitationSignal._h5_save(h5group.create_group('excitationSignals' +
                                                           '/' + name))
         pass
 
@@ -2110,7 +2110,7 @@ class MeasuredThing(object):
         h5group['tempHumids'] = self.tempHumids
         h5group.create_group('measuredSignals')
         for idx, msdSignal in enumerate(self.measuredSignals):
-            msdSignal.h5_save(h5group.create_group('measuredSignals/' +
+            msdSignal._h5_save(h5group.create_group('measuredSignals/' +
                                                    str(idx)))
         pass
 
@@ -2184,7 +2184,7 @@ class MeasurementPostProcess(object):
             impulsive response. For more information about this G term go to
             pytta.rooms.G_Lpe;
             
-        * G_Lps (getDict):
+        * G_Lps (sourcerecalibirGetDict):
             Calculates the sound exposure level of the recalibration impulsive
             response. For more information about this G term go to
             pytta.rooms.G_Lps;
@@ -2204,7 +2204,38 @@ class MeasurementPostProcess(object):
         self.maxFreq = maxFreq
 
     def RT(self, roomirsGetDict, decay=20, IREndManualCut=None):
-        # TO DO: docs
+        """
+        Calculates the average reverberation time for each source-receiver
+        pair from the dict provided by the roomir.MeasurementData.get method.
+        
+        Also calculates a 95% confidence interval from a T-Student
+        distribution, which is dependent on the  number of averages. For more
+        information on reverberation time calculation go to
+        pytta.rooms.reverberation_time.
+        
+        Parameters (default), (type):
+        ------------------------------
+
+            * getDict ('Time [s]'), (str):
+                a dict from the roomir.MeasurementData.get method containing
+                MeasuredThings of the type 'roomir' (room impulsive response);
+        
+            * decay (20), (int):
+                dynamic range of the line fit;
+            
+            * IREndManualCut (None), (float):
+                remove the end of the impulsive response from IREndManualCut,
+                given in seconds;
+            
+        
+        Return (type):
+        --------------
+        
+            * TR (dict):
+                a dict containing the mean reverberation time (Analysis) for
+                each source-receiver configuration, which is a key;
+                
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2269,7 +2300,26 @@ class MeasurementPostProcess(object):
         return TR
 
     def G_Lps(self, recalibirsGetDict):
-        # TO DO: docs
+        """
+        Calculates the mean sound exposure level from the recalibration
+        impulsive responses. For more information about this G term go to
+        pytta.rooms.G_Lps;
+        
+        Parameters (default), (type):
+        -----------------------------
+        
+            * G_Lps (), (dict from rmr.D.get(...)):
+                a dict from the roomir.MeasurementData.get method containing
+                MeasuredThings of the type 'recalibir';
+                
+        Return (type):
+        --------------
+        
+            * finalLps (Analysis):
+                an Analysis object with the averaged recalibration exposure 
+                level;
+              
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2324,7 +2374,33 @@ class MeasurementPostProcess(object):
         return finalLpss
 
     def G_Lpe_inSitu(self, roomirsGetDict, IREndManualCut=None):
-        # TO DO: docs
+        """
+        Calculates the room impulsive response' sound exposure level for each 
+        source-receiver cfg. For more information about this G term go to
+        pytta.rooms.G_Lpe;
+        
+        Receives
+        
+        Parameters (default), (type):
+        -----------------------------
+        
+            * roomirsGetDict (), ():
+                a dict from the roomir.MeasurementData.get method containing
+                MeasuredThings of the type 'roomir' (room impulsive response);
+                
+            * IREndManualCut (None), (float):
+                remove the end of the impulsive response from IREndManualCut,
+                given in seconds;
+                
+        Return (type):
+        --------------
+        
+            * Lpe_avgs (dict):
+                a dict containing a list with the sound exposure level averages
+                (Analyses) for each source-receiver configuration, which is a
+                key;
+                
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2360,7 +2436,31 @@ class MeasurementPostProcess(object):
         return Lpe_avgs
 
     def G_Lpe_revCh(self, roomirsGetDict, IREndManualCut=None):
-        # TO DO: docs
+        """
+        Calculates the mean sound exposure level of the reverberation chamber's
+        impulsive response. For more information about this G term go to
+        pytta.rooms.G_Lpe;
+        
+        
+        Parameters (default), (type):
+        -----------------------------
+        
+            * roomirsGetDict (), ():
+                a dict from the roomir.MeasurementData.get method containing
+                MeasuredThings of the type 'roomir' (room impulsive response);
+                
+            * IREndManualCut (None), (float):
+                remove the end of the impulsive response from IREndManualCut,
+                given in seconds;
+                
+        Return (type):
+        --------------
+        
+            * Lpe (Analysis):
+                an Analysis with the mean sound exposure level calculated from
+                all the reverberation chamber's impulsive responses;
+                
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2400,7 +2500,54 @@ class MeasurementPostProcess(object):
         return Lpe
 
     def G(self, Lpe_avgs, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
-        # TO DO: docs
+        """
+        Calculates the mean strength factor for each source-receiver 
+        configuration with the G terms provided by other methods of this class.
+        Also provides some basic statistical treatment.
+        
+        For further information on the recalibration method (to correct
+        changes on the source's sound power) check:
+            
+            Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION
+            FOR SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
+        
+        Parameters (default), (type):
+        ------------------------------
+        
+            * Lpe_avgs (), (dict from rmr.get(...)):
+                a dict provided by the rmr.get(...) method. Calculates a mean
+                G for all source-receiver configurations provided with the
+                dict. Also calculates the 95% confidence interval for a
+                T-Student distribution;
+                
+                
+            * Lpe_revCh (), (Analysis):
+                a pytta.Analysis object with the mean exposure level inside
+                the reverberation chamber during the source calibration (sound
+                power measurement);
+                
+            * V_revCh (), (float):
+                the volume of the reverberatin chamber;
+                
+            * T_revCh (), (Analysis):
+                a pytta.Analysis object for the reverberation chamber's
+                reverberation time;
+                
+            * Lps_revCh (), (Analysis)
+                the exposure level of the recalibration procedure in the
+                reverberation chamber;
+            
+            * Lps_inSitu (), (Analysis):
+                the exposure level of the recalibration procedure in situ;
+                
+         Return (type):
+        --------------
+        
+            * G (dict):
+                a dict containing the mean G (Analysis) for each 
+                source-receiver configuration, which is a key;
+            
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2458,7 +2605,28 @@ class MeasurementPostProcess(object):
         return G
     
     def G_T_revCh(self, roomirsGetDict, IREndManualCut=None, T=20):
-        # TO DO: docs
+        """
+        Calculates the mean reverberation time of the reverberatin chamber;
+        
+        Parameters (default), (type):
+        -----------------------------
+        
+            * roomirsGetDict (), ():
+                a dict from the roomir.MeasurementData.get method containing
+                MeasuredThings of the type 'roomir' (room impulsive response);
+                
+            * IREndManualCut (None), (float):
+                remove the end of the impulsive response from IREndManualCut,
+                given in seconds;
+                
+        Return (type):
+        --------------
+        
+            * T_revCh (Analysis):
+                an Analysis with the mean reverberation time calculated from
+                all the reverberation chamber's impulsive responses;
+                
+        """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
         # for frame, line in traceback.walk_stack(None):
@@ -2511,26 +2679,33 @@ class MeasurementPostProcess(object):
         return T_revCh
 
 def med_load(medname):
-    # TO DO: docs
-    """med_load
-
-    >>> MS, D = roomir.med_load('measurement name')
+    """
+    Loads a measurement to continue measuring or either post processing.
     
-    Load a measurement in progress.
+    Usage:
     
-    :param medname: the measurement name
-    :type medname: str
+        >>> MS, D = roomir.med_load('measurement name')
+    
+    Parameters (defualt), (type):
+    -----------------------------
+    
+        * medname (), (str):
+            the measurement name given in the MeasurementSetup object
+            instantiation;
 
-    :return: MeasurementSetup and MeasurementData objects
-    :rtype: tuple (MeasurementSetup, MeasurementData) 
+    Return (type):
+    --------------
+        
+        * (roomir.MeasurementSetup, roomir.MeasurementData) (tuple)
+    
     """
     if not exists(medname + '/MeasurementData.hdf5'):
         raise NameError('{} measurement doens\'t exist.'.format(medname))
     print('Loading the MeasurementSetup from MeasurementData.hdf5.')
     load = _h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
-    Data = MeasurementData(MS, skipFileInit=True)
-    return MS, Data
+    D = MeasurementData(MS, skipFileInit=True)
+    return MS, D
 
 
 def _h5_save(fileName: str, *PyTTaObjs):

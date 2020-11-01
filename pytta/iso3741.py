@@ -2,20 +2,19 @@
 PyTTa ISO3741 Analysis:
 ----------------------
 
-    This module does some calculations compliant to ISO 3471 in order to obtain
-    the acoustic power of a source.
+This module does some calculations compliant to ISO 3471 in order to obtain
+the acoustic power of a source.
 
-    For now only the calculation of the mean time-average sound pressure level
-    among the microphone positions is implemented. In the future we hope the
-    community keep developing this module in order to provide all the
-    calculation needed for measurements acordding to this standard.
+For now only the calculation of the mean time-average sound pressure level
+among the microphone positions is implemented. In the future we hope the
+community keep developing this module in order to provide all the
+calculation needed for measurements acordding to this standard.
 
-    Available functions:
-    ---------------------
+Available functions:
 
-        >>> pytta.iso3741.Lp_ST()
+    >>> pytta.iso3741.Lp_ST()
 
-    For further information, check the function specific documentation.
+For further information, check the function specific documentation.
 
 """
 

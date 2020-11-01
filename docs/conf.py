@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 
-author = 'João Vitor G. Paes, Matheus A. Lazarin'
+author = 'João Vitor G. Paes, Matheus Lazarin'
 project = 'PyTTa'
 copyright = '2020, ' + author
 

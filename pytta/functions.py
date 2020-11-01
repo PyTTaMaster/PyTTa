@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-This submodule carries a set of useful functions of general purpouses when
-using PyTTa, like reading and writing wave files, seeing the audio IO
-devices available and some signal processing tools.
+Set of useful functions of general purpouses when using PyTTa.
+
+Includes reading and writing wave files, seeing the audio IO
+devices available and few signal processing tools.
 
 Available functions:
 
     >>> pytta.list_devices()
-    >>> pytta.fft_degree(timeLength, samplingRate)
     >>> pytta.read_wav(fileName)
     >>> pytta.write_wav(fileName, signalObject)
     >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
-    >>> pytta.slipt(signalObj)  # TO DO
+    >>> pytta.slipt(signalObj)
     >>> pytta.fft_convolve(signalObj1, signalObj2)
     >>> pytta.find_delay(signalObj1, signalObj2)
     >>> pytta.corr_coef(signalObj1, signalObj2)
@@ -49,18 +49,37 @@ from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
 from pytta import _plot as plot
+# For backwards compatibility purposes. Planned to get out of here
+from pytta.utils.maths import fft_degree as new_fft_degree
 
 
 def list_devices():
     """
-    Shortcut to sounddevice.query_devices(). Made to exclude the need of
-    importing Sounddevice directly just to find out which audio devices can be
-    used.
+    Shortcut to sounddevice.query_devices().
+
+    Made to exclude the need of importing Sounddevice directly
+    just to find out which audio devices can be used.
 
         >>> pytta.list_devices()
 
+    Returns
+    -------
+        A tuple containing all available audio devices.
+
     """
     return sd.query_devices()
+
+
+def print_devices():
+    """
+    Print the devices list to stdout.
+
+    Returns
+    -------
+    None.
+
+    """
+    return print(list_devices())
 
 
 def get_device_from_user() -> Union[List[int], int]:
@@ -73,7 +92,7 @@ def get_device_from_user() -> Union[List[int], int]:
         Practical interface for querying devices to be used within scripts.
 
     """
-    print(list_devices())
+    print_devices()
     device = [int(dev.strip()) for dev in input("Input the device number: ").split(',')]
     if len(device) == 1:
         device = device[0]
@@ -84,38 +103,8 @@ def get_device_from_user() -> Union[List[int], int]:
     return device
 
 
-def fft_degree(timeLength: float = 0, samplingRate: int = 1) -> float:
-    """
-    Returns the power of two value that can be used to calculate the total
-    number of samples of the signal.
-
-        >>> numSamples = 2**fftDegree
-
-    Parameters:
-    ------------
-
-        * timeLength (float = 0):
-            Value, in seconds, of the time duration of the signal or
-            recording.
-
-        * samplingRate (int = 1):
-            Value, in samples per second, that the data will be captured
-            or emitted.
-
-    Returns:
-    ---------
-
-        fftDegree (float = 0):
-            Power of 2 that can be used to calculate number of samples.
-
-    """
-    return np.log2(timeLength*samplingRate)
-
-
 def read_wav(fileName):
-    """
-    Reads a wave file into a SignalObj
-    """
+    """Read a wave file into a SignalObj."""
     samplingRate, data = wf.read(fileName)
     if data.dtype == 'int16':
         data = data/(2**15)
@@ -126,20 +115,14 @@ def read_wav(fileName):
 
 
 def write_wav(fileName, signalIn):
-    """
-    Writes a SignalObj into a single wave file
-    """
+    """Write a SignalObj into a single wave file."""
     samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
     return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
 
 
 def merge(signal1, *signalObjects):
-    """
-    Gather all of the input argument signalObjs into a single
-    signalObj and place the respective timeSignal of each
-    as a column of the new object
-    """
+    """Gather all channels of the signalObjs given as input arguments into a single SignalObj."""
     j = 1
     freqMin = cp.deepcopy(signal1.freqMin)
     freqMax = cp.deepcopy(signal1.freqMax)
@@ -170,14 +153,41 @@ def merge(signal1, *signalObjects):
     return newSignal
 
 
-# TO DO
-# def split(signal):
-#    return 0
+def split(*signalObjects,
+          channels: list = None) -> list:
+    """
+    Split the provided SignalObjs' channels into several SignalObjs.
+
+    If the 'channels' input argument is given, split the specified channel numbers of
+    each SignalObj, otherwise split all channels.
+
+    Arguments (default), (type):
+    -----------------------------
+
+        * non-keyworded arguments (), (SignalObj)
+
+        * channels (None), (list):
+            specified channels to split from the provided SignalObjs;
+
+    Return (type):
+    --------------
+
+        * spltdChs (list):
+            a list containing SignalObjs for each splited channel;
+
+    """
+    spltdChs = []
+
+    for sigObj in signalObjects:
+        moreSpltdChs = sigObj.split(channels=channels)
+        spltdChs.extend(moreSpltdChs)
+
+    return spltdChs
 
 
 def fft_convolve(signal1, signal2):
     """
-    Uses scipy.signal.fftconvolve() to convolve two time domain signals.
+    Use scipy.signal.fftconvolve() to convolve two time domain signals.
 
         >>> convolution = pytta.fft_convolve(signal1,signal2)
 
@@ -190,8 +200,9 @@ def fft_convolve(signal1, signal2):
 
 def find_delay(signal1, signal2):
     """
-    Cross Correlation alternative, more efficient fft based method to calculate
-    time shift between two signals.
+    Cross Correlation alternative.
+
+    More efficient fft based method to calculate time shift between two signals.
 
         >>> shift = pytta.find_delay(signal1,signal2)
 
@@ -209,10 +220,7 @@ def find_delay(signal1, signal2):
 
 
 def corr_coef(signal1, signal2):
-    """
-    Finds the correlation coeficient between two SignalObjs using
-    the numpy.corrcoef() function.
-    """
+    """Finds the correlation coeficient between two SignalObjs using the numpy.corrcoef() function."""
     coef = np.corrcoef(signal1.timeSignal, signal2.timeSignal)
     return coef[0, 1]
 
@@ -244,6 +252,37 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def fft_degree(*args,**kwargs):
+    """
+    DEPRECATED
+    ----------
+        Being replaced by pytta.utils.maths.fft_degree on version 0.1.0.
+
+    Power-of-two value that can be used to calculate the total number of samples of the signal.
+
+        >>> numSamples = 2**fftDegree
+
+    Parameters
+    ----------
+        * timeLength (float = 0):
+            Value, in seconds, of the time duration of the signal or
+            recording.
+
+        * samplingRate (int = 1):
+            Value, in samples per second, that the data will be captured
+            or emitted.
+
+    Returns
+    -------
+        fftDegree (float = 0):
+            Power of 2 that can be used to calculate number of samples.
+
+    """
+    warn(DeprecationWarning("Function 'pytta.fft_degree' is DEPRECATED and " +
+                            "being replaced by pytta.utils.maths.fft_degree" +
+                            " on version 0.1.0"))
+    return new_fft_degree(*args, **kwargs)
 
 def plot_time(*sigObjs, xLabel:str=None, yLabel:str=None, yLim:list=None,
               xLim:list=None, title:str=None, decimalSep:str=',',
@@ -602,13 +641,13 @@ def _remove_non_(dataType, dataSet,
 
 def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     """
-    Main save function for .pytta and .hdf5 files.
+    Main save function for .hdf5 and .pytta files.
 
     The file format is choosed by the extension applied to the fileName. If no
-    extension is provided choose the default file format.
+    extension is provided choose the default file format (.hdf5).
 
     For more information on saving PyTTa objects in .hdf5 format see
-    pytta.functions.h5_save' documentation.
+    pytta.functions._h5_save documentation.
 
     For more information on saving PyTTa objects in .pytta format see
     pytta.functions.pytta_save' documentation. (DEPRECATED)
@@ -617,7 +656,7 @@ def save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
     defaultFormat = '.hdf5'
     # Checking the choosed file format
     if fileName.split('.')[-1] == 'hdf5':
-        h5_save(fileName, *PyTTaObjs)
+        _h5_save(fileName, *PyTTaObjs)
     elif fileName.split('.')[-1] == 'pytta': # DEPRECATED
         warn(DeprecationWarning("'.pytta' format is DEPRECATED and being " +
                                 "replaced by '.hdf5'."))
@@ -634,7 +673,7 @@ def load(fileName: str):
     Main save function for .pytta and .hdf5 files.
     """
     if fileName.split('.')[-1] == 'hdf5':
-        output = h5_load(fileName)
+        output = _h5_load(fileName)
     elif fileName.split('.')[-1] == 'pytta':
         warn(DeprecationWarning("'.pytta' format is DEPRECATED and being " +
                                 "replaced by '.hdf5'."))
@@ -753,12 +792,12 @@ def __parse_channels(chDict, chList):
     return chList
 
 
-def h5_save(fileName: str, *PyTTaObjs):
+def _h5_save(fileName: str, *PyTTaObjs):
     """
     Open an hdf5 file, create groups for each PyTTa object, pass it to
     the own object and it saves itself inside the group.
 
-    >>> pytta.h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
+    >>> pytta._h5_save(fileName, PyTTaObj_1, PyTTaObj_2, ..., PyTTaObj_n)
 
     Dictionaries can also be passed as a PyTTa object. An hdf5 group will be
     created for each dictionary and its PyTTa objects will be saved. To ensure
@@ -776,6 +815,10 @@ def h5_save(fileName: str, *PyTTaObjs):
     if fileName.split('.')[-1] != 'hdf5':
         fileName += '.hdf5'
     with h5py.File(fileName, 'w') as f:
+        # Save the versin to the HDF5 file
+        f.attrs['GENERATED_BY'] = 'PyTTa'
+        f.attrs['LONG_DESCR'] = 'HDF5 file generated by the PyTTa toolbox'
+        f.attrs['FILE_SYS_VERSION'] = 1
         # Dict for counting equal names for correctly renaming
         totalPObjCount = 0  # Counter for total groups
         savedPObjCount = 0  # Counter for loaded objects
@@ -814,7 +857,7 @@ def __h5_pack(rootH5Group, pObj, objDesc):
         # create obj's group
         objH5Group = rootH5Group.create_group(creationName)
         # save the obj inside its group
-        pObj.h5_save(objH5Group)
+        pObj._h5_save(objH5Group)
         return (1, 1)
 
     elif isinstance(pObj, dict):
@@ -889,14 +932,23 @@ def __h5_pack_count_and_rename(creationName, h5Group):
     return creationName
 
 
-def h5_load(fileName: str):
+def _h5_load(fileName: str):
     """
     Load an hdf5 file and recreate the PyTTa objects.
     """
     # Checking if the file is an hdf5 file
     if fileName.split('.')[-1] != 'hdf5':
-        raise ValueError("h5_load function only works with *.hdf5 files")
+        raise ValueError("_h5_load function only works with *.hdf5 files")
     f = h5py.File(fileName, 'r')
+
+    # Check if it is a PyTTa-like hdf5 file
+    try:
+        if 'GENERATED_BY' not in f.attrs.keys() or  \
+                                        f.attrs['GENERATED_BY'] != "PyTTa":
+            raise NotImplementedError
+    except:
+        raise NotImplementedError("Only PyTTa-like hdf5 files can be loaded.")
+
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
     totCount = 0  # Counter for total groups

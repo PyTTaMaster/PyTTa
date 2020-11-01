@@ -69,7 +69,7 @@ class TestH5IO(unittest.TestCase):
         ImpulsiveResponse hdf5 save test
         """
         xt = pytta.generate.sweep(fftDegree=16)
-        noise = pytta.generate.noise(fftDegree=16, startMargin=0, stopMargin=0)
+        noise = pytta.generate.random_noise(fftDegree=16, startMargin=0, stopMargin=0)
         noise *= 0.5
         yt = xt + noise
         IR = pytta.ImpulsiveResponse(excitation=xt,
