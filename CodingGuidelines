@@ -1,6 +1,6 @@
 For now we don't have many rules, but you should consider the subsequent one.
 
-The names in the code should be written as:
+The naming convention used is:
 
     - ClassName;
     - method_name;
@@ -9,7 +9,7 @@ The names in the code should be written as:
     - variableName;
     - modulename.
 
-The commit messages must carry some suffix. This way, in the future, we can use this to generate release notes. They are:
+The commit messages must carry some annotations. This way, in the future, we can use these to generate release notes. They are:
 
     Annotation  Description             Exemple git commit
     [INTERNAL]  used for internal stuff git commit -m "[INTERNAL] update .gitignore"
