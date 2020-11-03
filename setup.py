@@ -28,7 +28,8 @@ settings = {
     'install_requires': ['numpy', 'scipy', 'matplotlib',
         'sounddevice', 'soundfile', 'h5py', 'numba'],
     'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
-    'package_dir': {'classes': 'pytta'},
+    'data_files': [('examples', ['examples/*.py'])],
+    # 'package_dir': {'classes': 'pytta'},
     'classifiers': [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
