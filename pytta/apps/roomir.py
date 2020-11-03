@@ -3,29 +3,29 @@
 """
 RooomIR application.
 
-This application was developed using the toolbox's existent functionalities, 
-and is aimed to give support to acquire and post-process impulsive responses, 
+This application was developed using the toolbox's existent functionalities,
+and is aimed to give support to acquire and post-process impulsive responses,
 and calculate room acoustics parameters.
 
 For syntax purposes you should start with:
-    
+
     >>> from pytta import roomir as roomir
 
 The functionalities comprise tools for data acquisition (MeasurementSetup,
 MeasurementData, and TakeMeasure classes) and post-processing
-(MeasurementPostProcess class), including some really basic statistical 
+(MeasurementPostProcess class), including some really basic statistical
 treatment.
 
-The workflow consists of creating a roomir.MeasurementSetup and 
-a roomir.MeasurementData object, then taking a measurement with a 
+The workflow consists of creating a roomir.MeasurementSetup and
+a roomir.MeasurementData object, then taking a measurement with a
 roomir.TakeMeasure object (see its documentation for possible take kinds);
 there will be as many TakeMeasure instantiations as measurement takes.
-After a measurement is taken it's saved through the 
+After a measurement is taken it's saved through the
 roomir.MeasurementData.save_take() method.
 
-All measured responses and the post-processed impulsive responses are stored 
+All measured responses and the post-processed impulsive responses are stored
 as MeasuredThing class objects, while the calculated results as Analysis class
-objects. All data is stored in the HDF5 file scheme designed for the toolbox. 
+objects. All data is stored in the HDF5 file scheme designed for the toolbox.
 For more information about the specific file scheme for the
 MeasurementData.hdf5 file check the MeasurementData class documentation.
 
@@ -36,18 +36,18 @@ TakeMeasure class documentation for more information.
 The usage of this app is shown in the files present in the examples folder.
 
 Available classes:
-    
+
     >>> roomir.MeasurementSetup
     >>> roomir.MeasurementData
     >>> roomir.TakeMeasure
     >>> roomir.MeasuredThing
     >>> roomir.MeasurementPostProcess
-    
+
 Available functions:
-    
+
     >> MS, D = roomir.med_load('med-name')
-    
-For further information, check the docstrings for each class and function 
+
+For further information, check the docstrings for each class and function
 mentioned above. This order is also recommended.
 
 Authors:
@@ -126,7 +126,7 @@ class _MeasurementChList(ChannelsList):
             else:
                 for chNum in group:
                     if chNum not in self.mapping:
-                        raise ValueError('In group \''+ groupName + 
+                        raise ValueError('In group \''+ groupName +
                                          '\', InChannel number ' + str(chNum) +
                                          ' isn\'t a valid ' + self.kind +
                                          'put channel.')
@@ -207,42 +207,42 @@ MeasurementChList = _MeasurementChList
 
 class MeasurementSetup(object):
     """Holds the measurement setup information. Managed in disc by the
-    roomir.MeasurementData class and loaded back to memory through the 
+    roomir.MeasurementData class and loaded back to memory through the
     roomir.med_load function.
-    
+
     Creation parameters (default), (type):
     --------------------------------------
-    
+
         * name (), (str):
             Measurement identification name. Used on roomir.med_load('name');
-            
+
         * samplingRate (), (int):
             Device sampling rate;
-            
+
         * device (), (list | int):
             Audio I/O device identification number from pytta.list_devices().
             Can be an integer for input and output with the same device, or a
             list for different devices. E.g.:
-                
+
                 >>> device = [1,2]  % [input,output]
-                        
+
         * excitationSignals (), (dict):
             Dictionary containing SignalObjs with excitation signals. E.g.:
-                
+
                 >>> excitSigs = {'sweep18': pytta.generate.sweep(fftDegree=18),
                                  'speech': pytta.read_wave('sabine.wav')}
-                
+
         * freqMin (), (float):
             Analysis band's lower limit;
-            
+
         * freqMax (), (float):
             Analysis band's upper limit
-            
+
         * inChannels (), (dict):
             Dict containing input channel codes, hardware channel and name.
             Aditionally is possible to group channels with an extra 'groups'
             key. E.g.:
-                
+
                 >>> inChannels={'LE': (4, 'Left ear'),
                                 'RE': (3, 'Right ear'),
                                 'AR1': (5, 'Array mic 1'),
@@ -252,20 +252,20 @@ class MeasurementSetup(object):
                                 'Mic2': (2, 'Mic 2'),
                                 'groups': {'HATS': (4, 3),
                                            'Array': (5, 6, 7)} }
-                
+
         * inCompensations (), (dict):
             Magnitude compensation for each input transducers, but not
             mandatory for all. E.g.:
-                
+
                 >>> inCompensations={'AR1': (AR1SensFreq, AR1SensdBMag),
                                      'AR2': (AR2SensFreq, AR2SensdBMag),
                                      'AR3': (AR3SensFreq, AR3SensdBMag),
                                      'Mic2': (M2SensFreq, M2SensdBMag) }
-            
+
         * outChannels (default), (type):
             Dict containing output channel codes, hardware channel and name.
             E.g.:
-                
+
                 >>> outChannels={'O1': (1, 'Dodecaedrum 1'),
                                  'O2': (2, 'Dodecaedrum 2'),
                                  'O3': (4, 'Room sound system') }
@@ -273,7 +273,7 @@ class MeasurementSetup(object):
         * outCompensations (default), (type):
             Magnitude compensation for each output transducers, but not
             mandatory for all. E.g.:
-                
+
                 >>> outCompensations={'O1': (Dodec1SensFreq, Dodec1SensdBMag),
                                       'O2': (Dodec2SensFreq, Dodec2SensdBMag) }
 
@@ -282,14 +282,14 @@ class MeasurementSetup(object):
             the confidence interval calculated by the MeasurementPostProcess
             class methods. Important in case you need some statistical
             treatment;
-            
+
         * pause4Avg (), (bool):
             Option for pause between averages;
-            
+
         * noiseFloorTp (), (float):
             Recording time length in seconds for noisefloor measurement take
             type;
-            
+
         * calibrationTp (default), (type):
             Recording time length in seconds for microphone indirect
             calibration take type;
@@ -522,7 +522,7 @@ class MeasurementSetup(object):
     @property
     def inCompensations(self):
         return self._inCompensations
-    
+
     @inCompensations.setter
     def inCompensations(self, newComps):
         # if not self.initing:
@@ -542,7 +542,7 @@ class MeasurementSetup(object):
             self._inCompensations = newComps
             self.modified = True
         else:
-            raise TypeError("inCompensations must be a dict with channel " + 
+            raise TypeError("inCompensations must be a dict with channel " +
                             "codes as keys and a tuple containing the " +
                             "compensation in dB and the frequency vector as " +
                             "values. Empty dict for no compensation.")
@@ -568,7 +568,7 @@ class MeasurementSetup(object):
     @property
     def outCompensations(self):
         return self._outCompensations
-    
+
     @outCompensations.setter
     def outCompensations(self, newComps):
         # if not self.initing:
@@ -588,7 +588,7 @@ class MeasurementSetup(object):
             self._outCompensations = newComps
             self.modified = True
         else:
-            raise TypeError("outCompensations must be a dict with channel " + 
+            raise TypeError("outCompensations must be a dict with channel " +
                             "codes as keys and a tuple containing the " +
                             "compensation in dB and the frequency vector as " +
                             "values. Empty dict for no compensation.")
@@ -609,40 +609,40 @@ class MeasurementData(object):
     Class intended to store and retrieve from disc the acquired data as
     MeasuredThing objects plus the MeasurementSetup. Used to calculate the
     impulsive responses and calibrated responses as well.
-    
+
     Instantiation:
-        
+
         >>> MS = pytta.roomir.MeasurementSetup(...)
         >>> D = pytta.roomir.MeasurementData(MS)
-    
+
     Creation parameters (default), (type):
     ---------------------------------------
-    
+
         * MS (), (roomir.MeasurementSetup):
             MeasurementSetup object;
-            
+
     Methods (input arguments):
     ---------------------------
 
         * save_take(...):
             Save an acquired roomir.TakeMeasure in disc;
-            
+
         * get(...):
             Retrieves from disc MeasuredThings that matches the provided tags
             and returns a dict;
-            
+
         * calculate_ir(...):
             Calculate the Impulsive Responses from the provided dict, which is
             obtained trough the get(...) method. Saves the result as new
             MeasuredThing objects;
-            
+
         * calibrate_res(...):
             Apply indirect calibration to the measured signals from the
             provided dict, which is obtained trough the get(...) method. Saves
             the result as new MeasuredThing objects;
-            
+
     For further information on methods see its specific documentation.
-    
+
     """
 
     # Magic methods
@@ -683,7 +683,7 @@ class MeasurementData(object):
             f.create_group('MeasurementSetup')
             self.MS._h5_save(f['MeasurementSetup'])
         return
-    
+
     def _h5_update_links(self):
         """
         Method for update MeasurementData.hdf5 with all MeasuredThings in disc.
@@ -743,20 +743,20 @@ class MeasurementData(object):
 
     def save_take(self, TakeMeasureObj):
         """
-        Saves in disc the resultant roomir.MeasuredThings from a 
+        Saves in disc the resultant roomir.MeasuredThings from a
         roomir.TakeMeasure's run.
-        
+
         Input arguments (default), (type):
         -----------------------------------
-        
+
             * TakeMeasureObj (), (roomir.TakeMeasure)
-            
+
         Usage:
-            
+
             >>> myTake = roomir.TakeMeasure(kind="roomres", ...)
             >>> myTake.run()
             >>> D.save_take(myTake)
-            
+
         """
         if not TakeMeasureObj.runCheck:
             if TakeMeasureObj.saveCheck:
@@ -813,84 +813,84 @@ class MeasurementData(object):
         """
         Gets from disc the MeasuredThings that matches with the provided
         tags as non-keyword arguments.
-        
+
 
         Input arguments (default), (type):
         -----------------------------------
-        
+
             * non-keyword arguments (), (string):
-                
+
                 Those are tags. Tags are the main information about the
                 roomir.MeasuredThings found on its filename stored in disc.
                 You can mix as many tags as necessary to define well your
                 search. The possible tags are:
-                    
+
                     - kind (e.g. roomres, roomir... See other available kinds
                             in roomir.MeasuredThing's docstrings);
-                    
+
                         >>> D.get('roomres')  % Gets all measured roomres;
-                                
-                            
-                    - source-receiver cfg. (single info for 'noisefloor' 
-                                            MeasuredThing kind, e.g. 'R3'; or 
-                                            a pair for other kinds, e.g. 
+
+
+                    - source-receiver cfg. (single info for 'noisefloor'
+                                            MeasuredThing kind, e.g. 'R3'; or
+                                            a pair for other kinds, e.g.
                                             'S1-R1');
-                        
+
                         >>> D.get('S1')  % Gets everything measured in source
                                          % position 1
 
-                    
+
                     - output-input cfg. (single channel for 'miccalibration',
                                          e.g. 'Mic1'; output-input pair
-                                         for other kinds, e.g. 'O1-Mic1'):                    
-                    
+                                         for other kinds, e.g. 'O1-Mic1'):
+
                         >>> D.get('O1')  % Gets everything measured through
                                          % ouput 1
-                                         
+
                         >>> D.get('O1','Mic1')  % or
                         >>> D.get('O1-Mic1')
-                    
-                    
+
+
                     - excitation signal (e.g. 'SWP19'):
-                    
+
                         >>> D.get('SWP20')  % Gets everything measured with
                                             % excitation signal 'SWP20'
-                    
-                    
+
+
                     - take counter (e.g. '_1', '_2', ...):
-                        
+
                         >>> D.get('_1')  % Gets all first takes
 
-                    
+
                 Only MeasuredThings that matches all provided tags will be
                 returned.
-                
+
             * skipMsgs (false), (bool):
                 Don't show the search's resultant messages.
-        
-            
+
+
         Return (type):
         --------------
-        
+
             * getDict (dict):
                 Dict with the MeasuredThing's filenames as keys and the
                 MeasuredThing itself as values. e.g.:
-                    
-                    >>> getDict = {'roomres_S1-R1_O1-Mic1_SWP19_1': 
+
+                    >>> getDict = {'roomres_S1-R1_O1-Mic1_SWP19_1':
                                        roomir.MeasuredThing}
-                        
-                        
+
+
         Specific usage example:
 
             Get the 'roomir' MeasuredThing's first take at S1-R1 with Mic1,
             Output1, and sweep:
-                
+
             >>> getDict = MeasurementData.get('roomrir', 'Mic1-O1', '_1', ...
                                               'SWP19', 'S1-R1')
-            
+
             As you see, the order doesn't matter because the algorithm just
             look for matching tags in the filenames.
-            
+
         """
         if not skipMsgs:
             print('Finding the MeasuredThings with {} tags.'.format(args))
@@ -934,11 +934,11 @@ class MeasurementData(object):
                      skipSave=False,
                      whereToOutComp='excitation'):
         """
-        Gets the dict returned from the roomir.MeasuremenData.get() method, 
+        Gets the dict returned from the roomir.MeasuremenData.get() method,
         calculate the impulsive responses, store to disc, and return the
         correspondent getDict. Check the input arguments below for options.
-        
-        This method generates new MeasuredThings with a kind derived from 
+
+        This method generates new MeasuredThings with a kind derived from
         the measured kind. The possible conversions are:
 
             - 'roomres' MeasuredThing kind to a 'roomir' MeasuredThing kind;
@@ -948,60 +948,60 @@ class MeasurementData(object):
                                                           method. See
                                                           pytta.rooms.G for
                                                           more information);
-            
-            
+
+
         Input arguments (default), (type):
         ----------------------------------
-            
+
             * getDict (), (dict):
                 Dict from the roomir.MeasurementData.get(...) method;
-            
+
             * calibrationTake (1), (int):
                 Choose the take from the 'miccalibration' MeasuredThing
                 for the indirect calibration of the correspondent input
                 channels;
-                
+
             * skipInCompensation (False), (bool):
                 Option for skipping compensation on the input chain with the
                 provided response to the MeasurementSetup;
-                
+
             * skipOutCompensation (False), (bool):
                 Option for skipping compensation on the output chain with the
-                provided response to the MeasurementSetup;    
+                provided response to the MeasurementSetup;
 
             * skipBypCalibration (False), (bool):
                 Option for skipping bypass calibration. Bypass calibration
                 means deconvolving with the impulsive response measured between the
                 output and input of the soundcard.
-            
+
             * skipRegularization (False), (bool):
                 Option for skipping Kirkeby's regularization. For more
                 information see pytta.ImpulsiveResponse's docstrings.
-            
+
             * skipIndCalibration (False), (bool):
                 Option for skipping the indirect calibration;
-                
+
             * IREndManualCut (None), (float):
                 Manual cut of the calculated impulsive response;
-                
+
             * IRStartManualCut (None), (float):
                 Manual cut of the calculated impulsive response;
-            
+
             * skipSave (False), (bool):
                 Option to skip saving the new MeasuredThings to disc.
                 Usefull when you need to calculated the same impulsive response
                 with different options and don't want to override the one saved
-                previously.     
-                
-                
+                previously.
+
+
         Return (type):
         --------------
-        
+
             * getDict (dict):
                 Dict with the calculated MeasuredThings, with filenames as keys
                 and the MeasuredThing itself as values. e.g.:
-                    
-                    >>> getDict = {'roomir_S1-R1_O1-Mic1_SWP19_1': 
+
+                    >>> getDict = {'roomir_S1-R1_O1-Mic1_SWP19_1':
                                        roomir.MeasuredThing}
 
         """
@@ -1017,11 +1017,11 @@ class MeasurementData(object):
             elif msdThng.kind not in ['roomres',
                                       'sourcerecalibration',
                                       'channelcalibration']:
-                print("-- Impulsive responses can only be calculated " + 
+                print("-- Impulsive responses can only be calculated " +
                       "from a MeasuredThing of 'roomres', " +
                       "'sourcerecalibration' or 'channelcalibration' kind.")
                 continue
-            
+
             # Getting the excitation signal
             kind = msdThng.kind
             origExcitationTimeSig = \
@@ -1132,7 +1132,7 @@ class MeasurementData(object):
                                                      bounds_error=False)
                             interpInTransSensdBMag = \
                                 in_interp_func(roomResFreqVector)
-                            
+
                             if not skipOutCompensation and \
                                  whereToOutComp == 'recording':
                                 print("-- Applying compensation to the " +
@@ -1151,7 +1151,7 @@ class MeasurementData(object):
                                                             bounds_error=False)
                                 interpOutTransSensdBMag = \
                                     out_interp_func(roomResFreqVector)
-                                
+
                                 correctedRoomResdBMag = \
                                     roomResdBMag - interpInTransSensdBMag - \
                                         interpOutTransSensdBMag
@@ -1198,7 +1198,7 @@ class MeasurementData(object):
                         print("-- Applying the bypass calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the channelcalibir signal
-                        chCalibThngs = [calib for calib in 
+                        chCalibThngs = [calib for calib in
                                         self.get('channelcalibir',
                                                     inChCode,
                                                     outChCode,
@@ -1224,7 +1224,7 @@ class MeasurementData(object):
                             chCalibIR.freqSignal = chCalibIR._freqSignal / \
                                 float(np.abs(chCalibIR.freqSignal[idx1k]))
 
-                            # Deconvolution 
+                            # Deconvolution
                             newIR = \
                                 ImpulsiveResponse(recording=chSignal,
                                                 excitation=chCalibIR,
@@ -1244,7 +1244,7 @@ class MeasurementData(object):
                         print("-- Applying the input indirect calibration on" +
                                 " '{}' channel.".format(inChCode))
                         # Get the miccalibration signal
-                        calibThngs = [calib for calib in 
+                        calibThngs = [calib for calib in
                                         self.get('miccalibration', inChCode,
                                                 skipMsgs=True).values()]
                         if len(calibThngs) == 0:
@@ -1273,8 +1273,8 @@ class MeasurementData(object):
                     IREndManualCut = \
                         'end' if IREndManualCut is None else IREndManualCut
                     IRStartManualCut = \
-                        0 if IRStartManualCut is None else IRStartManualCut    
-                    
+                        0 if IRStartManualCut is None else IRStartManualCut
+
                     IR.systemSignal.crop(IRStartManualCut, IREndManualCut)
 
                 IRs.append(IR)
@@ -1319,49 +1319,49 @@ class MeasurementData(object):
     def calibrate_res(self, getDict, calibrationTake=1,
                       skipInCompensation=False, skipSave=False):
         """
-        Gets the dict returned from the roomir.MeasuremenData.get() method, 
+        Gets the dict returned from the roomir.MeasuremenData.get() method,
         apply the indirect calibration, store to disc, and return the
         correspondent getDict. Check the input arguments below for options.
-        
-        This method generates new MeasuredThings with a kind derived from 
+
+        This method generates new MeasuredThings with a kind derived from
         the measured kind. The possible conversions are:
 
             - 'roomres' MeasuredThing kind to a 'calibrated-roomres';
             - 'noisefloor' to 'calibrated-noisefloor';
             - 'sourcerecalibration' to 'calibrated-sourcerecalibration';
-            
-            
+
+
         Input arguments (default), (type):
         ----------------------------------
-            
+
             * getDict (), (dict):
                 Dict from the roomir.MeasurementData.get(...) method;
-            
+
             * calibrationTake (1), (int):
                 Choose the take from the 'miccalibration' MeasuredThing
                 for the indirect calibration of the correspondent input
                 channels;
-                
+
             * skipInCompensation (False), (bool):
                 Option for skipping compensation on the input chain with the
                 provided response to the MeasurementSetup;
-            
+
             * skipSave (False), (bool):
                 Option to skip saving the new MeasuredThings to disc.
-                
-                
+
+
         Return (type):
         --------------
-        
+
             * getDict (dict):
                 Dict with the calculated MeasuredThings, with filenames as keys
                 and the MeasuredThing itself as values. e.g.:
-                    
-                    >>> getDict = {'calibrated-roomres_S1-R1_O1-Mic1_SWP19_1': 
+
+                    >>> getDict = {'calibrated-roomres_S1-R1_O1-Mic1_SWP19_1':
                                        roomir.MeasuredThing}
 
         """
-        
+
         CalibMsdThngs = {}
         for msdThngName, msdThng in getDict.items():
             print("Calibrating room " +
@@ -1371,7 +1371,7 @@ class MeasurementData(object):
                                 "MeasuredThing objects.")
             elif msdThng.kind not in ['roomres', 'noisefloor',
                                       'sourcerecalibration']:
-                print("-- Calibrated room response can only be calculated " + 
+                print("-- Calibrated room response can only be calculated " +
                       "from a MeasuredThing of 'roomres', 'noisefloor', or " +
                       "'sourcerecalibration' kind")
                 continue
@@ -1441,13 +1441,13 @@ class MeasurementData(object):
                     print("-- Skipping input transducer compensation.")
 
                 # Apply calibration for each channel
-                
+
                 for chIndex in range(msdThng.numChannels):
                     # Get the miccalibration signal
                     inChCode = msdThng.inChannels.codes[chIndex]
                     print("-- Applying the input calibration on " +
                             "'{}' channel.".format(inChCode))
-                    calibThngs = [calib for calib in 
+                    calibThngs = [calib for calib in
                                     self.get('miccalibration', inChCode,
                                             skipMsgs=True).values()]
                     if len(calibThngs) == 0:
@@ -1477,7 +1477,7 @@ class MeasurementData(object):
                                       outChannel=msdThng.outChannel,
                                       outputAmplification=msdThng.
                                         outputAmplification)
-            # Saving  
+            # Saving
             fileName = msdThngName
             # Number the file checking if any measurement with the same configs
             # was take
@@ -1500,84 +1500,84 @@ class TakeMeasure(object):
     Class intended to hold a measurement take configuration, take the
     measurement, and obtain the MeasuredThing for each channel/group in inChSel
     property.
-    
-    
+
+
     Creation parameters (default), (type):
     --------------------------------------
-    
+
         * MS (), (roomir.MeasurementSetup):
             The setup of the current measurement;
-        
+
         * tempHumid (), (pytta.classes.lju3ei1050):
             Object for communication with the LabJack U3 with the probe EI1050
             for acquiring temperature and humidity. For more information check
             pytta.classes.lju31050 docstrings;
-            
+
         * kind (), (string):
             Possible measurement kinds:
-                
+
                 - 'roomres': room response to the excitation signal;
-                - 'noisefloor': acquire noise floor for measurement quality 
-                                analysis;                                
+                - 'noisefloor': acquire noise floor for measurement quality
+                                analysis;
                 - 'miccalibration': acquire calibrator signal (94dB SPL @ 1kHz)
-                                    for indirect calibration;                                    
+                                    for indirect calibration;
                 - 'channelcalibration': acquire response of the ouput connected
                                         to the input channel;
                 - 'sourcerecalibration': acquire recalibration response for
                                          Strength Factor measurement. For more
                                          information check
                                          pytta.rooms.strength_factor doctrings.
-                                
+
         * inChSel (), (list):
             Active input channels (or groups) for the current take.
             E.g.:
-                
+
                 >>> inChSel = ['Mic2', 'AR2']
-                
+
         * receiversPos (), (list):
             List with the positions of each input channel/group.
             E.g.:
-                
+
                 >>> receiversPos = ['R2', R4']
-                                    
+
         * excitation (), (string):
             Code of the excitation signal provided to the MeasurementSetup.
             E.g.:
-                
+
                 >>> excitation = 'SWP19'
-            
+
         * outChSel (), (string):
             Code of the output channel provided to the MeasurementSetup. E.g.:
-                
+
                 >>> outChSel = 'O1'
-            
+
         * outputAmplification (0) (float):
             Output amplification in dB;
-            
-            
+
+
         * sourcePos (), (string):
             Source's position. E.g.:
-                
+
                 >>> sourcePos = 'R1'
-       
-                
+
+
     Methods (input arguments):
     --------------------------
-    
+
         * run():
             Acquire data;
-    
-    
+
+
     Properties (type):
     -----------
-    
+
         * measuredThings (list):
             Contains the MeasuredThing objects resultant from the
             measurement take.
-    
+
     """
     # TO DO: add @property .measuredThings
-    
+
     # Magic methods
 
     def __init__(self,
@@ -1720,14 +1720,14 @@ class TakeMeasure(object):
     def run(self):
         """
         Take measurement (initializate acquisition).
-        
+
         Has no input arguments.
-            
+
         Usage:
-            
+
             >>> myTake.run()
             >>> D.save_take(myTake)
-            
+
         """
         if self.runCheck:
             print('Overwriting previous unsaved take!')
@@ -1970,13 +1970,13 @@ class MeasuredThing(object):
     Obtained through a roomir.TakeMeasure object. Contains information of a
     measurement take for one source-receiver configuration. Shouldn't be
     instantiated by user.
-    
+
     Properties (type):
     ------------------
-    
+
         * kind (str):
             Possible kinds for a MeasuredThing:
-                
+
                 - 'roomres';
                 - 'roomir' ('roomres' after IR calculation);
                 - 'noisefloor';
@@ -1985,50 +1985,50 @@ class MeasuredThing(object):
                 - 'recalibir' ('sourcerecalibration' after IR calculation);
                 - 'channelcalibration';
                 - 'channelcalibir' ('channelcalibration' after IR calculation);
-        
+
         * arrayName (str):
             Code of the input channel or group (array);
-            
+
         * measuredSignals (list):
             Contains the resultant SignalObjs or ImpulsiveResponses;
-            
+
         * timeStamps (list):
             Contains the timestamps for each measurement take;
-            
+
         * tempHumids (list):
             Contains the temperature and humidity readings for each measurement
             take;
-            
+
         * inChannels (roomir._MeasurementChList):
             Measurement channel list object. Identifies the used soundcard's
             input channels;
-            
+
         * sourcePos (str):
             Source position;
-        
+
         * receiverPos (str):
             Receiver's (microphone or array) position;
-            
+
         * excitation (str):
             Excitation signal code in MeasurementSetup;
-            
+
         * outChannel (roomir._MeasurementChList):
             Measurement channel list object. Identifies the used soundcard's
             output channel;
-            
+
         * outputAmplification (float):
             Output amplification in dB setted for the take;
-            
+
         * outputLinearGain (float):
             Output amplification in linear scale;
-            
+
         * numChannels (float):
             The number of channels;
-            
+
         * averages (int):
             The number of averages;
-            
-        
+
+
     """
 
     # Magic methods
@@ -2145,57 +2145,57 @@ def _mean_confidence_interval(data, confidence=0.95):
 class MeasurementPostProcess(object):
     """
     Holds a measurement post processing session.
-    
+
     Creation parameters (default), (type):
     --------------------------------------
-        
+
         * nthOct (3), (int):
             Number of bands per octave;
-            
+
         * minFreq (100), (float):
             Minimum analysis' frequency;
-            
+
         * maxFreq (1000), (float):
             Minimum analysis' frequency;
-            
-            
+
+
     Methods:
     --------
-        
+
         * RT (getDict, decay, IREndManualCut)
             Calculates the average reverberation time for each source-receiver
             pair from the provided getDict. Also calculates a 95% confidence
-            interval from a T-Student distribution, which is dependent on the 
+            interval from a T-Student distribution, which is dependent on the
             number of averages. For more information on reverberation time
             calculation go to pytta.rooms.reverberation_time
-            
+
         * G (Lpe_avgs, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
             Calculates the strength factor from the G terms provided by several
             getDict-like dicts from other G methods of this class.
-            
+
         * G_Lpe_inSitu (roomirsGetDict, IREndManualCut):
             Calculates the sound exposure level of the room impulsive
             response. For more information about this G term go to
             pytta.rooms.G_Lpe;
-            
-            
+
+
         * G_Lpe_revCh(roomirsGetDict, IREndManualCut):
             Calculates the sound exposure level of the reverberation chamber's
             impulsive response. For more information about this G term go to
             pytta.rooms.G_Lpe;
-            
+
         * G_Lps (sourcerecalibirGetDict):
             Calculates the sound exposure level of the recalibration impulsive
             response. For more information about this G term go to
             pytta.rooms.G_Lps;
-        
-        
+
+
         * G_T_revCh (roomirsGetDict, IREndManualCut, T):
             Calculates the mean reverberation time of the reverberatin chamber;
-            
-        
+
+
     For further information check the specif method's docstrings.
-            
+
     """
 
     def __init__(self, nthOct=3, minFreq=100, maxFreq=10000):
@@ -2207,34 +2207,34 @@ class MeasurementPostProcess(object):
         """
         Calculates the average reverberation time for each source-receiver
         pair from the dict provided by the roomir.MeasurementData.get method.
-        
+
         Also calculates a 95% confidence interval from a T-Student
         distribution, which is dependent on the  number of averages. For more
         information on reverberation time calculation go to
         pytta.rooms.reverberation_time.
-        
+
         Parameters (default), (type):
         ------------------------------
 
             * getDict ('Time [s]'), (str):
                 a dict from the roomir.MeasurementData.get method containing
                 MeasuredThings of the type 'roomir' (room impulsive response);
-        
+
             * decay (20), (int):
                 dynamic range of the line fit;
-            
+
             * IREndManualCut (None), (float):
                 remove the end of the impulsive response from IREndManualCut,
                 given in seconds;
-            
-        
+
+
         Return (type):
         --------------
-        
+
             * TR (dict):
                 a dict containing the mean reverberation time (Analysis) for
                 each source-receiver configuration, which is a key;
-                
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2242,7 +2242,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2304,21 +2304,21 @@ class MeasurementPostProcess(object):
         Calculates the mean sound exposure level from the recalibration
         impulsive responses. For more information about this G term go to
         pytta.rooms.G_Lps;
-        
+
         Parameters (default), (type):
         -----------------------------
-        
+
             * G_Lps (), (dict from rmr.D.get(...)):
                 a dict from the roomir.MeasurementData.get method containing
                 MeasuredThings of the type 'recalibir';
-                
+
         Return (type):
         --------------
-        
+
             * finalLps (Analysis):
-                an Analysis object with the averaged recalibration exposure 
+                an Analysis object with the averaged recalibration exposure
                 level;
-              
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2326,7 +2326,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2357,7 +2357,7 @@ class MeasurementPostProcess(object):
                     _mean_confidence_interval(data[:,bandIdx])[1])
         # Calculate average Lps
         finalLpss = {}
-        for name, Lpss in Lps_avgs.items():            
+        for name, Lpss in Lps_avgs.items():
             sum4avg = Lpss[0]
             LpsWindowLimits = [Lpss[0].windowLimits, Lpss[1].windowLimits]
             for Lps in Lpss[1:]:
@@ -2375,31 +2375,31 @@ class MeasurementPostProcess(object):
 
     def G_Lpe_inSitu(self, roomirsGetDict, IREndManualCut=None):
         """
-        Calculates the room impulsive response' sound exposure level for each 
+        Calculates the room impulsive response' sound exposure level for each
         source-receiver cfg. For more information about this G term go to
         pytta.rooms.G_Lpe;
-        
+
         Receives
-        
+
         Parameters (default), (type):
         -----------------------------
-        
+
             * roomirsGetDict (), ():
                 a dict from the roomir.MeasurementData.get method containing
                 MeasuredThings of the type 'roomir' (room impulsive response);
-                
+
             * IREndManualCut (None), (float):
                 remove the end of the impulsive response from IREndManualCut,
                 given in seconds;
-                
+
         Return (type):
         --------------
-        
+
             * Lpe_avgs (dict):
                 a dict containing a list with the sound exposure level averages
                 (Analyses) for each source-receiver configuration, which is a
                 key;
-                
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2407,7 +2407,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2440,26 +2440,26 @@ class MeasurementPostProcess(object):
         Calculates the mean sound exposure level of the reverberation chamber's
         impulsive response. For more information about this G term go to
         pytta.rooms.G_Lpe;
-        
-        
+
+
         Parameters (default), (type):
         -----------------------------
-        
+
             * roomirsGetDict (), ():
                 a dict from the roomir.MeasurementData.get method containing
                 MeasuredThings of the type 'roomir' (room impulsive response);
-                
+
             * IREndManualCut (None), (float):
                 remove the end of the impulsive response from IREndManualCut,
                 given in seconds;
-                
+
         Return (type):
         --------------
-        
+
             * Lpe (Analysis):
                 an Analysis with the mean sound exposure level calculated from
                 all the reverberation chamber's impulsive responses;
-                
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2467,7 +2467,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2483,12 +2483,12 @@ class MeasurementPostProcess(object):
                 SigObjs.extend([IR.systemSignal for IR in msdThng.measuredSignals])
         elif isinstance(roomirsGetDict, list):
             SigObjs = roomirsGetDict
-        
+
         Lpe_avgs = []
         for IR in SigObjs:
             Lpe_avgs.append(rooms.G_Lpe(IR, self.nthOct, self.minFreq,
                                         self.maxFreq, IREndManualCut))
-        
+
         Leq = 0
         for L in Lpe_avgs:
             Leq =  L + Leq
@@ -2496,57 +2496,57 @@ class MeasurementPostProcess(object):
         Lpe.anType = 'mixed'
         Lpe.unit = 'dB'
         Lpe.creation_name = creation_name
-        
+
         return Lpe
 
     def G(self, Lpe_avgs, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
         """
-        Calculates the mean strength factor for each source-receiver 
+        Calculates the mean strength factor for each source-receiver
         configuration with the G terms provided by other methods of this class.
         Also provides some basic statistical treatment.
-        
+
         For further information on the recalibration method (to correct
         changes on the source's sound power) check:
-            
+
             Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION
             FOR SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
-        
+
         Parameters (default), (type):
         ------------------------------
-        
+
             * Lpe_avgs (), (dict from rmr.get(...)):
                 a dict provided by the rmr.get(...) method. Calculates a mean
                 G for all source-receiver configurations provided with the
                 dict. Also calculates the 95% confidence interval for a
                 T-Student distribution;
-                
-                
+
+
             * Lpe_revCh (), (Analysis):
                 a pytta.Analysis object with the mean exposure level inside
                 the reverberation chamber during the source calibration (sound
                 power measurement);
-                
+
             * V_revCh (), (float):
                 the volume of the reverberatin chamber;
-                
+
             * T_revCh (), (Analysis):
                 a pytta.Analysis object for the reverberation chamber's
                 reverberation time;
-                
+
             * Lps_revCh (), (Analysis)
                 the exposure level of the recalibration procedure in the
                 reverberation chamber;
-            
+
             * Lps_inSitu (), (Analysis):
                 the exposure level of the recalibration procedure in situ;
-                
+
          Return (type):
         --------------
-        
+
             * G (dict):
-                a dict containing the mean G (Analysis) for each 
+                a dict containing the mean G (Analysis) for each
                 source-receiver configuration, which is a key;
-            
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2554,7 +2554,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2576,7 +2576,7 @@ class MeasurementPostProcess(object):
                     G_avgs[SR].append(rooms.strength_factor(Lpe,
                                                             Lpe_revCh,
                                                             V_revCh, T_revCh,
-                                                            Lps_revCh, 
+                                                            Lps_revCh,
                                                             Lps_inSitu))
         # Statistics for G
         G_CI = {}
@@ -2603,29 +2603,29 @@ class MeasurementPostProcess(object):
             G[SR] = meanG
         G['dictName'] = creation_name
         return G
-    
+
     def G_T_revCh(self, roomirsGetDict, IREndManualCut=None, T=20):
         """
         Calculates the mean reverberation time of the reverberatin chamber;
-        
+
         Parameters (default), (type):
         -----------------------------
-        
+
             * roomirsGetDict (), ():
                 a dict from the roomir.MeasurementData.get method containing
                 MeasuredThings of the type 'roomir' (room impulsive response);
-                
+
             * IREndManualCut (None), (float):
                 remove the end of the impulsive response from IREndManualCut,
                 given in seconds;
-                
+
         Return (type):
         --------------
-        
+
             * T_revCh (Analysis):
                 an Analysis with the mean reverberation time calculated from
                 all the reverberation chamber's impulsive responses;
-                
+
         """
         # Code snippet to guarantee that generated object name is
         # the declared at global scope
@@ -2633,7 +2633,7 @@ class MeasurementPostProcess(object):
         for framenline in traceback.walk_stack(None):
             # varnames = frame.f_code.co_varnames
             varnames = framenline[0].f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
         # creation_file, creation_line, creation_function, \
         #     creation_text = \
@@ -2670,7 +2670,7 @@ class MeasurementPostProcess(object):
                     bandRTcount += 1
                     bandRTsum += RT
             bandRTmean = bandRTsum / bandRTcount
-            spacialAvgdRT.append(bandRTmean)    
+            spacialAvgdRT.append(bandRTmean)
         # Constructing the Analysis
         T_revCh = Analysis(anType='RT', nthOct=self.nthOct,
                            minBand=float(bands[0]), maxBand=float(bands[-1]),
@@ -2681,23 +2681,23 @@ class MeasurementPostProcess(object):
 def med_load(medname):
     """
     Loads a measurement to continue measuring or either post processing.
-    
+
     Usage:
-    
+
         >>> MS, D = roomir.med_load('measurement name')
-    
+
     Parameters (defualt), (type):
     -----------------------------
-    
+
         * medname (), (str):
             the measurement name given in the MeasurementSetup object
             instantiation;
 
     Return (type):
     --------------
-        
+
         * (roomir.MeasurementSetup, roomir.MeasurementData) (tuple)
-    
+
     """
     if not exists(medname + '/MeasurementData.hdf5'):
         raise NameError('{} measurement doens\'t exist.'.format(medname))
@@ -2747,7 +2747,7 @@ def _h5_load(fileName: str, skip: list = [], skipMsgs: bool = False):
     >>> roomir._h5_load('file_1.hdf5', skip=['MeasuredThing'], skipMsgs=False)
 
     Load a roomir hdf5 file and recreate it's objects
-    
+
     :param fileName: file's name
     :type fileName: str
     :param skip: list with object types to skip in load, defaults to []
@@ -2760,7 +2760,7 @@ def _h5_load(fileName: str, skip: list = [], skipMsgs: bool = False):
     """
 
     # "a""
-    # 
+    #
     # ""a"
     # Checking if the file is an hdf5 file
     if fileName.split('.')[-1] != 'hdf5':

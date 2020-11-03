@@ -42,7 +42,7 @@ def _filter(signal,
 
 def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     """
-    Calculate from the provided list of one channel SignalObjs the mean 
+    Calculate from the provided list of one channel SignalObjs the mean
     one-third-octave band time-averaged sound pressure level in the test room
     with the noise source under test in operation, Lp(ST), and the standard
     deviation, Sm, for the preliminary measurements, located at error property
@@ -59,10 +59,10 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
 
         * nthOct (), (int):
             The number of fractions per octave;
-        
+
         * minFreq (), (int | float):
             The exact or approximated start band frequency;
-        
+
         * maxFreq (), (int | float):
             The exact or approximated stop band frequency;
 
@@ -81,7 +81,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -136,7 +136,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
             summing += \
             (data[idx, bandIdx] - Lp_ST.data[bandIdx])**2 / (data.shape[0] - 1)
         Sm.append(summing**(1/2))
-    
+
     Lp_ST.error = Sm
     Lp_ST.errorLabel = "Standard deviation"
     return Lp_ST

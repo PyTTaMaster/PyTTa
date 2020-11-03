@@ -2,17 +2,17 @@
 
 """
 This module does calculations compliant to ISO 3382-1 in order to obtain room
-acoustic paramters. It has an implementation of Lundeby et al. [1] algorithm 
-to estimate the correction factor for the cumulative integral, as suggested 
+acoustic paramters. It has an implementation of Lundeby et al. [1] algorithm
+to estimate the correction factor for the cumulative integral, as suggested
 by the ISO 3382-1.
 
 Use this module through the function 'analyse', which receives an one channel
-SignalObj or ImpulsiveResponse and calculate the room acoustic parameters 
+SignalObj or ImpulsiveResponse and calculate the room acoustic parameters
 especified in the positional input arguments. For more information check
 pytta.rooms.analyse's documentation.
 
 Available functions:
-    
+
     >>> pytta.rooms.crop_IR(SignalObj | ImpulsiveResponse, ...)
     >>> pytta.rooms.Analyse(SignalObj, ...)
     >>> pytta.rooms.strength_factor(...)
@@ -23,7 +23,7 @@ Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
     Matheus Lazarin, matheus.lazarin@eac.ufsm.br
     Rinaldi Petrolli, rinaldi.petrolli@eac.ufsm.br
-    
+
 """
 
 import numpy as np
@@ -352,7 +352,7 @@ def cumulative_integration(inputSignal,
         ax.set_ylabel('Amplitude [dBFS]')
         plt.title('{0:.0f} [Hz]'.format(band))
         ax.legend(loc='best', shadow=True, fontsize='x-large')
-    
+
     timeSignal = inputSignal.timeSignal[:]
     # Substituted by SignalObj.crop in analyse function
     # timeSignal, sampleShift = _circular_time_shift(timeSignal)
@@ -456,7 +456,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -502,8 +502,8 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
 
 def G_Lps(IR, nthOct, minFreq, maxFreq):
     # TODO: Fix documentation format
-    """G_Lps 
-    
+    """G_Lps
+
     Calculates the recalibration level, for both in-situ and
     reverberation chamber. Lps is applied for G calculation.
 
@@ -536,7 +536,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -728,13 +728,13 @@ def analyse(obj, *params,
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
     room acoustic parameters especified in the positional input arguments.
     Calculates reverberation time, definition and clarity.
-    
+
     The method for strength factor calculation implies in many input parameters
     and specific procedures, as the sound source's power estimation.
     The pytta.roomir app was designed aiming to support this room parameter
     measurement. For further information check pytta.roomir's and
     pytta.rooms.strength_factor's docstrings.
-    
+
     Input arguments (default), (type):
     -----------------------------------
 
@@ -743,49 +743,49 @@ def analyse(obj, *params,
 
         * non-keyworded argument pairs:
             Pair for 'RT' (reverberation time):
-                
+
                 - RTdecay (20), (int):
                     Decay interval for RT calculation. e.g. 20
 
             Pair for 'C' (clarity):  # TODO
-                
+
                 - Cparam (50), (int):
                     ...
-                
+
             Pair for 'D' (definition):  # TODO
-                
+
                 - Dparam (50), (int):
                     ...
 
-        * nthOct (), (int): 
+        * nthOct (), (int):
             Number of bands per octave;
-    
+
         * minFreq (), (int | float):
             Analysis' inferior frequency limit;
-    
+
         * maxFreq (), (int | float):
             Analysis' superior frequency limit;
-        
+
         * bypassLundeby (false), (bool):
             Bypass lundeby correction
-    
+
         * plotLundebyResults (false), (bool):
             Plot the Lundeby correction parameters;
-    
+
         * suppressWarnings (false), (bool):
             Suppress the warnings from the Lundeby correction;
-        
-        
+
+
     Return (type):
     --------------
-    
-    
+
+
         * Analyses (Analysis | list):
-            Analysis object with the calculated parameter or a list of 
+            Analysis object with the calculated parameter or a list of
             Analyses for more than one parameter.
-            
+
     Usage example:
-                
+
         >>> myRT = pytta.rooms.analyse(IR,
                                        'RT', 20',
                                        'C', 50,
@@ -793,7 +793,7 @@ def analyse(obj, *params,
                                        nthOct=3,
                                        minFreq=100,
                                        maxFreq=10000)
-            
+
     For more tips check the examples folder.
 
     """
@@ -803,7 +803,7 @@ def analyse(obj, *params,
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -826,15 +826,15 @@ def analyse(obj, *params,
     samplingRate = SigObj.samplingRate
 
     SigObj = crop_IR(SigObj, IREndManualCut)
-    
+
     calcEDC = False
     result = []
-    
+
     for param in params:
         if param in ['RT']:  # 'C', 'D']:
             calcEDC = True
             break
-    
+
     if calcEDC:
         listEDC = cumulative_integration(SigObj,
                                          bypassLundeby,
@@ -854,23 +854,23 @@ def analyse(obj, *params,
                           data=RT)
         RTtemp.creation_name = creation_name
         result.append(RTtemp)
-        
+
     # if 'C' in params:
     #     Cparam = params[params.index('C')+1]
     #     if not isinstance(Cparam,(int)):
     #         Cparam = 50
     #     Ctemp = None
     #     result.append(Ctemp)
-    
+
     # if 'D' in params:
     #     Dparam = params[params.index('D')+1]
     #     if not isinstance(Dparam,(int)):
     #         Dparam = 50
     #     Dtemp = None
     #     result.append(Dtemp)
-    
+
     if len(result) == 1:
         result = result[0]
-    
+
     return result
 

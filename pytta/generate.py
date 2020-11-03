@@ -81,7 +81,7 @@ def sin(Arms=0.5,
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -93,7 +93,7 @@ def sin(Arms=0.5,
 
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
-        
+
     t = np.linspace(0,
                     timeLength - (1/samplingRate),
                     int(samplingRate*timeLength))
@@ -128,24 +128,24 @@ def sweep(freqMin=None,
     for the fade in and last half for the fade out. Different number of points
     are used for each fade, so the number of time samples during each frequency
     is respected.
-    
+
     Input arguments (default), (type):
     ------------------------
-    
+
         * freqMin (20), (float)
-        
+
         * freqMax (20), (float)
-          
+
         * samplingRate (44100), (int)
-        
+
         * fftDegree (18), (float)
-        
+
         * startMargin (0.3), (float)
-        
+
         * stopMargin (0.7), (float)
-        
+
         * method (logarithmic'), (string)
-                  
+
         * windowing ('hann'), (string)
 
 
@@ -156,7 +156,7 @@ def sweep(freqMin=None,
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -165,8 +165,8 @@ def sweep(freqMin=None,
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
-    
-    
+
+
     # It was done like this because a function default argument is a value
     # assigned at import time, and PyTTa have a default object that handles
     # default values for all functions and all classes across all submodules.
@@ -304,7 +304,7 @@ def random_noise(kind='white',
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -313,7 +313,7 @@ def random_noise(kind='white',
         # traceback.extract_stack(frame, 1)[0]
     # creation_name = creation_text.split("=")[0].strip()
     creation_name = extracted_text[3].split("=")[0].strip()
-    
+
     # It was done like this because a function default argument is a value
     # assigned at import time, and PyTTa have a default object that handles
     # default values for all functions and all classes across all submodules.
@@ -329,7 +329,7 @@ def random_noise(kind='white',
         startMargin = default.startMargin
     if stopMargin is None:
         stopMargin = default.stopMargin
-    
+
     # [samples] initial silence number of samples
     stopSamples = round(stopMargin*samplingRate)
 
@@ -391,7 +391,7 @@ def impulse(samplingRate=None,
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -500,7 +500,7 @@ def measurement(kind='playrec',
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -626,7 +626,7 @@ def stream(IO='IO',
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
@@ -719,7 +719,7 @@ def octfilter(order: int = 4,
     for framenline in traceback.walk_stack(None):
         # varnames = frame.f_code.co_varnames
         varnames = framenline[0].f_code.co_varnames
-        if varnames is ():
+        if varnames == ():
             break
     # creation_file, creation_line, creation_function, \
     #     creation_text = \
