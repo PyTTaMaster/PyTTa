@@ -82,7 +82,7 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
         except:
             locale.setlocale(locale.LC_NUMERIC, 'C')
             plt.rcParams['axes.formatter.use_locale'] = False
-            print("Plotting error using ',', then was used '.' as decimal separator")
+            ValueError("Plotting error using ',', then was used '.' as decimal separator")
     elif decimalSep =='.':
         locale.setlocale(locale.LC_NUMERIC, 'C')
         plt.rcParams['axes.formatter.use_locale'] = False
