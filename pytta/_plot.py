@@ -76,8 +76,13 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
         matplotlib.figure.Figure object.
     """
     if decimalSep == ',':
-        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-        plt.rcParams['axes.formatter.use_locale'] = True
+        try:
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        except:
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+            print("Plotting error using ',', then was used '.' as decimal separator")
     elif decimalSep =='.':
         locale.setlocale(locale.LC_NUMERIC, 'C')
         plt.rcParams['axes.formatter.use_locale'] = False
@@ -228,8 +233,13 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
         matplotlib.figure.Figure object.
     """
     if decimalSep == ',':
-        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-        plt.rcParams['axes.formatter.use_locale'] = True
+        try:
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        except:
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+            print("Plotting error using ',', then was used '.' as decimal separator")
     elif decimalSep =='.':
         locale.setlocale(locale.LC_NUMERIC, 'C')
         plt.rcParams['axes.formatter.use_locale'] = False
@@ -386,8 +396,13 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
         matplotlib.figure.Figure object.
     """
     if decimalSep == ',':
-        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-        plt.rcParams['axes.formatter.use_locale'] = True
+        try:
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        except:
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+            print("Plotting error using ',', then was used '.' as decimal separator")
     elif decimalSep =='.':
         locale.setlocale(locale.LC_NUMERIC, 'C')
         plt.rcParams['axes.formatter.use_locale'] = False
@@ -578,8 +593,13 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         alpha=.60
 
     if decimalSep == ',':
-        locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
-        plt.rcParams['axes.formatter.use_locale'] = True
+        try:
+            locale.setlocale(locale.LC_NUMERIC, 'pt_BR.UTF-8')
+            plt.rcParams['axes.formatter.use_locale'] = True
+        except:
+            locale.setlocale(locale.LC_NUMERIC, 'C')
+            plt.rcParams['axes.formatter.use_locale'] = False
+            print("Plotting error using ',', then was used '.' as decimal separator")
     elif decimalSep =='.':
         locale.setlocale(locale.LC_NUMERIC, 'C')
         plt.rcParams['axes.formatter.use_locale'] = False
