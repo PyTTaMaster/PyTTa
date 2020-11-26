@@ -121,11 +121,12 @@ class PyTTaObj(RICI):
     @property
     def numSamples(self):
         return self._numSamples
-
-    @numSamples.setter
-    def numSamples(self, newNumSamples):
-        self._numSamples = newNumSamples
-        return
+    
+    # The number of samples depends on the time signal length
+    # @numSamples.setter
+    # def numSamples(self, newNumSamples):
+    #     self._numSamples = newNumSamples
+    #     return
 
     @property
     def freqMin(self):
@@ -601,8 +602,6 @@ class ChannelsList(object):
                 raise TypeError('List initializer must be either positive ' +
                                 'int, a list of positive int or ' +
                                 'ChannelObj.')
-#        else:
-#            self._channels.append(ChannelObj(1))
         return
 
     def __repr__(self):
@@ -614,17 +613,11 @@ class ChannelsList(object):
 
     def __getitem__(self, key):
         if isinstance(key, int):
-            # for ch in self._channels:
-            #     if ch.num == key:
-            #         return ch
             try:
                 channel = [ch for ch in self._channels if ch.num == key][0]
             except IndexError:
                 raise IndexError("Channel number not included.")
         elif isinstance(key, str):
-            # for ch in self._channels:
-            #     if ch.name == key or ch.code == key:
-            #         return ch
             try:
                 channel = [ch for ch in self._channels if ch.name == key or
                            ch.code == key][0]
@@ -637,9 +630,6 @@ class ChannelsList(object):
 
     def __setitem__(self, key, item):
         if isinstance(key, int):
-            # for ch in self._channels:
-            #     if ch.num == key:
-            #         return ch
             try:
                 channel = [ch for ch in self._channels if ch.num == key][0]
                 self._channels.remove(channel)
@@ -647,9 +637,6 @@ class ChannelsList(object):
             except IndexError:
                 raise IndexError("Channel number not listed.")
         elif isinstance(key, str):
-            # for ch in self._channels:
-            #     if ch.name == key or ch.code == key:
-            #         return ch
             try:
                 channel = [ch for ch in self._channels if ch.name == key or ch.code == key][0]
                 self._channels.remove(channel)

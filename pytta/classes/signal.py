@@ -21,15 +21,26 @@ import copy as cp
 class SignalObj(_base.PyTTaObj):
     """
     Signal object class.
+    
+    Holds real time signals and their FFT spectra, which are symmetric.
+    Therefore only half of the frequency domain signal is stored.
 
     Creation parameters (default), (type):
     ------------
 
         * signalArray (ndarray | list), (NumPy array):
-            signal at specified domain
+            signal at specified domain. For 'freq' domain only half of the
+            spectra must be provided. The total numSamples should also
+            be provided.
 
         * domain ('time'), (str):
-            domain of the input array;
+            domain of the input array. May be 'freq' or 'time'.
+            For 'freq' additional inputs should be provided:
+                
+                * numSamples (len(SignalArray)*2-1), (int):
+                    Total signal's number of samples. The default
+                    value takes into account a signal with even number of
+                    samples.
 
         * samplingRate (44100), (int):
             signal's sampling rate;
@@ -165,6 +176,15 @@ class SignalObj(_base.PyTTaObj):
             signalType = kwargs.pop('signalType')
         else:
             signalType = 'power'
+            
+        if domain == 'freq':
+            if 'numSamples' in kwargs:
+                self._numSamples = kwargs.pop('numSamples')
+            else:
+                # Consider the full signal has EVEN numSamples
+                halfSpectraNumSamples = len(signalArray)
+                # self._numSamples = halfSpectraNumSamples*2-1  # ODD
+                self._numSamples = (halfSpectraNumSamples-1)*2  # EVEN
 
         super().__init__(*args, **kwargs)
 
@@ -260,34 +280,25 @@ class SignalObj(_base.PyTTaObj):
                 newSignal = np.array(newSignal, ndmin=2)
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
-            self._freqSignal = np.array(newSignal, dtype='complex64')
-            
-            # [-] number of samples
-            # needed when freqSignal is provided at init
-            halfSpectraNumSamples = len(self._freqSignal)
-            timeSignalNumSamplesWas = "UNKNOWN"  # was "ODD" or "EVEN"
-            
-            if hasattr(self, '_timeSignal'):
-                # Time signal was already here. To predict new numSamples
-                # (in time domain) from provided new freq signal, check 
-                # similirity between the numSamples recovered from the half 
-                # spectra and the numSamples of the old time signal.            
-                oldNumSamples = len(self.timeSignal)
+            # Time numSamples was provided (or is default) at init or old
+            # signal was already here. Check if numSamples calculated
+            # according to half spectra matches the current numSamples.
+            halfSpectraNumSamples = len(newSignal)
+            if (halfSpectraNumSamples-1)*2 == self._numSamples:
+                timeSignalNumSamplesIs = "EVEN"
+            elif halfSpectraNumSamples*2-1 == self._numSamples:
+                timeSignalNumSamplesIs = "ODD"
+            else:
+                # Old numSamples don't match with provided half spectrum
+                # number of samples.
+                timeSignalNumSamplesIs = "UNKNOWN"  
                 
-                if (halfSpectraNumSamples-1)*2 == oldNumSamples:
-                    timeSignalNumSamplesWas = "EVEN"
-                    self._numSamples = oldNumSamples
-                    
-                elif halfSpectraNumSamples*2-1 == oldNumSamples:
-                    timeSignalNumSamplesWas = "ODD"
-                    self._numSamples = oldNumSamples                                
-                
-            if timeSignalNumSamplesWas == "UNKNOWN":
-                # No info from previous time signal to define new numSamples.
-                # Consider the original time signal of the provided new half
-                # spectra had EVEN number of samples.
-                self._numSamples = halfSpectraNumSamples*2-1
-                                   
+            if timeSignalNumSamplesIs == "UNKNOWN":
+                # Consider full spectrum has even number of samples
+                # self._numSamples = halfSpectraNumSamples*2-1  # ODD
+                self._numSamples = (halfSpectraNumSamples-1)*2  # EVEN
+            
+            self._freqSignal = np.array(newSignal, dtype='complex64')                                   
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
             self._freqVector = np.fft.rfftfreq(n=self.numSamples,
