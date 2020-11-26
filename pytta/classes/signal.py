@@ -261,23 +261,37 @@ class SignalObj(_base.PyTTaObj):
             if newSignal.shape[1] > newSignal.shape[0]:
                 newSignal = newSignal.T
             self._freqSignal = np.array(newSignal, dtype='complex64')
+            
             # [-] number of samples
             # needed when freqSignal is provided at init
+            halfSpectraNumSamples = len(self._freqSignal)
+            timeSignalNumSamplesWas = "UNKNOWN"  # was "ODD" or "EVEN"
+            
             if hasattr(self, '_timeSignal'):
-                self._numSamples = len(self.timeSignal)
-            else:
-                freqLen = len(self.freqSignal)
-                self._numSamples = int((freqLen-1)*2 + 1) \
-                                   if freqLen % 2 == 0 \
-                                   else int((freqLen*2) - 2)
+                # Time signal was already here. To predict new numSamples
+                # (in time domain) from provided new freq signal, check 
+                # similirity between the numSamples recovered from the half 
+                # spectra and the numSamples of the old time signal.            
+                oldNumSamples = len(self.timeSignal)
+                
+                if (halfSpectraNumSamples-1)*2 == oldNumSamples:
+                    timeSignalNumSamplesWas = "EVEN"
+                    self._numSamples = oldNumSamples
+                    
+                elif halfSpectraNumSamples*2-1 == oldNumSamples:
+                    timeSignalNumSamplesWas = "ODD"
+                    self._numSamples = oldNumSamples                                
+                
+            if timeSignalNumSamplesWas == "UNKNOWN":
+                # No info from previous time signal to define new numSamples.
+                # Consider the original time signal of the provided new half
+                # spectra had EVEN number of samples.
+                self._numSamples = halfSpectraNumSamples*2-1
+                                   
             self._fftDegree = np.log2(self.numSamples)  # [-] size parameter
             self._timeLength = self.numSamples/self.samplingRate
-            self._freqVector = np.linspace(0, (self.numSamples-1) *
-                                           self.samplingRate /
-                                           (2*self.numSamples),
-                                           (int((self.numSamples/2) + 1)
-                                           if self.numSamples % 2 == 0
-                                           else int((self.numSamples+1)/2)))
+            self._freqVector = np.fft.rfftfreq(n=self.numSamples,
+                                               d=1/self.samplingRate)
             self._ifft()
             self.channels.conform_to(self)
         else:
@@ -1096,12 +1110,8 @@ class SignalObj(_base.PyTTaObj):
         # assign new freq signal
         self._freqSignal = newFreqSignal
         # frequency vector (x axis)
-        self._freqVector = np.linspace(0, (self.numSamples - 1) *
-                                        self.samplingRate /
-                                        (2*self.numSamples),
-                                        (int(self.numSamples/2)+1)
-                                        if self.numSamples % 2 == 0
-                                        else int((self.numSamples+1)/2))
+        self._freqVector = np.fft.rfftfreq(n=self.numSamples,
+                                           d=1/self.samplingRate)
         return
 
     def _ifft(self):
@@ -1119,7 +1129,7 @@ class SignalObj(_base.PyTTaObj):
         # IFFT
         self._timeSignal = \
             np.array(np.fft.irfft(adjustedFreqSignal,
-                                axis=0, norm=None),
+                                  n=self.numSamples, axis=0, norm=None),
                     dtype='float32')
         # time vector (x axis)
         self._timeVector = np.linspace(0,
