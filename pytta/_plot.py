@@ -264,7 +264,8 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
 
     curveData = _curve_data_extractor_time_dB(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(np.abs(data['y']/np.sqrt(2))/data['dBRef'])
+        with np.errstate(divide='ignore'):
+            dBSignal = 20*np.log10(np.abs(data['y']/np.sqrt(2))/data['dBRef'])
         ax.plot(timeScale*data['x'], dBSignal, label=data['label'])
         yLimData = cp.copy(dBSignal)
         yLimData[np.isinf(yLimData)] = 0
@@ -412,7 +413,8 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_freq(sigObjs)
     for data in curveData:
-        dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
+        with np.errstate(divide='ignore'):
+            dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
 
         if smooth:
             dBSignal = ss.savgol_filter(dBSignal, 31, 3)
