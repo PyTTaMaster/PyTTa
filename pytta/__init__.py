@@ -120,7 +120,7 @@ from .functions import fft_degree
 
 from .apps import roomir
 
-__version__ = '0.1.0b9'  # package version
+__version__ = '0.1.0'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps

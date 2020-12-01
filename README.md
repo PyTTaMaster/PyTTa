@@ -1,4 +1,4 @@
-## PyTTa (Python in Technical Acoustics) v0.1.0 beta 9
+## PyTTa (Python in Technical Acoustics) v0.1.0
 
 The project began as an effort to create audio, acoustics, and vibration data acquiring and analysis toolbox to a free cost level, high-end results, combining the passion for programming with the expertise in Acoustics and Vibration of the Acoustics Engineers from the Federal University of Santa Maria (Southern Brazil).
 
