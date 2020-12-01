@@ -10,6 +10,7 @@ Authors:
 """
 
 from setuptools import setup
+from glob import glob
 
 with open("README.md", "r") as f:
     long_description = f.read()
@@ -28,7 +29,7 @@ settings = {
     'install_requires': ['numpy', 'scipy', 'matplotlib',
         'sounddevice', 'soundfile', 'h5py', 'numba'],
     'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
-    'data_files': [('examples', ['examples/*.py'])],
+    'data_files':  [('examples', glob('examples/*'))],
     # 'package_dir': {'classes': 'pytta'},
     'classifiers': [
         "Programming Language :: Python :: 3",
