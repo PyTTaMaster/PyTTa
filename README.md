@@ -1,4 +1,22 @@
-## PyTTa (Python in Technical Acoustics) v0.1.0
+<p>
+<a href="https://github.com/PyTTAmaster/PyTTa/blob/development/LICENSE">
+  <img src="https://img.shields.io/github/license/pyttamaster/pytta" alt="PyTTa License" />
+</a>
+
+<img src="https://img.shields.io/pypi/pyversions/pytta" alt="PyTTa Python supported versions" />
+
+<a href="https://pypi.org/project/PyTTa/#history">
+  <img src="https://img.shields.io/pypi/v/pytta" alt="PyTTa PyPI version" />
+</a>
+
+<img src="https://img.shields.io/pypi/dm/pytta" alt="PyTTa PyPI downloads" />
+
+<a href="https://github.com/pyttamaster/pytta/actions?query=workflow:(If%20commit%20contains%20version%20tag)%20Build%20and%20publish%20PyTTa%20distribution%20package%20to%20PyPI">
+  <img src="https://img.shields.io/github/workflow/status/pyttamaster/pytta/(If%20commit%20contains%20version%20tag)%20Build%20and%20publish%20PyTTa%20distribution%20package%20to%20PyPI" alt="PyTTa build workflow status" />
+</a>
+</p>
+
+## PyTTa (Python in Technical Acoustics)
 
 The project began as an effort to create audio, acoustics, and vibration data acquiring and analysis toolbox to a free cost level, high-end results, combining the passion for programming with the expertise in Acoustics and Vibration of the Acoustics Engineers from the Federal University of Santa Maria (Southern Brazil).
 
