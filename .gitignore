@@ -148,3 +148,5 @@ dmypy.json
 # DS
 .DS_Store
 
+# asdf version manager
+.tool-versions
