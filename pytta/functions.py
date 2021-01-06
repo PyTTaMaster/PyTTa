@@ -947,7 +947,10 @@ def _h5_load(fileName: str):
                                         f.attrs['GENERATED_BY'] != "PyTTa":
             raise NotImplementedError
     except:
-        raise NotImplementedError("Only PyTTa-like hdf5 files can be loaded.")
+        # raise NotImplementedError("Only PyTTa-like hdf5 files can be loaded.")
+        warn(DeprecationWarning("'GENERATED_BY' tag couldn't be found in " +
+                                "the .hdf5 file. Still trying to load " +
+                                "because of legacy PyTTa HDF5 files."))
 
     loadedObjects = {}
     objCount = 0  # Counter for loaded objects
