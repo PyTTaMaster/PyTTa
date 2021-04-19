@@ -107,6 +107,11 @@ def fractional_octave_frequencies(nthOct: int = 3,
     maxBand = freq_to_band(maxFreq, nthOct, refFreq, base)
     bands = np.arange(minBand, maxBand + 1)
     freqs = np.zeros((len(bands), 3))
+    if nthOct > 3:
+        for i  in range(1, int(nthOct/3)):
+            extra_nominal_frequencies = (__nominal_frequencies[1:] + __nominal_frequencies[:-1]) / 2
+            __nominal_frequencies = np.concatenate((__nominal_frequencies, extra_nominal_frequencies))
+            __nominal_frequencies.sort(kind='mergesort')
     nthOct = 1 / nthOct
     for k, band in enumerate(bands):
         dummy = refFreq * base ** (band * nthOct * factor)
