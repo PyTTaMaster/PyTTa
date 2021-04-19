@@ -20,6 +20,7 @@ mentioned above.
 Authors:
 	João Vitor G. Paes joao.paes@eac.ufsm.br and
 	Caroline Gaudeoso caroline.gaudeoso@eac.ufsm.br
+	Rinaldi Petrolli rinaldi.petrolli@eac.ufsm.br
 
 """
 
