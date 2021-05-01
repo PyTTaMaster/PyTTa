@@ -1538,7 +1538,7 @@ class TakeMeasure(object):
             List with the positions of each input channel/group.
             E.g.:
 
-                >>> receiversPos = ['R2', R4']
+                >>> receiversPos = ['R2', 'R4']
 
         * excitation (), (string):
             Code of the excitation signal provided to the MeasurementSetup.
