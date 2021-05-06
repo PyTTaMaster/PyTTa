@@ -83,7 +83,7 @@ class _MeasurementChList(ChannelsList):
     # Magic methods
 
     def __init__(self, kind, groups={}, *args, **kwargs):
-        super().__init__(*args, **kwargs)  # Initializate the ChannelsList
+        super().__init__(*args, **kwargs)  # Initialize the ChannelsList
         # Rest of initialization
         self.kind = kind
         self.groups = groups
@@ -192,7 +192,7 @@ class _MeasurementChList(ChannelsList):
             groupMapping = mChList.get_group_membs(
                     chNum, 'rest')
             for chNum2 in groupMapping:
-                # Getting groups information for reconstructd
+                # Getting groups information for reconstructing
                 # inChannels
                 try:
                     if self[chNum2] == mChList[chNum2]:
@@ -202,7 +202,7 @@ class _MeasurementChList(ChannelsList):
                     pass
         self.groups = groups
 
-# Workaraound for class name change. If removed old roomir files won't load.
+# Workaround for class name change. If removed old roomir files won't load.
 MeasurementChList = _MeasurementChList
 
 class MeasurementSetup(object):
@@ -266,8 +266,8 @@ class MeasurementSetup(object):
             Dict containing output channel codes, hardware channel and name.
             E.g.:
 
-                >>> outChannels={'O1': (1, 'Dodecaedrum 1'),
-                                 'O2': (2, 'Dodecaedrum 2'),
+                >>> outChannels={'O1': (1, 'Dodecahedron 1'),
+                                 'O2': (2, 'Dodecahedron 2'),
                                  'O3': (4, 'Room sound system') }
 
         * outCompensations (default), (type):
@@ -354,7 +354,7 @@ class MeasurementSetup(object):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file via
+        Saves itself inside a hdf5 group from an already opened file via
         pytta.save(...).
         """
         h5group.attrs['class'] = 'MeasurementSetup'
@@ -665,7 +665,7 @@ class MeasurementData(object):
                                   ', already exists. Load it instead of '
                                   'overwriting.')
             # # Workaround for debugging
-            # print('Deleting the existant measurement: ' + self.MS.name)
+            # print('Deleting the existent measurement: ' + self.MS.name)
             # rmtree(self.path)
             # mkdir(self.path)
             # self._h5_init()
@@ -676,7 +676,7 @@ class MeasurementData(object):
 
     def _h5_init(self):
         """
-        Method for initializating a brand new MeasurementData.hdf5 file
+        Method for initializing a brand new MeasurementData.hdf5 file
         """
         # Creating the MeasurementData file
         with h5py.File(self.path + 'MeasurementData.hdf5', 'w-') as f:
@@ -1212,7 +1212,7 @@ class MeasurementData(object):
                             newFreqSignal[:, chIndex] = \
                                 IR.systemSignal.freqSignal[:, chIndex]
                         else:
-                            # Geting the bypass IR
+                            # Getting the bypass IR
                             chCalibThng = chCalibThngs[calibrationTake-1]
                             chCalibIR = chCalibThng.measuredSignals[
                                             chCalibThng.averages//2]. \
@@ -1636,7 +1636,7 @@ class TakeMeasure(object):
                     self.inChannels.append(self.MS.inChannels[chNum])
             else:
                 self.inChannels.append(self.MS.inChannels[code])
-        # Getting groups information for reconstructd
+        # Getting groups information for reconstructing
         # inChannels _MeasurementChList
         self.inChannels.copy_groups(self.MS.inChannels)
         # Setting the outChannel for the current take
@@ -1761,7 +1761,7 @@ class TakeMeasure(object):
         self.measuredThings = {}
         # Constructing a MeasuredThing for each element in self.inChSel
         for idx, code in enumerate(self.inChSel):
-            # Empty list for the timeSignal arrays from each avarage
+            # Empty list for the timeSignal arrays from each average
             SigObjs = []
             # Empty list for the temperature and rel. humidity from each avg
             tempHumids = []
@@ -2017,7 +2017,7 @@ class MeasuredThing(object):
             output channel;
 
         * outputAmplification (float):
-            Output amplification in dB setted for the take;
+            Output amplification in dB set for the take;
 
         * outputLinearGain (float):
             Output amplification in linear scale;
@@ -2037,8 +2037,8 @@ class MeasuredThing(object):
                  kind='',
                  arrayName='',
                  measuredSignals=[],
-                 timeStamps=[], # with default because compatibilitie issues
-                 tempHumids=[],  # with default because compatibilitie issues
+                 timeStamps=[], # with default because compatibility issues
+                 tempHumids=[],  # with default because compatibility issues
                  inChannels=None,
                  sourcePos=None,
                  receiverPos=None,
@@ -2094,7 +2094,7 @@ class MeasuredThing(object):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file via
+        Saves itself inside a hdf5 group from an already opened file via
         roomir.save(...).
         """
         h5group.attrs['class'] = 'MeasuredThing'
@@ -2191,10 +2191,10 @@ class MeasurementPostProcess(object):
 
 
         * G_T_revCh (roomirsGetDict, IREndManualCut, T):
-            Calculates the mean reverberation time of the reverberatin chamber;
+            Calculates the mean reverberation time of the reverberation chamber;
 
 
-    For further information check the specif method's docstrings.
+    For further information check the specific method's docstrings.
 
     """
 
@@ -2527,7 +2527,7 @@ class MeasurementPostProcess(object):
                 power measurement);
 
             * V_revCh (), (float):
-                the volume of the reverberatin chamber;
+                the volume of the reverberation chamber;
 
             * T_revCh (), (Analysis):
                 a pytta.Analysis object for the reverberation chamber's
@@ -2606,7 +2606,7 @@ class MeasurementPostProcess(object):
 
     def G_T_revCh(self, roomirsGetDict, IREndManualCut=None, T=20):
         """
-        Calculates the mean reverberation time of the reverberatin chamber;
+        Calculates the mean reverberation time of the reverberation chamber;
 
         Parameters (default), (type):
         -----------------------------
@@ -2700,7 +2700,7 @@ def med_load(medname):
 
     """
     if not exists(medname + '/MeasurementData.hdf5'):
-        raise NameError('{} measurement doens\'t exist.'.format(medname))
+        raise NameError('{} measurement doesn\'t exist.'.format(medname))
     print('Loading the MeasurementSetup from MeasurementData.hdf5.')
     load = _h5_load(medname + '/MeasurementData.hdf5', skip=['MeasuredThing'])
     MS = load['MeasurementSetup']
@@ -2780,9 +2780,9 @@ def _h5_load(fileName: str, skip: list = [], skipMsgs: bool = False):
                     objCount += 1
                 except TypeError:
                     if not skipMsgs:
-                        print('Skipping hdf5 group named {} as '
+                        print("Skipping hdf5 group named {} as "
                             .format(PyTTaObjName) +
-                            'it isnt a PyTTa object group.')
+                            "it isn't a PyTTa object group.")
         except AttributeError:
             if not skipMsgs:
                 print('Skipping {} as its link is broken.'.format(PyTTaObjName))
@@ -2846,7 +2846,7 @@ def _h5_unpack(ObjGroup):
         receiverPos = _h5.none_parser(ObjGroup.attrs['receiverPos'])
         excitation = _h5.none_parser(ObjGroup.attrs['excitation'])
         outChannel = _h5.none_parser(ObjGroup.attrs['outChannel'])
-        # Added with an if for compatibilitie issues
+        # Added with an if for compatibility issues
         if 'outputAmplification' in ObjGroup.attrs:
             outputAmplification = ObjGroup.attrs['outputAmplification']
         else:
