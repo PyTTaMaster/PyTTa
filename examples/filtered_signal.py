@@ -7,7 +7,7 @@ import pytta
 if __name__ == "__main__":
 
 #    mySignal = pytta.generate.random_noise()  # Generates a SignalObj with a "white noise" random array of data
-    mySignal = pytta.generate.sweep()  # Generates a SignalObj with a sine wave with exponential frequency sweeo
+    mySignal = pytta.generate.sweep()  # Generates a SignalObj with a sine wave with exponential frequency sweep
 
     # SignalObj data visualization
     mySignal.plot_time()
@@ -19,8 +19,8 @@ if __name__ == "__main__":
         'samplingRate': 44100,  # Frequency of sampling
         'minFreq': 2e1,  # Minimum frequency of filter coverage
         'maxFreq': 2e4,  # Maximum frequency of filter coverage
-        'refFreq': 1e3,  # Reference central frequency for octave band divitions
-        'base': 10,  # Calculate bandcut with base 10 values: 10**(0.3/nthOct)
+        'refFreq': 1e3,  # Reference central frequency for octave band divisions
+        'base': 10,  # Calculate band cut with base 10 values: 10**(0.3/nthOct)
     }
 
     myFilt = pytta.generate.filter('octave', **octFiltParams)  # OctFilter object
