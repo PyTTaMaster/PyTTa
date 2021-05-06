@@ -168,7 +168,7 @@ def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                        np.log10(
                                 np.mean(timeWinData[-int(timeWinData.size/10):]))
 
-        # 3) Calculate premilinar slope
+        # 3) Calculate preliminar slope
         startIdx = np.argmax(np.abs(timeWinData/np.max(np.abs(timeWinData))))
         stopIdx = startIdx + np.where(10*np.log10(timeWinData[startIdx+1:])
                                       >= bgNoiseLevel + dBtoNoise)[0][-1]
@@ -507,7 +507,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     Calculates the recalibration level, for both in-situ and
     reverberation chamber. Lps is applied for G calculation.
 
-    During the recalibration: source height and mic heigth must be >= 1 [m],
+    During the recalibration: source height and mic height must be >= 1 [m],
     while the distance between source and mic must be <= 1 [m]. The distances
     must be the same for in-situ and reverberation chamber measurements.
 
