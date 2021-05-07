@@ -984,299 +984,181 @@ def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
     return _spectrogram, _specTime, _specFreq
 
 
-def waterfall(sigObjs, step=2**11, n=2**11, fmin=None, fmax=None, pmin=None, pmax=None, tmax=None,
-              xaxis='linear', time_tick=None, fpad=1, delta=60, dBref=2e-5, fill_value='pmin', fill_below=True,
-              overhead=3, winAlpha=0, plots=['waterfall'], show=True, cmap='jet', alpha=[1, 1], saveFig=False,
-              figRatio=[1, 1, 1], figsize=(950, 950), camera=[2, 1, 2]):
-    """
-    Plots a signal in dB and its decay in the time domain in a 3D waterfall plot.
-
-    Parameters (default), (type):
-    ------------------------------
-
-        * sigObjs (), (list):
-            a list with SignalObjs.
-
-        * step (2**11), (int):
-            time steps in samples.
-
-        * n (2**11), (int):
-            FFT size in samples.
-
-        * fmin (), (int):
-            left limit.
-
-        * fmax (), (int):
-            right limit.
-
-        * pmin (), (int):
-            inferior limit.
-
-        * pmax (), (int):
-            superior limit.
-
-        * tmax (), (int):
-            time limit.
-
-        * xaxis ('linear'), (str):
-            x axis scale.
-
-            >>> xaxis = 'linear' # log scale
-            >>> xaxis = 'log' # log scale
-
-        * time_tick (), (float):
-            time axis tick interval.
-
-        * fpad (1), (int):
-            frequency pad for inferior and superior limits.
-
-        * delta (60), (int):
-            time decay delta from the superior limit.
-
-        * dBred (2e-5), (float):
-            dB scale referece.
-
-        * fill_value ('pmin'), (str):
-            fill option for the base of the plot.
-
-            >>> fill_value = 'NaN' # transparent
-            >>> fill_value = 'pmin' # solid
-
-        * fill_below (True), (bool):
-            option to chose to fill the area below the 3D curve or not.
-
-        * overhead (3), (int):
-            overhead above pmax to be displayed in the Z axis.
-
-        * winAlpha (0), (float):
-            alpha value of the Tukey window.
-
-            >>> winAlpha = 0 # rectangular
-            >>> winAlpha = 1 # tukey
-
-        * plots (['waterfall']), (list):
-            list containint the plots that will be displayed.
-
-        * show (True), (bool):
-            option to display the graph in the screen or not.
-
-        * cmap ('jet'), (str):
-            colormap that will be used to color the curves.
-
-        * alpha ([1, 1]), (list):
-            transparency of curve and filling. 1 is solid, 0 is transparent.
-
-        * saveFig (False), (bool or str):
-            option to save the plot as a .png file - the value will be used as part of the filename.
-
-                >>> saveFig = 'my_beatiful_project'
-
-        * figRatio ([1, 1, 1]), (list):
-            list containing float values for the ratios of the X, Y and Z axis.
-
-        * figsize (950, 950), (tuple):
-            width and height of the plot in pixels.
-
-        * camera ([2, 1, 2]), (list):
-            3D camera position - is used to save the plot and for the initial view.
-
-    Return:
-    --------
-
-        ()
-    """
-
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-    from scipy.fftpack import fft
-    import scipy.signal as ss
-    import more_itertools
+def waterfall(sigObjs, step=10, xLim:list=None,
+              Pmin=20, Pmax=None, tmin=0, tmax=None, azim=-72, elev=14,
+              cmap='jet', winPlot=False, waterfallPlot=True, fill=True,
+              lines=False, alpha=1, figsize=(20, 8), winAlpha=0,
+              removeGridLines=False, saveFig=False, bar=False, width=0.70,
+              size=3, lcol=None, filtered=True):
 
     curveData = _curve_data_extractor_waterfall(sigObjs)
+    figs = []
     for data in curveData:
-
-        ht = data['ht']  # Impulse Response
-        fs = data['samplingRate']
-
-        if fmin is None and fmax is None:
+        if xLim is None:
             xmin, idx_min = _find_nearest(data['freq'], data['minFreq'])
             xmax, idx_max = _find_nearest(data['freq'], data['maxFreq'])
         else:
-            xmin, idx_min = _find_nearest(data['freq'], fmin)
-            xmax, idx_max = _find_nearest(data['freq'], fmax)
+            xmin, idx_min = _find_nearest(data['freq'], xLim[0])
+            xmax, idx_max = _find_nearest(data['freq'], xLim[1])
 
-        if xaxis == 'linear':
-            x_range = [xmin - fpad, xmax + fpad]
-        elif xaxis == 'log':
-            x_range = [np.log10(xmin - fpad), np.log10(xmax + fpad)]
-
-        freq = np.linspace(0, (n - 1) * fs / n, n)  # Frequency vector of the FFT
-        xmin_FFT, idx_min_FFT = _find_nearest(freq, xmin)  # Freq. range
-        xmax_FFT, idx_max_FFT = _find_nearest(freq, xmax)
-        freq = freq[idx_min_FFT - fpad: idx_max_FFT + 1 + fpad]  # Crop to freq range
-
-        # Display selected values
-        print(f'Time steps (step): {((step - 1) / fs) * 10e2:.2f} [ms] | {step} [samples]')
-        print(f'FFT size (n): {freq[1] - freq[0]:.2f} [Hz] | {n:.0f} [samples]')
-
-        # Apply rolling window
-        sliced = np.asarray(list(more_itertools.windowed(ht, n=n, step=step, fillvalue=0)))
-        window = np.asarray([ss.tukey(n, alpha=0) for s in sliced])  # Tukey window (alpha=0 is a rectangular window)
-        windowed = sliced * window  # Apply window
-        windowedFFT = abs(2 / n * fft(windowed))  # Apply FFT
-        windowedFFT = windowedFFT[:, idx_min_FFT - fpad: idx_max_FFT + 1 + fpad]  # Crop the FFT
-        windowedFFTdB = 20 * np.log10(abs(windowedFFT) / dBref)  # Spply log scaling
-        windowedFFTdBNaN = np.copy(windowedFFTdB)  # Copies to be modified
-        windowedFFTdBpmin = np.copy(windowedFFTdB)
-
-        N = len(ht)  # Number of samples in the impulse response
-        time_steps = np.linspace(0, (N - 1) / fs, len(sliced))  # Time steps in seconds
-        if tmax is None:
-            tmax = max(time_steps)
-            idx_tmax = len(time_steps)
+        if filtered:
+            ht = data['ht']
         else:
-            tmax, idx_tmax = _find_nearest(time_steps, tmax)
-        time_steps_crop = time_steps[0:idx_tmax]  # Crop to tmax
+            ht = data['ht']
+        t = data['time']
+        fs = data['samplingRate']
 
-        if pmax is None:
-            pmax = np.real(np.max(windowedFFTdB)) + overhead
-        if pmin is None:
-            pmin = pmax - delta - overhead
+        win_size = int(step * 10 ** -3 * fs) + 1
+        win_list = [np.zeros(len(ht)) for win in range(int(len(ht) / (1 * win_size)))]
+        ht_list = [np.zeros(len(ht)) for win in range(int(len(ht) / (1 * win_size)))]
+        fft_list = []
+        fft_list_dB = []
+        time_steps = []
+        df = data['freq'][-1] - data['freq'][-2]
+        freq_FFT = np.linspace(0, len(ht) / 2, num=int(len(ht) / df / 2))  # Frequency vector for the FFT
 
-        for i in range(len(windowedFFTdBNaN)):
-            windowedFFTdBNaN[i][
-                np.where(windowedFFTdBNaN[i] < pmin)] = np.nan  # Fill with NaN for transparent "floor level"
-            windowedFFTdBpmin[i][
-                np.where(windowedFFTdBpmin[i] < pmin)] = pmin  # Fill with pmin values for colored "floor level"
-        windowedFFTdBNaN[:, 0], windowedFFTdBNaN[:, -1] = pmin, pmin  # Create drop in cuurve at beggining and end
-        windowedFFTdBpmin[:, 0], windowedFFTdBpmin[:, -1] = pmin, pmin
+        for _, i in zip(win_list, range(len(win_list))):
+            win_list[i][i * win_size::] = ss.windows.tukey(int(len(ht) - i * win_size),
+                                                alpha=winAlpha)  # Alpha=0 is rectangualr window
+            time_steps.append(i * win_size / fs)
 
-        # Plotting
-        specs = []
-        subplot_titles = []
-        row = 0
-        fig = None
-        if 'waterfall' in plots:
-            row += 1
-            specs.append([{"type": "mesh3d"}])
-            subplot_titles.append(f'Waterfall')
-            fig = make_subplots(
-                rows=row, cols=1,
-                specs=specs,
-                vertical_spacing=0,
-                subplot_titles=subplot_titles
-            )
+        for _ht in range(len(ht_list)):
+            for i in range(len(ht)):
+                ht_list[_ht][i] = ht[i] * win_list[_ht][i]
+            _fft = 2 / len(ht_list[_ht]) * np.fft.fft(ht_list[_ht])
+            _fft = _fft[0:int(len(ht_list[_ht]) / 2)]
+            fr = _fft[idx_min:idx_max + 1]
+            if np.mean(20 * np.log10(np.abs(fr) / data['dBRef'])) >= Pmin:
+                fft_list.append(fr)
+                fft_list_dB.append(20 * np.log10(np.abs(fr) / data['dBRef']))
+            else:
+                fft_list.append(np.ones(len(fr)) * Pmin)
+                fft_list_dB.append(np.ones(len(fr)) * Pmin)
 
-            # Setting curves
-            X, Y = np.meshgrid(freq, time_steps_crop)
-            Z = windowedFFTdBNaN if fill_value == 'NaN' else windowedFFTdBpmin
+        for fr in fft_list_dB:
+            #         fr[0], fr[-1] = Pmin, Pmin
+            fr[-1] = Pmin  # Set last value to zero to create vertical line
+            fr[fr < Pmin] = Pmin  # Remove values before minimum desired sound pressure level
 
-            # Setting colormap
-            cm = plt.get_cmap(cmap)
-            cs = [int(np.average(windowedFFTdBpmin[i])) for i in range(len(windowedFFTdBpmin))]
-            cNorm = matplotlib.colors.Normalize(vmin=pmin, vmax=None)
-            scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
-            col1 = 255
-            col2 = 1
+        if winPlot:
+            fig, ax = plt.subplots(figsize=figsize)
+            ax.plot(t, ht)
+            ax.set_xlabel('Time [s]', fontsize=20)
+            ax.set_ylabel('Amplitude [Pa]', fontsize=20)
+            ax.set_xlim([0, (len(ht) - 1) / fs])
+            ax.grid()
+            ax.tick_params(labelsize=17)
+            for i in range(len(fft_list)):
+                ax.plot(t, win_list[i] * max(ht))
+                ax.plot(t, ht_list[i])
+            fig.tight_layout()
 
-            for i in range(len(windowedFFTdB)):
-                col = scalarMap.to_rgba(cs[i], alpha=alpha[0])
-                # Plotting curves
-                fig.add_trace(go.Scatter3d(x=[np.real(time_steps[i])] * len(Z[i]),
-                                           y=np.real(freq),
-                                           z=np.real(Z[i]),
-                                           mode='lines', showlegend=False,
-                                           hovertext=f'Time: {np.real(time_steps[i]):0.2f} [s]',
-                                           marker=dict(size=3,
-                                                       color=f"rgb({col[0] * col1 * col2},"
-                                                             f"{col[1] * col1 * col2}, "
-                                                             f"{col[2] * col1 * col2})",
-                                                       opacity=alpha[0])),
-                              row=row, col=1
-                              )
-                # Filling area below the curves (might lead to high display time, disable if needed)
-                if fill_below:
-                    for j in range(0, 2):
-                        try:
-                            verts, tri = _triangulate_curve(
-                                [np.real(time_steps[i])] * len(np.real(Z[i][j::])),
-                                np.real(freq)[j::],
-                                np.real(Z[i][j::]),
-                                pmin
-                            )
-                        except:
-                            verts, tri = _triangulate_curve(
-                                [np.real(time_steps[i])] * len(np.real(np.append(Z[i][j::],
-                                                                                 pmin))),
-                                np.real(np.append(freq[j::], freq[-1])),
-                                np.real(np.append(Z[i][j::], pmin)),
-                                pmin
-                            )
+        if waterfallPlot:
+            # Adjusts the aspect ratio and enlarges the figure (text does not enlarge)
+            fig = plt.figure(figsize=plt.figaspect(width) * size)
+            ax = fig.gca(projection='3d')
 
-                        x, y, z = verts.T
-                        I, J, K = tri.T
-                        fig.add_traces(go.Mesh3d(x=x, y=y, z=z,
-                                                 i=I,
-                                                 j=J,
-                                                 k=K,
-                                                 color=f"rgb({col[0] * col1},{col[1] * col1},{col[2] * col1})",
-                                                 opacity=alpha[1])
-                                       )
+            x = freq_FFT[idx_min:idx_max + 1]
 
-            # Setting figure layout
-            fig.update_layout(
-                scene_aspectmode='manual',
-                scene_aspectratio=dict(x=figRatio[0], y=figRatio[1], z=figRatio[2]),
-                scene_camera=dict(up=dict(x=0, y=0, z=1),
-                                  center=dict(x=0, y=0, z=0),
-                                  eye=dict(x=camera[0], y=camera[1], z=camera[2])
-                                  ),
-                scene=dict(
-                    xaxis_title='Time [s]',
-                    yaxis_title='Frequency [Hz]',
-                    zaxis_title='Magnitude [dB]',
-                    xaxis_color='black',
-                    yaxis_color='black',
-                    zaxis_color='black',
-                    xaxis=dict(nticks=10,
-                               dtick=time_tick,
-                               range=[0, tmax + 0.1],
-                               tickfont=dict(color='black', ),
-                               backgroundcolor="rgba(0, 0, 0, 0)",
-                               gridcolor="lightgrey",
-                               showbackground=True,
-                               zerolinecolor="lightgrey", ),
-                    yaxis=dict(range=x_range, type=xaxis,
-                               tickfont=dict(color='black', ),
-                               backgroundcolor="rgba(0, 0, 0, 0)",
-                               gridcolor="lightgrey",
-                               showbackground=True,
-                               zerolinecolor="lightgrey", ),
-                    zaxis=dict(range=[pmin - 0.1, pmax],
-                               tickfont=dict(color='black', ),
-                               backgroundcolor="rgba(0, 0, 0, 0)",
-                               gridcolor="lightgrey",
-                               showbackground=True,
-                               zerolinecolor="lightgrey", ),
-                ),
-                font=dict(color='black', size=14),
-                plot_bgcolor="rgba(0, 0, 0, 0)",
-                paper_bgcolor="rgba(0, 0, 0, 0)",
-                width=figsize[0], height=figsize[1],
-                margin=dict(r=0, b=0, l=0, t=0),
-            )
+            if tmax is None:
+                y = np.asarray(time_steps)
+            else:
+                tmax, idx_tmax = _find_nearest(time_steps, tmax)
+                y = np.asarray(time_steps[0:idx_tmax])
+            X, Y = np.meshgrid(x, y)
+            Z = np.asarray(fft_list_dB)
 
-        # Saving plot as .png
-        if saveFig and fig:
-            import os
+            # Set background to be transparent
+            if removeGridLines:
+                # make the grid lines transparent
+                ax.xaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                ax.yaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+                ax.zaxis._axinfo["grid"]['color'] = (1, 1, 1, 0)
+            ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+            ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+            ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+            ax.xaxis.set_tick_params(labelsize=15)
+            ax.yaxis.set_tick_params(labelsize=15)
+            ax.zaxis.set_tick_params(labelsize=15)
+            # ax.xaxis._set_scale('log')
 
-            directory = os.getcwd()
-            fig.write_image(directory + '\\' + saveFig + '_waterfall.png', scale=5)
-            print('Waterfall saved at ' + directory + '\\' + saveFig + '_waterfall.png')
+            # Changing color of lines and labels
+            if lcol is not None:
+                plt.rcParams['xtick.color'] = lcol
+                plt.rcParams['ytick.color'] = lcol
+                plt.rcParams['axes.labelcolor'] = lcol
+                plt.rcParams['axes.edgecolor'] = lcol
+                ax.xaxis._axinfo["grid"]['color'] = lcol
+                ax.yaxis._axinfo["grid"]['color'] = lcol
+                ax.zaxis._axinfo["grid"]['color'] = lcol
 
-        # Boolean to display plot
-        if show and fig:
-            fig.show()
+            # Labels and limits
+            ax.set_xlabel('Frequency [Hz]', fontsize=18, labelpad=20)
+            ax.set_xlim3d(xmin, xmax)
+            if tmax is None:
+                ax.set_ylabel('Time [s]', fontsize=18, labelpad=15)
+                ax.set_ylim3d(max(data['time']), tmin)
+            else:
+                ax.set_ylabel('Time [s]', fontsize=18, labelpad=15)
+                ax.set_ylim3d(tmax, tmin)
+            ax.set_zlabel('SPL [dB]', fontsize=18, labelpad=12)
+            if Pmax is None:
+                ax.set_zlim3d(Pmin, max(fft_list_dB[0]) + 10)
+            else:
+                ax.set_zlim3d(Pmin, Pmax + 10)
+
+            # Generate waterfall plot
+            if lines:
+                _colored_lines(fig, ax, X, Y, Z, label=data['label'],
+                               cmap=cmap, bar=bar)
+            if fill:  # Fills the area bellow the curves
+                # Make verts a list, verts[i] will be a list of (x,y) pairs defining polygon i
+                verts = []
+                # Set up the x sequence
+                xs = freq_FFT[idx_min:idx_max + 1]
+                if tmax is None:
+                    zs = time_steps
+                else:
+                    tmax, idx_tmax = _find_nearest(time_steps, tmax)
+                    zs = time_steps[0:idx_tmax]
+
+                for i in range(len(zs)):
+                    ys = fft_list_dB[i]
+                    verts.append(_polygon_under_graph(xs, ys, Pmin))
+
+                cm = plt.get_cmap(cmap)
+                if tmax is None:
+                    cs = [np.average(fft_list_dB[i]) for i in range(len(fft_list_dB))]
+                else:
+                    cs = [np.average(fft_list_dB[i]) for i in range(len(fft_list_dB[0:idx_tmax]))]
+                cNorm = matplotlib.colors.Normalize(vmin=Pmin, vmax=Pmax)
+                scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cm)
+                poly = PolyCollection(verts,
+                                        facecolors=scalarMap.to_rgba(cs),
+                                        edgecolors=0.5 * scalarMap.to_rgba(cs),
+                                        alpha=alpha,
+                                        linewidth=3)
+                scalarMap.set_array(cs)
+                if bar is True:
+                    fig.colorbar(scalarMap,
+                                    orientation='vertical',
+                                    fraction=0.025).set_label(label='SPL [dB]',
+                                                            size=15)
+                    cbar_ax = fig.axes[-1]
+                    cbar_ax.tick_params(labelsize=14)
+                ax.add_collection3d(poly, zs=zs, zdir='y')
+
+            ax.view_init(azim=azim, elev=elev)
+            fig.tight_layout()
+
+        # if saveFig:
+        #     fig.savefig(self.folder + '\\' + saveFig + '_waterfall.png',
+        #                 dpi=300,
+        #                 transparent=True)
+        plt.show()
+        if lcol is not None:
+            plt.rcParams.update(matplotlib.rcParamsDefault)
+    return figs
 
 
 def _curve_data_extractor_waterfall(sigObjs):
@@ -1383,26 +1265,3 @@ def _polygon_under_graph(xlist, ylist, Pmin):
     ylist[0] = Pmin
     ylist[-1] = Pmin
     return [*zip(xlist, ylist)]
-
-
-def _triangulate_curve(x, y, z, Pmin):
-    """
-    Creates triangles along the curve points
-    """
-
-    if len(x) != len(y) != len(z):
-        raise ValueError("The  lists x, y, z, must have the same length")
-    n = len(x)
-    if n % 2:
-        raise ValueError("The length of lists x, y, z must be an even number")
-    pts3d = np.vstack((x, y, z)).T
-    pts3dp = np.array([[x[2 * k + 1], y[2 * k + 1], Pmin] for k in range(1, n // 2 - 1)])
-    pts3d = np.vstack((pts3d, pts3dp))
-
-    # Triangulate the histogram bars:
-    tri = [[0, 1, 2], [0, 2, n]]
-    for k, i in zip(list(range(n, n - 3 + n // 2)), list(range(3, n - 4, 2))):
-        tri.extend([[k, i, i + 1], [k, i + 1, k + 1]])
-    tri.extend([[n - 3 + n // 2, n - 3, n - 2], [n - 3 + n // 2, n - 2, n - 1]])
-
-    return pts3d, np.array(tri)
