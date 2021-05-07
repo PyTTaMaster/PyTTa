@@ -5,7 +5,7 @@ This module does calculations compliant to ISO 3382-1 to obtain room acoustic pa
 
 It has an implementation of Lundeby et al. [1] algorithm
 to estimate the correction factor for the cumulative integral, as suggested
-by the ISO 3382-1.
+by the ISO 3382-1. 
 
 Use this module through the function 'analyse', which receives an one channel
 SignalObj or ImpulsiveResponse and calculate the room acoustic parameters
