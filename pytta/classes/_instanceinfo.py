@@ -63,7 +63,7 @@ class RememberInstanceCreationInfo:
             raise error
         finally:
             del self._outer_frame
-        # make sure we have no permament inter frame reference
+        # make sure we have no permanent inter frame reference
         # which could hinder garbage collection
         try:
             for name in nameparts[1:]:

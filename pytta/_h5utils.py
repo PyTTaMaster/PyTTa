@@ -68,7 +68,7 @@ def list_w_int_parser(attr):
             newlist = attr.replace('[', '').replace(']', '')
             # removing ','
             newlist = newlist.replace(',', '')
-            # spliting elements
+            # splitting elements
             newlist = newlist.split(' ')
             # constructing new list with ints
             return [int(x) for x in newlist]
