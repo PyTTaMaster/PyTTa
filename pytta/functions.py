@@ -42,7 +42,7 @@ import h5py
 from typing import Union, List
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
-                    Analysis
+                    Analysis, OctFilter
 from pytta.classes._base import ChannelsList, ChannelObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
 from pytta import _h5utils as _h5
@@ -119,6 +119,27 @@ def write_wav(fileName, signalIn):
     samplingRate = signalIn.samplingRate
     data = signalIn.timeSignal
     return wf.write(fileName if '.wav' in fileName else fileName+'.wav', samplingRate, data)
+
+
+def SPL(signal, nthOct=3, minFreq=100, maxFreq=4000):
+    """
+    Calculate the `signal`'s Sound Pressure Level
+
+    The calculations are made by frequency bands and ranges from `minFreq` to
+    `maxFreq` with `nthOct` bands per octave.
+
+    Returns
+    -------
+        Analysis: The sound pressure level packed into an Analysis object.
+
+    """
+    with OctFilter(order=4, nthOct=nthOct, minFreq=minFreq, maxFreq=maxFreq,
+                   base=10, refFreq=1000, samplingRate=signal.samplingRate) as ofb:
+        fsignal = ofb.filter(signal)
+    out = []
+    for filtsignal in fsignal:
+        out.append(Analysis('L', nthOct, minFreq, maxFreq, filtsignal.spl()))
+    return out if len(out) > 1 else out[0]
 
 
 def merge(signal1, *signalObjects):
