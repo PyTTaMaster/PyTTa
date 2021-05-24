@@ -1121,7 +1121,7 @@ def waterfall(sigObjs, step=2**11, n=2**11, fmin=None, fmax=None, pmin=None, pma
 
         # Apply rolling window
         sliced = np.asarray(list(more_itertools.windowed(ht, n=n, step=step, fillvalue=0)))
-        window = np.asarray([ss.tukey(n, alpha=0) for s in sliced])  # Tukey window (alpha=0 is a rectangular window)
+        window = np.asarray([ss.tukey(n, alpha=winAlpha) for s in sliced])  # Tukey window (alpha=0 is a rectangular window)
         windowed = sliced * window  # Apply window
         windowedFFT = abs(2 / n * fft(windowed))  # Apply FFT
         windowedFFT = windowedFFT[:, idx_min_FFT - fpad: idx_max_FFT + 1 + fpad]  # Crop the FFT
