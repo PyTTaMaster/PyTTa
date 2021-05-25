@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
 
 """
-This module does calculations compliant to ISO 3382-1 in order to obtain room
-acoustic paramters. It has an implementation of Lundeby et al. [1] algorithm
+This module does calculations compliant to ISO 3382-1 to obtain room acoustic parameters.
+
+It has an implementation of Lundeby et al. [1] algorithm
 to estimate the correction factor for the cumulative integral, as suggested
-by the ISO 3382-1.
+by the ISO 3382-1. 
 
 Use this module through the function 'analyse', which receives an one channel
 SignalObj or ImpulsiveResponse and calculate the room acoustic parameters
 especified in the positional input arguments. For more information check
 pytta.rooms.analyse's documentation.
+
+Please, use and test the RoomParameters class, which provides several
+energy parameters for monaural room impulse response.
 
 Available functions:
 
@@ -18,6 +22,7 @@ Available functions:
     >>> pytta.rooms.strength_factor(...)
     >>> pytta.rooms.G_Lpe
     >>> pytta.rooms.G_Lps
+    >>> pytta.rooms.RoomParameters(SignalObj, ...)
 
 Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -28,11 +33,265 @@ Authors:
 
 import numpy as np
 import matplotlib.pyplot as plt
-from numba import njit
+# from numba import njit
 from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
-from pytta.utils import fractional_octave_frequencies as FOF
+from pytta.utils import fractional_octave_frequencies as FOF, freq_to_band
 import traceback
 import copy as cp
+
+
+class RoomParameters(Analysis):
+    """Room monaural parameters."""
+
+    def __init__(self, ir: SignalObj, nthOct: int = 1,
+                 minFreq: float = 2e1, maxFreq: float = 2e4, *args,
+                 bypassLundeby: bool = False, suppressWarnings: bool = True,
+                 ircut: float = None, **kwargs):
+        """
+        Room acoustical parameters for quality analysis.
+
+        Provides interface to estimate several room parameters based on
+        the energy distribution of the impulse response.
+
+        Parameters
+        ----------
+        ir : SignalObj
+            Monaural room impulse response signal.
+        nthOct : int, optional
+            Number of bands per octave. The default is 1.
+        minFreq : float, optional
+            Central frequency of the first band. The default is 2e1.
+        maxFreq : float, optional
+            Central frequency of the last band. The default is 2e4.
+        *args : Tuple
+            See Analysis.
+        bypassLundeby : bool, optional
+            Bypass Lundeby calculation, or not. The default is False.
+        suppressWarnings : bool, optional
+            Supress Lundeby warnings. The default is True.
+        ircut : float, optional
+            Cut the IR and throw away the silence tail. The default is None.
+        **kwargs : Dict
+            See Analysis.
+
+        Returns
+        -------
+        None.
+
+        """
+        _ir = ir.IR if type(ir) == ImpulsiveResponse else ir
+        minBand = freq_to_band(minFreq, nthOct, 1000, 10)
+        maxBand = freq_to_band(maxFreq, nthOct, 1000, 10)
+        nbands = maxBand - minBand + 1
+        super().__init__('mixed', nthOct, minFreq, maxFreq, nbands*[0], *args, **kwargs)
+        self.ir = crop_IR(_ir, ircut)
+        fs = ir.samplingRate
+        of = OctFilter(order=4,
+                       nthOct=self.nthOct,
+                       samplingRate=fs,
+                       minFreq=self.minBand,
+                       maxFreq=self.maxBand,
+                       refFreq=1000,
+                       base=10)
+        filtir, = of(self.ir)
+        self._params = self.estimate_energy_parameters(filtir, self.bands, bypassLundeby, suppressWarnings)
+        return
+
+    @staticmethod
+    def estimate_energy_parameters(filtir: SignalObj, bands:np.ndarray,
+                                   bypassLundeby: bool = False,
+                                   suppressWarnings: bool = False):
+        """
+        Estimate the Impulse Response energy parameters.
+
+        Parameters
+        ----------
+        bypassLundeby : bool
+            Whether to bypass calculation of Lundeby IR improvements or not. The default is False.
+        suppressWarnings : bool
+            If supress warnings about IR quality and the bypassing of Lundeby calculations. The default is False.
+
+        Returns
+        -------
+        params : Dict[str, np.ndarray]
+            A dict with parameters by name.
+
+        """
+        listEDC = []
+        for ch in range(filtir.numChannels):
+            signal = filtir[ch]
+            band = bands[ch]
+            timeSignal = signal.timeSignal[:]
+            timeVector = signal.timeVector[:]
+            samplingRate = signal.samplingRate
+            numSamples = signal.numSamples
+            numChannels = signal.numChannels
+            timeLength = signal.timeLength
+            energyDecay, energyVector, lundebyParams = \
+                energy_decay_calculation(band,
+                                         timeSignal,
+                                         timeVector,
+                                         samplingRate,
+                                         numSamples,
+                                         numChannels,
+                                         timeLength,
+                                         bypassLundeby,
+                                         suppressWarnings=suppressWarnings)
+            listEDC.append([energyDecay, energyVector])
+        fs = filtir.samplingRate
+        params = {}
+        params['rms'] = filtir.rms()
+        params['SPL'] = filtir.spl()
+        sqrIR = filtir.timeSignal**2
+        params['D50'] = definition(sqrIR, fs)
+        params['C80'] = clarity(sqrIR, fs)
+        params['Ts'] = central_time(sqrIR, filtir.timeVector)
+        params['STearly'] = st_early(sqrIR, fs)
+        params['STlate'] = st_late(sqrIR, fs)
+        params['EDT'] = reverberation_time('EDT', listEDC)
+        params['T20'] = reverberation_time(20, listEDC)
+        params['T30'] = reverberation_time(30, listEDC)
+        # self._params['BR'], self._params['TR'] = timbre_ratios(self.T20)
+        return params
+
+    @property
+    def parameters(self):
+        """List of parameters names."""
+        return tuple(self._params.keys())
+
+    @property
+    def rms(self):
+        """Effective IR amplitude by frequency `band`."""
+        return self._params['rms']
+
+    @property
+    def SPL(self):
+        """Equivalent IR level by frequency `band`."""
+        return self._params['SPL']
+
+    @property
+    def D50(self):
+        """Room Definition by frequency `band`."""
+        return self._params['D50']
+
+    @property
+    def C80(self):
+        """Effective IR amplitude, by frequency `band`."""
+        return self._params['C80']
+
+    @property
+    def Ts(self):
+        """Central Time by frequency `band`."""
+        return self._params['Ts']
+
+    @property
+    def STearly(self):
+        """Early energy distribution by frequency `band`."""
+        return self._params['STearly']
+
+    @property
+    def STlate(self):
+        """Late energy distribution by frequency `band`."""
+        return self._params['STlate']
+
+    @property
+    def EDT(self):
+        """Early Decay Time by frequency `band`."""
+        return self._params['EDT']
+
+    @property
+    def T20(self):
+        """Reverberation time with 20 dB decay, by frequency `band`."""
+        return self._params['T20']
+
+    @property
+    def T30(self):
+        """Reverberation time with 30 dB decay, by frequency `band`."""
+        return self._params['T30']
+
+    # @property
+    # def BR(self):
+    #     """Reverberation time with 30 dB decay, by frequency `band`."""
+    #     return self._params['BR']
+
+    # @property
+    # def TR(self):
+    #     """Reverberation time with 30 dB decay, by frequency `band`."""
+    #     return self._params['TR']
+
+    def plot_param(self, name: str, **kwargs):
+        """
+        Plot a chart with the parameter passed in as `name`.
+
+
+        Parameters
+        ----------
+        name : str
+            Room parameter name, e.g. `'T20' | 'C80' | 'SPL'`, etc.
+        kwargs: Dict
+            All kwargs accepted by `Analysis.plot_bar`.
+
+        Returns
+        -------
+        f : matplotlib.Figure
+            The figure of the plot chart.
+
+        """
+        self.data = self._params[name]
+        self.ylabel = name + ' of room IR'
+        f = self.plot(**kwargs)
+        self.data = np.zeros(self.bands.shape)
+        return f
+
+    def plot_rms(self, **kwargs):
+        """Plot a chart for the impulse response's `rms` by frequency `bands`."""
+        return self.plot_param('rms', **kwargs)
+
+    def plot_SPL(self, **kwargs):
+        """Plot a chart for the impulse response's `SPL` by frequency `bands`."""
+        return self.plot_param('SPL', **kwargs)
+
+    def plot_C80(self, **kwargs):
+        """Plot a chart for the impulse response's `C80` by frequency `bands`."""
+        return self.plot_param('C80', **kwargs)
+
+    def plot_D50(self, **kwargs):
+        """Plot a chart for the impulse response's `D50` by frequency `bands`."""
+        return self.plot_param('D50', **kwargs)
+
+    def plot_T20(self, **kwargs):
+        """Plot a chart for the impulse response's `T20` by frequency `bands`."""
+        return self.plot_param('T20', **kwargs)
+
+    def plot_T30(self, **kwargs):
+        """Plot a chart for the impulse response's `T30` by frequency `bands`."""
+        return self.plot_param('T30', **kwargs)
+
+    def plot_Ts(self, **kwargs):
+        """Plot a chart for the impulse response's `Ts` by frequency `bands`."""
+        return self.plot_param('Ts', **kwargs)
+
+    def plot_EDT(self, **kwargs):
+        """Plot a chart for the impulse response's `EDT` by frequency `bands`."""
+        return self.plot_param('EDT', **kwargs)
+
+    def plot_STearly(self, **kwargs):
+        """Plot a chart for the impulse response's `STearly` by frequency `bands`."""
+        return self.plot_param('STearly', **kwargs)
+
+    def plot_STlate(self, **kwargs):
+        """Plot a chart for the impulse response's `STlate` by frequency `bands`."""
+        return self.plot_param('STlate', **kwargs)
+
+    # def plot_BR(self):
+    #     """Plot a chart for the impulse response's `BR` by frequency `bands`."""
+    #     return self.plot_param('BR')
+
+    # def plot_TR(self):
+    #     """Plot a chart for the impulse response's `TR` by frequency `bands`."""
+    #     return self.plot_param('TR')
+
+
 
 
 def _filter(signal,
@@ -53,13 +312,10 @@ def _filter(signal,
     return result[0]
 
 
-@njit
+# @njit
 def _level_profile(timeSignal, samplingRate,
-                    numSamples, numChannels, blockSamples=None):
-    """
-    Gets h(t) in octave bands and do the local time averaging in nblocks.
-    Returns h^2_averaged(block).
-    """
+                   numSamples, numChannels, blockSamples=None):
+    """Get h(t) in octave bands and do the local time averaging in nblocks. Returns h^2_averaged(block)."""
     def mean_squared(x):
         return np.mean(x**2)
 
@@ -81,7 +337,7 @@ def _level_profile(timeSignal, samplingRate,
     return profile, timeStamp
 
 
-@njit
+# @njit
 def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     squaredIR = timeSignal**2
     # assume the last 10% of the IR is noise, and calculate its noise level
@@ -130,7 +386,7 @@ def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     return startSample
 
 
-@njit
+# @njit
 def _circular_time_shift(timeSignal, threshold=20):
     # find the first sample where inputSignal level > 20 dB or > bgNoise level
     startSample = _start_sample_ISO3382(timeSignal, threshold)
@@ -138,7 +394,7 @@ def _circular_time_shift(timeSignal, threshold=20):
     return (newTimeSignal, startSample)
 
 
-@njit
+# @njit
 def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
                         numChannels, timeLength, suppressWarnings=True):
     returnTuple = (np.float32(0), np.float32(0), np.int32(0), np.float32(0))
@@ -290,7 +546,7 @@ def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
-@njit
+# @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
                              numSamples, numChannels, timeLength, bypassLundeby, suppressWarnings=True):
     """Calculate the Energy Decay Curve."""
@@ -390,7 +646,7 @@ def cumulative_integration(inputSignal,
             plot_lundeby()
     return listEDC
 
-@njit
+# @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
     """Interpolate the EDT to get the reverberation time."""
     if not np.any(energyDecay):
@@ -406,7 +662,7 @@ def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
     return -60/c[1]
 
 
-def reverberation_time(decay, nthOct, samplingRate, listEDC):
+def reverberation_time(decay, listEDC):
     """Call the reverberation time regression."""
     try:
         decay = int(decay)
@@ -424,7 +680,7 @@ def reverberation_time(decay, nthOct, samplingRate, listEDC):
     for ED in listEDC:
         edc, edv = ED
         RT.append(reverb_time_regression(edc, edv, y1, y2))
-    return RT
+    return np.array(RT, dtype='float32')
 
 
 def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
@@ -606,11 +862,12 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
 
 def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     """
+    Calculate strength factor (G) for theaters and big audience intended places.
+
     Reference:
         Christensen, C. L.; Rindel, J. H. APPLYING IN-SITU RECALIBRATION FOR
         SOUND STRENGTH MEASUREMENTS IN AUDITORIA.
     """
-
     # TO DO: docs
     S0 = 1 # [m2]
 
@@ -637,47 +894,120 @@ def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     return G
 
 
-def _clarity(temp, signalObj, nthOct, **kwargs):  # TODO
+def definition(sqrIR: np.ndarray, fs: int, t: int = 50) -> np.ndarray:
     """
+    Room parameter.
+
+    Parameters
+    ----------
+    sqrIR : np.ndarray
+        DESCRIPTION.
+    t_ms : int, optional
+        DESCRIPTION. The default is 50.
+
+    Returns
+    -------
+    definition : np.ndarray
+        The room "Definition" parameter, in percentage [%].
 
     """
-#    try:
-#        temp = int(temp)*signalObj.samplingRate//1000
-#    except ValueError:
-#        raise ValueError("The temp parameter must be an integer or a string \
-#                         of integers, e.g. (temp='80' | 80).")
-#    output = []
-#    for ch in range(signalObj.num_channels()):
-#        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
-#        C = []
-#        for bd in range(len(filtResp)):
-#            C.append(round(np.sum(filtResp[bd][:temp], axis=0)
-#                           / np.sum(filtResp[bd][temp:], axis=0)[0], 2))
-#        output.append(C)
-#    return output
-    pass
+    t_ms = t * fs // 1000
+    sumSIRt = sqrIR.sum(axis=0)  # total sum of squared IR
+    sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
+    definition = np.round(100 * (sumSIRi / sumSIRt), 2)  # [%]
+    return definition
 
 
-def _definition(temp, signalObj, nthOct, **kwargs):  # TODO
+def clarity(sqrIR: np.ndarray, fs: int, t: int = 80) -> np.ndarray:
     """
+    Room parameter.
+
+    Parameters
+    ----------
+    sqrIR : np.ndarray
+        DESCRIPTION.
+    t_ms : int, optional
+        DESCRIPTION. The default is 80.
+
+    Returns
+    -------
+    clarity : np.ndarray
+        The room "Clarity" parameter, in decibel [dB].
 
     """
-#    try:
-#        temp = int(temp)*signalObj.samplingRate//1000
-#    except ValueError:
-#        raise ValueError("The temp parameter must be an integer or a string \
-#                         of integers, e.g. (temp='50' | 50).")
-#    output = []
-#    for ch in range(signalObj.num_channels()):
-#        filtResp = filtered_response(signalObj[ch], nthOct, **kwargs)
-#        D = []
-#        for bd in range(len(filtResp)):
-#            D.append(round(10*np.log10(
-#                        np.sum(filtResp[bd][:temp], axis=0)
-#                        / np.sum(filtResp[bd][:], axis=0))[0], 2))
-#        output.append(D)
-#    return output
-    pass
+    t_ms = t * fs // 1000
+    sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
+    sumSIRe = sqrIR[t_ms:].sum(axis=0)  # sum of ending portion of squared IR
+    clarity = np.round(10 * np.log10(sumSIRi / sumSIRe), 2)  # [dB]
+    return clarity
+
+
+def central_time(sqrIR: np.ndarray, tstamp: np.ndarray) -> np.ndarray:
+    """
+    Room parameter.
+
+    Parameters
+    ----------
+    sqrIR : np.ndarray
+        Squared room impulsive response.
+    tstamp : np.ndarray
+        Time stamps of each IR sample.
+
+    Returns
+    -------
+    central_time : np.ndarray
+        The time instant that balance of energy is equal before and after it.
+
+    """
+    sumSIR = sqrIR.sum(axis=0)
+    sumTSIR = (tstamp[:, None] * sqrIR).sum(axis=0)
+    central_time = (sumTSIR / sumSIR) * 1000  # milisseconds
+    return central_time
+
+
+def st_early(sqrIR: np.ndarray, fs: int) -> np.ndarray:
+    """
+    Room parameter.
+
+    Parameters
+    ----------
+    sqrIR : np.ndarray
+        DESCRIPTION.
+
+    Returns
+    -------
+    STearly : np.ndarray
+        DESCRIPTION.
+
+    """
+    ms = fs / 1000
+    sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
+    sum20ms = sqrIR[int(20 * ms):int(100 * ms)].sum(axis=0)
+    STearly = 10 * np.log10(sum20ms / sum10ms)
+    return np.round(STearly, 4)
+
+
+def st_late(sqrIR: np.ndarray, fs: int) -> np.ndarray:
+    """
+    Room parameter.
+
+    Parameters
+    ----------
+    sqrIR : np.ndarray
+        DESCRIPTION.
+
+    Returns
+    -------
+    STlate : np.ndarray
+        DESCRIPTION.
+
+    """
+    ms = fs / 1000
+    sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
+    sum100ms = sqrIR[int(100 * ms):int(1000 * ms)].sum(axis=0)
+    STlate = 10 * np.log10(sum100ms / sum10ms)
+    return np.round(STlate, 4)
+
 
 def crop_IR(SigObj, IREndManualCut):
     """Cut the impulse response at background noise level."""
@@ -719,12 +1049,15 @@ def crop_IR(SigObj, IREndManualCut):
                        signalType='energy')
     return result
 
+
 def analyse(obj, *params,
             bypassLundeby=False,
             plotLundebyResults=False,
             suppressWarnings=False,
             IREndManualCut=None, **kwargs):
     """
+    Room analysis over a single SignalObj.
+
     Receives an one channel SignalObj or ImpulsiveResponse and calculate the
     room acoustic parameters especified in the positional input arguments.
     Calculates reverberation time, definition and clarity.
@@ -823,7 +1156,7 @@ def analyse(obj, *params,
 
     if SigObj.numChannels > 1:
         raise TypeError("'obj' can't contain more than one channel.")
-    samplingRate = SigObj.samplingRate
+    # samplingRate = SigObj.samplingRate
 
     SigObj = crop_IR(SigObj, IREndManualCut)
 
@@ -847,7 +1180,7 @@ def analyse(obj, *params,
         if not isinstance(RTdecay,(int)):
             RTdecay = 20
         nthOct = kwargs['nthOct']
-        RT = reverberation_time(RTdecay, nthOct, samplingRate, listEDC)
+        RT = reverberation_time(RTdecay, listEDC)
         RTtemp = Analysis(anType='RT', nthOct=nthOct,
                           minBand=kwargs['minFreq'],
                           maxBand=kwargs['maxFreq'],
