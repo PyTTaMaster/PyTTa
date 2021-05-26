@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-This module does calculations compliant to ISO 3382-1 to obtain room acoustic parameters.
+Calculations compliant to ISO 3382-1 to obtain room acoustic parameters.
 
 It has an implementation of Lundeby et al. [1] algorithm
 to estimate the correction factor for the cumulative integral, as suggested
-by the ISO 3382-1. 
+by the ISO 3382-1.
 
 Use this module through the function 'analyse', which receives an one channel
 SignalObj or ImpulsiveResponse and calculate the room acoustic parameters
@@ -45,7 +45,9 @@ class RoomParameters(Analysis):
 
     def __init__(self, ir: SignalObj, nthOct: int = 1,
                  minFreq: float = 2e1, maxFreq: float = 2e4, *args,
-                 bypassLundeby: bool = False, suppressWarnings: bool = True,
+                 plotLundeby: bool = False,
+                 bypassLundeby: bool = False,
+                 suppressWarnings: bool = True,
                  ircut: float = None, **kwargs):
         """
         Room acoustical parameters for quality analysis.
@@ -85,31 +87,28 @@ class RoomParameters(Analysis):
         nbands = maxBand - minBand + 1
         super().__init__('mixed', nthOct, minFreq, maxFreq, nbands*[0], *args, **kwargs)
         self.ir = crop_IR(_ir, ircut)
-        fs = ir.samplingRate
-        of = OctFilter(order=4,
-                       nthOct=self.nthOct,
-                       samplingRate=fs,
-                       minFreq=self.minBand,
-                       maxFreq=self.maxBand,
-                       refFreq=1000,
-                       base=10)
-        filtir, = of(self.ir)
-        self._params = self.estimate_energy_parameters(filtir, self.bands, bypassLundeby, suppressWarnings)
+        self._params = self.estimate_energy_parameters(self.ir, self.bands, plotLundeby,
+                                                       bypassLundeby, suppressWarnings,
+                                                       nthOct=nthOct, minFreq=minFreq,
+                                                       maxFreq=maxFreq)
         return
 
     @staticmethod
-    def estimate_energy_parameters(filtir: SignalObj, bands:np.ndarray,
+    def estimate_energy_parameters(ir: SignalObj, bands: np.ndarray,
+                                   plotLundeby: bool = False,
                                    bypassLundeby: bool = False,
-                                   suppressWarnings: bool = False):
+                                   suppressWarnings: bool = False, **kwargs):
         """
         Estimate the Impulse Response energy parameters.
 
         Parameters
         ----------
         bypassLundeby : bool
-            Whether to bypass calculation of Lundeby IR improvements or not. The default is False.
+            Whether to bypass calculation of Lundeby IR improvements or not.
+            The default is False.
         suppressWarnings : bool
-            If supress warnings about IR quality and the bypassing of Lundeby calculations. The default is False.
+            If supress warnings about IR quality and the bypassing of Lundeby calculations.
+            The default is False.
 
         Returns
         -------
@@ -117,37 +116,15 @@ class RoomParameters(Analysis):
             A dict with parameters by name.
 
         """
-        listEDC = []
-        for ch in range(filtir.numChannels):
-            signal = filtir[ch]
-            band = bands[ch]
-            timeSignal = signal.timeSignal[:]
-            timeVector = signal.timeVector[:]
-            samplingRate = signal.samplingRate
-            numSamples = signal.numSamples
-            numChannels = signal.numChannels
-            timeLength = signal.timeLength
-            energyDecay, energyVector, lundebyParams = \
-                energy_decay_calculation(band,
-                                         timeSignal,
-                                         timeVector,
-                                         samplingRate,
-                                         numSamples,
-                                         numChannels,
-                                         timeLength,
-                                         bypassLundeby,
-                                         suppressWarnings=suppressWarnings)
-            listEDC.append([energyDecay, energyVector])
-        fs = filtir.samplingRate
+        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings, **kwargs)
         params = {}
-        params['rms'] = filtir.rms()
-        params['SPL'] = filtir.spl()
-        sqrIR = filtir.timeSignal**2
-        params['D50'] = definition(sqrIR, fs)
-        params['C80'] = clarity(sqrIR, fs)
-        params['Ts'] = central_time(sqrIR, filtir.timeVector)
-        params['STearly'] = st_early(sqrIR, fs)
-        params['STlate'] = st_late(sqrIR, fs)
+        params['rms'] = fhSignal.rms()
+        params['SPL'] = fhSignal.spl()
+        params['Ts'] = central_time(fhSignal.timeSignal**2, fhSignal.timeVector)
+        params['D50'] = definition(listEDC, ir.samplingRate)
+        params['C80'] = clarity(listEDC, ir.samplingRate)
+        params['STearly'] = st_early(listEDC, ir.samplingRate)
+        params['STlate'] = st_late(listEDC, ir.samplingRate)
         params['EDT'] = reverberation_time('EDT', listEDC)
         params['T20'] = reverberation_time(20, listEDC)
         params['T30'] = reverberation_time(30, listEDC)
@@ -237,51 +214,50 @@ class RoomParameters(Analysis):
             The figure of the plot chart.
 
         """
-        self.data = self._params[name]
-        self.ylabel = name + ' of room IR'
+        self._data = self._params[name]
         f = self.plot(**kwargs)
-        self.data = np.zeros(self.bands.shape)
+        self._data = np.zeros(self.bands.shape)
         return f
 
-    def plot_rms(self, **kwargs):
+    def plot_rms(self, label='RMS', **kwargs):
         """Plot a chart for the impulse response's `rms` by frequency `bands`."""
-        return self.plot_param('rms', **kwargs)
+        return self.plot_param('rms', dataLabel=label, **kwargs)
 
-    def plot_SPL(self, **kwargs):
+    def plot_SPL(self, label='SPL', yaxis='Level [dB]', **kwargs):
         """Plot a chart for the impulse response's `SPL` by frequency `bands`."""
-        return self.plot_param('SPL', **kwargs)
+        return self.plot_param('SPL', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_C80(self, **kwargs):
+    def plot_C80(self, label='C80', yaxis='Clarity [dB]', **kwargs):
         """Plot a chart for the impulse response's `C80` by frequency `bands`."""
-        return self.plot_param('C80', **kwargs)
+        return self.plot_param('C80', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_D50(self, **kwargs):
+    def plot_D50(self, label='D50', yaxis='Definition [%]', **kwargs):
         """Plot a chart for the impulse response's `D50` by frequency `bands`."""
-        return self.plot_param('D50', **kwargs)
+        return self.plot_param('D50', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_T20(self, **kwargs):
+    def plot_T20(self, label='T20', yaxis='Reverberation time [s]', **kwargs):
         """Plot a chart for the impulse response's `T20` by frequency `bands`."""
-        return self.plot_param('T20', **kwargs)
+        return self.plot_param('T20', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_T30(self, **kwargs):
+    def plot_T30(self, label='T30', yaxis='Reverberation time [s]', **kwargs):
         """Plot a chart for the impulse response's `T30` by frequency `bands`."""
-        return self.plot_param('T30', **kwargs)
+        return self.plot_param('T30', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_Ts(self, **kwargs):
+    def plot_Ts(self, label='Ts', yaxis='Central time [s]', **kwargs):
         """Plot a chart for the impulse response's `Ts` by frequency `bands`."""
-        return self.plot_param('Ts', **kwargs)
+        return self.plot_param('Ts', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_EDT(self, **kwargs):
+    def plot_EDT(self, label='EDT', yaxis='Early Decay Time [s]', **kwargs):
         """Plot a chart for the impulse response's `EDT` by frequency `bands`."""
-        return self.plot_param('EDT', **kwargs)
+        return self.plot_param('EDT', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_STearly(self, **kwargs):
+    def plot_STearly(self, label='STearly', yaxis='Early reflection level [dB]', **kwargs):
         """Plot a chart for the impulse response's `STearly` by frequency `bands`."""
-        return self.plot_param('STearly', **kwargs)
+        return self.plot_param('STearly', dataLabel=label, yLabel=yaxis, **kwargs)
 
-    def plot_STlate(self, **kwargs):
+    def plot_STlate(self, label='STlate', yaxis='Late reflection level [dB]', **kwargs):
         """Plot a chart for the impulse response's `STlate` by frequency `bands`."""
-        return self.plot_param('STlate', **kwargs)
+        return self.plot_param('STlate', dataLabel=label, yLabel=yaxis, **kwargs)
 
     # def plot_BR(self):
     #     """Plot a chart for the impulse response's `BR` by frequency `bands`."""
@@ -546,11 +522,13 @@ def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 
     return c[0][0], c[1][0], np.int32(interIdx[0]), BGL
 
+
 # @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
-                             numSamples, numChannels, timeLength, bypassLundeby, suppressWarnings=True):
+                             numSamples, numChannels, timeLength, bypassLundeby,
+                             suppressWarnings=True):
     """Calculate the Energy Decay Curve."""
-    if not bypassLundeby:
+    if bypassLundeby is False:
         lundebyParams = \
             _Lundeby_correction(band,
                                 timeSignal,
@@ -586,6 +564,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
         energyDecay = np.zeros(truncatedTimeVector.size)
     return (energyDecay, truncatedTimeVector, lundebyParams)
 
+
 def cumulative_integration(inputSignal,
                            bypassLundeby,
                            plotLundebyResults,
@@ -597,46 +576,39 @@ def cumulative_integration(inputSignal,
         c0, c1, interIdx, BGL = lundebyParams
         fig = plt.figure(figsize=(10, 5))
         ax = fig.add_axes([0.08, 0.15, 0.75, 0.8], polar=False,
-                            projection='rectilinear', xscale='linear')
-        line = c1*timeVector + c0
-        ax.plot(timeVector, 10*np.log10(timeSignal**2), label='IR')
+                          projection='rectilinear', xscale='linear')
+        line = c1*inputSignal.timeVector + c0
+        ax.plot(inputSignal.timeVector, 10*np.log10(inputSignal.timeSignal**2), label='IR')
         ax.axhline(y=10*np.log10(BGL), color='#1f77b4', label='BG Noise', c='red')
-        ax.plot(timeVector, line,label='Late slope', c='black')
-        ax.axvline(x=interIdx/samplingRate, label='Truncation point', c='green')
+        ax.plot(inputSignal.timeVector, line, label='Late slope', c='black')
+        ax.axvline(x=interIdx/inputSignal.samplingRate, label='Truncation point', c='green')
         ax.grid()
         ax.set_xlabel('Time [s]')
         ax.set_ylabel('Amplitude [dBFS]')
         plt.title('{0:.0f} [Hz]'.format(band))
         ax.legend(loc='best', shadow=True, fontsize='x-large')
 
-    timeSignal = inputSignal.timeSignal[:]
+    # timeSignal = inputSignal.timeSignal[:]
     # Substituted by SignalObj.crop in analyse function
     # timeSignal, sampleShift = _circular_time_shift(timeSignal)
     # del sampleShift
-    hSignal = SignalObj(timeSignal,
-                        inputSignal.lengthDomain,
-                        inputSignal.samplingRate)
-    hSignal = _filter(hSignal, **kwargs)
+    # hSignal = SignalObj(timeSignal, inputSignal.lengthDomain, inputSignal.samplingRate)
+    hSignal = _filter(inputSignal, **kwargs)
     bands = FOF(nthOct=kwargs['nthOct'],
-                freqRange=[kwargs['minFreq'], kwargs['maxFreq']])[:,1]
+                freqRange=[kwargs['minFreq'],
+                           kwargs['maxFreq']])[:, 1]
     listEDC = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
         band = bands[ch]
-        timeSignal = cp.copy(signal.timeSignal[:])
-        timeVector = signal.timeVector[:]
-        samplingRate = signal.samplingRate
-        numSamples = signal.numSamples
-        numChannels = signal.numChannels
-        timeLength = signal.timeLength
         energyDecay, energyVector, lundebyParams = \
             energy_decay_calculation(band,
-                                     timeSignal,
-                                     timeVector,
-                                     samplingRate,
-                                     numSamples,
-                                     numChannels,
-                                     timeLength,
+                                     signal.timeSignal,
+                                     signal.timeVector,
+                                     signal.samplingRate,
+                                     signal.numSamples,
+                                     signal.numChannels,
+                                     signal.timeLength,
                                      bypassLundeby,
                                      suppressWarnings=suppressWarnings)
         listEDC.append((energyDecay, energyVector))
@@ -644,7 +616,7 @@ def cumulative_integration(inputSignal,
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
             #             lundebyParams)
             plot_lundeby()
-    return listEDC
+    return listEDC, hSignal
 
 # @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
@@ -894,7 +866,7 @@ def strength_factor(Lpe, Lpe_revCh, V_revCh, T_revCh, Lps_revCh, Lps_inSitu):
     return G
 
 
-def definition(sqrIR: np.ndarray, fs: int, t: int = 50) -> np.ndarray:
+def definition(listEDC: list, fs: int, t: int = 50) -> np.ndarray:
     """
     Room parameter.
 
@@ -912,13 +884,19 @@ def definition(sqrIR: np.ndarray, fs: int, t: int = 50) -> np.ndarray:
 
     """
     t_ms = t * fs // 1000
-    sumSIRt = sqrIR.sum(axis=0)  # total sum of squared IR
-    sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
-    definition = np.round(100 * (sumSIRi / sumSIRt), 2)  # [%]
-    return definition
+    definition = np.zeros((len(listEDC), ), dtype='float32')
+    for band, pair in enumerate(listEDC):
+        int_h2 = pair[0][0]  # sum of squared IR from start to the end
+        intr_h2_ms = pair[0][t_ms]  # sum of squared IR from the interval to the end
+        int_h2_ms = int_h2 - intr_h2_ms  # sum of squared IR from start to interval
+        definition[band] = (int_h2_ms / int_h2)
+    # sumSIRt = sqrIR.sum(axis=0)  # total sum of squared IR
+    # sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
+    # definition = np.round(100 * (sumSIRi / sumSIRt), 2)  # [%]
+    return np.round(100 * definition, 2)  # [%]
 
 
-def clarity(sqrIR: np.ndarray, fs: int, t: int = 80) -> np.ndarray:
+def clarity(listEDC: list, fs: int, t: int = 80) -> np.ndarray:
     """
     Room parameter.
 
@@ -936,10 +914,16 @@ def clarity(sqrIR: np.ndarray, fs: int, t: int = 80) -> np.ndarray:
 
     """
     t_ms = t * fs // 1000
-    sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
-    sumSIRe = sqrIR[t_ms:].sum(axis=0)  # sum of ending portion of squared IR
-    clarity = np.round(10 * np.log10(sumSIRi / sumSIRe), 2)  # [dB]
-    return clarity
+    clarity = np.zeros((len(listEDC), ), dtype='float32')
+    for band, pair in enumerate(listEDC):
+        int_h2 = pair[0][0]  # sum of squared IR from start to the end
+        intr_h2_ms = pair[0][t_ms]  # sum of squared IR from the interval to the end
+        int_h2_ms = int_h2 - intr_h2_ms  # sum of squared IR from start to interval
+        clarity[band] = 10 * np.log10(int_h2_ms / intr_h2_ms)  # [dB]
+    # sumSIRi = sqrIR[:t_ms].sum(axis=0)  # sum of initial portion of squared IR
+    # sumSIRe = sqrIR[t_ms:].sum(axis=0)  # sum of ending portion of squared IR
+    # clarity = np.round(10 * np.log10(sumSIRi / sumSIRe), 2)  # [dB]
+    return np.round(clarity, 2)
 
 
 def central_time(sqrIR: np.ndarray, tstamp: np.ndarray) -> np.ndarray:
@@ -965,7 +949,7 @@ def central_time(sqrIR: np.ndarray, tstamp: np.ndarray) -> np.ndarray:
     return central_time
 
 
-def st_early(sqrIR: np.ndarray, fs: int) -> np.ndarray:
+def st_early(listEDC: list, fs: int) -> np.ndarray:
     """
     Room parameter.
 
@@ -980,14 +964,25 @@ def st_early(sqrIR: np.ndarray, fs: int) -> np.ndarray:
         DESCRIPTION.
 
     """
-    ms = fs / 1000
-    sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
-    sum20ms = sqrIR[int(20 * ms):int(100 * ms)].sum(axis=0)
-    STearly = 10 * np.log10(sum20ms / sum10ms)
+    ms = fs // 1000
+    STearly = np.zeros((len(listEDC), ), dtype='float32')
+    for band, pair in enumerate(listEDC):
+        int_h2 = pair[0][0]  # sum of squared IR from start to the end
+        intr_h2_10ms = pair[0][10 * ms]  # sum of squared IR from the interval to the end
+        int_h2_10ms = int_h2 - intr_h2_10ms
+
+        intr_h2_20ms = pair[0][20 * ms]  # sum of squared IR from the interval to the end
+        intr_h2_100ms = pair[0][100 * ms]  # sum of squared IR from the interval to the end
+        int_h2_20a100ms = intr_h2_20ms - intr_h2_100ms
+        STearly[band] = 10 * np.log10(int_h2_20a100ms / int_h2_10ms)  # [dB]
+
+    # sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
+    # sum20ms = sqrIR[int(20 * ms):int(100 * ms)].sum(axis=0)
+    # STearly = 10 * np.log10(sum20ms / sum10ms)
     return np.round(STearly, 4)
 
 
-def st_late(sqrIR: np.ndarray, fs: int) -> np.ndarray:
+def st_late(listEDC: list, fs: int) -> np.ndarray:
     """
     Room parameter.
 
@@ -1002,10 +997,17 @@ def st_late(sqrIR: np.ndarray, fs: int) -> np.ndarray:
         DESCRIPTION.
 
     """
-    ms = fs / 1000
-    sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
-    sum100ms = sqrIR[int(100 * ms):int(1000 * ms)].sum(axis=0)
-    STlate = 10 * np.log10(sum100ms / sum10ms)
+    ms = fs // 1000
+    STlate = np.zeros((len(listEDC), ), dtype='float32')
+    for band, pair in enumerate(listEDC):
+        int_h2 = pair[0][0]  # sum of squared IR from start to the end
+        intr_h2_10ms = pair[0][10 * ms]  # sum of squared IR from the interval to the end
+        int_h2_10ms = int_h2 - intr_h2_10ms  # sum of squared IR from start to interval
+        intr_h2_100ms = pair[0][100 * ms]  # sum of squared IR from the interval to the end
+        STlate[band] = 10 * np.log10(intr_h2_100ms / int_h2_10ms)  # [dB]
+    # sum10ms = sqrIR[:int(10 * ms)].sum(axis=0)
+    # sum100ms = sqrIR[int(100 * ms):int(1000 * ms)].sum(axis=0)
+    # STlate = 10 * np.log10(sum100ms / sum10ms)
     return np.round(STlate, 4)
 
 
