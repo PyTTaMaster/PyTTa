@@ -160,7 +160,7 @@ class Streaming(PyTTaObj):
             self._durationInSamples = numSamples
         self._duration = self.durationInSamples / self.samplingRate
 
-        self.isFinished = Event()  # block untill finished
+        self.isFinished = Event()  # block until finished
         self.hasMonitor = Event()  # prevent threading if no monitor
         self.isRunning = Event()   # stream and monitor synchronization
 

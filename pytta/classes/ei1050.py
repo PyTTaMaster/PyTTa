@@ -106,7 +106,7 @@ class EI1050:
     def disableAutoUpdate(self):
         """
         Name: EI1050.disableAutoUpdate()
-        Desc: Truns off automatic updating of readings
+        Desc: Turns off automatic updating of readings
         """
         self.autoUpdate = False
 
@@ -122,7 +122,7 @@ class EI1050:
     def getStatusCRC(self):
         """
         Name: EI1050.getStatusCRC()
-        Desc: Get cyclic reduancy check for status
+        Desc: Get cyclic redundancy check for status
         """
         if self.autoUpdate:
             self.update()
@@ -222,7 +222,7 @@ class Reading:
     def getStatusCRC(self):
         """
         Name: Reading.getStatusCRC()
-        Desc: Get the cyclic reduancy check for status at the time of this reading
+        Desc: Get the cyclic redundancy check for status at the time of this reading
         """
         return self.__statusCRC
 

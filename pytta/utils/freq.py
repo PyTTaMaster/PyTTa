@@ -20,6 +20,7 @@ mentioned above.
 Authors:
 	João Vitor G. Paes joao.paes@eac.ufsm.br and
 	Caroline Gaudeoso caroline.gaudeoso@eac.ufsm.br
+	Rinaldi Petrolli rinaldi.petrolli@eac.ufsm.br
 
 """
 
@@ -107,11 +108,17 @@ def fractional_octave_frequencies(nthOct: int = 3,
     maxBand = freq_to_band(maxFreq, nthOct, refFreq, base)
     bands = np.arange(minBand, maxBand + 1)
     freqs = np.zeros((len(bands), 3))
+    nominal_frequencies = np.copy(__nominal_frequencies)
+    if nthOct > 3:
+        for i in range(1, int(nthOct/3)):
+            extra_nominal_frequencies = (nominal_frequencies[1:] + __nominal_frequencies[:-1]) / 2
+            nominal_frequencies = np.concatenate((nominal_frequencies, extra_nominal_frequencies))
+            nominal_frequencies.sort(kind='mergesort')
     nthOct = 1 / nthOct
     for k, band in enumerate(bands):
         dummy = refFreq * base ** (band * nthOct * factor)
-        dummy = np.sqrt((__nominal_frequencies - dummy) ** 2)
-        center = __nominal_frequencies[np.argmin(dummy)]
+        dummy = np.sqrt((nominal_frequencies - dummy) ** 2)
+        center = nominal_frequencies[np.argmin(dummy)]
         lower = center / base ** (nthOct * factor / 2)
         upper = center * base ** (nthOct * factor / 2)
         freqs[k, :] = [lower, center, upper]

@@ -17,6 +17,6 @@ mySigObj3 = pytta.generate.sin(Arms=0.3)
 mySigObjs = pytta.merge(mySigObj1, mySigObj2, mySigObj3)
 
 #%% 
-splitedSigObj = mySigObjs.split(channels=[3,2,1])
+splitSigObj = mySigObjs.split(channels=[3,2,1])
 
-plitedSigObj2 = pytta.split(mySigObjs, mySigObj1, mySigObj2)
+splitSigObj2 = pytta.split(mySigObjs, mySigObj1, mySigObj2)

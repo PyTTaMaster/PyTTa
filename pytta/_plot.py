@@ -87,7 +87,7 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     if timeUnit in ['s', 'seconds', 'S']:
         timeScale = 1
         timeUnit = 's'
-    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+    elif timeUnit in ['ms', 'milliseconds', 'mseconds', 'MS']:
         timeScale = 1000
         timeUnit = 'ms'
     else:
@@ -239,7 +239,7 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     if timeUnit in ['s', 'seconds', 'S']:
         timeScale = 1
         timeUnit = 's'
-    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+    elif timeUnit in ['ms', 'milliseconds', 'mseconds', 'MS']:
         timeScale = 1000
         timeUnit = 'ms'
     else:
@@ -1019,7 +1019,7 @@ def waterfall(sigObjs, step=10, xLim:list=None,
 
         for _, i in zip(win_list, range(len(win_list))):
             win_list[i][i * win_size::] = ss.windows.tukey(int(len(ht) - i * win_size),
-                                                alpha=winAlpha)  # Alpha=0 is rectangualr window
+                                                alpha=winAlpha)  # Alpha=0 is rectangular window
             time_steps.append(i * win_size / fs)
 
         for _ht in range(len(ht_list)):

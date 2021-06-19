@@ -29,13 +29,16 @@ settings = {
     'install_requires': ['numpy', 'scipy', 'matplotlib',
         'sounddevice', 'soundfile', 'h5py', 'numba'],
     'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
-    'data_files':  [('examples', glob('examples/*'))],
     # 'package_dir': {'classes': 'pytta'},
+    # 'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
+    'data_files': [('examples', glob('examples/*'))],
     'classifiers': [
-        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent", ],
-    # 'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
+    'python_requires': '>=3.6, <3.9',
 }
 
 setup(**settings)

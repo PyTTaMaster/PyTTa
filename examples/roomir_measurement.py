@@ -5,7 +5,7 @@ Created on Sun Jun 23 15:08:25 2019
 
 @author: mtslazarin
 """
-# %% Initializating
+# %% Initializing
 
 import pytta
 from pytta import roomir as rmr
@@ -103,7 +103,7 @@ MS = rmr.MeasurementSetup(name='med-teste',  # Nome da medição
                           excitationSignals=excitationSignals,  # Sinais de excitação
                           
                           # Número de médias por tomada de medição: para grande
-                          # número de médias recomenda-se dividí-las em algumas
+                          # número de médias recomenda-se dividi-las em algumas
                           # tomadas distintas.
                           averages=2,  
                           pause4Avg=False,  # Pausa entre as médias
@@ -149,7 +149,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # selecionados
                               receiversPos=['R1', 'R2'],
                         #       receiversPos=['R1'],
-                              # Escolha do sinal de excitacão
+                              # Escolha do sinal de excitação
                               # disponível no Setup de Medição
                               excitation='varredura18',
                               # excitation='fala',
@@ -189,7 +189,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
                               inChSel=['Mic1'],
-                              # Escolha do sinal de excitacão
+                              # Escolha do sinal de excitação
                               # disponível no Setup de Medição
                               excitation='varredura18',
                               # Código do canal de saída a ser utilizado.
@@ -218,7 +218,7 @@ takeMeasure = rmr.TakeMeasure(MS=MS,
                               # Lista com códigos de canal individual ou
                               # códigos de grupo
                               inChSel=['Mic1'],
-                              # Escolha do sinal de excitacão
+                              # Escolha do sinal de excitação
                               # disponível no Setup de Medição
                               excitation='varredura17',
                               # Código do canal de saída a ser utilizado.

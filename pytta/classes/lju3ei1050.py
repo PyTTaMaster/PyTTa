@@ -16,7 +16,7 @@ except:
     
 class main():
     """
-    Class for comunication with the Labjack U3 hardware with the probe EI1050
+    Class for communication with the Labjack U3 hardware with the probe EI1050
     to acquire temperature and relative humidity. 
     
     The UD driver (Windows) or Exodriver (Linux and Mac OS X) from
@@ -40,7 +40,7 @@ class main():
             
     """    
     def __init__(self):
-        # Ensure the exsistance of a thread, queue, and device variable
+        # Ensure the existence of a thread, queue, and device variable
         self.targetQueue = Queue()
         self.thread = None
         self.device = None
@@ -63,7 +63,7 @@ class main():
             # Create and start the thread
             self.thread = ei1050.EI1050Reader(self.device, self.targetQueue)
 
-            # Start scheduleing
+            # Start scheduling
 
             self.thread.start()
 

@@ -100,7 +100,7 @@ class ColorStr(object):
 
     def __call__(self, text: str = None) -> str:
         """
-        Paint the text with its font and backgroud colors.
+        Paint the text with its font and background colors.
 
         Args:
             text (str, optional): The text to be painted. Defaults to None.

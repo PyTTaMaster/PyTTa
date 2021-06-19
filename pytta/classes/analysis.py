@@ -54,14 +54,14 @@ class Analysis(RICI):
             The exact or approximated stop frequency;
 
         * data, (list | numpy array):
-            The data with the exact number of bands between the spcified minimum
+            The data with the exact number of bands between the specified minimum
             (minBand) and maximum band (maxBand);
 
         * dataLabel (''), (string):
             Label for plots;
 
         * error, (list | numpy array):
-            The error with the exact number of bands between the spcified
+            The error with the exact number of bands between the specified
             minimum (minBand) and maximum band (maxBand);
 
         * errorLabel (''), (string):
@@ -91,10 +91,10 @@ class Analysis(RICI):
     -----------
 
         * minBand, (int | float):
-            When a new limit is setted data is automatic adjusted.
+            When a new limit is set data is automatic adjusted.
 
         * maxBand, (int | float):
-            When a new limit is setted data is automatic adjusted.
+            When a new limit is set data is automatic adjusted.
 
 
     Methods:
@@ -277,7 +277,7 @@ class Analysis(RICI):
             anType='mixed'
             data=self.data*other
         else:
-            raise TypeError("Analysys can only be operated with int, float, " +
+            raise TypeError("Analysis can only be operated with int, float, " +
                             "or Analysis types.")
         selfDataLabel = self.dataLabel if self.dataLabel is not None \
             else 'Analysis 1'
@@ -469,7 +469,7 @@ class Analysis(RICI):
     def minBand(self):
         """minimum octave fraction band.
 
-        When a new limit is setted data is automatic adjusted.
+        When a new limit is set data is automatic adjusted.
 
         Return:
         -------
@@ -484,7 +484,7 @@ class Analysis(RICI):
             raise TypeError("Frequency range values must \
                             be either int or float.")
         if new in self.bands:
-            print("ATENTION! Deleting data below " + str(new) + " [Hz].")
+            print("ATTENTION! Deleting data below " + str(new) + " [Hz].")
             self._minBand = new
             self.data = self.data[int(np.where(self.bands==new)[-1]):]
         else:
@@ -499,7 +499,7 @@ class Analysis(RICI):
     def maxBand(self):
         """maximum octave fraction band.
 
-        When a new limit is setted data is automatic adjusted.
+        When a new limit is set data is automatic adjusted.
 
         Return:
         -------
@@ -514,7 +514,7 @@ class Analysis(RICI):
             raise TypeError("Frequency range values must \
                             be either int or float.")
         if new in self.bands:
-            print("ATENTION! Deleting data above " + str(new) + " [Hz].")
+            print("ATTENTION! Deleting data above " + str(new) + " [Hz].")
             self._maxBand = new
             self.data = self.data[:int(np.where(self.bands==new)[-1])+1]
         else:
@@ -536,7 +536,7 @@ class Analysis(RICI):
         """Fractional octave bands data.
 
         data must be a list or NumPy ndarray with the same number of elements
-        than bands between the spcified minimum (minBand) and maximum band
+        than bands between the specified minimum (minBand) and maximum band
         (maxBand).
 
         Return:
@@ -558,7 +558,7 @@ class Analysis(RICI):
                             "numpy ndarray.")
         elif len(newData) != len(bands):
             raise ValueError("Provided 'data' has different number of bands " +
-                             "then the existant bands betwen " +
+                             "then the existent bands between " +
                              "{} and {} [Hz].".format(self.minBand,
                                                       self.maxBand))
 
@@ -572,7 +572,7 @@ class Analysis(RICI):
         """error per octave fraction band.
 
         The error must be a list or NumPy ndarray with same number of elements
-        as bands between the spcified minimum (minBand) and maximum bands
+        as bands between the specified minimum (minBand) and maximum bands
         (maxBand);
 
         Shown as +-error.
@@ -654,7 +654,7 @@ class Analysis(RICI):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file via
+        Saves itself inside a hdf5 group from an already opened file via
         pytta.save(...).
         """
         h5group.attrs['class'] = 'Analysis'
