@@ -1149,6 +1149,7 @@ class SignalObj(_base.PyTTaObj):
                                        self.numSamples)
         return
 
+
 class ImpulsiveResponse(_base.PyTTaObj):
     """
     This class is a container of SignalObj, intended to calculate impulsive

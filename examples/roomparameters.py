@@ -14,7 +14,7 @@ import pytta
 myMonoIR = pytta.read_wav("RIS/scene9_RIR_LS1_MP1_Dodecahedron.wav")
 
 
-room = pytta.rooms.RoomParameters(myMonoIR, nthOct=3, minFreq=50., maxFreq=16e3)
+room = pytta.RoomAnalysis(myMonoIR, nthOct=3, minFreq=50., maxFreq=16e3)
 
 
 print()
