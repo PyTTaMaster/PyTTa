@@ -18,7 +18,6 @@ pytta.rooms.analyse's documentation.
 
 Available functions:
 
-    >>> pytta.rooms.crop_IR(SignalObj | ImpulsiveResponse, ...)
     >>> pytta.rooms.Analyse(SignalObj, ...)
     >>> pytta.rooms.strength_factor(...)
     >>> pytta.rooms.G_Lpe
