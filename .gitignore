@@ -3,11 +3,11 @@
 
 # Data files
 *.pkl
-*.mat
-*.pytta
-*.hdf5
-*.json
-*.wav
+#*.mat
+#*.pytta
+#*.hdf5
+#*.json
+#*.wav
 *.txt
 
 # All the python stuff
