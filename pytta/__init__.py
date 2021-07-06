@@ -66,7 +66,7 @@ Modules:
     * pytta.generate:
         functions for signal synthesis and measurement configuration;
 
-    * pytta.rooms:
+    * pytta.rooms (DEPRECATED):
         room acoustics parameters calculation according to ISO 3382-1;
 
     * pytta.iso3741:
@@ -100,7 +100,7 @@ from .classes import SignalObj, ImpulsiveResponse,\
     Measurement, RecMeasure, PlayRecMeasure, FRFMeasure,\
     Streaming, Monitor,\
     OctFilter, weighting,\
-    Analysis
+    Analysis, RoomAnalysis
 
 from . import _h5utils
 from . import _plot
@@ -120,7 +120,7 @@ from .functions import fft_degree
 
 from .apps import roomir
 
-__version__ = '0.1.0'  # package version
+__version__ = '0.1.1'  # package version
 
 # package submodules and scripts to be called as pytta.something
 __all__ = [  # Apps
@@ -163,6 +163,7 @@ __all__ = [  # Apps
            'SignalObj',
            'ImpulsiveResponse',
            'Analysis',
+           'RoomAnalysis',
            'OctFilter',
            'Monitor',
            'Streaming',

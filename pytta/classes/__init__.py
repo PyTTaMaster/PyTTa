@@ -41,12 +41,13 @@ from .signal import SignalObj, ImpulsiveResponse
 from .measurement import Measurement, RecMeasure, PlayRecMeasure, FRFMeasure
 from .streaming import Streaming, Monitor
 from .filter import OctFilter, weighting
-from .analysis import Analysis
+from .analysis import Analysis, RoomAnalysis
 
 __all__ = [# Classes
            'SignalObj',
            'ImpulsiveResponse',
            'Analysis',
+           'RoomAnalysis',
            'RecMeasure',
            'PlayRecMeasure',
            'FRFMeasure',
