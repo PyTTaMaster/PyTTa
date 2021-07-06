@@ -8,3 +8,5 @@ Analysis Objects
 .. autoclass:: pytta.Analysis
    :members:
 
+.. autoclass:: pytta.RoomAnalysis
+   :members:
