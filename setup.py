@@ -17,7 +17,7 @@ with open("README.md", "r") as f:
 
 settings = {
     'name': 'PyTTa',
-    'version': '0.1.1',
+    'version': '0.1.2a',
     'description': 'Signal processing tools for acoustics and vibrations in ' +
         'python, development package.',
     'long_description': long_description,
