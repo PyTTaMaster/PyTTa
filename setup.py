@@ -26,8 +26,8 @@ settings = {
     'author': 'João Vitor Paes, Matheus Lazarin, Marcos Reis',
     'author_email': 'pytta@eac.ufsm.br',
     'license': 'MIT',
-    'install_requires': ['numpy', 'scipy', 'matplotlib',
-        'sounddevice', 'soundfile', 'h5py', 'numba'],
+    'install_requires': ['numpy', 'scipy', 'matplotlib', 'sounddevice', 'soundfile',
+                         'h5py', 'numba', 'plotly', 'kaleido', 'more-itertools'],
     'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
     # 'package_dir': {'classes': 'pytta'},
     # 'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}

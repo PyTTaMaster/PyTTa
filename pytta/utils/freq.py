@@ -111,7 +111,7 @@ def fractional_octave_frequencies(nthOct: int = 3,
     nominal_frequencies = np.copy(__nominal_frequencies)
     if nthOct > 3:
         for i in range(1, int(nthOct/3)):
-            extra_nominal_frequencies = (nominal_frequencies[1:] + __nominal_frequencies[:-1]) / 2
+            extra_nominal_frequencies = (nominal_frequencies[1:] + nominal_frequencies[:-1]) / 2
             nominal_frequencies = np.concatenate((nominal_frequencies, extra_nominal_frequencies))
             nominal_frequencies.sort(kind='mergesort')
     nthOct = 1 / nthOct
