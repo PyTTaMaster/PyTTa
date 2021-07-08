@@ -80,7 +80,7 @@ class AudioPlayer(object):
 
     def stop_(self):
         """
-        Start playback of the wave file and move the audio to the beggining
+        Start playback of the wave file and move the audio to the beginning
         """
         self.streaming.stop()
         self.streaming.kn = 0
@@ -150,12 +150,12 @@ class AudioPlayer(object):
 
 if __name__ == "__main__":
     """
-    This IF statement guarantees that the execution of the file will only ocurr
+    This IF statement guarantees that the execution of the file will only occur
     when explicitly told so, e.g.:
 
         ~ $ python audio_player.py mywavefile.wav
 
-    It is simmilar to the "int main() {}" statement on C/C++
+    It is similar to the "int main() {}" statement on C/C++
     """
     try:
         file = parseArgs(sys.argv[1])

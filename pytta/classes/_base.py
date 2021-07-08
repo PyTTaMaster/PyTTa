@@ -303,7 +303,7 @@ class ChannelObj(object):
 
     Parameters and Attributes:
     ----------------------------
-        Every parameter becomes the homonim attribute.
+        Every parameter becomes the homonym attribute.
 
         .. attribute:: name:
             String with name or ID;
@@ -317,7 +317,7 @@ class ChannelObj(object):
             to :attr:`unit` values;
 
         .. attribute:: calibCheck:
-            :type:`bool`, information about wether :attr:`CF` is applied \
+            :type:`bool`, information about whether :attr:`CF` is applied \
             (True), or not (False -> default);
 
     Special methods:
@@ -399,7 +399,7 @@ class ChannelObj(object):
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency (' +
+            print('\x1b[0;30;43mATTENTION! Found calibration frequency (' +
                   '{:.2}'.format(freqFound) +
                   ' [Hz]) differs from refFreq (' +
                   '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
@@ -413,7 +413,7 @@ class ChannelObj(object):
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
                 refSignalObj.freqSignal)])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
-            print('\x1b[0;30;43mATENTTION! Found calibration frequency (' +
+            print('\x1b[0;30;43mATTENTION! Found calibration frequency (' +
                   '{}'.format(freqFound) +
                   ' [Hz]) differs from refFreq (' +
                   '{}'.format(refFreq) + ' [Hz])\x1b[0m')

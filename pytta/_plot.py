@@ -87,7 +87,7 @@ def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     if timeUnit in ['s', 'seconds', 'S']:
         timeScale = 1
         timeUnit = 's'
-    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+    elif timeUnit in ['ms', 'milliseconds', 'mseconds', 'MS']:
         timeScale = 1000
         timeUnit = 'ms'
     else:
@@ -239,7 +239,7 @@ def time_dB(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
     if timeUnit in ['s', 'seconds', 'S']:
         timeScale = 1
         timeUnit = 's'
-    elif timeUnit in ['ms', 'miliseconds', 'mseconds', 'MS']:
+    elif timeUnit in ['ms', 'milliseconds', 'mseconds', 'MS']:
         timeScale = 1000
         timeUnit = 'ms'
     else:

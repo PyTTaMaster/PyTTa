@@ -93,7 +93,7 @@ for source in [1, 2]:
                            skipInCompensation=skipInCompensation,
                            skipOutCompensation=skipOutCompensation,
                            skipBypCalibration=skipBypCalibration,
-                           skipIndCalibration=skipIndCalibration
+                           skipIndCalibration=skipIndCalibration,
                            skipRegularization=skipRegularization,
                            skipSave=skipSave)
         for name, msdThng in RoomirsInSitu1.items():

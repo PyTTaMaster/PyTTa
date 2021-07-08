@@ -226,7 +226,7 @@ def sweep(freqMin=None,
                                  freqMin,
                                  freqMax,
                                  windowing)  # fade in and fade out
-    # add initial and ending sileces
+    # add initial and ending slices
     timeSignal = np.concatenate((np.zeros(int(startSamples)),
                                  sweep,
                                  np.zeros(int(stopSamples))))
@@ -290,7 +290,7 @@ def random_noise(kind='white',
     """
     Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a
     silence at the beginning and ending of the signal, plus a fade in to avoid
-    abrupt speaker excursioning. All noises have normalized amplitude.
+    abrupt speaker excursion. All noises have normalized amplitude.
 
         White noise is generated using numpy.randn between [[1];[-1]];
 

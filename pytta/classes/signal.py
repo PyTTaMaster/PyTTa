@@ -363,13 +363,13 @@ class SignalObj(_base.PyTTaObj):
             
         else:
             treta = False
-            inexistantChs = []
+            inexistentChs = []
             for chNum in channels:
                 if chNum not in self.channels.mapping:
                     treta = True
-                    inexistantChs.append(chNum)
+                    inexistentChs.append(chNum)
             if treta:
-                raise IndexError("Channel number(s) " + str(inexistantChs) +
+                raise IndexError("Channel number(s) " + str(inexistentChs) +
                                  " don't exist.")
         
         indexes = [self.channels.mapping.index(chNum) for chNum in channels]
@@ -455,12 +455,12 @@ class SignalObj(_base.PyTTaObj):
     def play(self,
              channels: list = None, 
              mapping: list = None,
-             atency='low',
+             latency='low',
              **kwargs):
         """
         Play method.
         
-        Only one SignalObj channel can be played trhough each sound card
+        Only one SignalObj channel can be played through each sound card
         output channel. Check the input parameters below
         
         For usage insights, check the examples folder.
@@ -470,7 +470,7 @@ class SignalObj(_base.PyTTaObj):
         
             * channels (None), (list):
                 list of channel numbers to play. If not specified all existent
-                channels will be choosen;
+                channels will be chosen;
         
             * mapping (None), (list):
                 list of channel numbers of your sound card (starting with 1)
@@ -487,14 +487,14 @@ class SignalObj(_base.PyTTaObj):
             
         else:
             treta = False
-            inexistantChs = []
+            inexistentChs = []
             for chNum in channels:
                 if chNum not in self.channels.mapping:
                     treta = True
-                    inexistantChs.append(chNum)
+                    inexistentChs.append(chNum)
             if treta:
                 raise IndexError("SignalObj channel number(s) " +
-                                 str(inexistantChs) +
+                                 str(inexistentChs) +
                                  " don't exist.")
         
         indexes = [self.channels.mapping.index(chNum) for chNum in channels]
@@ -895,7 +895,7 @@ class SignalObj(_base.PyTTaObj):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file via
+        Saves itself inside a hdf5 group from an already opened file via
         pytta.save(...).
         """
         h5group.attrs['class'] = 'SignalObj'
@@ -1149,6 +1149,7 @@ class SignalObj(_base.PyTTaObj):
                                        self.numSamples)
         return
 
+
 class ImpulsiveResponse(_base.PyTTaObj):
     """
     This class is a container of SignalObj, intended to calculate impulsive
@@ -1337,7 +1338,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file via
+        Saves itself inside a hdf5 group from an already opened file via
         pytta._h5_save(...)
         """
         h5group.attrs['class'] = 'ImpulsiveResponse'

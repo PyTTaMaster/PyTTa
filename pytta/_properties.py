@@ -74,7 +74,7 @@ class Default(object):
     _instance = None
 
     def __init__(self):
-        """Singleton with properties used accross PyTTa."""
+        """Singleton with properties used across PyTTa."""
         for name, value in default_.items():
             vars(self)['_'+name] = value
         return
@@ -145,7 +145,7 @@ class Default(object):
                     else:
                         vars(self)['_'+name] = value  # otherwise, assign the new value to the desired property
             except KeyError:
-                print('You\'ve probably mispelled something.\n' + 'Checkout the property names:\n')
+                print('You\'ve probably misspelled something.\n' + 'Checkout the property names:\n')
                 self.__call__()
 
     def reset(self):

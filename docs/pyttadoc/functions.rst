@@ -11,6 +11,7 @@ Functions
 .. autofunction:: pytta.write_wav
 .. autofunction:: pytta.list_devices
 .. autofunction:: pytta.get_device_from_user
+.. autofunction:: pytta.SPL
 .. autofunction:: pytta.find_delay
 .. autofunction:: pytta.resample
 .. autofunction:: pytta.corr_coef

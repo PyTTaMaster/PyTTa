@@ -31,7 +31,7 @@ settings = {
     'packages': ['pytta', 'pytta.classes', 'pytta.apps', 'pytta.utils'],
     # 'package_dir': {'classes': 'pytta'},
     # 'package_data': {'pytta': ['examples/*.py', 'examples/RIS/*.mat']}
-    'data_files': [('examples', glob('examples/*'))],
+    # 'data_files': [('examples', glob('examples/*'))],
     'classifiers': [
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",

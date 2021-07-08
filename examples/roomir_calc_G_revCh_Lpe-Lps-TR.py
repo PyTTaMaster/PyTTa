@@ -5,7 +5,7 @@ Created on Sun Jun 23 15:08:25 2019
 
 @author: mtslazarin
 """
-# %% Initializating
+# %% Initializing
 import pytta
 from pytta import roomir as rmr
 import os

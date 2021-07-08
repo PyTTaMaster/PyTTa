@@ -99,7 +99,7 @@ class _MeasurementBase(_base.PyTTaObj):
 
     def _h5_save(self, h5group):
         """
-        Saves itself inside a hdf5 group from an already openned file.
+        Saves itself inside a hdf5 group from an already opened file.
         """
         h5group.attrs['device'] = _h5.list_w_int_parser(self.device)
         h5group.attrs['inChannels'] = repr(self.inChannels)
@@ -855,5 +855,5 @@ def _print_max_level(sigObj, kind, gain=1, mapping=None):
                         sigObj.channels[chNum].dBRef,
                         sigObj.channels[chNum].unit))
         if finalLevel >= 0:
-            print('\x1b[0;30;43mATENTTION! CLIPPING OCCURRED\x1b[0m')
+            print('\x1b[0;30;43mATTENTION! CLIPPING OCCURRED\x1b[0m')
     return

@@ -26,7 +26,7 @@ class RememberInstanceCreationInfo:
     def __init__(self):
         for frame, _ in traceback.walk_stack(None):
             varnames = frame.f_code.co_varnames
-            if varnames is ():
+            if varnames == ():
                 break
             if frame.f_locals[varnames[0]] not in (self, self.__class__):
                 break
@@ -63,7 +63,7 @@ class RememberInstanceCreationInfo:
             raise error
         finally:
             del self._outer_frame
-        # make sure we have no permament inter frame reference
+        # make sure we have no permanent inter frame reference
         # which could hinder garbage collection
         try:
             for name in nameparts[1:]:
