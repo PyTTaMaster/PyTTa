@@ -984,114 +984,127 @@ def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
     return _spectrogram, _specTime, _specFreq
 
 
-def waterfall(sigObjs, step=2**11, n=2**11, fmin=None, fmax=None, pmin=None, pmax=None, tmax=None,
-              xaxis='linear', time_tick=None, fpad=1, delta=60, dBref=2e-5, fill_value='pmin', fill_below=True,
-              overhead=3, winAlpha=0, plots=['waterfall'], show=True, cmap='jet', alpha=[1, 1], saveFig=False,
-              figRatio=[1, 1, 1], figsize=(950, 950), camera=[2, 1, 2]):
+def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None, pmax=None, tmax=None,
+                  xaxis='linear', time_tick=None, freq_tick=None, mag_tick=None, tick_fontsize=None,
+                  fpad=1, delta=60, dBref=2e-5, fill_value='pmin', fill_below=True,
+                  overhead=3, winAlpha=0, plots=['waterfall'], show=True, cmap='jet', alpha=[1, 1], saveFig=False,
+                  figRatio=[1, 1, 1], figsize=(950, 950), camera=[2, 1, 2], ):
     """
-    Plots a signal in dB and its decay in the time domain in a 3D waterfall plot.
+       Plots a signal in dB and its decay in the time domain in a 3D waterfall plot.
 
-    Parameters (default), (type):
-    ------------------------------
+       Parameters (default), (type):
+       ------------------------------
 
-        * sigObjs (), (list):
-            a list with SignalObjs.
+           * sigObjs (), (list):
+               a list with SignalObjs.
 
-        * step (2**11), (int):
-            time steps in samples.
+           * receivers ([0]), (list):
+               list containing the index of the receivers.
 
-        * n (2**11), (int):
-            FFT size in samples.
+           * step (2**9), (int):
+               time steps in samples.
 
-        * fmin (), (int):
-            left limit.
+           * n (2**14), (int):
+               FFT size in samples.
 
-        * fmax (), (int):
-            right limit.
+           * fmin (), (int):
+               left limit.
 
-        * pmin (), (int):
-            inferior limit.
+           * fmax (), (int):
+               right limit.
 
-        * pmax (), (int):
-            superior limit.
+           * pmin (), (int):
+               inferior limit.
 
-        * tmax (), (int):
-            time limit.
+           * pmax (), (int):
+               superior limit.
 
-        * xaxis ('linear'), (str):
-            x axis scale.
+           * tmax (), (int):
+               time limit.
 
-            >>> xaxis = 'linear' # log scale
-            >>> xaxis = 'log' # log scale
+           * xaxis ('linear'), (str):
+               x axis scale.
 
-        * time_tick (), (float):
-            time axis tick interval.
+               >>> xaxis = 'linear' # log scale
+               >>> xaxis = 'log' # log scale
 
-        * fpad (1), (int):
-            frequency pad for inferior and superior limits.
+           * time_tick (), (float):
+               time axis tick interval.
 
-        * delta (60), (int):
-            time decay delta from the superior limit.
+           * freq_tick (), (float):
+               frequency axis tick interval.
 
-        * dBred (2e-5), (float):
-            dB scale referece.
+           * mag_tick (), (float):
+               magnitude axis tick interval.
 
-        * fill_value ('pmin'), (str):
-            fill option for the base of the plot.
+           * tick_fontsize (), (float):
+               fontsize of the X, Y and Z axis ticks.
 
-            >>> fill_value = 'NaN' # transparent
-            >>> fill_value = 'pmin' # solid
+           * fpad (1), (int):
+               frequency pad for inferior and superior limits.
 
-        * fill_below (True), (bool):
-            option to chose to fill the area below the 3D curve or not.
+           * delta (60), (int):
+               time decay delta from the superior limit.
 
-        * overhead (3), (int):
-            overhead above pmax to be displayed in the Z axis.
+           * dBred (2e-5), (float):
+               dB scale referece.
 
-        * winAlpha (0), (float):
-            alpha value of the Tukey window.
+           * fill_value ('pmin'), (str):
+               fill option for the base of the plot.
 
-            >>> winAlpha = 0 # rectangular
-            >>> winAlpha = 1 # tukey
+               >>> fill_value = 'NaN' # transparent
+               >>> fill_value = 'pmin' # solid
 
-        * plots (['waterfall']), (list):
-            list containint the plots that will be displayed.
+           * fill_below (True), (bool):
+               option to chose to fill the area below the 3D curve or not.
 
-        * show (True), (bool):
-            option to display the graph in the screen or not.
+           * overhead (3), (int):
+               overhead above pmax to be displayed in the Z axis.
 
-        * cmap ('jet'), (str):
-            colormap that will be used to color the curves.
+           * winAlpha (0), (float):
+               alpha value of the Tukey window.
 
-        * alpha ([1, 1]), (list):
-            transparency of curve and filling. 1 is solid, 0 is transparent.
+               >>> winAlpha = 0 # rectangular
+               >>> winAlpha = 1 # tukey
 
-        * saveFig (False), (bool or str):
-            option to save the plot as a .png file - the value will be used as part of the filename.
+           * plots (['waterfall']), (list):
+               list containint the plots that will be displayed.
 
-                >>> saveFig = 'my_beatiful_project'
+           * show (True), (bool):
+               option to display the graph in the screen or not.
 
-        * figRatio ([1, 1, 1]), (list):
-            list containing float values for the ratios of the X, Y and Z axis.
+           * cmap ('jet'), (str):
+               colormap that will be used to color the curves.
 
-        * figsize (950, 950), (tuple):
-            width and height of the plot in pixels.
+           * alpha ([1, 1]), (list):
+               transparency of curve and filling. 1 is solid, 0 is transparent.
 
-        * camera ([2, 1, 2]), (list):
-            3D camera position - is used to save the plot and for the initial view.
+           * saveFig (False), (bool or str):
+               option to save the plot as a .png file - the value will be used as part of the filename.
 
-    Return:
-    --------
+                   >>> saveFig = 'my_beatiful_project'
 
-        ()
-    """
+           * figRatio ([1, 1, 1]), (list):
+               list containing float values for the ratios of the X, Y and Z axis.
 
+           * figsize (950, 950), (tuple):
+               width and height of the plot in pixels.
+
+           * camera ([2, 1, 2]), (list):
+               3D camera position - is used to save the plot and for the initial view.
+
+       Return:
+       --------
+
+           ()
+       """
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
     from scipy.fftpack import fft
     import scipy.signal as ss
     import more_itertools
 
+    figs = []
     curveData = _curve_data_extractor_waterfall(sigObjs)
     for data in curveData:
 
@@ -1241,19 +1254,21 @@ def waterfall(sigObjs, step=2**11, n=2**11, fmin=None, fmax=None, pmin=None, pma
                     xaxis=dict(nticks=10,
                                dtick=time_tick,
                                range=[0, tmax + 0.1],
-                               tickfont=dict(color='black', ),
+                               tickfont=dict(color='black', size=tick_fontsize),
                                backgroundcolor="rgba(0, 0, 0, 0)",
                                gridcolor="lightgrey",
                                showbackground=True,
                                zerolinecolor="lightgrey", ),
                     yaxis=dict(range=x_range, type=xaxis,
-                               tickfont=dict(color='black', ),
+                               dtick=freq_tick,
+                               tickfont=dict(color='black', size=tick_fontsize),
                                backgroundcolor="rgba(0, 0, 0, 0)",
                                gridcolor="lightgrey",
                                showbackground=True,
                                zerolinecolor="lightgrey", ),
                     zaxis=dict(range=[pmin - 0.1, pmax],
-                               tickfont=dict(color='black', ),
+                               dtick=mag_tick,
+                               tickfont=dict(color='black', size=tick_fontsize),
                                backgroundcolor="rgba(0, 0, 0, 0)",
                                gridcolor="lightgrey",
                                showbackground=True,
@@ -1277,6 +1292,10 @@ def waterfall(sigObjs, step=2**11, n=2**11, fmin=None, fmax=None, pmin=None, pma
         # Boolean to display plot
         if show and fig:
             fig.show()
+
+        figs.append(fig)
+
+    return figs
 
 
 def _curve_data_extractor_waterfall(sigObjs):
