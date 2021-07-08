@@ -1286,7 +1286,7 @@ def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None, 
             import os
 
             directory = os.getcwd()
-            fig.write_image(directory + '\\' + saveFig + '_waterfall.png', scale=5)
+            fig.write_image(directory + os.sep + saveFig + '_waterfall.png', scale=5)
             print('Waterfall saved at ' + directory + '\\' + saveFig + '_waterfall.png')
 
         # Boolean to display plot
