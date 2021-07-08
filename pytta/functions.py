@@ -591,12 +591,14 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     else:
         return
 
-def plot_waterfall(*sigObjs, step=10, xLim:list=None,
-                   Pmin=20, Pmax=None, tmin=0, tmax=None, azim=-72, elev=14,
-                   cmap='jet', winPlot=False, waterfallPlot=True, fill=True,
-                   lines=False, alpha=1, figsize=(20, 8), winAlpha=0,
-                   removeGridLines=False, saveFig=False, bar=False, width=0.70,
-                   size=3, lcol=None, filtered=True):
+def plot_waterfall(*sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None,
+                   pmin=None, pmax=None, tmax=None, xaxis='linear',
+                   time_tick=None, freq_tick=None, mag_tick=None,
+                   tick_fontsize=None, fpad=1, delta=60, dBref=2e-5,
+                   fill_value='pmin', fill_below=True, overhead=3,
+                   winAlpha=0, plots=['waterfall'], show=True, cmap='jet',
+                   alpha=[1, 1], saveFig=False, figRatio=[1, 1, 1],
+                   figsize=(950, 950), camera=[2, 1, 2]):
     """
     This function was gently sent by Rinaldi Polese Petrolli.
 
@@ -633,12 +635,11 @@ def plot_waterfall(*sigObjs, step=10, xLim:list=None,
     realSigObjs = \
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_waterfall:')
     if len(realSigObjs) > 0:
-        figs = plot.waterfall(realSigObjs, step, xLim,
-                              Pmin, Pmax, tmin, tmax, azim, elev,
-                              cmap, winPlot, waterfallPlot, fill,
-                              lines, alpha, figsize, winAlpha,
-                              removeGridLines, saveFig, bar, width,
-                              size, lcol, filtered)
+        figs = plot.waterfall(realSigObjs, step, n, fmin, fmax, pmin, pmax,
+                              tmax, xaxis, time_tick, freq_tick, mag_tick,
+                              tick_fontsize, fpad, delta, dBref, fill_value,
+                              fill_below, overhead, winAlpha, plots, show,
+                              cmap, alpha, saveFig, figRatio, figsize, camera)
         return figs
     else:
         return
