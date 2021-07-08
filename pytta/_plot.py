@@ -19,18 +19,14 @@ For further information check the function especific documentation.
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
-from matplotlib.collections import PolyCollection, LineCollection
-from matplotlib.colors import ListedColormap
 import matplotlib.cm as cmx
-from scipy.fftpack import fft
-from scipy.signal.windows import tukey
-from mpl_toolkits.mplot3d import axes3d
 import matplotlib
 import locale
 import numpy as np
 import scipy.signal as ss
 import copy as cp
-import decimal
+from plotly import io
+io.renderers.default = 'browser'
 
 
 def time(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep, timeUnit):
@@ -614,7 +610,7 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
         xLimIdx0 = 0 if len(xLimIdx0[0]) == 0 else xLimIdx0[0][-1]
         xLimIdx1 = np.where(curveData[0]['bands']>=xLim[1])
         xLimIdx1 = len(curveData[0]['bands'])-1 \
-                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]    
+                          if len(xLimIdx1[0]) == 0 else xLimIdx1[0][0]
         xLimIdx = [xLimIdx0, xLimIdx1]
     else:
         xLimIdx = [0, len(curveData[0]['data'])]
@@ -652,7 +648,7 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     for idx in sortedIdxs:
         sortedList.append(allBands[idx])
     allBands = np.array(sortedList)
-    
+
     fbar = np.arange(0,len(allBands))
     lowerBand = 0
     higherBand = np.inf
@@ -726,7 +722,7 @@ def bars(analyses, xLabel, yLabel, yLim, xLim, title, decimalSep, barWidth,
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
     ax.set_ylim(yLim)
-    
+
     ax.grid(color='gray', linestyle='-.', linewidth=0.4)
 
     # ax.set_xticks(fbar+barWidth*(dataSetLen-1)/dataSetLen-
@@ -984,11 +980,13 @@ def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
     return _spectrogram, _specTime, _specFreq
 
 
-def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None, pmax=None, tmax=None,
-                  xaxis='linear', time_tick=None, freq_tick=None, mag_tick=None, tick_fontsize=None,
-                  fpad=1, delta=60, dBref=2e-5, fill_value='pmin', fill_below=True,
-                  overhead=3, winAlpha=0, plots=['waterfall'], show=True, cmap='jet', alpha=[1, 1], saveFig=False,
-                  figRatio=[1, 1, 1], figsize=(950, 950), camera=[2, 1, 2], ):
+def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None,
+              pmax=None, tmax=None, xaxis='linear', time_tick=None,
+              freq_tick=None, mag_tick=None, tick_fontsize=None, fpad=1,
+              delta=60, dBref=2e-5, fill_value='pmin', fill_below=True,
+              overhead=3, winAlpha=0, plots=['waterfall'], show=True,
+              cmap='jet', alpha=[1, 1], saveFig=False, figRatio=[1, 1, 1],
+              figsize=(950, 950), camera=[2, 1, 2]):
     """
        Plots a signal in dB and its decay in the time domain in a 3D waterfall plot.
 
@@ -1287,7 +1285,7 @@ def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None, 
 
             directory = os.getcwd()
             fig.write_image(directory + os.sep + saveFig + '_waterfall.png', scale=5)
-            print('Waterfall saved at ' + directory + '\\' + saveFig + '_waterfall.png')
+            print('Waterfall saved at ' + directory + os.sep + saveFig + '_waterfall.png')
 
         # Boolean to display plot
         if show and fig:
