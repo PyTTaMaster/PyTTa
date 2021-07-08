@@ -69,5 +69,6 @@ dependencies:
     - soundfile==0.10.3.post1
     - plotly
     - kaleido
+    - more-itertools
 prefix: /home/joaovitor/miniconda3/envs/pytta-env
 
