@@ -199,6 +199,6 @@ def filter_values(freq, values, nthOct: int = 3):
     result = np.array([np.sum(values[idx[a]]) / len(idx[a]) for a in np.arange(0, len(bands))], dtype=object)
     result = np.nan_to_num(result)
 
-    return bands[:, 1], result
+    return bands[:, 1], result.astype(values.dtype)
 
 # ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
