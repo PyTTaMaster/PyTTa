@@ -279,25 +279,68 @@ def __do_sweep_windowing(inputSweep,
     newSweep = fullWindow * inputSweep
     return newSweep
 
+
+def random_noise(kind='white',
+                 samplingRate=None,
+                 fftDegree=None,
+                 startMargin=None,
+                 stopMargin=None,
+                 windowing='hann'):
+    """See `colored_noise`."""
+    print("This function is deprecated and will be replaced by",
+          "`colored_noise` on v0.2.0.")
+    return colored_noise(kind, samplingRate, fftDegree, 1,
+                         startMargin, stopMargin, windowing)
+
 # FIXME: This looks incorrect because the signal has normal
 #        distribution, so no limits but an average and standard deviation.
-def random_noise(color: str = 'white',
-                 samplingRate: int = None,
-                 fftDegree: int = None,
-                 numChannels: int = None,
-                 startMargin: float = None,
-                 stopMargin: float = None,
-                 windowing: str = 'hann'):
+def colored_noise(color: str or int = 'white',
+                  samplingRate: int = None,
+                  fftDegree: int = None,
+                  numChannels: int = None,
+                  startMargin: float = None,
+                  stopMargin: float = None,
+                  windowing: str = 'hann'):
     """
-    Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a
-    silence at the beginning and ending of the signal, plus a fade in to avoid
-    abrupt speaker excursion. All noises have normalized amplitude.
+    Power law noise generator.
 
-        White noise is generated using numpy.randn between [[1];[-1]];
+    Based on the algorithm in:
+    Timmer, J. and Koenig, M.:
+    On generating power law noise.
+    Astron. Astrophys. 300, 707-710 (1995)
 
-        Pink noise is still in progress;
+    Generate random noise with respect to the `(1/f)**B` rate. `f` stands for
+    frequency and `B` is an integer power.
 
-        Blue noise is still in progress;
+    The colors and its spectrum characteristics:
+
+        * Purple | Differentiated:
+            * +6.02 dB/octave | +20 dB/decade | B = -2;
+            * color: 'purple', 'diff', 'differentiated';
+
+        * Blue | Azure:
+            * +3.01 dB/octave | +10 dB/decade | B = -1;
+            * color: 'blue', 'azure'
+
+        * White | Flat:
+            * +0.00 dB/octave | +0 dB/decade  | B = 0;
+            * color: 'white', 'flat';
+
+        * Pink | Flicker:
+            * -3.01 dB/octave | -10 dB/decade | B = 1;
+            * color: 'pink', 'flicker', '1/f';
+
+        * Red | Brownian:
+            * -6.02 dB/octave | -20 dB/decade | B = 2;
+            * color: 'red', 'brown', 'brownian';
+
+    The output signal will have `startMargin` silence at the beginning of the
+    waveform, and `stopMargin` silence at the end.
+
+    There is a fade-in between the starting silence and the noise itself that
+    occurs during 5% of the total noise duration.
+
+    @author: Chum4k3r
     """
     # Code snippet to guarantee that generated object name is
     # the declared at global scope
@@ -347,24 +390,30 @@ def random_noise(color: str = 'white',
 
     # [samples] Actual noise number of samples
     noiseSamples = int(numSamples - marginSamples)
-    if color.upper() in ['PURPLE']:
-        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
-                                      -2, samplingRate)
-    elif color.upper() in ['BLUE']:
-        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
-                                      -1, samplingRate)
-    elif color.upper() in ['WHITE', 'FLAT']:
-        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
-                                      0, samplingRate)
-    elif color.upper() in ['PINK', 'FLICKER', '1/F']:
-        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
-                                      1, samplingRate)
-    elif color.upper() in ['RED', 'BROWN', 'BROWNIAN']:
-        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
-                                      2, samplingRate)
-    else:
-        raise ValueError("Unknow noise color.")
 
+    if type(color) == int:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      color, samplingRate)
+    elif type(color) == str:
+        if color.upper() in ['PURPLE', 'DIFF', 'DIFFERENTIATED']:
+            noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                          -2, samplingRate)
+        elif color.upper() in ['BLUE', 'AZURE']:
+            noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                          -1, samplingRate)
+        elif color.upper() in ['WHITE', 'FLAT']:
+            noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                          0, samplingRate)
+        elif color.upper() in ['PINK', 'FLICKER', '1/F']:
+            noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                          1, samplingRate)
+        elif color.upper() in ['RED', 'BROWN', 'BROWNIAN']:
+            noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                          2, samplingRate)
+        else:
+            raise ValueError("Unknow noise color.")
+    else:
+        raise TypeError("`color` must be int or str.")
     noiseSignal = __do_noise_windowing(noiseSignal, noiseSamples, windowing)
     # noiseSignal = noiseSignal / max(abs(noiseSignal))
     noiseSignal = np.concatenate(
@@ -384,8 +433,8 @@ def _powerlaw_noise(nsamples, nchannels, power, fs):
     # w = 2pif
     # S(w) approx (1/w)^B
     freqs = np.fft.rfftfreq(nsamples, 1/fs)
+    freqs[0] = 1/nsamples
     scaling = (1/(2 * np.pi * freqs))**(power/2)
-    scaling[0] = 2**-0.5
 
     # For each Fourier freq w_i draw 2 gaussian distributed numbers
     # multiply them by sqrt(0.5 * S(w_i)) approx (1/w)^(B/2)
