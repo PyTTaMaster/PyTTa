@@ -281,12 +281,13 @@ def __do_sweep_windowing(inputSweep,
 
 # FIXME: This looks incorrect because the signal has normal
 #        distribution, so no limits but an average and standard deviation.
-def random_noise(kind='white',
-                 samplingRate=None,
-                 fftDegree=None,
-                 startMargin=None,
-                 stopMargin=None,
-                 windowing='hann'):
+def random_noise(color: str = 'white',
+                 samplingRate: int = None,
+                 fftDegree: int = None,
+                 numChannels: int = None,
+                 startMargin: float = None,
+                 stopMargin: float = None,
+                 windowing: str = 'hann'):
     """
     Generates a noise of kind White, Pink (TO DO) or Blue (TO DO), with a
     silence at the beginning and ending of the signal, plus a fade in to avoid
@@ -325,6 +326,8 @@ def random_noise(kind='white',
         samplingRate = default.samplingRate
     if fftDegree is None:
         fftDegree = default.fftDegree
+    if numChannels is None:
+        numChannels = len(default.outChannel)
     if startMargin is None:
         startMargin = default.startMargin
     if stopMargin is None:
@@ -344,27 +347,62 @@ def random_noise(kind='white',
 
     # [samples] Actual noise number of samples
     noiseSamples = int(numSamples - marginSamples)
-    if kind.upper() in ['WHITE', 'FLAT']:
-        noiseSignal = np.random.randn(noiseSamples)
-#    elif kind.upper() == 'PINK:  # TODO
-#        noiseSignal = np.randn(Nnoise)
-#        noiseSignal = noiseSignal/max(abs(noiseSignal))
-#        noiseSignal = __do_pink_filtering(noiseSignal)
-#    elif kind.upper() == 'BLUE:  # TODO
-#        noiseSignal = np.randn(Nnoise)
-#        noiseSignal = noiseSignal/max(abs(noiseSignal))
-#        noiseSignal = __do_blue_filtering(noiseSignal)
+    if color.upper() in ['PURPLE']:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      -2, samplingRate)
+    elif color.upper() in ['BLUE']:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      -1, samplingRate)
+    elif color.upper() in ['WHITE', 'FLAT']:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      0, samplingRate)
+    elif color.upper() in ['PINK', 'FLICKER', '1/F']:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      1, samplingRate)
+    elif color.upper() in ['RED', 'BROWN', 'BROWNIAN']:
+        noiseSignal = _powerlaw_noise(noiseSamples, numChannels,
+                                      2, samplingRate)
+    else:
+        raise ValueError("Unknow noise color.")
 
     noiseSignal = __do_noise_windowing(noiseSignal, noiseSamples, windowing)
-    noiseSignal = noiseSignal / max(abs(noiseSignal))
-    noiseSignal = np.concatenate((np.zeros(int(startSamples)),
-                                 noiseSignal,
-                                 np.zeros(int(stopSamples))))
+    # noiseSignal = noiseSignal / max(abs(noiseSignal))
+    noiseSignal = np.concatenate(
+                (np.zeros((int(startSamples), numChannels)),
+                 noiseSignal,
+                 np.zeros((int(stopSamples), numChannels)))
+            )
     noiseSignal = SignalObj(signalArray=noiseSignal, domain='time',
                             freqMin=default.freqMin, freqMax=default.freqMax,
                             samplingRate=samplingRate)
     noiseSignal.creation_name = creation_name
     return noiseSignal
+
+
+def _powerlaw_noise(nsamples, nchannels, power, fs):
+    # Choose a power law spectrum
+    # w = 2pif
+    # S(w) approx (1/w)^B
+    freqs = np.fft.rfftfreq(nsamples, 1/fs)
+    scaling = (1/(2 * np.pi * freqs))**(power/2)
+    scaling[0] = 2**-0.5
+
+    # For each Fourier freq w_i draw 2 gaussian distributed numbers
+    # multiply them by sqrt(0.5 * S(w_i)) approx (1/w)^(B/2)
+    # the results are the real and imaginary part of
+    # the FFT of the data at the frequency
+    real = scaling * np.random.randn(nchannels, freqs.shape[0])
+    imag = scaling * np.random.randn(nchannels, freqs.shape[0])
+
+    # If nsamples is even, at nyquist the FFT is real-valued only
+    if not nsamples & 1:
+        imag[-1] = 0.
+
+    # IFFT the spectrum to obtain the time signal
+    out = np.array(np.fft.irfft(real + 1j*imag),
+                   ndmin=2, dtype='float32').T
+    out /= np.abs(out).max(axis=0)
+    return out
 
 
 def __do_noise_windowing(inputNoise,
@@ -375,7 +413,7 @@ def __do_noise_windowing(inputNoise,
     windowStart = ss.hanning(2*fivePercentSample)
     fullWindow = np.concatenate((windowStart[0:fivePercentSample],
                                  np.ones(int(noiseSamples-fivePercentSample))))
-    newNoise = fullWindow * inputNoise
+    newNoise = (fullWindow * inputNoise.T).T
     return newNoise
 
 
