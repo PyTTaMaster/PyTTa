@@ -12,7 +12,7 @@ Available functions:
 	>>> utils.fractional_octave_frequencies(nthOct = 3, freqRange = (20., 20000.), refFreq = 1000., base = 10)
 	>>> utils.normalize_frequencies(freqs, samplingRate = 44100)
 	>>> utils.freqs_to_center_and_edges(freqs)
-	>>> utils.filter_alpha(freq, alpha, nthOct = 3, plot = True)
+	>>> utils.filter_values(freq, values, nthOct = 3)
 
 For further information, check the docstrings for each function 
 mentioned above.
@@ -110,7 +110,7 @@ def fractional_octave_frequencies(nthOct: int = 3,
     freqs = np.zeros((len(bands), 3))
     nominal_frequencies = np.copy(__nominal_frequencies)
     if nthOct > 3:
-        for i in range(1, int(nthOct/3)):
+        for i in range(1, int(nthOct / 3)):
             extra_nominal_frequencies = (nominal_frequencies[1:] + nominal_frequencies[:-1]) / 2
             nominal_frequencies = np.concatenate((nominal_frequencies, extra_nominal_frequencies))
             nominal_frequencies.sort(kind='mergesort')
@@ -172,47 +172,33 @@ def freqs_to_center_and_edges(freqs: np.ndarray) -> Tuple[np.ndarray]:
     return center, edges
 
 
-def filter_alpha(freq: np.array, alpha: np.array, nthOct: int = 3):
-	"""filter_alpha
+def filter_values(freq, values, nthOct: int = 3):
+    """
+    Filters the given values into nthOct bands.
 
-    >>> center, result = filter_alpha(freq, alpha, nthOct = 1) # filter to one octave band
-    
-    Filter sound absorption coefficient into octave bands.
-    			   
-    :param freq: the frequency values.
-    :type freq: np.array
- 	
-    :param alpha: the sound absorption coefficient you would like to filter.
-    :type alpha: np.array
- 	
-    :param nthOct: bands of octave/nthOct. The default is 3.
-    :type nthOct: int, optional
+    Parameters
+    ----------
+    freq : ndarray
+        Array containing the frequency axis.
+    values : ndarray
+        Array containing the magnitude values to be filtered.
+    nthOct : int, optional
+        Fractional octave bands that the absorption will be filtered to.
 
-    :return: the center frequency for each band and the filtered sound absorption coefficient.
-    :rtype: np.array
-	
-	""" 	
-		
-	bands = fractional_octave_frequencies(nthOct=nthOct)
-	result = np.array([0], float)
-	
-	# Compute the acoustic absorption coefficient per octave band
-	for a in np.arange(1,len(bands)):
-		result = np.append(result, 0) #band[a] = 0
-		idx = np.argwhere((freq >= bands[a,0]) & (freq < bands[a,2]))
-		# If there is no 'alpha' point in this band
-		if (len(idx)==0):
-			print('Warning: no point found in band centered at',bands[a,1])
-		# If there is only 1 'alpha' point in this band
-		elif (len(idx)==1):
-			print('Warning: only one point found in band centered at ',bands[a,1])
-			result[a] = alpha[idx]
-		# If there is more than 1 'alpha' point in this band
-		elif (len(idx)>1):
-			for b in np.arange(len(idx)-1):
-				result[a] = result[a] + (freq[idx[0]+b] - freq[idx[0] + b-1])*abs(alpha[idx[1]+b] + alpha[idx[0]+b-1]) / 2
-			result[a] = result[a]/(freq[idx[len(idx)-1]] - freq[idx[0]])
+    Returns
+    -------
+    bands : ndarray
+        An array containing the center frequencies of the available bands.
+    result : ndarray
+        An array containing the filtered values in the available bands.
+    """
+    bands = fractional_octave_frequencies(nthOct=nthOct)  # [band_min, band_center, band_max]
+    bands = bands[np.argwhere((bands[:, 1] >= min(freq)) & (bands[:, 1] <= max(freq)))[:, 0]]
+    idx = np.array([np.argwhere((freq >= bands[a, 0]) & (freq <= bands[a, 2])) for a in
+                      np.arange(0, len(bands))], dtype=object)
+    result = np.array([np.sum(values[idx[a]]) / len(idx[a]) for a in np.arange(0, len(bands))], dtype=object)
+    result = np.nan_to_num(result)
 
-	return bands[:,1], result
+    return bands[:, 1], result
 
 # ref: one_third_octave - Copyleft 2007-2011 luc.jaouen@matelys.com
