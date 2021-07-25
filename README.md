@@ -106,7 +106,7 @@ Contact us at pytta@eac.ufsm.br .
 
 ### Acknowledge 
 
-If you use PyTTA in your research, work, paper, or university assignment, acknowledge and cite us if possible. 🙏
+If you use PyTTA in your research, work, paper, or university assignment, acknowledge and cite us if possible.
 
  - PyTTa – Python in Technical Acoustics (GitHub). https://github.com/pyttamaster/pytta, 2020.
  - W. D’A. Fonseca, J. V. Paes, M. Lazarin, M. V. Reis, P. H. Mareze, and E. Brandão. *PyTTa: Open source toolbox for acoustic measurement and signal processing*. In 23 International Congress on Acoustics - ICA 2019, pages 1–8, Aachen, Germany, 2019. doi: [10.18154/RWTH-CONV-239980](http://doi.org/10.18154/RWTH-CONV-239980).
