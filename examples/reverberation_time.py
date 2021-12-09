@@ -17,13 +17,10 @@ if __name__ == "__main__":
     hdf5 = '.hdf5'
     
     myIRsignal = pytta.read_wav(path + name + wav)
-    
-    # myIRsignal = pytta.load(path + name + hdf5)
-    
-    myRT = pytta.rooms.analyse(myIRsignal,
-                               'RT', 20,
-                               nthOct=3,
-                               minFreq=20,
-                               maxFreq=10000)
-    
-    myRT.plot_bars()
+
+    myRT = pytta.RoomAnalysis(myIRsignal,
+                              nthOct=3,
+                              minFreq=float(2e1),
+                              maxFreq=float(2e4))
+    fig = myRT.plot_T30()
+    fig.show()

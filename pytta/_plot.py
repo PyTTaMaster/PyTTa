@@ -1132,7 +1132,8 @@ def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None,
 
         # Apply rolling window
         sliced = np.asarray(list(more_itertools.windowed(ht, n=n, step=step, fillvalue=0)))
-        window = np.asarray([ss.tukey(n, alpha=winAlpha) for s in sliced])  # Tukey window (alpha=0 is a rectangular window)
+        window = np.asarray(
+            [ss.tukey(n, alpha=winAlpha) for s in sliced])  # Tukey window (alpha=0 is a rectangular window)
         windowed = sliced * window  # Apply window
         windowedFFT = abs(2 / n * fft(windowed))  # Apply FFT
         windowedFFT = windowedFFT[:, idx_min_FFT - fpad: idx_max_FFT + 1 + fpad]  # Crop the FFT
@@ -1159,7 +1160,8 @@ def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None,
                 np.where(windowedFFTdBNaN[i] < pmin)] = np.nan  # Fill with NaN for transparent "floor level"
             windowedFFTdBpmin[i][
                 np.where(windowedFFTdBpmin[i] < pmin)] = pmin  # Fill with pmin values for colored "floor level"
-        windowedFFTdBNaN[:, 0], windowedFFTdBNaN[:, -1] = pmin, pmin  # Create drop in cuurve at beggining and end
+        windowedFFTdBNaN[:, 0], windowedFFTdBNaN[:,
+                                -1] = pmin, pmin  # Create drop in cuurve at beggining and end
         windowedFFTdBpmin[:, 0], windowedFFTdBpmin[:, -1] = pmin, pmin
 
         # Plotting
@@ -1258,7 +1260,7 @@ def waterfall(sigObjs, step=2 ** 9, n=2 ** 13, fmin=None, fmax=None, pmin=None,
                                showbackground=True,
                                zerolinecolor="lightgrey", ),
                     yaxis=dict(range=x_range, type=xaxis,
-                               dtick=freq_tick,
+                               dtick=freq_tick, tickformat=".0f",
                                tickfont=dict(color='black', size=tick_fontsize),
                                backgroundcolor="rgba(0, 0, 0, 0)",
                                gridcolor="lightgrey",

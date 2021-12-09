@@ -192,8 +192,8 @@ def filter_values(freq, values, nthOct: int = 3):
     result : ndarray
         An array containing the filtered values in the available bands.
     """
-    bands = fractional_octave_frequencies(nthOct=nthOct)  # [band_min, band_center, band_max]
-    bands = bands[np.argwhere((bands[:, 1] >= min(freq)) & (bands[:, 1] <= max(freq)))[:, 0]]
+    bands = fractional_octave_frequencies(freqRange=(min(freq), max(freq)), nthOct=nthOct)
+    # bands = bands[np.argwhere((bands[:, 1] >= min(freq)) & (bands[:, 1] <= max(freq)))[:, 0]]
     idx = np.array([np.argwhere((freq >= bands[a, 0]) & (freq <= bands[a, 2])) for a in
                       np.arange(0, len(bands))], dtype=object)
     result = np.array([np.sum(values[idx[a]]) / len(idx[a]) for a in np.arange(0, len(bands))], dtype=object)
