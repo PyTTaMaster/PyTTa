@@ -38,7 +38,7 @@ settings = {
         "Programming Language :: Python :: 3.8",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent", ],
-    'python_requires': '>=3.6, <3.9',
+    'python_requires': '>=3.6',
 }
 
 setup(**settings)
