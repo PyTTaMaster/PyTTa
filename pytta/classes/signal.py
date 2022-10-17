@@ -1117,7 +1117,8 @@ class SignalObj(_base.PyTTaObj):
         newFreqSignal = _make_rms_spectra(newFreqSignal)
         # spectrum normalization
         if self.signalType == 'power':
-            newFreqSignal /= len(newFreqSignal)
+            newFreqSignal[1:, :] /= len(newFreqSignal)  # /= numSamples/2
+            newFreqSignal[0, :] /= self.numSamples
         # assign new freq signal
         self._freqSignal = newFreqSignal
         # frequency vector (x axis)
@@ -1628,8 +1629,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
 def _make_rms_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
-    newFreqSignal[:,:] = freqSignal / 2**(1/2)
-    newFreqSignal[0,:] = freqSignal[0,:] * 2**(1/2)
+    newFreqSignal[1:, :] = freqSignal[1:, :] / 2**(1/2)
+    newFreqSignal[0, :] = freqSignal[0, :]
     return newFreqSignal
 
 
