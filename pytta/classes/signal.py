@@ -1117,7 +1117,8 @@ class SignalObj(_base.PyTTaObj):
         newFreqSignal = _make_rms_spectra(newFreqSignal)
         # spectrum normalization
         if self.signalType == 'power':
-            newFreqSignal /= len(newFreqSignal)
+            newFreqSignal[1:, :] /= len(newFreqSignal)  # /= numSamples/2
+            newFreqSignal[0, :] /= self.numSamples
         # assign new freq signal
         self._freqSignal = newFreqSignal
         # frequency vector (x axis)
@@ -1131,8 +1132,13 @@ class SignalObj(_base.PyTTaObj):
         """
         # spectrum denormalization
         if self.signalType == 'power':
-            adjustedFreqSignal = \
-                self._freqSignal*len(self._freqSignal)
+            adjustedFreqSignal = np.zeros(self._freqSignal.shape, dtype=np.complex_)
+            # * N/2 for AC
+            adjustedFreqSignal[1:, :] = \
+                self._freqSignal * len(self._freqSignal)
+            # * N for DC
+            adjustedFreqSignal[0, :] = \
+                self._freqSignal[0, :] * self.numSamples
         else:
             adjustedFreqSignal = self._freqSignal
         # turning RMS amplitude into peak amplitude except DC freq
@@ -1628,14 +1634,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
 def _make_rms_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
-    newFreqSignal[:,:] = freqSignal / 2**(1/2)
-    newFreqSignal[0,:] = freqSignal[0,:] * 2**(1/2)
+    newFreqSignal[1:, :] = freqSignal[1:, :] / 2**(1/2)
+    newFreqSignal[0, :] = freqSignal[0, :]
     return newFreqSignal
 
 
 def _make_pk_spectra(freqSignal):
     newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
-    newFreqSignal[:,:] = freqSignal * 2**(1/2)
-    newFreqSignal[0,:] = freqSignal[0,:] / 2**(1/2)
+    newFreqSignal[1:, :] = freqSignal[1:, :] * 2**(1/2)
+    newFreqSignal[0, :] = freqSignal[0, :]
     return newFreqSignal
 
