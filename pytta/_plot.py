@@ -394,7 +394,7 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
     if xLabel is None:
         xLabel = 'Frequency [Hz]'
     if yLabel is None:
-        yLabel = 'Magnitude'
+        yLabel = 'Magnitude [dB]'
     if title is None:
         title = ''
 
@@ -426,10 +426,6 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
     ax.set_ylabel(yLabel, fontsize=16)
     ax.legend(loc='best', fontsize=12)
 
-    if xLim is None:
-        xLim = [data['minFreq'], data['maxFreq']]
-    ax.set_xlim(xLim)
-
     if yLim is None:
         yLim = [np.nanmin(yLims[:,0]), np.nanmax(yLims[:,1])]
         margin = (yLim[1] - yLim[0]) / 20
@@ -443,6 +439,13 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
     ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
     for item in (ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(14)
+    freq_oct_list = [16, 31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    freq_oct_list_str = [str(item) for item in freq_oct_list]
+    ax.set_xticks(freq_oct_list)
+    ax.set_xticklabels(freq_oct_list_str)
+    if xLim is None:
+        xLim = [data['minFreq'], data['maxFreq']]
+    ax.set_xlim(xLim)
 
     return fig
 
