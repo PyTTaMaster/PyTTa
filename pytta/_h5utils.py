@@ -31,14 +31,14 @@ def int_parser(attr):
     if isinstance(attr, (np.int16,
                          np.int32,
                          np.int64,
-                         np.int,
+                         int,
                          np.int0)):
         return int(attr)
     else:
         return attr
 
 def float_parser(attr):
-    if isinstance(attr, (np.float,
+    if isinstance(attr, (float,
                         np.float16,
                         np.float32,
                         np.float64)):

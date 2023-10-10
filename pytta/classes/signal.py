@@ -414,6 +414,18 @@ class SignalObj(_base.PyTTaObj):
         startIdx = np.where(self.timeVector >= startTime)[0][0]
         self.timeSignal = self.timeSignal[startIdx:endIdx,:]
 
+    def zero_padding(self, num_zeros = 1000):
+        """ zero-padding the signal object
+        """
+        newTimeSignal = np.zeros((self.timeSignal.shape[0] + num_zeros, 
+            self.timeSignal.shape[1]))
+        # fill initial part with original
+        newTimeSignal[:self.timeSignal.shape[0], 
+            :self.timeSignal.shape[1]] = self.timeSignal
+        # Make the SignalObj equal to original + zeros
+        zp_signal = SignalObj(newTimeSignal, 'time', self.samplingRate)
+        return zp_signal
+
     def mean(self):
         print('DEPRECATED! This method will be renamed to',
               ':method:``.channelMean()``',
@@ -1182,6 +1194,10 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
                 * "linear":
                     Computes using the spectral division of the signals;
+                
+                * "linear_zp":
+                    zero pads input and output (double size) and 
+                    computes using the spectral division of the signals;
 
                 * "H1":
                     Uses power spectral density Ser divided by See, with
@@ -1284,7 +1300,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                  "passing as parameter the 'excitation' " +
                                  "and 'recording' signals, or a calculated " +
                                  "'ir'.")
-            # Zero padding
+            # Initial zero padding
             elif excitation.numSamples > recording.numSamples:
                 print("Zero padding on IR calculation!")
                 excitSig = excitation.timeSignal
@@ -1302,7 +1318,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                     np.zeros((recSig.shape[0], excitSig.shape[1]))
                 newTimeSignal[:excitSig.shape[0], :excitSig.shape[1]] = \
                     excitSig
-                excitation.timeSignal = newTimeSignal
+                excitation.timeSignal = newTimeSignal                     
+
             self._methodInfo = {'method': method, 'winType': winType,
                                 'winSize': winSize, 'overlap': overlap}
             self._systemSignal = self._calculate_tf_ir(excitation,
@@ -1396,6 +1413,40 @@ class ImpulsiveResponse(_base.PyTTaObj):
         out = {'methodInfo': self.methodInfo}
         return out
 
+    def _calculate_regu_spk(self, inputSignal, outputSignal):
+        """ Computes regularized spectrum
+        """
+        data = _make_pk_spectra(inputSignal.freqSignal)
+        outputFreqSignal = _make_pk_spectra(outputSignal.freqSignal)
+        freqVector = inputSignal.freqVector
+        b = data * 0 + 10**(-200/20) # inside signal freq range
+        a = data * 0 + 1 # outside signal freq range
+        minFreq = np.max([inputSignal.freqMin, outputSignal.freqMin])
+        maxFreq = np.min([inputSignal.freqMax, outputSignal.freqMax])
+        # Calculate epsilon
+        eps = self._crossfade_spectruns(a, b,
+                                        [minFreq/np.sqrt(2),
+                                        minFreq],
+                                        freqVector)
+        if maxFreq < np.min([maxFreq*np.sqrt(2),
+                            inputSignal.samplingRate/2]):
+            eps = self._crossfade_spectruns(eps, a,
+                                            [maxFreq,
+                                            maxFreq*np.sqrt(2)],
+                                            freqVector)
+        eps = \
+            eps \
+                * float(np.max(np.abs(outputFreqSignal)))**2 \
+                    * 1/2
+        C = np.conj(data) / \
+            (np.conj(data)*data + eps)
+        C = _make_rms_spectra(C)
+        C = SignalObj(C,
+                        'freq',
+                        inputSignal.samplingRate,
+                        signalType='energy')
+        return C
+
     def _calculate_tf_ir(self, inputSignal, outputSignal, method='linear',
                          winType=None, winSize=None, overlap=None,
                          regularization=False):
@@ -1405,40 +1456,25 @@ class ImpulsiveResponse(_base.PyTTaObj):
         elif inputSignal.samplingRate != outputSignal.samplingRate:
             raise ValueError("Both signal-like objects must have the same\
                              sampling rate.")
+        
         if method == 'linear':
             if regularization:
-                data = _make_pk_spectra(inputSignal.freqSignal)
-                outputFreqSignal = _make_pk_spectra(outputSignal.freqSignal)
-                freqVector = inputSignal.freqVector
-                b = data * 0 + 10**(-200/20) # inside signal freq range
-                a = data * 0 + 1 # outside signal freq range
-                minFreq = np.max([inputSignal.freqMin, outputSignal.freqMin])
-                maxFreq = np.min([inputSignal.freqMax, outputSignal.freqMax])
-                # Calculate epsilon
-                eps = self._crossfade_spectruns(a, b,
-                                               [minFreq/np.sqrt(2),
-                                                minFreq],
-                                                freqVector)
-                if maxFreq < np.min([maxFreq*np.sqrt(2),
-                                    inputSignal.samplingRate/2]):
-                    eps = self._crossfade_spectruns(eps, a,
-                                                    [maxFreq,
-                                                    maxFreq*np.sqrt(2)],
-                                                    freqVector)
-                eps = \
-                    eps \
-                        * float(np.max(np.abs(outputFreqSignal)))**2 \
-                            * 1/2
-                C = np.conj(data) / \
-                    (np.conj(data)*data + eps)
-                C = _make_rms_spectra(C)
-                C = SignalObj(C,
-                              'freq',
-                              inputSignal.samplingRate,
-                              signalType='energy')
+                C = self._calculate_regu_spk(inputSignal, outputSignal)
                 result = outputSignal * C
             else:
                 result = outputSignal / inputSignal
+
+        elif method == 'linear_zp': # linear with zero-padding safe-guard
+            inputSignal_zp = inputSignal.zero_padding(num_zeros =\
+                inputSignal.timeSignal.shape[0])
+            outputSignal_zp = outputSignal.zero_padding(num_zeros =\
+                outputSignal.timeSignal.shape[0])
+
+            if regularization:
+                C = self._calculate_regu_spk(inputSignal_zp, outputSignal_zp)
+                result = outputSignal_zp * C
+            else:
+                result = outputSignal_zp / inputSignal_zp
 
         elif method == 'H1':
             if winType is None:
@@ -1594,7 +1630,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
         f1idx = np.where(freqVector <= f1)[0][-1]
         totalSamples = a.shape[0]
         xsamples = f1idx - f0idx
-        win = ss.hanning(2*xsamples)
+        win = ss.hann(2*xsamples)
 
         rightWin = win[xsamples-1:-1]
         fullRightWin = np.concatenate((np.ones(f0idx),
