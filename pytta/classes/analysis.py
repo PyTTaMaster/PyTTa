@@ -957,7 +957,8 @@ class RoomAnalysis(Analysis):
                  plotLundeby: bool = False,
                  bypassLundeby: bool = False,
                  suppressWarnings: bool = True,
-                 ircut: float = None, **kwargs):
+                 ircut: float = None,
+                 edcMethod: str = 'cutWithCorrection', **kwargs):
         _ir = ir.IR if type(ir) == ImpulsiveResponse else ir
         minBand = freq_to_band(minFreq, nthOct, 1000, 10)
         maxBand = freq_to_band(maxFreq, nthOct, 1000, 10)
@@ -966,6 +967,7 @@ class RoomAnalysis(Analysis):
         self.ir = crop_IR(_ir, ircut)
         self._params, self.listEDC, self.fhSignal = self.estimate_energy_parameters(self.ir, self.bands, plotLundeby,
                                                        bypassLundeby, suppressWarnings,
+                                                       edcMethod=edcMethod,
                                                        nthOct=nthOct, minFreq=minFreq,
                                                        maxFreq=maxFreq)
         return
@@ -974,7 +976,9 @@ class RoomAnalysis(Analysis):
     def estimate_energy_parameters(ir: SignalObj, bands: np.ndarray,
                                    plotLundeby: bool = False,
                                    bypassLundeby: bool = False,
-                                   suppressWarnings: bool = False, **kwargs):
+                                   suppressWarnings: bool = False,
+                                   edcMethod: str = 'cutWithCorrection',
+                                   **kwargs):
         """
         Estimate the Impulse Response energy parameters.
 
@@ -993,7 +997,8 @@ class RoomAnalysis(Analysis):
             A dict with parameters by name.
 
         """
-        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings, **kwargs)
+        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings,
+                                                   edcMethod=edcMethod, **kwargs)
         params = {}
         params['rms'] = fhSignal.rms()
         params['SPL'] = fhSignal.spl()
@@ -1062,6 +1067,32 @@ class RoomAnalysis(Analysis):
     def T30(self):
         """Reverberation time with 30 dB decay, by frequency `band`."""
         return self._params['T30']
+
+    def uncertainty(self, param: str = 'T30', numPositions: int = 1,
+                    numDecays: int = 10) -> np.ndarray:
+        """
+        Standard deviation of T20 or T30 by band, from ISO 3382-1:2009,
+        Equations (4) and (5): sigma(T) = k T sqrt((1 + c / n) / (N B T)),
+        with k, c = 0.88, 1.90 for T20 and 0.55, 1.52 for T30.
+
+        * param ('T30'), (str): 'T20' or 'T30';
+        * numPositions (1), (int): N, independent source and receiver
+          positions averaged;
+        * numDecays (10), (int): n, decays measured in each position; an
+          impulse response counts as n = 10 (clause 7.2).
+
+        B is the bandwidth of the band filter, fc (2**(1/(2 nthOct)) -
+        2**(-1/(2 nthOct))): 0.71 fc for octaves and 0.23 fc for thirds.
+        """
+        if param not in ('T20', 'T30'):
+            raise ValueError("param must be 'T20' or 'T30'.")
+        k, c = (0.88, 1.90) if param == 'T20' else (0.55, 1.52)
+        rt = self._params[param]
+        half = 2 ** (1 / (2 * self.nthOct))
+        B = np.asarray(self.bands) * (half - 1 / half)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            return k * rt * np.sqrt((1 + c / numDecays)
+                                    / (numPositions * B * rt))
 
     # @property
     # def BR(self):
@@ -1401,9 +1432,31 @@ def _Lundeby_correction(band, timeSignal, samplingRate, numSamples,
 # @njit
 def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
                              numSamples, numChannels, timeLength, bypassLundeby,
-                             suppressWarnings=True):
-    """Calculate the Energy Decay Curve."""
-    if bypassLundeby is False:
+                             suppressWarnings=True,
+                             edcMethod='cutWithCorrection'):
+    """
+    Calculate the Energy Decay Curve by backward integration, with one of
+    the noise compensations of ISO 3382-1 (Guski and Vorlaender, 2013):
+
+        * 'cutWithCorrection': truncate at the intersection of the decay
+          with the background noise (Lundeby et al., 1995) and add the
+          energy of the decay beyond it;
+        * 'justCut': truncate at the intersection, with no correction;
+        * 'noCut': integrate the whole response, noise included;
+        * 'subtractNoise': subtract the background noise level from the
+          squared response and integrate the whole of it (Chu, 1978).
+
+    bypassLundeby=True is the 'noCut' method.
+    """
+    methods = ('cutWithCorrection', 'justCut', 'noCut', 'subtractNoise')
+    if edcMethod not in methods:
+        raise ValueError(f'edcMethod must be one of {methods}.')
+    if bypassLundeby:
+        edcMethod = 'noCut'
+    if edcMethod == 'noCut':
+        lundebyParams = None
+        interIdx, lateRT, BGL = 0, 1, 0
+    else:
         lundebyParams = \
             _Lundeby_correction(band,
                                 timeSignal,
@@ -1414,22 +1467,18 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
                                 suppressWarnings=suppressWarnings)
         _, c1, interIdx, BGL = lundebyParams
         lateRT = -60/c1 if c1 != 0 else 0
-    else:
-        interIdx = 0
-        lateRT = 1
-
-    if interIdx == 0:
+    if interIdx == 0 or edcMethod == 'subtractNoise':
         interIdx = -1
-
     truncatedTimeSignal = timeSignal[:interIdx, 0]
     truncatedTimeVector = timeVector[:interIdx]
-
     if lateRT != 0.0:
-        if not bypassLundeby:
+        if edcMethod == 'cutWithCorrection':
             C = samplingRate*BGL*lateRT/(6*np.log(10))
         else:
             C = 0
         sqrInv = truncatedTimeSignal[::-1]**2
+        if edcMethod == 'subtractNoise':
+            sqrInv = sqrInv - BGL
         energyDecayFull = np.cumsum(sqrInv)[::-1] + C
         energyDecay = energyDecayFull/energyDecayFull[0]
     else:
@@ -1444,6 +1493,7 @@ def cumulative_integration(inputSignal,
                            bypassLundeby,
                            plotLundebyResults,
                            suppressWarnings=True,
+                           edcMethod='cutWithCorrection',
                            **kwargs):
     """Cumulative integration with proper corrections."""
 
@@ -1485,9 +1535,10 @@ def cumulative_integration(inputSignal,
                                      signal.numChannels,
                                      signal.timeLength,
                                      bypassLundeby,
-                                     suppressWarnings=suppressWarnings)
+                                     suppressWarnings=suppressWarnings,
+                                     edcMethod=edcMethod)
         listEDC.append((energyDecay, energyVector))
-        if plotLundebyResults:  # Placed here because Numba can't handle plots.
+        if plotLundebyResults and lundebyParams is not None:
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
             #             lundebyParams)
             plot_lundeby()
