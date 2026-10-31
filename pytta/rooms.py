@@ -22,6 +22,9 @@ Available functions:
     >>> pytta.rooms.strength_factor(...)
     >>> pytta.rooms.G_Lpe
     >>> pytta.rooms.G_Lps
+    >>> pytta.rooms.air_constants(temperature, humidity, pressure)
+    >>> pytta.rooms.convert_room_quantity(value, 'T', 'alpha', volume, surface)
+    >>> pytta.rooms.din18041(volume, purpose)
 
 Authors:
     João Vitor Gutkoski Paes, joao.paes@eac.ufsm.br
@@ -417,3 +420,140 @@ def analyse(obj, *params,
 
     return result
 
+
+def air_constants(temperature=20., humidity=0.5, pressure=101325.):
+    """
+    Speed of sound, density and characteristic impedance of humid air, as
+    ita_constants of the ITA-Toolbox: the gas constant of air with the
+    molar concentration of water vapour of ISO 9613-1, c = sqrt(1.4 R T)
+    and rho = p / (R T).
+
+    Parameters
+    ----------
+    temperature : float
+        Celsius. Default 20.
+    humidity : float
+        Relative humidity, 0 to 1. Default 0.5.
+    pressure : float
+        Static pressure in Pa. Default 101325.
+
+    Returns
+    -------
+    dict
+        'c' (m/s), 'rho' (kg/m^3) and 'z0' (Pa s/m). The power attenuation
+        of air, m, is pytta.iso354.power_attenuation.
+    """
+    if not 0 <= humidity <= 1:
+        raise ValueError('humidity is a relative humidity from 0 to 1.')
+    T = temperature + 273.15
+    p_sat = 101325. * 10 ** (-6.8346 * (273.15 / T) ** 1.261 + 4.6151)
+    h = 100 * humidity * p_sat / pressure          # molar concentration, %
+    R_dry = 8.31 / 0.0289644                       # J/(kg K)
+    R = R_dry / (1 - h / 100 * (1 - R_dry / 461.))
+    c = np.sqrt(1.4 * R * T)
+    rho = pressure / (R * T)
+    return {'c': float(c), 'rho': float(rho), 'z0': float(rho * c)}
+
+
+_QUANTITIES = ('T', 'alpha', 'R', 'Z')
+
+
+def convert_room_quantity(value, source, target, volume=None, surface=None,
+                          formula='eyring', c=343.2, z0=413.3):
+    """
+    Conversion between reverberation time T (s), absorption coefficient
+    alpha, normal-incidence reflection factor R and surface impedance Z
+    (Pa s/m), as ita_convert_RT_alpha_R_Z.
+
+    T and alpha are related by Eyring, T = 24 ln(10) V / (-c S ln(1 -
+    alpha)), or Sabine, T = 24 ln(10) V / (c S alpha), in both directions
+    (ita_convert_RT_alpha_R_Z goes from T to alpha by Eyring and back by
+    Sabine with air absorption); alpha = 1 - |R|^2, R = sqrt(1 - alpha)
+    (real, the phase is not known), and Z = z0 (1 + R) / (1 - R).
+
+    Parameters
+    ----------
+    value : array_like
+    source, target : str
+        'T', 'alpha', 'R' or 'Z'.
+    volume, surface : float
+        Room volume (m^3) and surface (m^2), for conversions with T.
+    formula : str
+        'eyring' (default) or 'sabine'.
+    c, z0 : float
+        Speed of sound and characteristic impedance of air (see
+        air_constants). Defaults for 20 C.
+    """
+    if source not in _QUANTITIES or target not in _QUANTITIES:
+        raise ValueError(f'quantities are {_QUANTITIES}.')
+    if formula not in ('eyring', 'sabine'):
+        raise ValueError("formula must be 'eyring' or 'sabine'.")
+    if 'T' in (source, target) and source != target and (volume is None or surface is None):
+        raise ValueError('volume and surface are needed for T.')
+    v = np.asarray(value, dtype=complex if source in ('R', 'Z') else float)
+    k = 24 * np.log(10) * volume / (c * surface) if volume is not None and surface is not None else None
+    # to alpha (or R for Z)
+    if source == 'T':
+        x = k / v
+        alpha = 1 - np.exp(-x) if formula == 'eyring' else x
+    elif source == 'alpha':
+        alpha = v
+    elif source == 'R':
+        alpha = 1 - np.abs(v) ** 2
+        if target == 'Z':
+            return z0 * (1 + v) / (1 - v)
+    else:
+        R = (v / z0 - 1) / (v / z0 + 1)
+        if target == 'R':
+            return R
+        alpha = 1 - np.abs(R) ** 2
+    if target == 'alpha':
+        return alpha
+    if target == 'T':
+        return k / (-np.log(1 - alpha) if formula == 'eyring' else alpha)
+    R = np.sqrt(1 - alpha)
+    return R if target == 'R' else z0 * (1 + R) / (1 - R)
+
+
+def din18041(volume, purpose='speech', frequencies=None):
+    """
+    Recommended reverberation time and its tolerance band by frequency, as
+    ita_din18041_reverberation_times (DIN 18041:2004, rooms of groups
+    music, speech and education): T_soll = a lg(V) + b, with (a, b) =
+    (0.45, 0.07), (0.37, -0.14) and (0.32, -0.17), times the tolerance
+    curves of the standard.
+
+    Parameters
+    ----------
+    volume : float
+        Room volume, m^3.
+    purpose : str
+        'music', 'speech' or 'education'.
+    frequencies : array_like, optional
+        Frequencies (Hz); by default 1025 points from 0 to 22.05 kHz, as
+        ita_din18041_reverberation_times.
+
+    Returns
+    -------
+    dict
+        'T_soll' (s), 'frequency' (Hz), 'T_min' and 'T_max' (s).
+    """
+    coef = {'music': (0.45, 0.07), 'speech': (0.37, -0.14), 'education': (0.32, -0.17)}
+    if purpose not in coef:
+        raise ValueError(f'purpose must be one of {tuple(coef)}.')
+    f = np.linspace(0, 22050, 1025) if frequencies is None else np.asarray(frequencies, dtype=float)
+    a, b = coef[purpose]
+    T = a * np.log10(volume) + b
+    lg = np.log10(np.maximum(f, 1e-300))
+    lo = np.full(f.size, 0.8)
+    if purpose == 'music':
+        lo[f <= 250] = (np.log10(250) - lg[f <= 250]) * 0.7 + 0.8
+        lo[f >= 2000] = (np.log10(2000) - lg[f >= 2000]) * 0.5 + 0.8
+        hi = lo * 1.2 / 0.8
+        hi[f >= 2000] = 1.2
+    else:
+        lo[f <= 250] = (lg[f <= 250] - np.log10(250)) * 0.5 + 0.8
+        lo[f >= 2000] = (np.log10(2000) - lg[f >= 2000]) * 0.5 + 0.8
+        hi = np.full(f.size, 1.2)
+    return {'T_soll': float(T), 'frequency': f,
+            'T_min': np.maximum(lo * T, 1e-6), 'T_max': np.maximum(hi * T, 1e-6)}
