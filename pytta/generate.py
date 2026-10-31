@@ -393,6 +393,7 @@ def _powerlaw_noise(nsamples, nchannels, power, fs):
     freqs = np.fft.rfftfreq(nsamples, 1/fs)
     freqs[0] = 1/nsamples
     scaling = (1/(2 * np.pi * freqs))**(power/2)
+    scaling[0] = 0  # no DC: a zero-mean noise
 
     # For each Fourier freq w_i draw 2 gaussian distributed numbers
     # multiply them by sqrt(0.5 * S(w_i)) approx (1/w)^(B/2)
@@ -403,7 +404,7 @@ def _powerlaw_noise(nsamples, nchannels, power, fs):
 
     # If nsamples is even, at nyquist the FFT is real-valued only
     if not nsamples & 1:
-        imag[-1] = 0.
+        imag[:, -1] = 0.
 
     # IFFT the spectrum to obtain the time signal
     out = np.array(np.fft.irfft(real + 1j*imag),
