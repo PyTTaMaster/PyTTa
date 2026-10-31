@@ -5,8 +5,11 @@ Each test pins one rule: a value that defines a unit, a reference value of a
 standard, parity with SQAT (https://github.com/ggrecow/SQAT) on golden data,
 or the rejection of an invalid input.
 
-The SQAT golden data come from golden/make_loudness_sqat.m and
-golden/make_roughness_sqat.m. Those scripts store the parameters of short
+The SQAT golden data come from golden/make_loudness_sqat.m,
+golden/make_roughness_sqat.m and golden/make_tonality_sqat.m (SQAT's
+tonality is GPL-3.0 and serves only as an oracle; pytta's code for it is
+written from the papers). Those scripts
+store the parameters of short
 synthetic signals; the helpers below rebuild the same samples (rounded to
 float32, as SignalObj stores them) and check them against the sums stored
 with the outputs.
@@ -62,6 +65,22 @@ def roughness_signal(p):
     t = np.arange(n) / p.fs
     A = np.sqrt(2) * 2e-5 * 10 ** (p.L / 20) / np.sqrt(1 + p.m ** 2 / 2)
     x = A * (1 + p.m * np.sin(2 * np.pi * p.fm * t)) * np.sin(2 * np.pi * p.fc * t)
+    return x.astype(np.float32)
+
+
+def tonality_signal(p):
+    """Rebuild a tonality case of make_tonality_sqat.m."""
+    t = np.arange(int(round(p.dur * p.fs))) / p.fs
+    x = np.zeros(t.size)
+    for f in np.atleast_1d(p.f):
+        x = x + np.sqrt(2) * P0 * 10 ** (p.L / 20) * np.sin(2 * np.pi * f * t)
+    if p.kind == 'tone+noise':
+        K = int(p.f2 - p.f1 + 1)
+        nz = np.zeros(t.size)
+        for k in range(1, K + 1):
+            nz = nz + np.sin(2 * np.pi * (p.f1 + k - 1) * t
+                             + 2 * np.pi * np.mod(0.6180339887 * k ** 2, 1))
+        x = x + nz * (P0 * 10 ** (p.Ln / 20) / np.sqrt(np.mean(nz ** 2)))
     return x.astype(np.float32)
 
 
@@ -290,6 +309,62 @@ class TestRoughness(unittest.TestCase):
         short = pytta.SignalObj(np.zeros(fs // 10), 'time', fs)
         with self.assertRaises(ValueError):
             pa.roughness_daniel1997(short)  # shorter than one 200 ms window
+
+
+class TestTonality(unittest.TestCase):
+
+    def test_reference_tone_is_1_tu(self):
+        # Aures (1985), 3.1: a 1 kHz tone at 60 dB has a tonality of 1.
+        fs = 48000
+        t = np.arange(fs) / fs
+        x = np.sqrt(2) * P0 * 1000 * np.sin(2 * np.pi * 1000 * t)
+        out = pa.tonality_aures1985(pytta.SignalObj(x, 'time', fs))
+        print(f'\n  Kmean = {out["Kmean"]:.6f} t.u., diff {out["Kmean"] - 1:+.1e}')
+        self.assertAlmostEqual(out['Kmean'], 1, delta=1e-5)
+        np.testing.assert_allclose(out['WGr'], 1, atol=1e-6)  # no noise left
+
+    def test_level_excess_weighting(self):
+        # A lone tone is masked by the threshold only, so its SPL excess is
+        # L - LTH(f) (Terhardt et al. 1982, Eqs. 4 and 8). With w2 and WGr
+        # unchanged, K(30 dB) / K(60 dB) = (w3'(30 - LTH) / w3'(60 - LTH))^0.29,
+        # w3' = 1 - exp(-LX / 15 dB) (Aures 1985, Eqs. 10, 11 and 13).
+        fs = 48000
+        t = np.arange(fs) / fs
+        x = np.sqrt(2) * P0 * 10 ** (30 / 20) * np.sin(2 * np.pi * 1000 * t)
+        out = pa.tonality_aures1985(pytta.SignalObj(x, 'time', fs))
+        lth = 3.64 - 6.5 * np.exp(-0.6 * (1 - 3.3) ** 2) + 1e-3
+        w3 = 1 - np.exp(-(np.array([30, 60]) - lth) / 15)
+        expected = (w3[0] / w3[1]) ** 0.29
+        print(f'\n  K(30 dB) = {out["Kmean"]:.6f}, expected {expected:.6f}, '
+              f'diff {out["Kmean"] - expected:+.1e}')
+        self.assertAlmostEqual(out['Kmean'], expected, delta=1e-5)
+
+    def test_matches_sqat(self):
+        # Tones: 500 Hz and 4 kHz (w2), 30 dB (w3), two tones 1 and 1.2 kHz
+        # (mutual masking in the SPL excess) agree to 1e-4 t.u. A 1 kHz tone
+        # at 60 dB over a noise from 200 Hz to 5 kHz at 60 and 50 dB (masking
+        # by noise and WGr): within 0.015 t.u. (the noise loudness comes
+        # from the band levels of the spectrum here, from a resynthesised
+        # signal in SQAT). SQAT's frames differ, so the means are compared.
+        for p in golden_cases('tonality_sqat.mat'):
+            x = tonality_signal(p)
+            same_samples(self, p, x)
+            out = pa.tonality_aures1985(pytta.SignalObj(x, 'time', p.fs))
+            d = out['Kmean'] - p.Kmean
+            print(f'\n  {p.name}: Kmean = {out["Kmean"]:.5f}, SQAT {p.Kmean:.5f}, diff {d:+.1e}')
+            self.assertLess(abs(d), 0.015 if p.kind == 'tone+noise' else 1e-4)
+
+    def test_rejects_invalid_input(self):
+        fs = 48000
+        one = pytta.SignalObj(np.zeros(fs), 'time', fs)
+        with self.assertRaises(ValueError):
+            pa.tonality_aures1985(one, field='near')
+        two = pytta.SignalObj(np.zeros((fs, 2)), 'time', fs)
+        with self.assertRaises(ValueError):
+            pa.tonality_aures1985(two)
+        short = pytta.SignalObj(np.zeros(fs // 10), 'time', fs)
+        with self.assertRaises(ValueError):
+            pa.tonality_aures1985(short)  # shorter than one 160 ms frame
 
 
 if __name__ == '__main__':

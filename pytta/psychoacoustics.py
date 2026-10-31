@@ -9,11 +9,14 @@ Available functions:
     >>> pytta.psychoacoustics.loudness_zwicker(signal)
     >>> pytta.psychoacoustics.sharpness_din45692(signal)
     >>> pytta.psychoacoustics.roughness_daniel1997(signal)
+    >>> pytta.psychoacoustics.tonality_aures1985(signal)
 
 * loudness_zwicker: Zwicker loudness, ISO 532-1:2017, stationary and
   time-varying sounds, free or diffuse field;
 * sharpness_din45692: sharpness, DIN 45692:2009, from that loudness;
-* roughness_daniel1997: roughness after Daniel and Weber (1997).
+* roughness_daniel1997: roughness after Daniel and Weber (1997);
+* tonality_aures1985: tonality after Aures (1985), tonal components after
+  Terhardt, Stoll and Seewann (1982).
 
 Every function takes a one-channel SignalObj whose time signal is the sound
 pressure in pascal, and returns a dict of floats and NumPy arrays (keys and
@@ -53,6 +56,11 @@ SQAT's numbers; SQAT's resampling (MATLAB resample) is reproduced as well.
 
 sharpness_din45692 is written from the text of DIN 45692:2009 (Formula (1)).
 
+tonality_aures1985 is written from the papers cited below. SQAT's
+Tonality_Aures1985 is GPL-3.0; it was run only as a test oracle, and of its
+file only the help text (calling convention) was read. Where the papers
+leave a choice open, the function docstring says what was chosen.
+
 References
 ----------
 
@@ -65,6 +73,16 @@ sharpness).
 
 Daniel, P., & Weber, R. (1997). Psychoacoustical roughness: implementation of
 an optimized model. Acustica, 83, 113-123.
+
+Aures, W. (1985). Berechnungsverfahren fuer den sensorischen Wohlklang
+beliebiger Schallsignale. Acustica, 59, 130-141.
+
+Terhardt, E., Stoll, G., & Seewann, M. (1982). Algorithm for extraction of
+pitch and pitch salience from complex tonal signals. The Journal of the
+Acoustical Society of America, 71(3), 679-688. doi:10.1121/1.387544
+
+Fastl, H., & Zwicker, E. (2007). Psychoacoustics: Facts and Models (3rd ed.).
+Springer.
 
 Felix Greco, G., Merino-Martinez, R., Osses, A., & Langer, S. C. (2023). SQAT:
 a MATLAB-based toolbox for quantitative sound quality analysis. INTER-NOISE
@@ -139,7 +157,8 @@ from math import gcd
 import numpy as np
 import scipy.signal as ss
 
-__all__ = ['loudness_zwicker', 'sharpness_din45692', 'roughness_daniel1997']
+__all__ = ['loudness_zwicker', 'sharpness_din45692', 'roughness_daniel1997',
+           'tonality_aures1985']
 
 _FIELDS = ('free', 'diffuse')
 _METHODS = ('stationary', 'time_varying')
@@ -777,8 +796,8 @@ def _mround(v):
     return int(np.floor(v + 0.5))
 
 
-def _roughness_params(N, fs):
-    """Bins, Bark scale, thresholds, a0, H(fmod) and g(z) for windows of N samples."""
+def _excitation_params(N, fs):
+    """Bins, Bark scale, thresholds and a0 of the Terhardt excitation for windows of N samples."""
     df = fs / N
     n0 = _mround(20 / df) + 1                  # 1-based bin of 20 Hz
     ntop = _mround(20e3 / df) + 1              # 1-based bin of 20 kHz
@@ -795,6 +814,13 @@ def _roughness_params(N, fs):
     min_bf = min_exc[np.sort(np.concatenate([bf, cf])) - 1]
     a0 = np.ones(N)
     a0[bins] = 10 ** (np.interp(bark[bins], _A0TAB[:, 0], _A0TAB[:, 1]) / 20)
+    return {'N': N, 'n01': n01, 'bins': bins, 'freqs': freqs, 'bark': bark,
+            'min_exc': min_exc, 'min_bf': min_bf, 'a0': a0}
+
+
+def _roughness_params(N, fs):
+    """_excitation_params plus H(fmod) and g(z) of the roughness model."""
+    prm = _excitation_params(N, fs)
     hw = np.zeros((_CHNO, N))
     for proto, fmax, rows in ((_H2, 358, (2,)), (_H5, 502, (5,)),
                               (_H16, 645, (16,)), (_H21, 645, (21,)),
@@ -808,10 +834,9 @@ def _roughness_params(N, fs):
         for r in range(lo, hi + 1):
             if r != src:
                 hw[r - 1] = hw[src - 1]
-    gzi = np.sqrt(np.interp(np.arange(1, _CHNO + 1) / 2, np.arange(25), _GR))
-    return {'N': N, 'n01': n01, 'bins': bins, 'freqs': freqs, 'bark': bark,
-            'min_exc': min_exc, 'min_bf': min_bf, 'a0': a0, 'hw': hw,
-            'gzi': gzi}
+    prm['hw'] = hw
+    prm['gzi'] = np.sqrt(np.interp(np.arange(1, _CHNO + 1) / 2, np.arange(25), _GR))
+    return prm
 
 
 def _terhardt_excitation(spec, prm):
@@ -965,3 +990,179 @@ def roughness_daniel1997(signal, time_skip=0.0):
     return {'R': R, 'specific': spec, 'time': time,
             'bark': np.arange(1, _CHNO + 1) / 2,
             'Rmean': float(np.mean(R[_skip_index(time, time_skip):]))}
+
+
+# ---------------------------------------------------------------------------
+# Tonality, Aures (1985), tonal components after Terhardt et al. (1982)
+# ---------------------------------------------------------------------------
+
+_T_WINDOW = 0.16     # s, Hann frames, 50 % overlap
+_T_FMIN, _T_FMAX = 20.0, 5000.0   # Hz, range of the tonal components
+_T_NEIGHBOURS = (25.0, 37.5)      # Hz, Terhardt's samples i +- 2, i +- 3 at 12.5 Hz
+_T_JUMP = 7.0        # dB, Terhardt et al. (1982), Eq. (2)
+# c of Aures' Eq. (13), set so that a 1 kHz tone at 60 dB gives 1 t.u. (Aures
+# 3.1); about 1.09 in an ideal implementation (Hastings et al. 2003)
+_C_K = 1.105464
+
+
+def _bark_terhardt(f):
+    """Critical band rate (Bark) of f (Hz), Terhardt et al. (1982), Eq. (6)."""
+    f = np.asarray(f, dtype=float) / 1000
+    return 13 * np.arctan(0.76 * f) + 3.5 * np.arctan((f / 7.5) ** 2)
+
+
+def _threshold_terhardt(f):
+    """Threshold in quiet (dB SPL) of f (Hz), Terhardt et al. (1982), Eq. (8)."""
+    f = np.asarray(f, dtype=float) / 1000
+    return 3.64 * f ** -0.8 - 6.5 * np.exp(-0.6 * (f - 3.3) ** 2) + 1e-3 * f ** 4
+
+
+def _tonal_components(P, df):
+    """
+    Tonal components of one power spectrum P (Pa^2 per bin, summing to the
+    power of a component over its main lobe). Returns the peak bins, the
+    frequencies (Hz), levels (dB SPL) and SPL excess (dB) of every
+    component found, and the half-width (bins) of the group of samples
+    that represents a component.
+    """
+    L = 10 * np.log10(P / _I_REF + _TINY)
+    j2, j3 = (_mround(h / df) for h in _T_NEIGHBOURS)
+    i = np.arange(max(j3 + 1, _mround(_T_FMIN / df)),
+                  min(_mround(_T_FMAX / df), P.size - 2 - j3) + 1)
+    peak = (L[i - 1] < L[i]) & (L[i] >= L[i + 1])
+    for j in (-j3, -j2, j2, j3):
+        peak &= L[i] - L[i + j] >= _T_JUMP
+    i = i[peak]
+    if i.size == 0:
+        return i, np.zeros(0), np.zeros(0), np.zeros(0), j3
+    # frequency: Terhardt's Eq. (3), 0.46 Hz/dB at his 12.5 Hz spacing
+    fc = (i + 0.46 / 12.5 * (L[i + 1] - L[i - 1])) * df
+    # level: power of the main lobe of the Hann window (5 samples)
+    lc = 10 * np.log10(sum(P[i + d] for d in range(-2, 3)) / _I_REF)
+    # SPL excess, Terhardt et al. (1982), Eqs. (4), (5) and (7); the noise
+    # skips the central samples of every component (25 Hz on each side)
+    zc = _bark_terhardt(fc)
+    zb = _bark_terhardt(np.arange(P.size) * df)
+    noisy = np.ones(P.size, dtype=bool)
+    for d in range(-j2, j2 + 1):
+        noisy[i + d] = False
+    lx = np.zeros(i.size)
+    for u in range(i.size):
+        lower = fc[u] <= fc            # f_u below f_v: lower slope of v
+        s = np.where(lower, 27.0,
+                     np.minimum(-24 - 230 / fc + 0.2 * lc, 0.0))
+        le = lc - s * (zc - zc[u])
+        others = np.arange(i.size) != u
+        tones = np.sum(10 ** (le[others] / 20)) ** 2
+        noise = np.sum(P[noisy & (np.abs(zb - zc[u]) <= 0.5)]) / _I_REF
+        lx[u] = lc[u] - 10 * np.log10(tones + noise
+                                      + 10 ** (_threshold_terhardt(fc[u]) / 10))
+    return i, fc, lc, lx, j3
+
+
+def _third_octave_levels(P, df):
+    """Levels (dB SPL) of the 28 one-third-octave bands of a power spectrum."""
+    f = np.arange(P.size) * df
+    out = np.empty(28)
+    for n, fm in enumerate(_OB_FC):
+        band = (f >= fm * 10 ** -0.05) & (f < fm * 10 ** 0.05)
+        out[n] = 10 * np.log10(np.sum(P[band]) / _I_REF + _TINY)
+    return out
+
+
+def tonality_aures1985(signal, field='free', time_skip=0.0):
+    """
+    Tonality after Aures (1985), with the tonal components of Terhardt,
+    Stoll and Seewann (1982).
+
+    Written from the two papers; SQAT's Tonality_Aures1985 is GPL-3.0 and
+    served only as a test oracle. Per Hann frame of 160 ms (50 % overlap):
+
+    * tonal components (Terhardt et al., Eqs. 1 to 3): local maxima from
+      20 Hz to 5 kHz at least 7 dB above the samples 25 and 37.5 Hz away
+      on both sides (Terhardt's i +- 2 and i +- 3 at his 12.5 Hz spacing),
+      frequency by Eq. (3), level from the power of the main lobe;
+    * SPL excess LX (Eqs. 4 to 8): level minus the masking by the other
+      components (triangular excitation, slopes 27 dB/Bark and
+      24 + 230/f - 0.2 L dB/Bark), by the noise of the critical band around
+      the component (samples within 25 Hz of a component left out) and by
+      the threshold in quiet; only components with LX > 0 count;
+    * WT = sqrt(sum (w2' w3')^2) (Aures, Eqs. 9 to 11), w2' the frequency
+      weighting (maximum at 700 Hz), w3' = 1 - exp(-LX / 15 dB);
+    * WGr = 1 - N_Gr / N (Eq. 12): ISO 532-1 loudness (stationary, from the
+      one-third-octave levels of the spectrum) of the spectrum without the
+      relevant components (37.5 Hz on each side replaced by the mean of
+      the next samples) over that of the whole spectrum;
+    * K = c WT^0.29 WGr^0.79 (Eq. 13), c = 1.105 so that a 1 kHz tone at
+      60 dB gives 1.
+
+    The components found this way are sinusoids, so the bandwidth
+    weighting w1 of Aures (Eq. 7) is 1. Aures also extracts narrowband
+    noise regions (narrower than a critical band, 7 dB above the
+    neighbouring bands), the only components with a bandwidth; that step
+    is not described precisely enough to reproduce and is left out, so
+    narrowband noise is rated by the peaks of its spectrum. Against SQAT:
+    within 1e-4 for tones, 0.015 for a tone in broadband noise.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * signal (), (SignalObj):
+            One channel, sound pressure in Pa, at least 160 ms long,
+            sampled above 10 kHz;
+
+        * field ('free'), (str):
+            'free' or 'diffuse', for the loudness of WGr;
+
+        * time_skip (0.0), (float):
+            Seconds excluded from Kmean at the start.
+
+    Returns:
+    --------
+
+        dict, nt frames every 80 ms:
+
+            * 'K': tonality K(t), t.u., shape (nt,);
+            * 'WT', 'WGr': tonal and loudness weightings, shape (nt,);
+            * 'time': start of each frame, s, shape (nt,);
+            * 'Kmean': mean of K(t) from the frame closest to time_skip on,
+              t.u. (float).
+
+    """
+    if field not in _FIELDS:
+        raise ValueError(f"field must be one of {_FIELDS}, got {field!r}.")
+    x, fs = _mono(signal)
+    if fs <= 2 * _T_FMAX:
+        raise ValueError(f'the sampling rate ({fs} Hz) must be above '
+                         f'{2 * _T_FMAX:.0f} Hz.')
+    N = 2 * _mround(fs * _T_WINDOW / 2)
+    hop = N // 2
+    if x.size < N:
+        raise ValueError(f'the signal ({x.size / fs:.3f} s) is shorter than '
+                         f'one frame ({_T_WINDOW} s).')
+    nwin = (x.size - N) // hop + 1
+    w = ss.windows.hann(N, sym=False)
+    scale = 2 / (np.sum(w) ** 2 * (N * np.sum(w ** 2) / np.sum(w) ** 2))
+    df = fs / N
+    WT = np.zeros(nwin)
+    WGr = np.zeros(nwin)
+    for n in range(nwin):
+        X = np.fft.rfft(x[n * hop:n * hop + N] * w)
+        P = scale * np.abs(X) ** 2
+        P[0] /= 2
+        P[-1] /= 2
+        i, fc, lc, lx, j3 = _tonal_components(P, df)
+        rel = lx > 0
+        w2 = 1 / np.sqrt(1 + 0.2 * (fc[rel] / 700 + 700 / fc[rel]) ** 2)
+        w3 = 1 - np.exp(-lx[rel] / 15)
+        WT[n] = np.sqrt(np.sum((w2 * w3) ** 2))
+        noise = P.copy()
+        for k in i[rel]:
+            noise[k - j3:k + j3 + 1] = (P[k - j3 - 1] + P[k + j3 + 1]) / 2
+        Nt = _loudness_from_third_octave_levels(_third_octave_levels(P, df), field)['N']
+        Ng = _loudness_from_third_octave_levels(_third_octave_levels(noise, df), field)['N']
+        WGr[n] = max(1 - Ng / Nt, 0.0) if Nt > 0 else 0.0
+    K = _C_K * WT ** 0.29 * WGr ** 0.79
+    time = np.arange(nwin) * hop / fs
+    return {'K': K, 'WT': WT, 'WGr': WGr, 'time': time,
+            'Kmean': float(np.mean(K[_skip_index(time, time_skip):]))}
