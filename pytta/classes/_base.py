@@ -231,8 +231,7 @@ class CoordinateObj(object):
             r = (self._point[0]**2+self._point[1]**2+self._point[2]**2)**(1/2)
             if r != 0:
                 elev = np.arccos(self._point[2]/r)
-                azi = np.arctan(self._point[1] /
-                                self._point[0])
+                azi = np.arctan2(self._point[1], self._point[0])
             else:
                 elev = 0
                 azi = 0

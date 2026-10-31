@@ -43,7 +43,7 @@ from typing import Union, List
 from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
                     Analysis, OctFilter
-from pytta.classes._base import ChannelsList, ChannelObj
+from pytta.classes._base import ChannelsList, ChannelObj, CoordinateObj
 from pytta.generate import measurement  # TODO: Change to class instantiation.
 from pytta import _h5utils as _h5
 import copy as cp
@@ -821,6 +821,9 @@ def __parse_channels(chDict, chList):
         channel.unit = chDict[key]['unit']
         channel.name = chDict[key]['name']
         channel.code = chDict[key].get('code', 'Ch' + str(key))
+        for name in ('coordinates', 'orientation'):
+            if name in chDict[key]:
+                setattr(channel, name, CoordinateObj(**chDict[key][name]))
         channel.CF = chDict[key]['calib'][0]
         channel.calibCheck = chDict[key]['calib'][1]
     return chList
