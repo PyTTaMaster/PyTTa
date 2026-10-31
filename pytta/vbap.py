@@ -12,6 +12,7 @@ Available functions:
     >>> groups = pytta.vbap.loudspeaker_triplets(directions)   # 3D
     >>> inverses = pytta.vbap.inverse_matrices(directions, groups)
     >>> G = pytta.vbap.gains(source_directions, groups, inverses, spread=0)
+    >>> G = pytta.vbap.energy_gains(source_directions, groups, inverses)
 
 Directions are in degrees: azimuth for 2D layouts, [azimuth, elevation] for
 3D ones, with x = cos(azi) cos(elev), y = sin(azi) cos(elev) and z =
@@ -24,7 +25,7 @@ Origin of the code
 This module is a port to Python of the MATLAB library
 Vector-Base-Amplitude-Panning by Archontis Politis and Ville Pulkki (2015),
 https://github.com/polarch/Vector-Base-Amplitude-Panning (findLsPairs.m,
-findLsTriplets.m, invertLsMtx.m, vbap.m, getSpreadSrcDirs.m), under the BSD
+findLsTriplets.m, invertLsMtx.m, vbap.m, vbip.m, getSpreadSrcDirs.m), under the BSD
 3-Clause licence reproduced below. The gains follow the MATLAB code
 operation by operation.
 
@@ -177,8 +178,9 @@ def inverse_matrices(directions, groups):
     return np.linalg.inv(U[np.asarray(groups)])
 
 
-def _spread_directions(direction, spread, num_src=8):
-    # getSpreadSrcDirs with its defaults: num_src sources, one ring in 3D.
+def _spread_directions(direction, spread, num_src=8, num_rings=1):
+    # getSpreadSrcDirs: num_src sources across the spread in 2D; in 3D
+    # num_rings concentric rings of num_src sources and the source itself.
     if np.ndim(direction) == 0:
         d = np.radians(np.linspace(direction - spread / 2, direction + spread / 2,
                                    num_src + 1))
@@ -196,17 +198,20 @@ def _spread_directions(direction, spread, num_src=8):
         base[0] = c / np.sqrt(np.sum(c**2))
     for n in range(1, num_src):
         base[n] = R @ base[n - 1]
-    ring = u + base * np.tan(np.radians(spread / 2))
-    ring = ring / np.sqrt(np.sum(ring**2, axis=1))[:, None]
-    return np.vstack([ring, u])
+    ring = np.radians(spread / 2) / num_rings
+    rings = np.vstack([u + base * np.tan(ring * (r + 1)) for r in range(num_rings)])
+    rings = rings / np.sqrt(np.sum(rings**2, axis=1))[:, None]
+    return np.vstack([rings, u])
 
 
-def _group_gains(u, groups, inverses, first_only):
+def _group_gains(u, groups, inverses, first_only, energy=False):
+    # One direction: the gains of the first (3D) or last (2D) group that
+    # holds it, normalized in amplitude (VBAP) or in energy (VBIP).
     g = np.zeros(int(groups.max()) + 1)
     for group, inv in zip(groups, inverses):
         g_tmp = u @ inv
         if np.min(g_tmp) > -0.001:
-            g[group] = g_tmp / np.sqrt(np.sum(g_tmp**2))
+            g[group] = g_tmp / (np.sum(g_tmp) if energy else np.sqrt(np.sum(g_tmp**2)))
             if first_only:
                 break
     return g
@@ -251,4 +256,48 @@ def gains(directions, groups, inverses, spread=0.):
                              groups, inverses, three_d)
         with np.errstate(invalid='ignore'):
             out[n] = np.fmax(0, g / np.sqrt(np.sum(g**2)))
+    return out
+
+
+def energy_gains(directions, groups, inverses, spread=0., num_src=8,
+                 num_rings=1):
+    """
+    Vector base intensity panning gains (vbip).
+
+    The energies of the loudspeakers of a group, not their amplitudes,
+    weight the loudspeaker vectors into the source direction; the gains are
+    their square roots, normalized in energy.
+
+    Parameters
+    ----------
+    directions, groups, inverses
+        As in gains.
+    spread : float, optional
+        Spread in degrees: the energies of num_src directions across it (in
+        3D num_rings rings of num_src and the source) are summed.
+    num_src, num_rings : int, optional
+        Spread directions, 8 and 1 by default.
+
+    Returns
+    -------
+    numpy.ndarray
+        (sources, loudspeakers) gains, of norm 1 per source.
+    """
+    groups = np.asarray(groups)
+    three_d = groups.shape[1] == 3
+    directions = np.asarray(directions, dtype=float)
+    directions = directions.reshape(-1, 2) if three_d else directions.reshape(-1)
+    out = np.zeros((len(directions), int(groups.max()) + 1))
+    for n, d in enumerate(directions):
+        if spread:
+            e = sum(_group_gains(u, groups, inverses, three_d, energy=True)
+                    for u in _spread_directions(d, spread, num_src, num_rings))
+        else:
+            e = _group_gains(_cartesian(np.atleast_2d(d) if three_d else [d])[0],
+                             groups, inverses, three_d, energy=True)
+        with np.errstate(invalid='ignore'):
+            e = e / np.sum(e)
+        if three_d:
+            e[e < 0] = 0
+        out[n] = np.fmax(0, np.sqrt(e))
     return out
