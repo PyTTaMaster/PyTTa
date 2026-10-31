@@ -11,7 +11,7 @@ Available functions:
     >>> pytta.read_wav(fileName)
     >>> pytta.write_wav(fileName, signalObject)
     >>> pytta.merge(signalObj1, signalObj2, ..., signalObjN)
-    >>> pytta.slipt(signalObj)
+    >>> pytta.split(signalObj)
     >>> pytta.fft_convolve(signalObj1, signalObj2)
     >>> pytta.find_delay(signalObj1, signalObj2)
     >>> pytta.corr_coef(signalObj1, signalObj2)
@@ -221,29 +221,22 @@ def fft_convolve(signal1, signal2):
 
 def find_delay(signal1, signal2):
     """
-    Cross Correlation alternative.
+    Delay of signal2 relative to signal1, in samples, from the peak of the
+    cross correlation of their first channels. Positive when signal2 comes
+    later; the signals may have different lengths.
 
-    More efficient fft based method to calculate time shift between two signals.
-
-        >>> shift = pytta.find_delay(signal1,signal2)
+        >>> shift = pytta.find_delay(signal1, signal2)
 
     """
-    if signal1.N != signal2.N:
-        return print('Signal1 and Signal2 must have the same length')
-    else:
-        freqSignal1 = signal1.freqSignal
-        freqSignal2 = sfft.fft(np.flipud(signal2.timeSignal))
-        convoluted = np.real(sfft.ifft(freqSignal1 * freqSignal2))
-        convShifted = sfft.fftshift(convoluted)
-        zeroIndex = int(signal1.numSamples / 2) - 1
-        shift = zeroIndex - np.argmax(convShifted)
-    return shift
+    x, y = signal1.timeSignal[:, 0], signal2.timeSignal[:, 0]
+    lags = ss.correlation_lags(y.size, x.size)
+    return int(lags[np.argmax(ss.correlate(y, x, method='fft'))])
 
 
 def corr_coef(signal1, signal2):
-    """Finds the correlation coefficient between two SignalObjs using the numpy.corrcoef() function."""
-    coef = np.corrcoef(signal1.timeSignal, signal2.timeSignal)
-    return coef[0, 1]
+    """Correlation coefficient between the first channels of two SignalObjs
+    of the same length, by numpy.corrcoef."""
+    return np.corrcoef(signal1.timeSignal[:, 0], signal2.timeSignal[:, 0])[0, 1]
 
 
 def resample(signal, newSamplingRate):
