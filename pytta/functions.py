@@ -23,6 +23,15 @@ Available functions:
     >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.save(fileName, obj1, ..., objN)
     >>> pytta.load(fileName)
+    >>> pytta.envelope(signalObj)
+    >>> pytta.start_ir(signalObj)
+    >>> pytta.time_shift(signalObj, shift)
+    >>> pytta.append(signalObj1, signalObj2)
+    >>> pytta.normalize(signalObj)
+    >>> pytta.amplify_to(signalObj, level)
+    >>> pytta.zero_phase(signalObj)
+    >>> pytta.randomize_phase(signalObj)
+    >>> pytta.quantize(signalObj, bits)
 
 For further information, check the function specific documentation.
 
@@ -273,6 +282,190 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def _new_signal(signal, data, domain='time'):
+    """SignalObj like signal (sampling rate, channels) holding data."""
+    newSignal = SignalObj(data, domain, samplingRate=signal.samplingRate,
+                          signalType=signal.signalType)
+    newSignal.channels = cp.deepcopy(signal.channels)
+    return newSignal
+
+
+def envelope(signal):
+    """
+    Envelope of each channel, the magnitude of the analytic signal
+    (Hilbert transform), computed on twice the signal length to keep the
+    circular wrap out of it, as ita_envelope.
+
+    >>> env = pytta.envelope(signalObj)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    return _new_signal(signal, np.abs(ss.hilbert(x, N=2 * n, axis=0)[:n]))
+
+
+def start_ir(signal, threshold=20.):
+    """
+    Start of each channel of an impulse response, ISO 3382-1:2009, A.3: the
+    last sample before the peak that lies more than threshold dB below the
+    peak of the squared response, as ita_start_IR.
+
+    If a sample 6 dB above that level comes earlier, the start moves to the
+    last sample below the threshold before it (an oscillating onset). A
+    channel whose peak is less than 20 dB above its noise (the mean of the
+    last 10 %) or lies in that last 10 % gets 0.
+
+    Returns
+    -------
+    numpy.ndarray
+        0-based start sample of each channel.
+
+    >>> pytta.start_ir(ir)
+    """
+    x2 = np.asarray(signal.timeSignal, dtype=float) ** 2
+    n = x2.shape[0]
+    noise = np.mean(x2[int(round(0.9 * n)) - 1:], axis=0)
+    peak, at = np.max(x2, axis=0), np.argmax(x2, axis=0)
+    thr = -abs(threshold)
+    start = np.zeros(x2.shape[1], dtype=int)
+    for c in range(x2.shape[1]):
+        if peak[c] < 100 * noise[c] or at[c] + 1 > round(0.9 * n) or at[c] == 0:
+            continue
+        with np.errstate(divide='ignore'):
+            level = 10 * np.log10(x2[:at[c] + 1, c]) - 10 * np.log10(peak[c])
+        below = np.flatnonzero(level < thr)
+        start[c] = below[-1] if below.size else 0
+        above = np.flatnonzero(level[:start[c] + 1] > thr + 6)
+        if above.size:
+            before = np.flatnonzero(level[:above[0] + 1] < thr)
+            start[c] = before[-1] if before.size else 0
+    return start
+
+
+def time_shift(signal, shift=None, unit='time'):
+    """
+    Cyclic shift of each channel, as ita_time_shift.
+
+    Parameters
+    ----------
+    signal : SignalObj
+    shift : float, array_like or None
+        Shift in seconds (unit='time') or samples (unit='samples'), one for
+        all channels or one per channel; a fraction of a sample is applied
+        as a linear phase. None moves the earliest start of the impulse
+        response (start_ir) to the first sample.
+    unit : str
+        'time' (default) or 'samples'.
+
+    >>> shifted = pytta.time_shift(ir, 1e-3)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    fs = signal.samplingRate
+    if shift is None:
+        samples = np.full(x.shape[1], -np.min(start_ir(signal)), dtype=float)
+    elif unit == 'samples':
+        samples = np.broadcast_to(np.asarray(shift, dtype=float), (x.shape[1],))
+    elif unit == 'time':
+        samples = np.broadcast_to(np.round(np.asarray(shift, dtype=float) * fs), (x.shape[1],))
+    else:
+        raise ValueError("unit must be 'time' or 'samples'.")
+    out = np.empty_like(x)
+    n = x.shape[0]
+    for c in range(x.shape[1]):
+        k = samples[c]
+        if k == round(k):
+            out[:, c] = np.roll(x[:, c], int(k))
+        else:
+            f = np.fft.rfftfreq(n)
+            out[:, c] = np.fft.irfft(np.fft.rfft(x[:, c]) * np.exp(-2j * np.pi * f * k), n)
+    return _new_signal(signal, out)
+
+
+def append(signal1, signal2):
+    """
+    signal2 after signal1 in time, as ita_append; both need the same
+    sampling rate and number of channels.
+
+    >>> longer = pytta.append(signalObj1, signalObj2)
+    """
+    if signal1.samplingRate != signal2.samplingRate:
+        raise ValueError('the sampling rates differ.')
+    if signal1.numChannels != signal2.numChannels:
+        raise ValueError('the numbers of channels differ.')
+    return _new_signal(signal1, np.vstack([np.asarray(signal1.timeSignal, dtype=float),
+                                           np.asarray(signal2.timeSignal, dtype=float)]))
+
+
+def normalize(signal, domain='time', per_channel=False):
+    """
+    Signal scaled so that its largest magnitude, in time or in the
+    spectrum, is 1, as ita_normalize_dat and ita_normalize_spk.
+
+    Returns
+    -------
+    (SignalObj, numpy.ndarray)
+        The scaled signal and the gain removed (one value, or one per
+        channel with per_channel=True).
+
+    >>> normed, peak = pytta.normalize(signalObj)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    if domain == 'time':
+        mag = np.abs(x)
+    elif domain == 'freq':
+        mag = np.abs(np.fft.rfft(x, axis=0))
+    else:
+        raise ValueError("domain must be 'time' or 'freq'.")
+    gain = np.max(mag, axis=0) if per_channel else np.max(mag)
+    return _new_signal(signal, x / gain), np.atleast_1d(gain)
+
+
+def amplify_to(signal, level):
+    """
+    Signal scaled so that the mean RMS of its channels is level dB, re
+    20 uPa for channels in Pa and re 1 otherwise, as ita_amplify_to.
+
+    >>> at_70dB = pytta.amplify_to(signalObj, 70)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    ref = 2e-5 if signal.channels[signal.channels.mapping[0]].unit == 'Pa' else 1.
+    rms = np.mean(np.sqrt(np.mean(x ** 2, axis=0)))
+    return _new_signal(signal, x * 10 ** ((level - 20 * np.log10(rms / ref)) / 20))
+
+
+def zero_phase(signal):
+    """Signal with the magnitude spectrum of signal and zero phase (ita_zerophase)."""
+    x = np.asarray(signal.timeSignal, dtype=float)
+    return _new_signal(signal, np.fft.irfft(np.abs(np.fft.rfft(x, axis=0)), x.shape[0], axis=0))
+
+
+def randomize_phase(signal, seed=None):
+    """
+    Signal with the magnitude spectrum of signal and a uniformly random
+    phase (ita_randomize_phase); DC and Nyquist keep their sign so that the
+    result is real.
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    X = np.fft.rfft(x, axis=0)
+    phase = np.random.default_rng(seed).uniform(0, 2 * np.pi, X.shape)
+    phase[0] = np.angle(X[0])
+    if x.shape[0] % 2 == 0:
+        phase[-1] = np.angle(X[-1])
+    return _new_signal(signal, np.fft.irfft(np.abs(X) * np.exp(1j * phase), x.shape[0], axis=0))
+
+
+def quantize(signal, bits=24):
+    """
+    Signal rounded to 2^(bits - 1) + 1 intervals across its peak, halves
+    away from zero, as ita_quantize.
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    peak = np.max(np.abs(x))
+    steps = 2 ** (bits - 1) + 1
+    v = x / peak * steps / 2
+    v = np.sign(v) * np.floor(np.abs(v) + 0.5)       # halves away from zero
+    return _new_signal(signal, v / steps * 2 * peak)
+
 
 def fft_degree(*args,**kwargs):
     """
