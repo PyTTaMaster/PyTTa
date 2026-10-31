@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.loudspeaker:
+        Thiele-Small parameters from the electrical impedance;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   loudspeaker
    properties
