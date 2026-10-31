@@ -753,7 +753,7 @@ class SignalObj(_base.PyTTaObj):
                 window size in samples
 
             * overlap (0.5), (float):
-                window overlap in %
+                overlapping fraction of consecutive windows, 0 to 1
 
             * xLabel ('Time [s]'), (str):
                 x axis label.

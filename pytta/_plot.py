@@ -821,7 +821,7 @@ def spectrogram(sigObjs, winType, winSize,
             window size in samples
 
         * overlap (), (float):
-            window overlap in %
+            overlapping fraction of consecutive windows, 0 to 1
 
         * xLabel ('Time [s]'), (str):
             x axis label.
@@ -868,7 +868,7 @@ def spectrogram(sigObjs, winType, winSize,
         ax.set_snap(False)
 
         _spectrogram, _specTime, _specFreq = \
-            _calc_spectrogram(data['timeSignal'], data['timeVector'],
+            _calc_spectrogram(data['timeSignal'],
                               data['samplingRate'], overlap, winType,
                               winSize, data['dBRef'])
 
@@ -956,30 +956,18 @@ def _curve_data_extractor_spectrogram(sigObjs):
     return curveData
 
 
-def _calc_spectrogram(timeSignal, timeVector, samplingRate, overlap, winType,
-                      winSize, dBRef):
-    window = eval('ss.windows.' + winType)(winSize)
-    nextIdx = int(winSize*overlap)
-    rng = int(timeSignal.shape[0]/winSize/overlap - 1)
-    _spectrogram = np.zeros((winSize//2 + 1, rng))
-    _specFreq = np.linspace(0, samplingRate//2, winSize//2 + 1)
-    _specTime = np.linspace(0, timeVector[-1], rng)
-
-    for N in range(rng):
-        try:
-            strIdx = N*nextIdx
-            endIdx = winSize + N*nextIdx
-            sliceAudio = window*timeSignal[strIdx:endIdx]
-            sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-            sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-            _spectrogram[:, N] = 20*np.log10(sliceMag/dBRef)
-
-        except IndexError:
-            sliceAudio = timeSignal[-winSize:]
-            sliceFFT = np.fft.rfft(sliceAudio, axis=0)
-            sliceMag = np.absolute(sliceFFT) * (2/sliceFFT.size)
-            _spectrogram[:, N] = 20*np.log10(sliceMag)
-
+def _calc_spectrogram(timeSignal, samplingRate, overlap, winType, winSize,
+                      dBRef):
+    """Spectrogram in dB of peak amplitude re dBRef. `overlap` is the
+    overlapping fraction of consecutive windows; each column is at the
+    centre of its window."""
+    window = getattr(ss.windows, winType)(winSize)
+    _specFreq, _specTime, magnitude = ss.spectrogram(
+        timeSignal, samplingRate, window=window,
+        noverlap=int(winSize * overlap), detrend=False, mode='magnitude',
+        scaling='spectrum')  # |X| / sum(window): half the peak amplitude
+    with np.errstate(divide='ignore'):
+        _spectrogram = 20 * np.log10(2 * magnitude / dBRef)
     return _spectrogram, _specTime, _specFreq
 
 
