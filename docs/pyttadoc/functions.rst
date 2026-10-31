@@ -26,4 +26,6 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.psd
+.. autofunction:: pytta.interpolate_spectrum
+.. autofunction:: pytta.extrapolate_low

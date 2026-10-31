@@ -23,6 +23,9 @@ Available functions:
     >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.save(fileName, obj1, ..., objN)
     >>> pytta.load(fileName)
+    >>> pytta.psd(signalObj)
+    >>> pytta.interpolate_spectrum(signalObj, nSamples)
+    >>> pytta.extrapolate_low(signalObj, freqRange)
 
 For further information, check the function specific documentation.
 
@@ -273,6 +276,110 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def psd(signal, signal2=None, block_size=None, fft_size=None):
+    """
+    Power spectral density of each channel, or the cross power spectral
+    density with the same channel of signal2, as ita_psd: Welch averaging
+    with a symmetric Hann window of block_size samples (the whole signal by
+    default) and half-block overlap, one-sided, in units^2/Hz, with the
+    convention of MATLAB cpsd, X conj(Y) (the conjugate of
+    scipy.signal.csd).
+
+    Returns
+    -------
+    (numpy.ndarray, numpy.ndarray)
+        Frequencies (Hz) and the density, (bins, channels).
+
+    >>> freq, P = pytta.psd(noise, block_size=1024)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    y = x if signal2 is None else np.asarray(signal2.timeSignal, dtype=float)
+    if y.shape != x.shape:
+        raise ValueError('both signals need the same length and channels.')
+    block = x.shape[0] if block_size is None else int(round(block_size))
+    block += block % 2
+    if block > x.shape[0]:
+        x = np.vstack([x, np.zeros((block - x.shape[0], x.shape[1]))])
+        y = np.vstack([y, np.zeros((block - y.shape[0], y.shape[1]))])
+    nfft = block if fft_size is None else int(fft_size)
+    window = np.hanning(block + 2)[1:-1]          # MATLAB hanning(block)
+    f, P = ss.csd(x, y, fs=signal.samplingRate, window=window, noverlap=block // 2,
+                  nfft=nfft, axis=0, detrend=False, scaling='density')
+    return f, np.conj(P) if signal2 is not None else P.real    # MATLAB cpsd: X conj(Y)
+
+
+def interpolate_spectrum(signal, n_samples, method='spline', abs_phase=False):
+    """
+    signal with its spectrum interpolated onto the bins of n_samples, as
+    ita_interpolate_spk: the DFT is interpolated between DC and the highest
+    frequency (spline, as MATLAB interp1, or linear), on its real and
+    imaginary parts or (abs_phase=True) on magnitude and unwrapped phase.
+    Meant for energy signals such as impulse responses.
+
+    >>> longer = pytta.interpolate_spectrum(ir, 2 ** 16)
+    """
+    from scipy.interpolate import CubicSpline
+    x = np.asarray(signal.timeSignal, dtype=float)
+    X = np.fft.rfft(x, axis=0)
+    old = np.linspace(0, 1, X.shape[0])
+    new = np.linspace(0, 1, n_samples // 2 + 1)
+    if method == 'spline':
+        interp = lambda v: CubicSpline(old, v, axis=0)(new)
+    elif method == 'linear':
+        interp = lambda v: np.column_stack([np.interp(new, old, v[:, c]) for c in range(v.shape[1])])
+    else:
+        raise ValueError("method must be 'spline' or 'linear'.")
+    if abs_phase:
+        Y = interp(np.abs(X)) * np.exp(1j * interp(np.unwrap(np.angle(X), axis=0)))
+    else:
+        Y = interp(X.real) + 1j * interp(X.imag)
+    newSignal = SignalObj(np.fft.irfft(Y, n_samples, axis=0), 'time',
+                          samplingRate=signal.samplingRate, signalType=signal.signalType)
+    newSignal.channels = cp.deepcopy(signal.channels)
+    return newSignal
+
+
+def extrapolate_low(signal, freq_range, slope=0.):
+    """
+    Spectrum below freq_range replaced by an extrapolation, as the lower
+    part of ita_spk_extrapolate: the mean magnitude of freq_range, changed
+    by slope dB per decade towards low frequencies, and a linear phase from
+    the mean group delay of freq_range, joined to the phase at its lower
+    end.
+
+    Parameters
+    ----------
+    freq_range : (float, float)
+        Frequencies (Hz) whose magnitude and group delay are averaged.
+    slope : float
+        dB per decade below freq_range. Default 0.
+
+    >>> fixed = pytta.extrapolate_low(ir, (80, 160))
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    X = np.fft.rfft(x, axis=0)
+    f = np.fft.rfftfreq(n, 1 / signal.samplingRate)
+    lo = int(np.flatnonzero(f > min(freq_range))[0])
+    hi = int(np.flatnonzero(f > max(freq_range))[0])
+    df = f[1]
+    band = X[lo:hi + 1]
+    gdelay = -np.diff(np.unwrap(np.angle(X), axis=0), axis=0) / (2 * np.pi * df)
+    tau = np.mean(gdelay[lo:hi + 1], axis=0)
+    fl = f[:lo + 1, None]
+    phase = -2 * np.pi * tau * fl
+    phase = phase - (phase[-1] - np.angle(band[0]))
+    with np.errstate(divide='ignore', invalid='ignore'):
+        shape = 10 ** (slope * (np.log10(fl) - np.log10(fl[-1])) / 20)
+    shape[0] = 0 if slope > 0 else shape[min(1, lo)]   # DC: limit, or held for slope <= 0
+    X[:lo + 1] = np.mean(np.abs(band), axis=0) * shape * np.exp(1j * phase)
+    X[0] = X[0].real
+    newSignal = SignalObj(np.fft.irfft(X, n, axis=0), 'time',
+                          samplingRate=signal.samplingRate, signalType=signal.signalType)
+    newSignal.channels = cp.deepcopy(signal.channels)
+    return newSignal
+
 
 def fft_degree(*args,**kwargs):
     """
