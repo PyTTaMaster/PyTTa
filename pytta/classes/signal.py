@@ -738,7 +738,8 @@ class SignalObj(_base.PyTTaObj):
     def plot_spectrogram(self, winType:str='hann', winSize:int=1024,
                          overlap:float=0.5, xLabel:str=None, yLabel:str=None,
                          yLim:list=None, xLim:list=None, title:str=None,
-                         decimalSep:str=','):
+                         decimalSep:str=',',
+                         enhanced:str=None):
         """Plots a signal spectrogram.
 
         xLabel, yLabel, and title are saved for the next plots when provided.
@@ -778,6 +779,10 @@ class SignalObj(_base.PyTTaObj):
                 may be dot or comma.
 
                 >>> decimalSep = ',' # in Brazil
+            * enhanced (None), (str):
+                'readable' or 'sharp' plots the enhanced spectrogram
+                (pytta.enhanced_spectrogram) on a logarithmic frequency
+                axis; winType, winSize and overlap are then not used.
 
         Return:
         --------
@@ -807,7 +812,7 @@ class SignalObj(_base.PyTTaObj):
 
         figs = plot.spectrogram((self,), winType, winSize,
                                 overlap, xLabel, yLabel, xLim, yLim,
-                                title, decimalSep)
+                                title, decimalSep, enhanced)
         return figs
 
     def calib_voltage(self, chIndex, refSignalObj, refVrms=1, refFreq=1000):

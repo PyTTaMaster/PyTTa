@@ -26,6 +26,7 @@ import numpy as np
 import scipy.signal as ss
 import copy as cp
 from plotly import io
+from pytta.utils.spectrogram import enhanced_map
 io.renderers.default = 'browser'
 
 
@@ -804,7 +805,7 @@ def _curve_data_extractor_bars(analyses):
 
 def spectrogram(sigObjs, winType, winSize,
                 overlap, xLabel, yLabel, xLim, yLim,
-                title, decimalSep):
+                title, decimalSep, enhanced=None):
     """
     Plots a signal spectrogram in frequency domain.
 
@@ -846,6 +847,10 @@ def spectrogram(sigObjs, winType, winSize,
             may be dot or comma.
 
             >>> decimalSep = ',' # in Brazil
+        * enhanced (None), (str):
+            'readable' or 'sharp' plots the enhanced spectrogram
+            (pytta.enhanced_spectrogram) on a logarithmic frequency axis;
+            winType, winSize and overlap are then not used.
 
     Return:
     --------
@@ -867,13 +872,23 @@ def spectrogram(sigObjs, winType, winSize,
                         projection='rectilinear')
         ax.set_snap(False)
 
-        _spectrogram, _specTime, _specFreq = \
-            _calc_spectrogram(data['timeSignal'], data['timeVector'],
-                              data['samplingRate'], overlap, winType,
-                              winSize, data['dBRef'])
-
-        pcmesh = ax.pcolormesh(_specTime, _specFreq, _spectrogram,
-                            cmap=plt.jet(), vmin=-120)
+        if enhanced:
+            _specTime, _specFreq, meanSquare = \
+                enhanced_map(data['timeSignal'], data['samplingRate'],
+                             enhanced)
+            _spectrogram = 10 * np.log10(meanSquare / data['dBRef'] ** 2
+                                         + 1e-12)
+            pcmesh = ax.pcolormesh(_specTime, _specFreq, _spectrogram,
+                                   cmap=plt.jet(), shading='nearest',
+                                   vmin=_spectrogram.max() - 80)
+            ax.set_yscale('log')
+        else:
+            _spectrogram, _specTime, _specFreq = \
+                _calc_spectrogram(data['timeSignal'], data['timeVector'],
+                                  data['samplingRate'], overlap, winType,
+                                  winSize, data['dBRef'])
+            pcmesh = ax.pcolormesh(_specTime, _specFreq, _spectrogram,
+                                cmap=plt.jet(), vmin=-120)
 
         if xLim is None:
             xLim = (data['timeVector'][0], data['timeVector'][-1])
@@ -883,8 +898,15 @@ def spectrogram(sigObjs, winType, winSize,
             yLim = (data['minFreq'], data['maxFreq'])
         ax.set_ylim(yLim)
 
-        ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
-        ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
+        if enhanced:
+            octaves = [f for f in (31.5, 63, 125, 250, 500, 1000, 2000, 4000,
+                                   8000, 16000) if yLim[0] <= f <= yLim[1]]
+            ax.set_yticks(octaves)
+            ax.set_yticklabels([str(f) for f in octaves])
+            ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+        else:
+            ax.yaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=8))
+            ax.yaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
         ax.xaxis.set_major_locator(ticker.MaxNLocator(min_n_ticks=10))
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter(useOffset=True))
         for item in (ax.get_xticklabels() + ax.get_yticklabels()):

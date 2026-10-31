@@ -15,6 +15,7 @@ Available modules:
     * colore
     * freq
     * maths
+    * spectrogram
     
 
 Created on Tue May 5 00:31:42 2020
