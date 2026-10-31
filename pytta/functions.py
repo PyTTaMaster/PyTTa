@@ -17,6 +17,7 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.minimum_phase(signalObj)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -273,6 +274,47 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def minimum_phase(signalObj):
+    """
+    Minimum phase version of a SignalObj: the same magnitude spectrum, with
+    the phase that puts the energy of each channel as early as possible.
+    Returns a new SignalObj of the same length.
+
+    The phase comes from the real cepstrum (Oppenheim and Schafer, Discrete
+    Time Signal Processing, ch. 13): the logarithm of the magnitude is taken
+    to the time domain, folded onto positive times and brought back. The
+    cepstrum is computed on the signal length, so the magnitude is kept
+    exactly; its time aliasing leaves a small error in the phase, which
+    zero padding the signal before the call reduces.
+
+    >>> mp = pytta.minimum_phase(ir)
+    """
+    if not isinstance(signalObj, SignalObj):
+        raise TypeError('signalObj must be a SignalObj.')
+    N = signalObj.numSamples
+    spectrum = np.fft.rfft(np.asarray(signalObj.timeSignal, dtype=float),
+                           axis=0)
+    magnitude = np.abs(spectrum)
+    # ponytail: spectral zeros floored at -200 dB re the peak, so log is finite
+    magnitude = np.maximum(magnitude, 1e-10 * magnitude.max(axis=0))
+    cepstrum = np.fft.irfft(np.log(magnitude), n=N, axis=0)
+    fold = np.zeros(N)
+    fold[0] = 1
+    fold[1:(N + 1) // 2] = 2
+    if N % 2 == 0:
+        fold[N // 2] = 1
+    minPhase = np.fft.irfft(np.exp(np.fft.rfft(cepstrum * fold[:, None],
+                                               axis=0)), n=N, axis=0)
+    newSignal = SignalObj(minPhase, 'time',
+                          samplingRate=signalObj.samplingRate,
+                          signalType=signalObj.signalType,
+                          freqMin=signalObj.freqMin,
+                          freqMax=signalObj.freqMax,
+                          comment=signalObj.comment)
+    newSignal.channels = cp.deepcopy(signalObj.channels)
+    return newSignal
+
 
 def fft_degree(*args,**kwargs):
     """
