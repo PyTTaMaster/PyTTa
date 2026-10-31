@@ -17,6 +17,7 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.time_window(signalObj, interval)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -273,6 +274,87 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def time_window(signalObj, interval, unit='time', window='hann',
+                symmetric=False):
+    """
+    Apply a time window to a SignalObj and return a new SignalObj.
+
+    The window is built from pairs of bounds. Each pair [start, end] with
+    start <= end is a falling slope: ones before start, the falling half of
+    the window between start and end (both included), zeros after end. A pair
+    with start > end is the mirror image, a rising slope: zeros before end,
+    rising half between end and start, ones after start. Several pairs
+    multiply. The usual impulse response window is therefore
+    [startFade, 0, endFadeStart, endFadeEnd]: a rise at the beginning and a
+    fall at the end.
+
+    Parameters (default), (type):
+    -----------------------------
+        * signalObj (), (SignalObj):
+            signal to be windowed. It is not modified;
+        * interval (), (list):
+            an even number of bounds, in seconds or samples;
+        * unit ('time'), (str):
+            'time' for seconds (converted with round(t * fs), halves up) or
+            'samples' for integer, zero based sample indices;
+        * window ('hann'), (str):
+            'hann', 'rect' or any window name scipy.signal.get_window
+            accepts without parameters. The slope has abs(end - start) + 1
+            samples and is one half of a symmetric window twice that long,
+            so a 'hann' slope ends at exactly zero;
+        * symmetric (False), (bool):
+            mirror the window about the centre of the signal, for impulse
+            responses that are slightly non causal.
+
+    The behaviour follows ita_time_window of the ITA-Toolbox (RWTH Aachen),
+    except that the bounds are not moved to even sample numbers.
+
+    >>> ir = pytta.time_window(ir, [0.02, 0, 0.8, 1.0])
+    """
+    if not isinstance(signalObj, SignalObj):
+        raise TypeError('signalObj must be a SignalObj.')
+    bounds = np.asarray(interval, dtype=float).ravel()
+    if bounds.size == 0 or bounds.size % 2:
+        raise ValueError('interval must hold an even number of bounds.')
+    if unit == 'time':
+        bounds = np.floor(bounds * signalObj.samplingRate + 0.5)
+    elif unit != 'samples':
+        raise ValueError("unit must be 'time' or 'samples'.")
+    numSamples = signalObj.numSamples
+    if np.any(bounds < 0) or np.any(bounds >= numSamples):
+        raise ValueError('interval bounds must lie within the signal.')
+    bounds = bounds.astype(int)
+    name = {'rect': 'boxcar', 'rectwin': 'boxcar'}.get(window, window)
+    try:
+        ss.get_window(name, 4, fftbins=False)
+    except ValueError:
+        raise ValueError(f"unknown window '{window}'.")
+    fullWindow = np.ones(numSamples)
+    for start, end in bounds.reshape(-1, 2):
+        length = abs(end - start) + 1
+        halves = ss.get_window(name, 2 * length, fftbins=False)
+        slope = np.ones(numSamples)
+        if start <= end:
+            slope[start:end + 1] = halves[length:]
+            slope[end + 1:] = 0
+        else:
+            slope[:end] = 0
+            slope[end:start + 1] = halves[:length]
+        fullWindow *= slope
+    if symmetric:
+        fullWindow = fullWindow + fullWindow[::-1]
+        fullWindow -= fullWindow.min()
+    newSignal = SignalObj(signalObj.timeSignal * fullWindow[:, np.newaxis],
+                          'time',
+                          samplingRate=signalObj.samplingRate,
+                          signalType=signalObj.signalType,
+                          freqMin=signalObj.freqMin,
+                          freqMax=signalObj.freqMax,
+                          comment=signalObj.comment)
+    newSignal.channels = cp.deepcopy(signalObj.channels)
+    return newSignal
+
 
 def fft_degree(*args,**kwargs):
     """
