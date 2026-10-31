@@ -3,14 +3,20 @@
 Installation
 ============
 
-If you want to check the most up to date beta version, please get the
-development branch source code, clone our repository to your local git, or
-even install it from pip, as follows:
+PyTTa needs Python 3.10 or later. Sounddevice, used for audio input and
+output, needs the PortAudio library, which its wheels for Windows and macOS
+include. On Linux, install it with the system package manager, for example::
 
-    ~ $ pip install git+https://github.com/pyttamaster/pytta@development
+    sudo apt install libportaudio2
 
-To install the last version compiled to pip, which at this point may not be
-the best version on the repository, do:
+To install the last version published on PyPI, which can be behind the
+development branch::
 
-    ~ $ pip install pytta
-    
+    pip install pytta
+
+To install the development branch::
+
+    pip install "pytta @ git+https://github.com/pyttamaster/pytta@development"
+
+``pytta.plot_waterfall`` needs the optional packages more-itertools and
+kaleido.
