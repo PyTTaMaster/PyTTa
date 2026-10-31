@@ -14,6 +14,7 @@ import warnings
 os.environ.setdefault('MPLBACKEND', 'Agg')
 
 import numpy as np
+import scipy.signal as ss
 
 import pytta
 
@@ -79,3 +80,44 @@ class TestRoomEDC(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRoomExtras(unittest.TestCase):
+
+    def test_psnr_follows_the_noise_floor(self):
+        # The same decay over background noise 45 and 55 dB below its start:
+        # the peak-to-noise ratio of each band grows by 10 dB. Without the
+        # Lundeby estimate (noCut) there is no noise level, so no PSNR.
+        rng = np.random.default_rng(0)
+        t = np.arange(int(2.5 * FS)) / FS
+        decay = rng.standard_normal(t.size) * 10 ** (-3 * t / T)
+        noise = rng.standard_normal(t.size)
+        psnr = []
+        for floor in (45, 55):
+            ir = pytta.SignalObj(decay + 10 ** (-floor / 20) * noise, 'time',
+                                 FS, signalType='energy')
+            psnr.append(analyse(ir).PSNR)
+        print(f'\n  PSNR difference by band: {np.round(psnr[1] - psnr[0], 2)}')
+        self.assertTrue(np.allclose(psnr[1] - psnr[0], 10, atol=0.5))
+        self.assertTrue(np.all(np.isnan(analyse(ir, edcMethod='noCut').PSNR)))
+
+    def test_bass_and_treble_ratios(self):
+        # Octave bands decaying with T of 2.0, 1.8, 1.5, 1.5, 1.2 and 1.0 s
+        # from 125 Hz to 4 kHz: BR = (2.0 + 1.8) / 3.0, TR = (1.2 + 1.0) / 3.0.
+        rng = np.random.default_rng(1)
+        t = np.arange(4 * FS) / FS
+        h = np.zeros(t.size)
+        for fc, Tb in zip((125, 250, 500, 1000, 2000, 4000),
+                          (2.0, 1.8, 1.5, 1.5, 1.2, 1.0)):
+            sos = ss.butter(8, [fc / 2 ** 0.5, fc * 2 ** 0.5], 'bandpass',
+                            fs=FS, output='sos')
+            h += ss.sosfilt(sos, rng.standard_normal(t.size)) \
+                * 10 ** (-3 * t / Tb)
+        ra = pytta.RoomAnalysis(pytta.SignalObj(h, 'time', FS,
+                                                signalType='energy'),
+                                nthOct=1, minFreq=125., maxFreq=4000.)
+        BR, TR = ra.timbre_ratios('T30')
+        print(f'\n  BR {BR:.3f} (expected {3.8 / 3:.3f}), TR {TR:.3f} '
+              f'(expected {2.2 / 3:.3f})')
+        self.assertAlmostEqual(BR / (3.8 / 3), 1, delta=0.05)
+        self.assertAlmostEqual(TR / (2.2 / 3), 1, delta=0.05)

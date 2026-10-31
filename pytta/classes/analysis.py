@@ -997,8 +997,9 @@ class RoomAnalysis(Analysis):
             A dict with parameters by name.
 
         """
-        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings,
-                                                   edcMethod=edcMethod, **kwargs)
+        listEDC, fhSignal, listLundeby = cumulative_integration(
+            ir, bypassLundeby, plotLundeby, suppressWarnings,
+            edcMethod=edcMethod, **kwargs)
         params = {}
         params['rms'] = fhSignal.rms()
         params['SPL'] = fhSignal.spl()
@@ -1010,6 +1011,13 @@ class RoomAnalysis(Analysis):
         params['EDT'] = reverberation_time('EDT', listEDC)
         params['T20'] = reverberation_time(20, listEDC)
         params['T30'] = reverberation_time(30, listEDC)
+        # peak-to-noise ratio: peak of the squared band response over the
+        # background noise level found by Lundeby (nan without it)
+        noise = np.array([p[3] if p is not None and p[3] > 0 else np.nan
+                          for p in listLundeby], dtype=float)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            params['PSNR'] = 10 * np.log10(
+                np.max(fhSignal.timeSignal ** 2, axis=0) / noise)
         # self._params['BR'], self._params['TR'] = timbre_ratios(self.T20)
         return params, listEDC, fhSignal
 
@@ -1067,6 +1075,27 @@ class RoomAnalysis(Analysis):
     def T30(self):
         """Reverberation time with 30 dB decay, by frequency `band`."""
         return self._params['T30']
+
+    @property
+    def PSNR(self):
+        """Peak-to-noise ratio by band, in dB: the peak of the squared band
+        response over the background noise level found by Lundeby; nan
+        with edcMethod='noCut'."""
+        return self._params['PSNR']
+
+    def timbre_ratios(self, param: str = 'T30'):
+        """
+        Bass ratio and treble ratio (Beranek) from the reverberation time
+        `param` of the octave bands: BR = (T125 + T250) / (T500 + T1000),
+        TR = (T2000 + T4000) / (T500 + T1000). nan when a band is missing.
+        """
+        bands, rt = np.asarray(self.bands), self._params[param]
+
+        def get(f):                       # band within 6 % of the nominal f
+            near = np.flatnonzero(np.isclose(bands, f, rtol=0.06))
+            return rt[near[0]] if near.size else np.nan
+        mid = get(500) + get(1000)
+        return (get(125) + get(250)) / mid, (get(2000) + get(4000)) / mid
 
     def uncertainty(self, param: str = 'T30', numPositions: int = 1,
                     numDecays: int = 10) -> np.ndarray:
@@ -1523,6 +1552,7 @@ def cumulative_integration(inputSignal,
                 freqRange=[kwargs['minFreq'],
                            kwargs['maxFreq']])[:, 1]
     listEDC = []
+    listLundeby = []
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
         band = bands[ch]
@@ -1538,11 +1568,12 @@ def cumulative_integration(inputSignal,
                                      suppressWarnings=suppressWarnings,
                                      edcMethod=edcMethod)
         listEDC.append((energyDecay, energyVector))
+        listLundeby.append(lundebyParams)
         if plotLundebyResults and lundebyParams is not None:
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
             #             lundebyParams)
             plot_lundeby()
-    return listEDC, hSignal
+    return listEDC, hSignal, listLundeby
 
 # @njit
 def reverb_time_regression(energyDecay, energyVector, upperLim, lowerLim):
