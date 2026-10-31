@@ -1,11 +1,13 @@
 """
 PyTTa ISO 3382-1 spatial measures:
 ---------------------------------
-Early lateral energy fractions and interaural cross correlation coefficient
-of ISO 3382-1:2009, Annexes A and B, from impulse responses. Reverberation
-times, clarity, definition and centre time are in pytta.RoomAnalysis.
+Early lateral energy fractions, late lateral sound level and interaural
+cross correlation coefficient of ISO 3382-1:2009, Annexes A and B, from
+impulse responses. Reverberation times, clarity, definition and centre time
+are in pytta.RoomAnalysis.
 
     >>> JLF, JLFC = pytta.iso3382.lateral_fraction(omni, eight)
+    >>> LJ = pytta.iso3382.late_lateral_level(omni, eight, p10)
     >>> IACC = pytta.iso3382.iacc(binaural, t1=0, t2=0.08)
 
 The time origin is the start of the impulse response: the first sample
@@ -71,6 +73,55 @@ def lateral_fraction(omni, eight, nthOct=1, minFreq=125., maxFreq=4000.):
     if nthOct is None:
         return float(JLF[0]), float(JLFC[0])
     return JLF, JLFC
+
+
+def late_lateral_level(omni, eight, p10, distance=10., nthOct=1,
+                       minFreq=125., maxFreq=4000.):
+    """
+    Late lateral sound level LJ (A.16), by band, in dB:
+
+        LJ = 10 lg( integral from 80 ms to the end of pL**2
+                    / integral over the whole response of p10**2 )
+
+    Parameters (default), (type):
+    -----------------------------
+        * omni (), (SignalObj): impulse response from an omnidirectional
+          microphone at the measurement point, one channel, used only to
+          find the direct sound, the time origin;
+        * eight (), (SignalObj): impulse response from a figure-of-eight
+          microphone at the same point, its null towards the source;
+        * p10 (), (SignalObj): impulse response of the same source in free
+          field, from an omnidirectional microphone at the given distance,
+          with the same calibration as eight;
+        * distance (10), (float): distance of p10 in m; other than 10 m,
+          LpE,10 = LpE,d + 20 lg(d/10) (A.4);
+        * nthOct, minFreq, maxFreq: as in lateral_fraction.
+
+    Return: array with one value per band, or a float when nthOct is None.
+    """
+    start = _start(omni.timeSignal[:, 0])
+    pL = _bands(eight, nthOct, minFreq, maxFreq)[0]
+    ref = _bands(p10, nthOct, minFreq, maxFreq)[0]
+    late = _span(0.080, None, start, eight.samplingRate, len(pL))
+    free = _span(0, None, _start(p10.timeSignal[:, 0]), p10.samplingRate,
+                 len(ref))
+    LJ = 10 * np.log10(np.sum(pL[late] ** 2, axis=0) / eight.samplingRate
+                       / (np.sum(ref[free] ** 2, axis=0) / p10.samplingRate)) \
+        - 20 * np.log10(distance / 10)
+    return float(LJ[0]) if nthOct is None else LJ
+
+
+def late_lateral_average(LJ):
+    """
+    Frequency-averaged late lateral sound level LJ,avg (A.17), the energy
+    mean of LJ in the octave bands of 125 Hz, 250 Hz, 500 Hz and 1 000 Hz,
+    in dB.
+    """
+    LJ = np.asarray(LJ, dtype=float)
+    if LJ.shape != (4,):
+        raise ValueError('LJ must have the 4 octave bands from 125 Hz to '
+                         '1 000 Hz.')
+    return float(10 * np.log10(np.mean(10 ** (LJ / 10))))
 
 
 def iacc(binaural, t1=0., t2=None, nthOct=1, minFreq=125., maxFreq=4000.):
