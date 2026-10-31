@@ -1,0 +1,7 @@
+.. currentmodule:: pytta
+
+ISO 532-2
+=========
+
+.. automodule:: pytta.iso532_2
+   :members:

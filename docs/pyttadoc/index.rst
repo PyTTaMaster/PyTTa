@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.iso532_2:
+        loudness of stationary sounds by the Moore-Glasberg method (ISO 532-2);
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   iso532_2
    properties
