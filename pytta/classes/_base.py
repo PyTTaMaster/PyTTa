@@ -490,8 +490,8 @@ class ChannelObj(object):
 
     @CF.setter
     def CF(self, newCF):
-        if isinstance(newCF, float) or isinstance(newCF, int):
-            self._CF = newCF
+        if isinstance(newCF, (int, float, np.integer, np.floating)):
+            self._CF = float(newCF)
         else:
             raise TypeError('Channel correction factor must be a number.')
         return

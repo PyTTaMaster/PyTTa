@@ -32,7 +32,7 @@ def int_parser(attr):
                          np.int32,
                          np.int64,
                          int,
-                         np.int0)):
+                         np.intp)):
         return int(attr)
     else:
         return attr
