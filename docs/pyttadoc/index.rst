@@ -59,8 +59,8 @@ Modules:
 
     * pytta.psychoacoustics:
         loudness (ISO 532-1), sharpness (DIN 45692), roughness (Daniel
-        and Weber 1997) and tonality (Aures 1985) of a sound pressure
-        signal;
+        and Weber 1997), fluctuation strength (Osses et al. 2016) and
+        tonality (Aures 1985) of a sound pressure signal;
 
 .. toctree::
    classes/index

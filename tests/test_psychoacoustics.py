@@ -6,9 +6,10 @@ standard, parity with SQAT (https://github.com/ggrecow/SQAT) on golden data,
 or the rejection of an invalid input.
 
 The SQAT golden data come from golden/make_loudness_sqat.m,
-golden/make_roughness_sqat.m and golden/make_tonality_sqat.m (SQAT's
-tonality is GPL-3.0 and serves only as an oracle; pytta's code for it is
-written from the papers). Those scripts
+golden/make_roughness_sqat.m, golden/make_fluctuation_sqat.m and
+golden/make_tonality_sqat.m (SQAT's fluctuation strength and tonality are
+GPL-3.0 and serve only as an oracle; pytta's code for them is written from
+the papers). Those scripts
 store the parameters of short
 synthetic signals; the helpers below rebuild the same samples (rounded to
 float32, as SignalObj stores them) and check them against the sums stored
@@ -65,6 +66,18 @@ def roughness_signal(p):
     t = np.arange(n) / p.fs
     A = np.sqrt(2) * 2e-5 * 10 ** (p.L / 20) / np.sqrt(1 + p.m ** 2 / 2)
     x = A * (1 + p.m * np.sin(2 * np.pi * p.fm * t)) * np.sin(2 * np.pi * p.fc * t)
+    return x.astype(np.float32)
+
+
+def fluctuation_signal(p):
+    """Rebuild a fluctuation case of make_fluctuation_sqat.m."""
+    t = np.arange(int(round(p.dur * p.fs))) / p.fs
+    if p.kind == 'am':
+        A = np.sqrt(2) * P0 * 10 ** (p.L / 20) / np.sqrt(1 + p.m ** 2 / 2)
+        x = A * (1 + p.m * np.sin(2 * np.pi * p.fm * t)) * np.sin(2 * np.pi * p.fc * t)
+    else:
+        x = (np.sqrt(2) * P0 * 10 ** (p.L / 20)
+             * np.sin(2 * np.pi * p.fc * t - (p.df / p.fm) * np.cos(2 * np.pi * p.fm * t)))
     return x.astype(np.float32)
 
 
@@ -309,6 +322,76 @@ class TestRoughness(unittest.TestCase):
         short = pytta.SignalObj(np.zeros(fs // 10), 'time', fs)
         with self.assertRaises(ValueError):
             pa.roughness_daniel1997(short)  # shorter than one 200 ms window
+
+
+class TestFluctuationStrength(unittest.TestCase):
+
+    def test_reference_am_tone_is_1_vacil(self):
+        # Definition of the vacil: 1 kHz tone, 100 % amplitude modulated at
+        # 4 Hz, 60 dB (rms of the modulated signal). C_FS is set on 4 s of
+        # this signal, so the mean of its 11 frames is 1 to the 6 digits of
+        # C_FS.
+        fs = 48000
+        t = np.arange(4 * fs) / fs
+        A = np.sqrt(2) * P0 * 1000 / np.sqrt(1.5)
+        x = A * (1 + np.sin(2 * np.pi * 4 * t)) * np.sin(2 * np.pi * 1000 * t)
+        out = pa.fluctuation_strength_osses2016(pytta.SignalObj(x, 'time', fs))
+        print(f'\n  FSmean = {out["FSmean"]:.6f} vacil, diff {out["FSmean"] - 1:+.1e}')
+        self.assertAlmostEqual(out['FSmean'], 1, delta=1e-5)
+        self.assertEqual(out['specific'].shape, (11, 47))
+        np.testing.assert_allclose(out['FS'], 0.5 * np.sum(out['specific'], axis=1))
+
+    def test_am_tones_follow_fastl_and_zwicker(self):
+        # Osses et al. (2016), Table 1: FS of 1 kHz AM tones (m = 1) at 70 dB
+        # after Fastl and Zwicker, the data the paper fits H(fmod) to and
+        # that pytta's cut-offs are fitted to (rms 0.089 vacil, worst 1 Hz,
+        # -0.18 vacil). Pins the band-pass shape: 0.1 vacil rms, 0.2 worst.
+        fs = 48000
+        t = np.arange(4 * fs) / fs
+        A = np.sqrt(2) * P0 * 10 ** (70 / 20) / np.sqrt(1.5)
+        table = {1: 0.39, 2: 0.84, 4: 1.25, 8: 1.30, 16: 0.36, 32: 0.06}
+        dev = []
+        for fm, ref in table.items():
+            x = A * (1 + np.sin(2 * np.pi * fm * t)) * np.sin(2 * np.pi * 1000 * t)
+            F = pa.fluctuation_strength_osses2016(pytta.SignalObj(x, 'time', fs))['FSmean']
+            dev.append(F - ref)
+            print(f'\n  fmod {fm:2d} Hz: FS = {F:.3f} vacil, table {ref:.2f}, diff {F - ref:+.3f}',
+                  end='')
+        rms = np.sqrt(np.mean(np.square(dev)))
+        print(f'\n  rms deviation {rms:.3f} vacil')
+        self.assertLess(rms, 0.1)
+        self.assertLess(np.max(np.abs(dev)), 0.2)
+
+    def test_matches_sqat(self):
+        # SQAT's H(fmod) is not described in the paper (it is loaded from
+        # files), so the two codes agree where H is flat: within 1 % at 4 Hz
+        # (48 and 44.1 kHz), 5 % at 16 Hz. The FM tone (1500 Hz, +-700 Hz,
+        # 4 Hz, 70 dB; Table 1 gives 2.00 vacil) is 14 % above SQAT; the
+        # paper notes that its model overestimates FM tones. At 1 Hz the two
+        # differ by 46 % (see the Fastl and Zwicker test), so it is left out.
+        # The frames start at the same samples (SQAT's time is 1 sample
+        # later).
+        tolerance = {'am1k_4hz': 0.01, 'am1k_4hz_441': 0.01, 'am1k_16hz': 0.05,
+                     'fm1k5_4hz': 0.15}
+        for p in golden_cases('fluctuation_sqat.mat'):
+            x = fluctuation_signal(p)
+            same_samples(self, p, x)
+            out = pa.fluctuation_strength_osses2016(pytta.SignalObj(x, 'time', p.fs))
+            self.assertEqual(out['FS'].shape, p.FS.shape)
+            np.testing.assert_allclose(out['time'], p.time - 1 / p.fs, atol=1e-9)
+            rel = out['FSmean'] / p.FSmean - 1
+            print(f'\n  {p.name}: FSmean = {out["FSmean"]:.4f}, SQAT {p.FSmean:.4f}, '
+                  f'rel diff {rel:+.4f}')
+            self.assertLess(abs(rel), tolerance[p.name])
+
+    def test_rejects_invalid_input(self):
+        fs = 48000
+        two = pytta.SignalObj(np.zeros((3 * fs, 2)), 'time', fs)
+        with self.assertRaises(ValueError):
+            pa.fluctuation_strength_osses2016(two)
+        short = pytta.SignalObj(np.zeros(fs), 'time', fs)
+        with self.assertRaises(ValueError):
+            pa.fluctuation_strength_osses2016(short)  # shorter than one 2 s frame
 
 
 class TestTonality(unittest.TestCase):

@@ -9,12 +9,15 @@ Available functions:
     >>> pytta.psychoacoustics.loudness_zwicker(signal)
     >>> pytta.psychoacoustics.sharpness_din45692(signal)
     >>> pytta.psychoacoustics.roughness_daniel1997(signal)
+    >>> pytta.psychoacoustics.fluctuation_strength_osses2016(signal)
     >>> pytta.psychoacoustics.tonality_aures1985(signal)
 
 * loudness_zwicker: Zwicker loudness, ISO 532-1:2017, stationary and
   time-varying sounds, free or diffuse field;
 * sharpness_din45692: sharpness, DIN 45692:2009, from that loudness;
 * roughness_daniel1997: roughness after Daniel and Weber (1997);
+* fluctuation_strength_osses2016: fluctuation strength after Osses, Garcia
+  and Kohlrausch (2016);
 * tonality_aures1985: tonality after Aures (1985), tonal components after
   Terhardt, Stoll and Seewann (1982).
 
@@ -56,10 +59,12 @@ SQAT's numbers; SQAT's resampling (MATLAB resample) is reproduced as well.
 
 sharpness_din45692 is written from the text of DIN 45692:2009 (Formula (1)).
 
-tonality_aures1985 is written from the papers cited below. SQAT's
-Tonality_Aures1985 is GPL-3.0; it was run only as a test oracle, and of its
-file only the help text (calling convention) was read. Where the papers
-leave a choice open, the function docstring says what was chosen.
+fluctuation_strength_osses2016 and tonality_aures1985 are written from the
+papers cited below. SQAT's FluctuationStrength_Osses2016 and
+Tonality_Aures1985 are GPL-3.0; they were run only as test oracles, and of
+their files only the help text (calling convention) was read. The fluctuation strength reuses the Terhardt excitation
+and the a0 factor of the roughness port (MIT). Where the papers leave a
+choice open, the function docstrings say what was chosen.
 
 References
 ----------
@@ -73,6 +78,11 @@ sharpness).
 
 Daniel, P., & Weber, R. (1997). Psychoacoustical roughness: implementation of
 an optimized model. Acustica, 83, 113-123.
+
+Osses Vecchi, A., Garcia Leon, R., & Kohlrausch, A. (2016). Modelling the
+sensation of fluctuation strength. Proceedings of Meetings on Acoustics, 28,
+050005 (22nd International Congress on Acoustics, Buenos Aires).
+doi:10.1121/2.0000410
 
 Aures, W. (1985). Berechnungsverfahren fuer den sensorischen Wohlklang
 beliebiger Schallsignale. Acustica, 59, 130-141.
@@ -158,7 +168,7 @@ import numpy as np
 import scipy.signal as ss
 
 __all__ = ['loudness_zwicker', 'sharpness_din45692', 'roughness_daniel1997',
-           'tonality_aures1985']
+           'fluctuation_strength_osses2016', 'tonality_aures1985']
 
 _FIELDS = ('free', 'diffuse')
 _METHODS = ('stationary', 'time_varying')
@@ -990,6 +1000,154 @@ def roughness_daniel1997(signal, time_skip=0.0):
     return {'R': R, 'specific': spec, 'time': time,
             'bark': np.arange(1, _CHNO + 1) / 2,
             'Rmean': float(np.mean(R[_skip_index(time, time_skip):]))}
+
+
+# ---------------------------------------------------------------------------
+# Fluctuation strength, Osses, Garcia and Kohlrausch (2016)
+# ---------------------------------------------------------------------------
+
+_FS_WINDOW = 2.0    # s, analysis frame (Osses et al. 2016, 2.1)
+_FS_HOP = 0.2       # s, 90 % overlap
+_FS_RAMP = 0.05     # s, raised-cosine ramps at both ends of each frame
+# H(fmod): cascade of a 2nd-order high-pass and a 4th-order low-pass (the
+# orders of the paper, 3.1), Butterworth magnitudes. The paper gives the
+# passband as 3.1 to 12 Hz; read as Butterworth cut-off frequencies those
+# values give 0.35 vacil at fmod = 2 Hz and 1.6 at 8 Hz for the AM tones of
+# its Table 1 (Fastl and Zwicker: 0.84 and 1.30). The cut-offs below are fitted
+# to that table, as the paper fits its filter (least squares over the six
+# fmod, C_FS re-set each time): rms deviation 0.09 vacil, and C_FS = 0.2480
+# against the paper's 0.2490. (Orders 1 and 2 would fit the table better,
+# 0.03 vacil, with C_FS = 0.310.)
+_FS_HP = 1.75       # Hz
+_FS_LP = 13.5       # Hz
+_FS_KNEE = 0.7      # compression of m* above this value, ratio 3:1 (2.1.3)
+_FS_P = 1.7         # exponents pm = pk (3.1)
+# C_FS of Eq. (1), set (as the paper does) so that the reference signal, a
+# 1 kHz tone at 60 dB, 100 % amplitude modulated at 4 Hz, gives 1 vacil (mean
+# over the 11 frames of 4 s of it). The paper reports 0.2490.
+_C_FS = 0.248014
+
+
+def _fs_weights(N, fs):
+    """|H(fmod)| on the FFT bins of N samples and g(z) of the 47 channels."""
+    f = np.abs(np.fft.fftfreq(N, 1 / fs))
+    with np.errstate(divide='ignore'):
+        hp = np.where(f > 0, 1 / np.sqrt(1 + (_FS_HP / f) ** 4), 0.0)
+    lp = 1 / np.sqrt(1 + (f / _FS_LP) ** 8)
+    z = np.arange(1, _CHNO + 1) / 2
+    g = np.interp(z, [15, 23.5], [1, 0.5])
+    return hp * lp, g
+
+
+def _specific_fluctuation(ei, H, g):
+    """Terms (m*)^pm |k_(i-2) k_i|^pk g(z_i) of Eq. (1), one per channel."""
+    env = np.abs(ei)
+    h0 = np.mean(env, axis=1)
+    hbp = np.real(np.fft.ifft(np.fft.fft(env, axis=1) * H, axis=1))
+    rms = np.sqrt(np.mean(hbp ** 2, axis=1))
+    m = np.zeros(_CHNO)
+    pos = h0 > 0
+    m[pos] = rms[pos] / h0[pos]
+    over = m > _FS_KNEE
+    m[over] = _FS_KNEE + (m[over] - _FS_KNEE) / 3
+    hc = hbp - np.mean(hbp, axis=1, keepdims=True)
+    norm = np.sqrt(np.sum(hc ** 2, axis=1))
+    k = np.zeros(_CHNO - 2)            # k between channels i and i + 2
+    for i in range(_CHNO - 2):
+        if norm[i] > 0 and norm[i + 2] > 0:
+            k[i] = np.dot(hc[i], hc[i + 2]) / (norm[i] * norm[i + 2])
+    kk = np.ones(_CHNO)
+    kk[:-2] *= k                       # k_i: with the channel 1 Bark above
+    kk[2:] *= k                        # k_(i-2): with the channel 1 Bark below
+    return m ** _FS_P * np.abs(kk) ** _FS_P * g
+
+
+def fluctuation_strength_osses2016(signal, time_skip=0.0):
+    """
+    Fluctuation strength after Osses, Garcia and Kohlrausch (2016).
+
+    Written from the paper; SQAT's FluctuationStrength_Osses2016 is GPL-3.0
+    and served only as a test oracle. The model is the roughness model of
+    Daniel and Weber with these changes: frames of 2 s with 90 % overlap,
+    gated with 50 ms raised-cosine ramps; the a0 transmission factor and
+    the 47 half-Bark channels with Terhardt's slopes of
+    roughness_daniel1997; a modulation weighting H(fmod), a 2nd-order
+    high-pass times a 4th-order low-pass applied to the spectrum of each
+    channel envelope; the generalised modulation depth m* (rms of the
+    weighted envelope over its mean) compressed 3:1 above 0.7; and
+
+        FS = C_FS * sum_i (m*_i)^1.7 |k_(i-2) k_i|^1.7 g(z_i),
+
+    with k the normalised cross covariance of the weighted envelopes of
+    channels 1 Bark apart. 1 vacil: 1 kHz tone at 60 dB, 100 % amplitude
+    modulated at 4 Hz. Signals at rates other than 40960, 44100 and 48000
+    Hz are resampled to 48 kHz first.
+
+    The paper leaves open the filter type of H(fmod), the shape of g(z)
+    and its a0 curve. Here: Butterworth magnitudes with cut-offs 1.75 and
+    13.5 Hz, fitted to the AM tones of the paper's Table 1 as the paper
+    fits its own filter (the 3.1 and 12 Hz it quotes, taken as Butterworth
+    cut-offs, miss that table by up to 0.5 vacil); g(z) = 1 up to 15 Bark,
+    then linear to 0.5 at 23.5 Bark ("reducing g(z_i) gradually"); a0 for
+    the free field after Fastl and Zwicker (2007), Fig. 8.18 (SQAT's option
+    a0_type = 'fastl2007'; its default a0 is flat up to 5 kHz). Against
+    SQAT: within 1 % for AM tones at 4 Hz, 4 % at 16 Hz, 14 % above for an
+    FM tone, and about half of SQAT's value at fmod = 1 Hz.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * signal (), (SignalObj):
+            One channel, sound pressure in Pa, at least 2 s long;
+
+        * time_skip (0.0), (float):
+            Seconds excluded from FSmean at the start.
+
+    Returns:
+    --------
+
+        dict, nt frames every 0.2 s:
+
+            * 'FS': fluctuation strength FS(t), vacil, shape (nt,);
+            * 'specific': specific fluctuation strength, vacil/Bark,
+              shape (nt, 47) (FS = 0.5 * sum over the channels);
+            * 'time': start of each frame, s, shape (nt,);
+            * 'bark': critical band rate of 'specific', 0.5 to 23.5 Bark,
+              shape (47,);
+            * 'FSmean': mean of FS(t) from the frame closest to time_skip
+              on, vacil (float).
+
+    """
+    x, fs = _mono(signal)
+    if fs not in (44100, 40960, 48000):
+        x = _resample(x, 48000, fs)
+        fs = 48000
+    N = _mround(fs * _FS_WINDOW)
+    hop = _mround(fs * _FS_HOP)
+    if x.size < N:
+        raise ValueError(f'the signal ({x.size / fs:.3f} s) is shorter than '
+                         f'one frame ({_FS_WINDOW} s).')
+    nwin = (x.size - N) // hop + 1
+    prm = _excitation_params(N, fs)
+    H, g = _fs_weights(N, fs)
+    nr = _mround(fs * _FS_RAMP)
+    window = np.ones(N)
+    ramp = 0.5 - 0.5 * np.cos(np.pi * np.arange(nr) / nr)
+    window[:nr] = ramp
+    window[N - nr:] = ramp[::-1]
+    l_cal = 20 * np.log10(1 / 20e-6) - 20 * np.log10(np.sqrt(2))
+    amp_cal = 10 ** (l_cal / 20) * 2 / (N * np.mean(window))
+    spec = np.zeros((nwin, _CHNO))
+    time = np.arange(nwin) * hop / fs
+    for w in range(nwin):
+        start = w * hop
+        frame = np.fft.fft(x[start:start + N] * window * amp_cal) * prm['a0']
+        ei, _ = _terhardt_excitation(frame, prm)
+        spec[w] = _C_FS / _R_DZ * _specific_fluctuation(ei, H, g)
+    F = _R_DZ * np.sum(spec, axis=1)
+    return {'FS': F, 'specific': spec, 'time': time,
+            'bark': np.arange(1, _CHNO + 1) / 2,
+            'FSmean': float(np.mean(F[_skip_index(time, time_skip):]))}
 
 
 # ---------------------------------------------------------------------------
