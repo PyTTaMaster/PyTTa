@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "PyTTa"
+version = "0.1.2a"
+description = "Signal processing tools for acoustics and vibrations in python, development package."
+readme = "README.md"
+license = "MIT"
+authors = [{name = "João Vitor Paes, Matheus Lazarin, Marcos Reis", email = "pytta@eac.ufsm.br"}]
+requires-python = ">=3.10"
+# Lower bounds: the first releases with wheels for Python 3.10.
+dependencies = [
+    "numpy>=1.21",
+    "scipy>=1.7",
+    "matplotlib>=3.5",
+    "sounddevice>=0.4",
+    "h5py>=3.6",
+    "numba>=0.55",
+    "plotly>=5",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.optional-dependencies]
+waterfall = ["more-itertools", "kaleido"]   # plot_waterfall and its image export
+test = ["pytest"]
+docs = ["sphinx", "sphinx_rtd_theme"]
+
+[project.urls]
+Homepage = "https://github.com/PyTTAmaster/PyTTa"
+Documentation = "https://pytta.readthedocs.io/"
+
+[tool.setuptools.packages.find]
+include = ["pytta*"]
