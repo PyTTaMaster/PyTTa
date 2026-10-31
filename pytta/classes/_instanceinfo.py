@@ -28,7 +28,8 @@ class RememberInstanceCreationInfo:
             varnames = frame.f_code.co_varnames
             if varnames == ():
                 break
-            if frame.f_locals[varnames[0]] not in (self, self.__class__):
+            first = frame.f_locals.get(varnames[0])
+            if first is not self and first is not self.__class__:
                 break
                 # if the frame is inside a method of this instance,
                 # the first argument usually contains either the instance or
