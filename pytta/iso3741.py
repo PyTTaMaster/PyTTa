@@ -5,14 +5,17 @@ PyTTa ISO3741 Analysis:
 This module does some calculations compliant to ISO 3471 in order to obtain
 the acoustic power of a source.
 
-For now only the calculation of the mean time-average sound pressure level
-among the microphone positions is implemented. In the future we hope the
+Implemented are the mean time-average sound pressure level among the
+microphone positions and the sound power level by the direct and by the
+comparison methods of ISO 3741:1999, 8.4. In the future we hope the
 community keep developing this module in order to provide all the
 calculation needed for measurements acordding to this standard.
 
 Available functions:
 
     >>> pytta.iso3741.Lp_ST()
+    >>> pytta.iso3741.sound_power()
+    >>> pytta.iso3741.sound_power_comparison()
 
 For further information, check the function specific documentation.
 
@@ -140,3 +143,87 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     Lp_ST.error = Sm
     Lp_ST.errorLabel = "Standard deviation"
     return Lp_ST
+
+
+def sound_power(Lp, T, V, S, f, temperature, pressure):
+    """
+    Sound power level by the direct method of ISO 3741:1999, 8.4.1,
+    Equations (11) and (12), normalized to rho c = 400 N s/m3.
+
+        LW = Lp + 10 lg(A/A0) + 4.34 A/S + 10 lg(1 + S c / (8 V f))
+             - 25 lg(427/400 sqrt(273/(273 + theta)) B/B0) - 6 dB
+
+    with A = 55.26 V / (c T), c = 20.05 sqrt(273 + theta) m/s, A0 = 1 m2 and
+    B0 = 1.013e5 Pa. The term 4.34 A/S accounts for air absorption in the
+    room and 10 lg(1 + S c / (8 V f)) is the Waterhouse correction for the
+    energy near the room boundaries.
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * Lp (), (array-like):
+            Average sound pressure level in the room by band, in dB, after
+            the background correction (8.3), e.g. the data of Lp_ST;
+
+        * T (), (array-like):
+            Reverberation time by band with the source installed, in s;
+
+        * V (), (float):
+            Room volume, in m3;
+
+        * S (), (float):
+            Total surface area of the room, in m2;
+
+        * f (), (array-like):
+            Midband frequencies of the bands, in Hz;
+
+        * temperature (), (float):
+            Air temperature in the room, in degC;
+
+        * pressure (), (float):
+            Atmospheric pressure, in Pa.
+
+    Returns:
+    ---------
+
+        numpy.ndarray with LW by band, in dB.
+
+    """
+    c = 20.05 * np.sqrt(273 + temperature)
+    A = 55.26 * V / (c * np.asarray(T, dtype=float))
+    impedance = 427 / 400 * np.sqrt(273 / (273 + temperature)) \
+        * pressure / 1.013e5
+    return np.asarray(Lp, dtype=float) + 10 * np.log10(A) + 4.34 * A / S \
+        + 10 * np.log10(1 + S * c / (8 * V * np.asarray(f, dtype=float))) \
+        - 25 * np.log10(impedance) - 6
+
+
+def sound_power_comparison(Lp, Lp_ref, LW_ref):
+    """
+    Sound power level by the comparison method of ISO 3741:1999, 8.4.2,
+    Equation (13): LW = LWr + (Lp - Lpr).
+
+    Parameters (default), (type):
+    -----------------------------
+
+        * Lp (), (array-like):
+            Average sound pressure level in the room by band with the source
+            under test, in dB (8.3);
+
+        * Lp_ref (), (array-like):
+            Average sound pressure level in the room by band with the
+            reference sound source, in dB (8.4.2.2);
+
+        * LW_ref (), (array-like):
+            Sound power level of the reference sound source by band, in dB,
+            as calibrated for rho c = 400 N s/m3 and not corrected for the
+            conditions of the test.
+
+    Returns:
+    ---------
+
+        numpy.ndarray with LW by band, in dB.
+
+    """
+    return np.asarray(LW_ref, dtype=float) + np.asarray(Lp, dtype=float) \
+        - np.asarray(Lp_ref, dtype=float)
