@@ -941,14 +941,14 @@ class SignalObj(_base.PyTTaObj):
                         raise ValueError("Both signal-like objects must have the \
                                         same number of channels.")
                     result_freqSignal = np.zeros(self.freqSignal.shape,
-                                                dtype=np.complex_)
+                                                dtype=np.complex128)
                     for channel in range(other.numChannels):
                         result_freqSignal[:, channel] = \
                             currentFreqSignal[:, channel] \
                             / otherFreqSignal[:, channel]
                 else:
                     result_freqSignal = np.zeros(self.freqSignal.shape,
-                                                dtype=np.complex_)
+                                                dtype=np.complex128)
                     for channel in range(self.numChannels):
                         result_freqSignal[:, channel] = \
                             currentFreqSignal[:, channel] \
@@ -998,14 +998,14 @@ class SignalObj(_base.PyTTaObj):
                         raise ValueError("Both signal-like objects must have the \
                                         same number of channels.")
                     result_freqSignal = np.zeros(self.freqSignal.shape,
-                                                dtype=np.complex_)
+                                                dtype=np.complex128)
                     for channel in range(other.numChannels):
                         result_freqSignal[:, channel] = \
                             currentFreqSignal[:, channel] \
                             * otherFreqSignal[:, channel]
                 else:
                     result_freqSignal = np.zeros(self.freqSignal.shape,
-                                                dtype=np.complex_)
+                                                dtype=np.complex128)
                     for channel in range(self.numChannels):
                         result_freqSignal[:, channel] = \
                             currentFreqSignal[:, channel] \
@@ -1144,7 +1144,7 @@ class SignalObj(_base.PyTTaObj):
         """
         # spectrum denormalization
         if self.signalType == 'power':
-            adjustedFreqSignal = np.zeros(self._freqSignal.shape, dtype=np.complex_)
+            adjustedFreqSignal = np.zeros(self._freqSignal.shape, dtype=np.complex128)
             # * N/2 for AC
             adjustedFreqSignal[1:, :] = \
                 self._freqSignal * len(self._freqSignal)
@@ -1762,8 +1762,8 @@ class ImpulsiveResponse(_base.PyTTaObj):
                                        leftWin,
                                        np.ones(totalSamples-len(leftWin)-f0idx)))
 
-        aFreqSignal = np.zeros(a.shape, dtype=np.complex_)
-        bFreqSignal = np.zeros(b.shape, dtype=np.complex_)
+        aFreqSignal = np.zeros(a.shape, dtype=np.complex128)
+        bFreqSignal = np.zeros(b.shape, dtype=np.complex128)
 
         for chIndex in range(a.shape[1]):
             aFreqSignal[:,chIndex] = a[:,chIndex] * fullRightWin
@@ -1791,14 +1791,14 @@ class ImpulsiveResponse(_base.PyTTaObj):
 
 
 def _make_rms_spectra(freqSignal):
-    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
+    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex128)
     newFreqSignal[1:, :] = freqSignal[1:, :] / 2**(1/2)
     newFreqSignal[0, :] = freqSignal[0, :]
     return newFreqSignal
 
 
 def _make_pk_spectra(freqSignal):
-    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex_)
+    newFreqSignal = np.zeros(freqSignal.shape, dtype=np.complex128)
     newFreqSignal[1:, :] = freqSignal[1:, :] * 2**(1/2)
     newFreqSignal[0, :] = freqSignal[0, :]
     return newFreqSignal

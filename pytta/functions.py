@@ -251,7 +251,7 @@ def resample(signal, newSamplingRate):
     Resample the timeSignal of the input SignalObj to the
     given sample rate using the scipy.signal.resample() function
     """
-    newSignalSize = np.int(signal.timeLength*newSamplingRate)
+    newSignalSize = int(signal.timeLength*newSamplingRate)
     resampled = ss.resample(signal.timeSignal[:], newSignalSize)
     newSignal = SignalObj(resampled, "time", newSamplingRate)
     return newSignal
