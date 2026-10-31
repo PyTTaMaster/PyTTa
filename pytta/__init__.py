@@ -72,6 +72,10 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.ecma418:
+        prominent discrete tones according to ECMA-418-1 (tone-to-noise
+        ratio and prominence ratio);
+
 
 You can find usage examples in the toolbox's examples folder.
 
@@ -108,6 +112,7 @@ from . import generate
 from . import utils
 from . import rooms
 from . import iso3741
+from . import ecma418
 
 from .functions import read_wav, write_wav, merge, split, \
     list_devices, print_devices, get_device_from_user,\
@@ -130,6 +135,7 @@ __all__ = [  # Apps
            'generate',
            'utils',
            'iso3741',
+           'ecma418',
            'rooms',
 
            # Functions

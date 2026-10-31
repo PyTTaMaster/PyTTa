@@ -57,6 +57,10 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.ecma418:
+        prominent discrete tones according to ECMA-418-1 (tone-to-noise
+        ratio and prominence ratio);
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +68,5 @@ Modules:
    functions
    generate
    rooms
+   ecma418
    properties
