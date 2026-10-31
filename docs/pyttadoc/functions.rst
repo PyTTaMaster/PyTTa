@@ -26,4 +26,6 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.butterworth
+.. autofunction:: pytta.notch
+.. autofunction:: pytta.peak_eq

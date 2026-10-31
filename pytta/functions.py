@@ -23,6 +23,9 @@ Available functions:
     >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.save(fileName, obj1, ..., objN)
     >>> pytta.load(fileName)
+    >>> pytta.butterworth(signalObj, cutoff)
+    >>> pytta.notch(signalObj, fc)
+    >>> pytta.peak_eq(signalObj, fc, gain)
 
 For further information, check the function specific documentation.
 
@@ -273,6 +276,96 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def _apply_response(signal, response_of):
+    """signal filtered by the complex response response_of(f) at its rfft bins."""
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    f = np.fft.rfftfreq(n, 1 / signal.samplingRate)
+    y = np.fft.irfft(np.fft.rfft(x, axis=0) * response_of(f)[:, None], n, axis=0)
+    newSignal = SignalObj(y, 'time', samplingRate=signal.samplingRate,
+                          signalType=signal.signalType)
+    newSignal.channels = cp.deepcopy(signal.channels)
+    return newSignal
+
+
+def butterworth(signal, cutoff, btype='low', order=8, linkwitz_riley=False,
+                zero_phase=False):
+    """
+    signal filtered by a Butterworth or Linkwitz-Riley filter, applied to
+    its spectrum (circular), as ita_butterFR, ita_liriFR and ita_filter_LiRi.
+
+    Parameters
+    ----------
+    signal : SignalObj
+    cutoff : float or (float, float)
+        Cut-off frequency in Hz, or the two of a band-pass.
+    btype : str
+        'low', 'high' or 'band'.
+    order : int
+        Order of the filter; a Linkwitz-Riley filter of order 2k is a
+        Butterworth filter of order k squared. Default 8.
+    linkwitz_riley : bool
+        Linkwitz-Riley instead of Butterworth. Default False.
+    zero_phase : bool
+        Keep only the magnitude of the response. Default False.
+
+    The response is evaluated at the frequencies of the FFT bins of the
+    signal (ita_butterFR samples it with MATLAB freqz(Hd, nBins), from 0 to
+    pi without pi, so its bins sit slightly off the FFT bins).
+
+    >>> lowpassed = pytta.butterworth(signalObj, 1000)
+    """
+    if btype not in ('low', 'high', 'band'):
+        raise ValueError("btype must be 'low', 'high' or 'band'.")
+    k = order // 2 if linkwitz_riley else order
+    if linkwitz_riley and order % 2:
+        raise ValueError('a Linkwitz-Riley filter has an even order.')
+    sos = ss.butter(k, cutoff, btype={'band': 'bandpass'}.get(btype, btype),
+                    fs=signal.samplingRate, output='sos')
+
+    def response(f):
+        _, h = ss.sosfreqz(sos, f, fs=signal.samplingRate)
+        h = h * h if linkwitz_riley else h
+        return np.abs(h) if zero_phase else h
+    return _apply_response(signal, response)
+
+
+def _biquad_response(b, a, fs):
+    def response(f):
+        return ss.freqz(b, a, f, fs=fs)[1]
+    return response
+
+
+def notch(signal, fc, Q=2.):
+    """
+    signal through a second-order notch at fc (Hz) with quality factor Q,
+    applied to its spectrum, as ita_filter_notch (the biquad of the Audio
+    EQ Cookbook of R. Bristow-Johnson).
+
+    >>> pytta.notch(signalObj, 50, Q=10)
+    """
+    w0 = 2 * np.pi * fc / signal.samplingRate
+    alpha = np.sin(w0) / (2 * Q)
+    b = [1, -2 * np.cos(w0), 1]
+    a = [1 + alpha, -2 * np.cos(w0), 1 - alpha]
+    return _apply_response(signal, _biquad_response(b, a, signal.samplingRate))
+
+
+def peak_eq(signal, fc, gain, Q=2.):
+    """
+    signal through a second-order peak (bell) filter at fc (Hz) with gain
+    (dB) and quality factor Q, applied to its spectrum, as ita_filter_peak
+    (bilinear design with K = tan(pi fc / fs) and V = 10^(gain / 20)).
+
+    >>> pytta.peak_eq(signalObj, 1000, 6)
+    """
+    K = np.tan(np.pi * fc / signal.samplingRate)
+    V = 10 ** (gain / 20)
+    b = [1 + V * K / Q + K ** 2, 2 * (K ** 2 - 1), 1 - V * K / Q + K ** 2]
+    a = [1 + K / Q + K ** 2, 2 * (K ** 2 - 1), 1 - K / Q + K ** 2]
+    return _apply_response(signal, _biquad_response(b, a, signal.samplingRate))
+
 
 def fft_degree(*args,**kwargs):
     """
