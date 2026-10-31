@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.sofa:
+        read and write SOFA files (AES69-2022) with impulse responses;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   sofa
    properties
