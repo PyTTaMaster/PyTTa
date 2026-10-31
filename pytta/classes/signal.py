@@ -1147,7 +1147,7 @@ class SignalObj(_base.PyTTaObj):
             adjustedFreqSignal = np.zeros(self._freqSignal.shape, dtype=np.complex_)
             # * N/2 for AC
             adjustedFreqSignal[1:, :] = \
-                self._freqSignal * len(self._freqSignal)
+                self._freqSignal[1:, :] * len(self._freqSignal)
             # * N for DC
             adjustedFreqSignal[0, :] = \
                 self._freqSignal[0, :] * self.numSamples
