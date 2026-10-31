@@ -11,6 +11,8 @@ Available functions:
     >>> pytta.psychoacoustics.roughness_daniel1997(signal)
     >>> pytta.psychoacoustics.fluctuation_strength_osses2016(signal)
     >>> pytta.psychoacoustics.tonality_aures1985(signal)
+    >>> pytta.psychoacoustics.loudness_level(N)
+    >>> pytta.psychoacoustics.critical_band(f)
 
 * loudness_zwicker: Zwicker loudness, ISO 532-1:2017, stationary and
   time-varying sounds, free or diffuse field;
@@ -86,6 +88,10 @@ doi:10.1121/2.0000410
 
 Aures, W. (1985). Berechnungsverfahren fuer den sensorischen Wohlklang
 beliebiger Schallsignale. Acustica, 59, 130-141.
+
+Zwicker, E., & Terhardt, E. (1980). Analytical expressions for critical-band
+rate and critical bandwidth as a function of frequency. The Journal of the
+Acoustical Society of America, 68(5), 1523-1525. doi:10.1121/1.385079
 
 Terhardt, E., Stoll, G., & Seewann, M. (1982). Algorithm for extraction of
 pitch and pitch salience from complex tonal signals. The Journal of the
@@ -168,7 +174,8 @@ import numpy as np
 import scipy.signal as ss
 
 __all__ = ['loudness_zwicker', 'sharpness_din45692', 'roughness_daniel1997',
-           'fluctuation_strength_osses2016', 'tonality_aures1985']
+           'fluctuation_strength_osses2016', 'tonality_aures1985',
+           'loudness_level', 'loudness_from_level', 'critical_band']
 
 _FIELDS = ('free', 'diffuse')
 _METHODS = ('stationary', 'time_varying')
@@ -547,6 +554,51 @@ def _loudness_level(N):
     return LN
 
 
+def loudness_level(N):
+    """
+    Loudness level LN (phon) of a loudness N (sone), ISO 532-1:2017,
+    Formulae (2) and (3): 40 + 33.22 lg N from 1 sone up, 40 (N +
+    0.0005)^0.35 below (as ita_sone2phon). loudness_zwicker reports LN as
+    the program of Annex A does, 40 N^0.35 and at least 3 phon below 1
+    sone, which differs from Formula (3) by 0.01 phon at 0.5 sone.
+    """
+    N = np.asarray(N, dtype=float)
+    with np.errstate(divide='ignore'):
+        return np.where(N >= 1, 40 + 10 * np.log2(np.maximum(N, 1e-300)),
+                        40 * (np.maximum(N, 0) + 0.0005) ** 0.35)
+
+
+def loudness_from_level(LN):
+    """
+    Loudness N (sone) of a loudness level LN (phon), the inverse of
+    loudness_level: 2^((LN - 40) / 10) from 40 phon up (ISO 532-1,
+    Formula (1)), (LN / 40)^(1 / 0.35) - 0.0005 below.
+    """
+    LN = np.asarray(LN, dtype=float)
+    return np.where(LN >= 40, 2 ** ((LN - 40) / 10),
+                    (np.maximum(LN, 0) / 40) ** (1 / 0.35) - 0.0005)
+
+
+def critical_band(f):
+    """
+    Critical band rate and bandwidth at f (Hz), Zwicker and Terhardt (1980),
+    as ita_freq2cb: z = 13 arctan(0.76 f/kHz) + 3.5 arctan((f/7.5 kHz)^2)
+    Bark and df = 25 + 75 (1 + 1.4 (f/kHz)^2)^0.69 Hz, with the band edges
+    f_low f_high = f^2 and f_high - f_low = df. (ita_freq2cb squares the
+    arctangent of the second term, which gives 0.6 Bark less at 8 kHz.)
+
+    Returns
+    -------
+    dict
+        'bark', 'bandwidth', 'f_low' and 'f_high', arrays like f.
+    """
+    f = np.asarray(f, dtype=float)
+    df = 25 + 75 * (1 + 1.4 * (f / 1000) ** 2) ** 0.69
+    f_low = 0.5 * (-df + np.sqrt(df ** 2 + 4 * f ** 2))
+    return {'bark': _bark_terhardt(f), 'bandwidth': df, 'f_low': f_low,
+            'f_high': f_low + df}
+
+
 def _temporal_weighting(N):
     """Step 10: two first-order low-passes (3.5 ms and 70 ms) combined."""
     dec = _FS // _SR_LEVEL
@@ -677,29 +729,46 @@ def loudness_zwicker(signal, field='free', method='stationary', time_skip=0.0):
 _K_SHARPNESS = 0.11
 
 
-def _sharpness(specific):
+_WEIGHTINGS = ('din', 'aures', 'bismarck')
+
+
+def _sharpness(specific, weighting='din'):
     """
-    DIN 45692 Formula (1) over the 0.1 Bark grid of ISO 532-1 (the dz of
-    both integrals cancels). specific: (240,) or (nt, 240). Returns 0 where
-    the loudness is zero.
+    DIN 45692 Formula (1), or Formulae (B.1) and (B.2) of its Annex B, over
+    the 0.1 Bark grid of ISO 532-1 (the dz of both integrals cancels).
+    specific: (240,) or (nt, 240). Returns 0 where the loudness is zero.
     """
     z = _BARK
-    g = np.where(z <= 15.8, 1.0, 0.15 * np.exp(0.42 * (z - 15.8)) + 0.85)
-    num = np.sum(specific * g * z, axis=-1)
     den = np.sum(specific, axis=-1)
+    if weighting == 'din':
+        g = np.where(z <= 15.8, 1.0, 0.15 * np.exp(0.42 * (z - 15.8)) + 0.85)
+    elif weighting == 'bismarck':
+        g = np.where(z <= 15, 1.0, 0.2 * np.exp(0.308 * (z - 15)) + 0.8)
+    else:
+        # Aures: g_A(z) = 0.078 exp(0.171 z) / z * N / ln(0.05 N + 1), with
+        # N the total loudness (N / ln(0.05 N + 1) -> 20 as N -> 0)
+        N = np.atleast_1d(den * 0.1)[..., None]
+        with np.errstate(invalid='ignore', divide='ignore'):
+            ratio = np.where(N > 0, N / np.log(0.05 * N + 1), 20.0)
+        g = (0.078 * np.exp(0.171 * z) / z * ratio).reshape(np.shape(specific))
+    num = np.sum(specific * g * z, axis=-1)
     with np.errstate(invalid='ignore', divide='ignore'):
         S = np.where(den > 0, _K_SHARPNESS * num / den, 0.0)
     return S
 
 
-def sharpness_din45692(signal, field='free', method='stationary', time_skip=0.0):
+def sharpness_din45692(signal, field='free', method='stationary', time_skip=0.0,
+                       weighting='din'):
     """
     Sharpness, DIN 45692:2009.
 
     The first moment of the specific loudness of loudness_zwicker, weighted
     by g(z) (1 up to 15.8 Bark, rising above), times k = 0.11 (Formula (1)).
     The standard is written for the free field; a diffuse field result
-    should be reported as such.
+    should be reported as such. The weightings of Aures (S_A, which depends
+    on the total loudness N) and of von Bismarck (S_B), Formulae (B.1) and
+    (B.2) of its informative Annex B, use the same k; the standard asks to
+    label each result with its method.
 
     Parameters (default), (type):
     -----------------------------
@@ -715,7 +784,10 @@ def sharpness_din45692(signal, field='free', method='stationary', time_skip=0.0)
 
         * time_skip (0.0), (float):
             Passed to loudness_zwicker; for the time-varying method it also
-            starts the frames of S50.
+            starts the frames of S50;
+
+        * weighting ('din'), (str):
+            'din' (Formula (1)), 'aures' (B.1) or 'bismarck' (B.2).
 
     Returns:
     --------
@@ -733,8 +805,10 @@ def sharpness_din45692(signal, field='free', method='stationary', time_skip=0.0)
               single value DIN 45692 (clause 6) recommends for checks.
 
     """
+    if weighting not in _WEIGHTINGS:
+        raise ValueError(f"weighting must be one of {_WEIGHTINGS}.")
     out = loudness_zwicker(signal, field=field, method=method, time_skip=time_skip)
-    S = _sharpness(out['specific'])
+    S = _sharpness(out['specific'], weighting)
     if method == 'stationary':
         return {'S': float(S)}
     tail = S[_skip_index(out['time'], time_skip):]

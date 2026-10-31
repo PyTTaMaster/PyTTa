@@ -6,8 +6,8 @@ standard, parity with SQAT (https://github.com/ggrecow/SQAT) on golden data,
 or the rejection of an invalid input.
 
 The SQAT golden data come from golden/make_loudness_sqat.m,
-golden/make_roughness_sqat.m, golden/make_fluctuation_sqat.m and
-golden/make_tonality_sqat.m (SQAT's fluctuation strength and tonality are
+golden/make_roughness_sqat.m, golden/make_fluctuation_sqat.m,
+golden/make_tonality_sqat.m and golden/make_sharpness_weights_sqat.m (SQAT's fluctuation strength and tonality are
 GPL-3.0 and serve only as an oracle; pytta's code for them is written from
 the papers). Those scripts
 store the parameters of short
@@ -95,6 +95,18 @@ def tonality_signal(p):
                              + 2 * np.pi * np.mod(0.6180339887 * k ** 2, 1))
         x = x + nz * (P0 * 10 ** (p.Ln / 20) / np.sqrt(np.mean(nz ** 2)))
     return x.astype(np.float32)
+
+
+def multisine(f1, f2, L, fs=48000, dur=1.0):
+    """Band noise of make_sharpness_weights_sqat.m: a multisine every 1 Hz
+    from f1 to f2 with phases 2 pi mod(g k^2, 1), at the rms level L."""
+    t = np.arange(int(round(dur * fs))) / fs
+    k = np.arange(1, int(f2 - f1) + 2)
+    phases = 2 * np.pi * np.mod(0.6180339887 * k ** 2, 1)
+    x = np.zeros(t.size)
+    for kk, ph in zip(k, phases):
+        x += np.sin(2 * np.pi * (f1 + kk - 1) * t + ph)
+    return (x * (P0 * 10 ** (L / 20) / np.sqrt(np.mean(x ** 2)))).astype(np.float32)
 
 
 def same_samples(tc, p, x):
@@ -225,6 +237,39 @@ class TestLoudness(unittest.TestCase):
             pa.loudness_zwicker(one, time_skip=1.0)  # not shorter than the signal
 
 
+class TestScales(unittest.TestCase):
+
+    def test_loudness_level_follows_iso_532_1(self):
+        # ISO 532-1, Formulae (1) to (3): 1 sone is 40 phon, each doubling
+        # of N adds 10 phon, and below 1 sone LN = 40 (N + 0.0005)^0.35.
+        N = np.array([0.01, 0.25, 0.5, 1, 2, 4, 64])
+        LN = pa.loudness_level(N)
+        expected = np.where(N >= 1, 40 + 10 * np.log2(N), 40 * (N + 0.0005) ** 0.35)
+        back = pa.loudness_from_level(LN)
+        print(f'\n  LN {np.round(LN, 3)}; round trip {np.abs(back - N).max():.1e} sone')
+        np.testing.assert_allclose(LN, expected, rtol=0, atol=1e-12)
+        self.assertEqual(float(pa.loudness_level(1)), 40)
+        self.assertAlmostEqual(float(pa.loudness_level(2)), 50, places=12)
+        np.testing.assert_allclose(back, N, rtol=1e-12)
+
+    def test_critical_band_follows_zwicker_and_terhardt(self):
+        # At 1 kHz the bandwidth is 162.2 Hz with edges whose product is
+        # f^2 (ita_freq2cb gives 922.18 and 1084.39 Hz). The analytic rate
+        # stays within 0.2 Bark of the critical band table of Zwicker (lower
+        # edges of bands 1 to 24, at 1 to 24 Bark); the worst is 0.197 Bark
+        # at 4.4 kHz.
+        cb = pa.critical_band(1000)
+        print(f"\n  1 kHz: {cb['f_low']:.2f} to {cb['f_high']:.2f} Hz, "
+              f"{cb['bandwidth']:.4f} Hz, {cb['bark']:.4f} Bark", end='')
+        self.assertAlmostEqual(float(cb['bandwidth']), 162.2167, places=4)
+        self.assertAlmostEqual(float(cb['f_low'] * cb['f_high']), 1e6, places=6)
+        self.assertAlmostEqual(float(cb['f_low']), 922.1755, places=4)
+        edges = pa._BARK_RAW[1:, 1]
+        err = np.abs(pa.critical_band(edges)['bark'] - pa._BARK_RAW[1:, 0]).max()
+        print(f'; worst against the table {err:.2f} Bark')
+        self.assertLess(err, 0.2)
+
+
 class TestSharpness(unittest.TestCase):
 
     def test_din_reference_noise_is_1_acum(self):
@@ -263,6 +308,37 @@ class TestSharpness(unittest.TestCase):
         print(f'\n  S50 = {out["S50"]:.4f} acum over {out["S"].size} frames')
         self.assertEqual(out['S'].shape, out['time'].shape)
         self.assertLessEqual(abs(out['S50'] - 1), 0.05)
+
+    def test_bismarck_equals_din_below_15_bark(self):
+        # g_B and g are both 1 up to 15 Bark (DIN 45692, (1) and (B.2)), so
+        # a sound with no specific loudness above 15 Bark has S_B = S.
+        x = multisine(920, 1080, 40)
+        sig = pytta.SignalObj(x, 'time', 48000)
+        spec = pa.loudness_zwicker(sig)['specific']
+        S = pa.sharpness_din45692(sig)['S']
+        SB = pa.sharpness_din45692(sig, weighting='bismarck')['S']
+        print(f'\n  N\' above 15 Bark: {spec[150:].max():.1e}; S {S:.6f}, S_B {SB:.6f}')
+        self.assertEqual(spec[150:].max(), 0)
+        self.assertAlmostEqual(S, SB, places=12)
+
+    def test_weightings_match_sqat(self):
+        # Same float32 samples; DIN 45692, Aures (B.1) and von Bismarck (B.2)
+        # weightings on band noises from 40 to 80 dB.
+        d = sio.loadmat(os.path.join(GOLDEN, 'sharpness_weights_sqat.mat'),
+                        squeeze_me=True, struct_as_record=False)
+        worst = 0
+        for p in np.atleast_1d(d['cases']):
+            x = multisine(p.f1, p.f2, p.L)
+            self.assertAlmostEqual(np.sum(x, dtype=float), p.sum_x, delta=1e-9)
+            sig = pytta.SignalObj(x, 'time', 48000)
+            for w, ref in (('din', p.S_DIN45692), ('aures', p.S_aures),
+                           ('bismarck', p.S_bismarck)):
+                S = pa.sharpness_din45692(sig, weighting=w)['S']
+                worst = max(worst, abs(S - ref))
+            print(f'\n  {p.f1}-{p.f2} Hz {p.L} dB: S_A {pa.sharpness_din45692(sig, weighting="aures")["S"]:.4f} '
+                  f'(SQAT {p.S_aures:.4f})', end='')
+        print(f'\n  worst |dS| = {worst:.1e} acum')
+        self.assertLess(worst, 1e-9)
 
     def test_silence_has_zero_sharpness(self):
         # N' = 0 everywhere leaves Formula (1) as 0/0; it is reported as 0.
