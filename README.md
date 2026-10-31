@@ -71,26 +71,32 @@ https://pytta.readthedocs.io/
 
 ### Dependencies
 
-- Numpy;
-- Scipy;
-- Matplotlib;
-- Sounddevice;
-- Soundfile;
-- H5py; and
-- Numba.
+PyTTa needs Python 3.10 or later, and installs with it NumPy, SciPy,
+Matplotlib, Sounddevice, H5py, Numba and Plotly. Sounddevice needs the
+PortAudio library, which its wheels for Windows and macOS include; on Linux,
+install it with the system package manager (e.g. `sudo apt install
+libportaudio2`).
+
+`pytta.plot_waterfall` needs the extra `waterfall` (more-itertools, and
+kaleido to save the figure as an image).
 
 ### Installation
 
-To install the last version compiled to pip, which can be slightly behind of
-development branch, do:
+To install the last version published on PyPI, which can be behind the
+development branch:
 
-    >>> pip install pytta
-    
-If you want to check the most up to date beta version, please get the
-development branch source code, clone our repository to your local git, or
-even install it from pip, as follows:
+    pip install pytta
 
-    >>> pip install git+https://github.com/pyttamaster/pytta@development
+To install the development branch:
+
+    pip install "pytta @ git+https://github.com/pyttamaster/pytta@development"
+
+From a clone of the repository, with the optional dependencies:
+
+    pip install -e ".[waterfall,test]"
+
+With conda, `conda env create -f environment.yml` creates the environment
+`pytta-env` with PyTTa installed from the clone.
 
 ### Contributing as a user
 
