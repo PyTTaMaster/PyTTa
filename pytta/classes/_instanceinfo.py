@@ -13,9 +13,23 @@
 """
 
 
+import sys
 import time
 import traceback
 import threading
+
+
+def caller_name():
+    """
+    Name assigned on the module-level line that led to the current call:
+    'x' for ``x = pytta.generate.sweep()``. The text before '=' (the whole
+    line if there is none), or '' when the source line is not available.
+    """
+    frame = sys._getframe(2)  # the caller of the function asking
+    while frame.f_code.co_varnames and frame.f_back is not None:
+        frame = frame.f_back
+    line = traceback.extract_stack(frame, 1)[0].line or ''
+    return line.split('=')[0].strip()
 
 
 class InstanceCreationError(Exception):

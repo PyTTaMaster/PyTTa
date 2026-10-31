@@ -37,7 +37,7 @@ from pytta.classes import SignalObj, RecMeasure, FRFMeasure, \
 from pytta.classes import OctFilter as _OctFilter
 from scipy import signal as ss
 import numpy as np
-import traceback
+from pytta.classes._instanceinfo import caller_name
 from warnings import warn
 
 
@@ -75,21 +75,7 @@ def sin(Arms=0.5,
             Nothing to say;
 
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     if fftDegree is not None:
         timeLength = 2**(fftDegree)/samplingRate
@@ -150,21 +136,7 @@ def sweep(freqMin=None,
 
 
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
 
     # It was done like this because a function default argument is a value
@@ -266,8 +238,8 @@ def __do_sweep_windowing(inputSweep,
     # exact sample where the chirp reaches freqMax [Hz]
     freqMaxSample = np.where(freqSweep <= freqMax)
     freqMaxSample = len(freqSweep) - freqMaxSample[-1][-1]
-    windowStart = ss.hann(2*freqMinSample)
-    windowEnd = ss.hann(2*freqMaxSample)
+    windowStart = ss.windows.hann(2*freqMinSample)
+    windowEnd = ss.windows.hann(2*freqMaxSample)
 
     # Uses first half of windowStart, last half of windowEnd, and a vector of
     # ones with the remaining length, in between the half windows
@@ -342,21 +314,7 @@ def colored_noise(color: str or int = 'white',
 
     @author: Chum4k3r
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     # It was done like this because a function default argument is a value
     # assigned at import time, and PyTTa have a default object that handles
@@ -459,7 +417,7 @@ def __do_noise_windowing(inputNoise,
                          window):
     # sample equivalent to the first five percent of noise duration
     fivePercentSample = int((5/100) * (noiseSamples))
-    windowStart = ss.hann(2*fivePercentSample)
+    windowStart = ss.windows.hann(2*fivePercentSample)
     fullWindow = np.concatenate((windowStart[0:fivePercentSample],
                                  np.ones(int(noiseSamples-fivePercentSample))))
     newNoise = (fullWindow * inputNoise.T).T
@@ -472,21 +430,7 @@ def impulse(samplingRate=None,
     Generates a normalized impulse signal at time zero,
     with zeros to fill the time length
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     if samplingRate is None:
         samplingRate = default.samplingRate
@@ -581,21 +525,7 @@ def measurement(kind='playrec',
         - same as for (kind='playrec');
         - regularization: [boolean] option for Kirkeby regularization
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
 # Default Parameters
     if freqMin is None:
@@ -707,21 +637,7 @@ def stream(IO='IO',
            *args, **kwargs):
     """
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     if device is None:
         device = default.device
@@ -800,21 +716,7 @@ def octfilter(order: int = 4,
               maxFreq: float = 20000,
               refFreq: float = 1000,
               base: int = 10) -> _OctFilter:
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     of = _OctFilter(order, nthOct, samplingRate, minFreq,
                    maxFreq, refFreq, base)
