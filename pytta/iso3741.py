@@ -94,7 +94,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
     Leqs = []
 
     for idx, sigObj in enumerate(sigObjList):
-        if not sigObj.channels[firstChNum].calibCheck:
+        if not sigObj.channels[sigObj.channels.mapping[0]].calibCheck:
             raise ValueError("SignalObj {} must be calibrated.".format(idx+1))
         # Cutting the IR
         if IRManualCut is not None:
@@ -106,8 +106,7 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
         hSignal = _filter(signal=hSignal, nthOct=nthOct, minFreq=minFreq,
                         maxFreq=maxFreq)
         bands = FOF(nthOct=nthOct,
-                    minFreq=minFreq,
-                    maxFreq=maxFreq)[:,1]
+                    freqRange=[minFreq, maxFreq])[:,1]
         Leq = []
         for chIndex in range(hSignal.numChannels):
             Leq.append(
@@ -119,23 +118,16 @@ def Lp_ST(sigObjList, nthOct, minFreq, maxFreq, IRManualCut=None):
                            comment='Leq')
         Leqs.append(Leq)
 
-    Leq = 0
-    for L in Leqs:
-        Leq =  L + Leq
-    Lp_ST = Leq / len(sigObjList)
-    Lp_ST.anType = 'mixed'
+    # Equation (9): energy mean over the microphone positions; Equation (6):
+    # standard deviation around the arithmetic mean of the levels.
+    data = np.vstack([an.data for an in Leqs])
+    Lp_ST = Analysis(anType='mixed', nthOct=nthOct,
+                     minBand=Leqs[0].minBand, maxBand=Leqs[0].maxBand,
+                     data=10*np.log10(np.mean(10**(data/10), axis=0)),
+                     comment='Lp(ST)')
     Lp_ST.unit = 'dB'
     Lp_ST.creation_name = creation_name
-
-    # Statistics for Lp_ST
-    data = np.vstack([an.data for an in Leqs])
-    Sm = []
-    for bandIdx in range(data.shape[1]):
-        summing = 0
-        for idx in range(data.shape[0]):
-            summing += \
-            (data[idx, bandIdx] - Lp_ST.data[bandIdx])**2 / (data.shape[0] - 1)
-        Sm.append(summing**(1/2))
+    Sm = list(np.std(data, axis=0, ddof=1))
 
     Lp_ST.error = Sm
     Lp_ST.errorLabel = "Standard deviation"
