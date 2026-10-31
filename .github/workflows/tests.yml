@@ -1,0 +1,27 @@
+# Runs the test suite on every push and pull request.
+
+name: Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.12']
+        numpy: ['numpy<2', 'numpy>=2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: PortAudio, needed to import sounddevice
+        run: sudo apt-get update && sudo apt-get install -y libportaudio2
+      - name: Install PyTTa
+        run: python -m pip install -e . "${{ matrix.numpy }}" pytest
+      - name: Run the tests
+        env:
+          MPLBACKEND: Agg
+        run: python -m pytest tests -q
