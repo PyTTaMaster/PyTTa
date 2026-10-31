@@ -270,6 +270,41 @@ class TestScales(unittest.TestCase):
         self.assertLess(err, 0.2)
 
 
+class TestLoudnessComparison(unittest.TestCase):
+
+    def test_match_returns_the_gain_between_scaled_copies(self):
+        # A copy 10 dB down needs +10 dB; a different sound gets a gain that
+        # makes its loudness that of the reference, within the tolerance.
+        fs = 48000
+        t = np.arange(fs) / fs
+        tone = np.sqrt(2) * P0 * 10 ** (60 / 20) * np.sin(2 * np.pi * 1000 * t)
+        ref = pytta.SignalObj(tone, 'time', fs)
+        g = pa.loudness_match(ref, pytta.SignalObj(tone * 10 ** (-10 / 20), 'time', fs))
+        noise = multisine(3700, 4400, 50)
+        g_n = pa.loudness_match(ref, pytta.SignalObj(noise, 'time', fs))
+        N_ref = pa.loudness_zwicker(ref)['N']
+        N_n = pa.loudness_zwicker(pytta.SignalObj(noise * 10 ** (g_n / 20), 'time', fs))['N']
+        print(f'\n  scaled copy: {g:.4f} dB; band noise: {g_n:.3f} dB, '
+              f'N {N_n:.4f} vs {N_ref:.4f} sone')
+        self.assertAlmostEqual(g, 10, delta=0.01)
+        self.assertLess(abs(N_n / N_ref - 1), 0.01)
+
+    def test_compare_is_one_for_identical_sounds_and_symmetric(self):
+        # The ratio of the specific loudness patterns, folded to >= 1 (1
+        # where both are zero), as ita_loudness_compare_rir.
+        a = multisine(920, 1080, 60, dur=0.5)
+        b = multisine(920, 1080, 66, dur=0.5)
+        A, B = (pytta.SignalObj(x, 'time', 48000) for x in (a, b))
+        same = pa.compare_loudness(A, A)
+        ab, ba = pa.compare_loudness(A, B), pa.compare_loudness(B, A)
+        print(f"\n  identical: max |r - 1| {np.abs(same['ratio'] - 1).max():.1e}; "
+              f"6 dB apart: max r {ab['ratio'].max():.2f}")
+        self.assertTrue(np.all(same['ratio'] == 1))
+        np.testing.assert_allclose(ab['ratio'], ba['ratio'])
+        self.assertTrue(np.all(ab['ratio'] >= 1))
+        self.assertEqual(ab['ratio'].shape, (ab['time'].size, 240))
+
+
 class TestSharpness(unittest.TestCase):
 
     def test_din_reference_noise_is_1_acum(self):

@@ -13,6 +13,8 @@ Available functions:
     >>> pytta.psychoacoustics.tonality_aures1985(signal)
     >>> pytta.psychoacoustics.loudness_level(N)
     >>> pytta.psychoacoustics.critical_band(f)
+    >>> pytta.psychoacoustics.loudness_match(reference, signal)
+    >>> pytta.psychoacoustics.compare_loudness(signal_a, signal_b)
 
 * loudness_zwicker: Zwicker loudness, ISO 532-1:2017, stationary and
   time-varying sounds, free or diffuse field;
@@ -175,7 +177,8 @@ import scipy.signal as ss
 
 __all__ = ['loudness_zwicker', 'sharpness_din45692', 'roughness_daniel1997',
            'fluctuation_strength_osses2016', 'tonality_aures1985',
-           'loudness_level', 'loudness_from_level', 'critical_band']
+           'loudness_level', 'loudness_from_level', 'critical_band',
+           'loudness_match', 'compare_loudness']
 
 _FIELDS = ('free', 'diffuse')
 _METHODS = ('stationary', 'time_varying')
@@ -597,6 +600,96 @@ def critical_band(f):
     f_low = 0.5 * (-df + np.sqrt(df ** 2 + 4 * f ** 2))
     return {'bark': _bark_terhardt(f), 'bandwidth': df, 'f_low': f_low,
             'f_high': f_low + df}
+
+
+class _Samples:
+    # The two attributes of a SignalObj that _mono reads.
+    def __init__(self, x, fs):
+        self.timeSignal, self.samplingRate = x, fs
+
+
+def loudness_match(reference, signal, field='free', time_varying=False,
+                   tolerance=0.01):
+    """
+    Gain in dB that gives signal the loudness of reference, as
+    ita_loudness_adjustment.
+
+    The loudness grows with the gain, so the gain is found by widening a
+    bracket in steps of 10 dB, as ita_loudness_adjustment does, and solving
+    on it to 0.001 dB. The loudness is N of loudness_zwicker, or its N5 with
+    time_varying=True.
+
+    Parameters
+    ----------
+    reference, signal : SignalObj
+        One channel each, sound pressure in Pa.
+    field : str, optional
+        'free' (default) or 'diffuse'.
+    time_varying : bool, optional
+        Compare N5 of the time-varying loudness. Default False.
+    tolerance : float, optional
+        Largest relative loudness difference accepted. Default 0.01.
+
+    Returns
+    -------
+    float
+        Gain in dB to apply to signal.
+    """
+    from scipy.optimize import brentq
+    method = 'time_varying' if time_varying else 'stationary'
+    key = 'N5' if time_varying else 'N'
+
+    def loudness(x, fs):
+        return loudness_zwicker(_Samples(x, fs), field, method)[key]
+
+    target = loudness(*_mono(reference))
+    x, fs = _mono(signal)
+    if fs != _FS:
+        x, fs = _resample(x, _FS, fs), _FS
+    if target <= 0 or not np.any(x):
+        raise ValueError('both signals need a loudness above zero.')
+
+    def excess(g):
+        return np.log(max(loudness(x * 10 ** (g / 20), fs), 1e-12) / target)
+
+    lo = hi = 0.
+    f_lo = f_hi = excess(0.)
+    step = 10. if f_lo < 0 else -10.
+    while (f_lo < 0) == (f_hi < 0):
+        if abs(hi) > 200:
+            raise ValueError('no gain within 200 dB matches the loudness.')
+        lo, f_lo = hi, f_hi
+        hi += step
+        f_hi = excess(hi)
+    g = brentq(excess, min(lo, hi), max(lo, hi), xtol=1e-3)
+    if abs(np.expm1(excess(g))) > tolerance:
+        raise ValueError('the loudness could not be matched within the tolerance.')
+    return float(g)
+
+
+def compare_loudness(signal_a, signal_b, field='free'):
+    """
+    Ratio of the time-varying specific loudness of two signals, folded to
+    1 or more, as ita_loudness_compare_rir.
+
+    Each value is N'_b / N'_a or its inverse, whichever is larger, per 2 ms
+    frame and 0.1 Bark; it is 1 where both are zero and inf where only one
+    is, as in ita_loudness_compare_rir.
+
+    Returns
+    -------
+    dict
+        'ratio' (frames, 240), 'time' (frames,) and 'bark' (240,).
+    """
+    a = loudness_zwicker(signal_a, field, 'time_varying')
+    b = loudness_zwicker(signal_b, field, 'time_varying')
+    if a['specific'].shape != b['specific'].shape:
+        raise ValueError('both signals need the same duration.')
+    with np.errstate(divide='ignore', invalid='ignore'):
+        r = np.abs(b['specific'] / a['specific'])
+        r = np.where(r < 1, 1 / r, r)
+    r[np.isnan(r)] = 1
+    return {'ratio': r, 'time': a['time'], 'bark': a['bark']}
 
 
 def _temporal_weighting(N):
