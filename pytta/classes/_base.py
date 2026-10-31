@@ -397,12 +397,12 @@ class ChannelObj(object):
     def calib_volt(self, refSignalObj, refVrms, refFreq):
         Vrms = refSignalObj.rms()[0]
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
-                refSignalObj.freqSignal)])
+                np.abs(refSignalObj.freqSignal[:, 0]))])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
             print('\x1b[0;30;43mATTENTION! Found calibration frequency (' +
-                  '{:.2}'.format(freqFound) +
+                  '{}'.format(freqFound) +
                   ' [Hz]) differs from refFreq (' +
-                  '{:.2}'.format(refFreq) + ' [Hz])\x1b[0m')
+                  '{}'.format(refFreq) + ' [Hz])\x1b[0m')
         self.CF = refVrms/Vrms
         self.unit = 'V'
         return
@@ -411,7 +411,7 @@ class ChannelObj(object):
         # Prms = np.max(np.abs(refSignalObj.freqSignal[:, 0])) #/ (2**(1/2))
         Prms = refSignalObj.rms()[0]
         freqFound = np.round(refSignalObj.freqVector[np.argmax(
-                refSignalObj.freqSignal)])
+                np.abs(refSignalObj.freqSignal[:, 0]))])
         if not np.isclose(freqFound, float(refFreq), rtol=1e-4):
             print('\x1b[0;30;43mATTENTION! Found calibration frequency (' +
                   '{}'.format(freqFound) +

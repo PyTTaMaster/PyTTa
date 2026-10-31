@@ -881,6 +881,35 @@ class SignalObj(_base.PyTTaObj):
             raise IndexError('chIndex greater than channels number')
         return
 
+    def uncalibrate(self, chIndex=None):
+        """
+        Undo calib_pressure or calib_voltage: divide the samples of the
+        channel by its correction factor and set it back to full scale
+        (CF = 1, unit 'FS'). Channels that are not calibrated are left as
+        they are.
+
+        Parameters (default), (type):
+        ------------------------------
+            * chIndex (None), (int):
+                channel index, starting in 0; None undoes every calibrated
+                channel.
+        """
+        if chIndex is None:
+            indexes = range(self.numChannels)
+        elif chIndex in range(self.numChannels):
+            indexes = [chIndex]
+        else:
+            raise IndexError('chIndex greater than channels number')
+        for idx in indexes:
+            channel = self.channels[self.channels.mapping[idx]]
+            if channel.calibCheck:
+                self._timeSignal[:, idx] /= channel.CF
+                channel.CF = 1
+                channel.calibCheck = False
+                channel.unit = 'FS'
+        self._fft()
+        return
+
     def _to_dict(self):
         out = super()._to_dict()
         out['channels'] = self.channels._to_dict()
