@@ -57,6 +57,12 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.vbap:
+        vector base amplitude panning for 2D and 3D loudspeaker layouts;
+
+    * pytta.ambisonics:
+        higher-order Ambisonics encoding, decoding and rotation;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +70,6 @@ Modules:
    functions
    generate
    rooms
+   vbap
+   ambisonics
    properties
