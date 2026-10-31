@@ -21,6 +21,7 @@ Available functions:
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.plot_phase(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.save(fileName, obj1, ..., objN)
     >>> pytta.load(fileName)
@@ -487,6 +488,9 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
         * sigObjs (), (SignalObj):
             non-keyworded input arguments with N SignalObjs.
 
+        * smooth (False), (bool or number):
+            fractional octave smoothing of the magnitude by smooth_frequency:
+            True for 1/3 octave, a number n for 1/n octave;
         * xLabel ('Time [s]'), (str):
             x axis label.
 
@@ -519,11 +523,43 @@ def plot_freq(*sigObjs, smooth:bool=False, xLabel:str=None, yLabel:str=None,
     realSigObjs = \
         _remove_non_(SignalObj, sigObjs, msgPrefix='plot_freq:')
     if len(realSigObjs) > 0:
-        fig = plot.freq(realSigObjs, smooth, xLabel, yLabel, yLim, xLim, title,
-                        decimalSep)
+        fig = plot.freq(_smoothed(realSigObjs, smooth), xLabel, yLabel, yLim,
+                        xLim, title, decimalSep)
         return fig
     else:
         return
+
+def _smoothed(sigObjs, smooth):
+    """The signals, smoothed by smooth_frequency when smooth asks for it:
+    True is 1/3 octave, a number n is 1/n octave."""
+    if smooth is False or smooth is None:
+        return list(sigObjs)
+    nthOct = 3 if smooth is True else smooth
+    return [smooth_frequency(sig, nthOct) for sig in sigObjs]
+
+
+def plot_phase(*sigObjs, unwrap: bool = True, xLabel: str = None,
+               yLabel: str = None, yLim: list = None, xLim: list = None,
+               title: str = None, decimalSep: str = ','):
+    """
+    Plot the phase spectrum of the provided SignalObjs, in degrees, on a
+    logarithmic frequency axis.
+
+    Parameters (default), (type):
+    -----------------------------
+        * sigObjs (), (SignalObj): non-keyworded SignalObjs;
+        * unwrap (True), (bool): unwrap the phase over frequency;
+        * xLabel, yLabel, yLim, xLim, title, decimalSep: as in plot_freq.
+
+    Return:
+    --------
+        matplotlib.figure.Figure object.
+    """
+    realSigObjs = _remove_non_(SignalObj, sigObjs, msgPrefix='plot_phase:')
+    if len(realSigObjs) > 0:
+        return plot.freq(realSigObjs, xLabel, yLabel, yLim, xLim, title,
+                         decimalSep, phase=True, unwrap=unwrap)
+
 
 def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
               yLim:list=None, xLim:list=None, title:str=None, decimalSep:str=',',

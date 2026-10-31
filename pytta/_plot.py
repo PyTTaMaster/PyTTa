@@ -339,7 +339,8 @@ def _curve_data_extractor_time_dB(sigObjs):
     return curveData
 
 
-def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
+def freq(sigObjs, xLabel, yLabel, yLim, xLim, title, decimalSep,
+         phase=False, unwrap=True):
     """
     Plots a signal decibel magnitude in frequency domain.
 
@@ -349,9 +350,6 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
        * sigObjs (), (list):
             a list with SignalObjs.
 
-        * smooth (False), (bool):
-            option for curve smoothing. Uses scipy.signal.savgol_filter.
-            Preliminar implementation. Needs review.
 
         * xLabel ('Time [s]'), (str):
             x axis label.
@@ -376,6 +374,10 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
             may be dot or comma.
 
             >>> decimalSep = ',' # in Brazil
+        * phase (False), (bool):
+            plot the phase in degrees instead of the magnitude in dB.
+        * unwrap (True), (bool):
+            unwrap the phase over frequency.
 
     Return:
     --------
@@ -394,7 +396,7 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
     if xLabel is None:
         xLabel = 'Frequency [Hz]'
     if yLabel is None:
-        yLabel = 'Magnitude [dB]'
+        yLabel = 'Phase [deg]' if phase else 'Magnitude [dB]'
     if title is None:
         title = ''
 
@@ -409,11 +411,13 @@ def freq(sigObjs, smooth, xLabel, yLabel, yLim, xLim, title, decimalSep):
 
     curveData = _curve_data_extractor_freq(sigObjs)
     for data in curveData:
-        with np.errstate(divide='ignore'):
-            dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
+        if phase:
+            angle = np.angle(data['y'])
+            dBSignal = np.degrees(np.unwrap(angle) if unwrap else angle)
+        else:
+            with np.errstate(divide='ignore'):
+                dBSignal = 20*np.log10(np.abs(data['y'])/data['dBRef'])
 
-        if smooth:
-            dBSignal = ss.savgol_filter(dBSignal, 31, 3)
 
         ax.semilogx(data['x'], dBSignal, label=data['label'])
 

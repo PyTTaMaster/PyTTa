@@ -677,9 +677,10 @@ class SignalObj(_base.PyTTaObj):
         Parameters (default), (type):
         -----------------------------
 
-            * smooth (False), (bool):
-                option for curve smoothing. Uses scipy.signal.savgol_filter.
-                Preliminar implementation. Needs review.
+            * smooth (False), (bool or number):
+                fractional octave smoothing of the magnitude by
+                pytta.smooth_frequency: True for 1/3 octave, a number n for
+                1/n octave;
 
             * xLabel ('Time [s]'), (str):
                 x axis label.
@@ -731,7 +732,8 @@ class SignalObj(_base.PyTTaObj):
                 if self.freqTitle is not None:
                     title = self.freqTitle
 
-        fig = plot.freq((self,), smooth, xLabel, yLabel, yLim, xLim, title,
+        from pytta.functions import _smoothed  # pytta.functions imports this module
+        fig = plot.freq(_smoothed((self,), smooth), xLabel, yLabel, yLim, xLim, title,
                         decimalSep)
         return fig
 
