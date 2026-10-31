@@ -10,7 +10,7 @@ from pytta.classes import _base
 from pytta.classes.streaming import Monitor, Streaming
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 from pytta import _h5utils as _h5
-import traceback
+from pytta.classes._instanceinfo import caller_name
 
 
 # Measurement class
@@ -92,9 +92,10 @@ class _MeasurementBase(_base.PyTTaObj):
                 f'timeLength={self.timeLength!r}')
 
     def _to_dict(self):
-        out = {'device': self.device,
-               'inChannels': self.inChannels._to_dict(),
-               'outChannels': self.outChannels._to_dict()}
+        out = super()._to_dict()
+        out.update({'device': self.device,
+                    'inChannels': self.inChannels._to_dict(),
+                    'outChannels': self.outChannels._to_dict()})
         return out
 
     def _h5_save(self, h5group):
@@ -361,6 +362,7 @@ class RecMeasure(_MeasurementBase):
     def _to_dict(self):
         sup = super()._to_dict()
         sup['fftDegree'] = self.fftDegree
+        sup['timeLength'] = self.timeLength
         return sup
 
     def pytta_save(self, dirname=time.ctime(time.time())):
@@ -368,7 +370,7 @@ class RecMeasure(_MeasurementBase):
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
             with open('RecMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('RecMeasure.json')
         return name
 
@@ -418,21 +420,7 @@ class RecMeasure(_MeasurementBase):
         Run method: starts recording during Tmax seconds
         Outputs a signalObj with the recording content
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(frame, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         # Record
         recording = sd.rec(frames=self.numSamples,
@@ -556,21 +544,7 @@ class PlayRecMeasure(_MeasurementBase):
         Starts reproducing the excitation signal and recording at the same time
         Outputs a signalObj with the recording content
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(framenline, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal*
@@ -612,7 +586,7 @@ class PlayRecMeasure(_MeasurementBase):
             zdir.write(excit)
             os.remove(excit)
             with open('PlayRecMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('PlayRecMeasure.json')
             os.remove('PlayRecMeasure.json')
         return name
@@ -779,7 +753,7 @@ class FRFMeasure(PlayRecMeasure):
             zdir.write(excit)
             os.remove(excit)
             with open('FRFMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('FRFMeasure.json')
             os.remove('FRFMeasure.json')
         return name
@@ -807,21 +781,7 @@ class FRFMeasure(PlayRecMeasure):
         Starts reproducing the excitation signal and recording at the same time
         Outputs the transferfunction ImpulsiveResponse
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(frame, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,

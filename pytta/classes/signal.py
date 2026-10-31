@@ -900,7 +900,7 @@ class SignalObj(_base.PyTTaObj):
             mySigObj['timeSignalAddress'] = filename
             filename = 'SignalObj.json'
             with open(filename, 'w') as f:
-                json.dump(mySigObj, f, indent=4)
+                json.dump(mySigObj, f, indent=4, default=lambda o: o.item())
             zdir.write(filename, compress_type=zipfile.ZIP_DEFLATED)
             os.remove(filename)
         return dirname + '.pytta'
@@ -1354,7 +1354,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
             out = self._to_dict()
             out['SignalAddress'] = {'ir': ir}
             with open('ImpulsiveResponse.json', 'w') as f:
-                json.dump(out, f, indent=4)
+                json.dump(out, f, indent=4, default=lambda o: o.item())
             zdir.write('ImpulsiveResponse.json')
             os.remove('ImpulsiveResponse.json')
         return dirname + '.pytta'
@@ -1750,7 +1750,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
         f1idx = np.where(freqVector <= f1)[0][-1]
         totalSamples = a.shape[0]
         xsamples = f1idx - f0idx
-        win = ss.hann(2*xsamples)
+        win = ss.windows.hann(2*xsamples)
 
         rightWin = win[xsamples-1:-1]
         fullRightWin = np.concatenate((np.ones(f0idx),
