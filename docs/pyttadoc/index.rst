@@ -57,6 +57,11 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.psychoacoustics:
+        loudness (ISO 532-1), sharpness (DIN 45692), roughness (Daniel
+        and Weber 1997), fluctuation strength (Osses et al. 2016) and
+        tonality (Aures 1985) of a sound pressure signal;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +69,5 @@ Modules:
    functions
    generate
    rooms
+   psychoacoustics
    properties
