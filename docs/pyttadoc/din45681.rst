@@ -1,0 +1,7 @@
+.. currentmodule:: pytta
+
+DIN 45681
+=========
+
+.. automodule:: pytta.din45681
+   :members:

@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.din45681:
+        tonal audibility of tones in noise (DIN 45681);
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   din45681
    properties
