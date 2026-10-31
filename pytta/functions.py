@@ -17,6 +17,7 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.enhanced_spectrogram(signalObj)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -49,6 +50,7 @@ from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
 from pytta import _plot as plot
+from pytta.utils.spectrogram import enhanced_map
 # For backwards compatibility purposes. Planned to get out of here
 from pytta.utils.maths import fft_degree as new_fft_degree
 
@@ -273,6 +275,62 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def enhanced_spectrogram(signalObj, smoothing='readable', n_frames=2000,
+                         f_min=20, bins_per_octave=192):
+    """
+    Enhanced spectrogram: a spectrogram with no window to choose.
+
+    Nine Blackman-Harris windows from 8 to 512 ms (geometric spacing) are
+    reassigned (Auger and Flandrin, 1995), the energy of each frame is held
+    over the frame step of its window, each map is smoothed, and the maps are
+    combined by geometric mean, so that only the energy that all the windows
+    place at the same point of the time-frequency plane remains (the idea of
+    Cheung and Lim, 1991, applied to reassigned maps).
+
+    Parameters (default), (type):
+    -----------------------------
+        * signalObj (), (SignalObj):
+            signal to analyse. It is not modified;
+        * smoothing ('readable'), (str):
+            'readable': Gaussian smoothing of 4 ms in time and 1.45 % of the
+            frequency, for continuous lines; 'sharp': 1 ms and 1 Hz, for the
+            thinnest lines;
+        * n_frames (2000), (int):
+            largest number of time columns. The time step is 1 ms or more;
+        * f_min (20), (float):
+            lowest frequency of the output, in Hz;
+        * bins_per_octave (192), (int):
+            frequency resolution of the logarithmic output grid.
+
+    Return:
+    -------
+        * t: time of each column, in s, shape (M,);
+        * f: frequency of each row, in Hz, shape (F,);
+        * L: level of each cell in dB re the channel's dBRef (dB SPL for a
+          channel in Pa), shape (F, M, numChannels). A cell holds the mean
+          square value of its share of the signal, so the cells of a column
+          add up to the level of that instant; a steady tone spread by the
+          smoothing over several cells reads lower in each of them (about
+          10 dB with 'readable'). Silence sits at -120 dB.
+
+    Author: Sergio Aguirre, 2026. Released in PyTTa under the MIT license.
+    The same method is in the SQAT toolbox (GPL-3.0) as
+    gui/SQAT_GUI_enhanced_stft.m (https://github.com/ggrecow/SQAT).
+
+    >>> t, f, L = pytta.enhanced_spectrogram(signalObj, smoothing='sharp')
+    """
+    if not isinstance(signalObj, SignalObj):
+        raise TypeError('signalObj must be a SignalObj.')
+    L = []
+    for chIndex, chNum in enumerate(signalObj.channels.mapping):
+        t, f, meanSquare = enhanced_map(signalObj.timeSignal[:, chIndex],
+                                        signalObj.samplingRate, smoothing,
+                                        n_frames, f_min, bins_per_octave)
+        dBRef = signalObj.channels[chNum].dBRef
+        L.append(10 * np.log10(meanSquare / dBRef ** 2 + 1e-12))
+    return t, f, np.stack(L, axis=2)
+
 
 def fft_degree(*args,**kwargs):
     """
@@ -533,7 +591,8 @@ def plot_bars(*analyses, xLabel:str=None, yLabel:str=None,
 def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
                      overlap:float=0.5, xLabel:str=None, yLabel:str=None,
                      yLim:list=None, xLim:list=None, title:str=None,
-                     decimalSep:str=','):
+                     decimalSep:str=',',
+                     enhanced:str=None):
     """
     Plots provided SignalObjs spectrogram.
 
@@ -575,6 +634,10 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
             may be dot or comma.
 
             >>> decimalSep = ',' # in Brazil
+        * enhanced (None), (str):
+            'readable' or 'sharp' plots the enhanced spectrogram
+            (pytta.enhanced_spectrogram) on a logarithmic frequency axis;
+            winType, winSize and overlap are then not used.
 
     Return:
     --------
@@ -586,7 +649,7 @@ def plot_spectrogram(*sigObjs, winType:str='hann', winSize:int=1024,
     if len(realSigObjs) > 0:
         figs = plot.spectrogram(realSigObjs, winType, winSize,
                                 overlap, xLabel, yLabel, xLim, yLim,
-                                title, decimalSep)
+                                title, decimalSep, enhanced)
         return figs
     else:
         return
