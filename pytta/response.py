@@ -4,8 +4,9 @@ PyTTa system response measures:
 Measures of the response of a linear system, from its impulse response or
 its step response: resonance frequency and quality factor (from the -3 dB
 bandwidth or from the decay), -3 dB cutoff frequencies, passband ripple,
-and the rise time, overshoot and settling time of a step response. They
-use the first channel of the SignalObj.
+the rise time, overshoot and settling time of a step response, and the
+onset and hysteresis of a self-sustained oscillation. They use the first
+channel of the SignalObj.
 
     >>> f0, Q, bandwidth = pytta.response.resonance(ir)
 
@@ -126,3 +127,47 @@ def step_metrics(signalObj, final=None, tolerance=0.02):
         return rise, overshoot, np.nan
     settling = (i + error[i] / (error[i] - error[i + 1])) / fs
     return rise, overshoot, settling
+
+
+def bifurcation(params, recordings, freq=None, rise=20.):
+    """
+    Onset, extinction and hysteresis of a self-sustained oscillation along
+    a sweep of a control parameter (e.g. gain or blowing pressure), first
+    up and then down.
+
+    Parameters (default), (type):
+    -----------------------------
+        * params (), (array-like): value of the control parameter at each
+          recording, increasing up to its maximum and then decreasing;
+        * recordings (), (list of SignalObj): one recording per value;
+        * freq (None), (float): oscillation frequency in Hz; its amplitude
+          is the magnitude of the spectral peak within 5 % of freq. With
+          None, the rms of each recording is used;
+        * rise (20), (float): how many dB above the quietest recording an
+          amplitude has to be to count as oscillating.
+
+    Return: dict with 'amplitude' (one value per recording), 'onset' (the
+    first value going up that oscillates), 'extinction' (the last value
+    going down that still oscillates) and 'hysteresis' (onset minus
+    extinction). A missing onset or extinction is nan.
+    """
+    params = np.asarray(params, dtype=float)
+    amplitude = []
+    for rec in recordings:
+        x = np.asarray(rec.timeSignal[:, 0], dtype=float)
+        if freq is None:
+            amplitude.append(np.sqrt(np.mean(x ** 2)))
+            continue
+        f = np.fft.rfftfreq(x.size, 1 / rec.samplingRate)
+        X = 2 * np.abs(np.fft.rfft(x * np.hanning(x.size))) \
+            / np.hanning(x.size).sum()
+        amplitude.append(X[np.abs(f - freq) <= 0.05 * freq].max())
+    amplitude = np.asarray(amplitude)
+    oscillating = 20 * np.log10(amplitude / amplitude.min()) >= rise
+    top = int(np.argmax(params))
+    up = np.flatnonzero(oscillating[:top + 1])
+    down = np.flatnonzero(oscillating[top:]) + top
+    onset = params[up[0]] if up.size else np.nan
+    extinction = params[down[-1]] if down.size else np.nan
+    return {'amplitude': amplitude, 'onset': onset,
+            'extinction': extinction, 'hysteresis': onset - extinction}

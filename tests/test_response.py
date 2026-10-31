@@ -80,3 +80,28 @@ class TestResponse(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestBifurcation(unittest.TestCase):
+
+    def test_onset_extinction_and_hysteresis(self):
+        # Subcritical behaviour: going up, the oscillation starts at
+        # mu = 1.0; coming down, it persists until mu = 0.6. Below that only
+        # noise 40 dB down. Hysteresis 0.4.
+        up = np.round(np.arange(0.2, 1.41, 0.1), 2)
+        down = up[::-1][1:]
+        params = np.r_[up, down]
+        rng = np.random.default_rng(0)
+        t = np.arange(FS // 4) / FS
+        recordings = []
+        for i, mu in enumerate(params):
+            on = mu >= 1.0 if i < up.size else mu >= 0.6
+            amp = (0.5 + 0.2 * (mu - 0.6)) if on else 0.0
+            x = amp * np.sin(2 * np.pi * 220 * t) \
+                + 0.005 * rng.standard_normal(t.size)
+            recordings.append(pytta.SignalObj(x, 'time', FS))
+        result = response.bifurcation(params, recordings, freq=220)
+        self.assertAlmostEqual(result['onset'], 1.0)
+        self.assertAlmostEqual(result['extinction'], 0.6)
+        self.assertAlmostEqual(result['hysteresis'], 0.4)
+        self.assertEqual(len(result['amplitude']), params.size)
