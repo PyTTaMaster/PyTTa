@@ -17,6 +17,7 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.harmonic_distortion(ir, sweep)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -273,6 +274,82 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def harmonic_distortion(ir, sweep, numHarmonics=5):
+    """
+    Harmonic impulse responses and total harmonic distortion (THD) from the
+    impulse response of a system measured with an exponential sweep.
+
+    Deconvolution by an exponential sweep puts the harmonic of order k of a
+    nonlinear system L ln(k) seconds before the linear response, where L is
+    the time the sweep takes to multiply its frequency by e (Farina, AES
+    108th Convention, 2000). Each harmonic is cut with the same window: its
+    length is the gap between harmonics numHarmonics and numHarmonics + 1,
+    the shortest one, 10 % of it before the peak of the harmonic, with a
+    Tukey taper of 10 % at each end.
+
+    Parameters (default), (type):
+    -----------------------------
+        * ir (), (SignalObj):
+            impulse response with one channel, from a circular
+            deconvolution, so that the harmonics wrap to its end;
+        * sweep (), (SignalObj or float):
+            the exponential sweep used as excitation, whose rate is read
+            from its group delay between 2 freqMin and freqMax / 2, or its
+            rate in octaves per second;
+        * numHarmonics (5), (int):
+            highest harmonic order, 2 or more.
+
+    Return:
+    -------
+        * harmonics: SignalObj with one channel per order, from 1 (the
+          linear response) to numHarmonics;
+        * f: excitation frequencies, in Hz, up to fs / (2 numHarmonics);
+        * thd: total harmonic distortion at each frequency of f, as a
+          ratio: sqrt(sum |H_k(k f)| ** 2 for k >= 2) / |H_1(f)|.
+
+    >>> harmonics, f, thd = pytta.harmonic_distortion(ir, sweep, 3)
+    """
+    if not isinstance(ir, SignalObj):
+        raise TypeError('ir must be a SignalObj.')
+    if ir.numChannels != 1:
+        raise ValueError('ir must have one channel; see SignalObj.split.')
+    if numHarmonics < 2:
+        raise ValueError('numHarmonics must be 2 or more.')
+    rate = _sweep_rate(sweep) if isinstance(sweep, SignalObj) \
+        else float(sweep)
+    fs = ir.samplingRate
+    L = 1 / (rate * np.log(2))  # s for the frequency to grow by e
+    M = int(L * np.log((numHarmonics + 1) / numHarmonics) * fs)
+    h = np.asarray(ir.timeSignal[:, 0], dtype=float)
+    orders = np.arange(1, numHarmonics + 1)
+    # ponytail: positions rounded to the sample; enough for magnitudes
+    starts = np.argmax(np.abs(h)) - M // 10 \
+        - np.round(L * np.log(orders) * fs).astype(int)
+    harmonics = np.take(h, starts[None, :] + np.arange(M)[:, None],
+                        mode='wrap') * ss.windows.tukey(M, 0.2)[:, None]
+    H = np.abs(np.fft.rfft(harmonics, axis=0))
+    i = np.arange((M // 2) // numHarmonics + 1)
+    distortion = np.sqrt(sum(H[k * i, k - 1] ** 2
+                             for k in orders[1:]))
+    with np.errstate(divide='ignore', invalid='ignore'):
+        thd = distortion / H[i, 0]
+    harmonics = SignalObj(harmonics, 'time', samplingRate=fs,
+                          signalType='energy')
+    return harmonics, i * fs / M, thd
+
+
+def _sweep_rate(sweep):
+    """Rate of an exponential sweep in octaves per second, from the slope of
+    its group delay over the octaves between 2 freqMin and freqMax / 2."""
+    x = np.asarray(sweep.timeSignal[:, 0], dtype=float)
+    f = np.fft.rfftfreq(x.size, 1 / sweep.samplingRate)
+    # group delay with no phase unwrapping: Re{FFT(n x) / FFT(x)} / fs
+    delay = np.real(np.fft.rfft(np.arange(x.size) * x)
+                    / np.fft.rfft(x)) / sweep.samplingRate
+    band = (f >= 2 * sweep.freqMin) & (f <= sweep.freqMax / 2)
+    return 1 / np.polyfit(np.log2(f[band]), delay[band], 1)[0]
+
 
 def fft_degree(*args,**kwargs):
     """
