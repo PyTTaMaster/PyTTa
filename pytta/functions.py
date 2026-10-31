@@ -17,6 +17,8 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.sine_distortion(signalObj, freq)
+    >>> pytta.snr(signalObj, noiseObj)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -273,6 +275,54 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def sine_distortion(signalObj, freq, numHarmonics=5):
+    """
+    Total harmonic distortion (THD) and THD plus noise (THD+N) of a
+    recorded sine, by channel, as ratios.
+
+    The power of each band comes from a Blackman-Harris periodogram,
+    integrated over 6 bins on each side of the fundamental and of its
+    harmonics up to numHarmonics (and below Nyquist):
+
+        * THD: rms of the harmonics re the rms of the fundamental;
+        * THD+N: rms of everything except the fundamental and DC, re the
+          total rms (as in AES17).
+
+    The recording should hold a whole number of cycles or be long enough
+    for the window to make that irrelevant (a second or more).
+
+    >>> thd, thdn = pytta.sine_distortion(recording, 1000)
+    """
+    fs = signalObj.samplingRate
+    if not 0 < freq < fs / 2:
+        raise ValueError('freq must lie between 0 and fs / 2.')
+    f, psd = ss.periodogram(signalObj.timeSignal, fs, window='blackmanharris',
+                            scaling='density', axis=0)
+    df = f[1]
+    half = 6 * df
+
+    def band(center):
+        return np.sum(psd[np.abs(f - center) <= half], axis=0) * df
+
+    fundamental = band(freq)
+    harmonics = sum(band(k * freq) for k in range(2, numHarmonics + 1)
+                    if k * freq + half < fs / 2)
+    total = np.sum(psd, axis=0) * df
+    rest = total - band(0) - fundamental
+    return np.sqrt(harmonics / fundamental), np.sqrt(rest / total)
+
+
+def snr(signal, noise):
+    """
+    Signal to noise ratio in dB, by channel: the rms of a recording of the
+    signal re the rms of a recording of the noise alone.
+
+    >>> pytta.snr(recording, backgroundNoise)
+    """
+    return 20 * np.log10(np.std(signal.timeSignal, axis=0)
+                         / np.std(noise.timeSignal, axis=0))
+
 
 def fft_degree(*args,**kwargs):
     """
