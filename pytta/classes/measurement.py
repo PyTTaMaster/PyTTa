@@ -92,9 +92,10 @@ class _MeasurementBase(_base.PyTTaObj):
                 f'timeLength={self.timeLength!r}')
 
     def _to_dict(self):
-        out = {'device': self.device,
-               'inChannels': self.inChannels._to_dict(),
-               'outChannels': self.outChannels._to_dict()}
+        out = super()._to_dict()
+        out.update({'device': self.device,
+                    'inChannels': self.inChannels._to_dict(),
+                    'outChannels': self.outChannels._to_dict()})
         return out
 
     def _h5_save(self, h5group):
@@ -361,6 +362,7 @@ class RecMeasure(_MeasurementBase):
     def _to_dict(self):
         sup = super()._to_dict()
         sup['fftDegree'] = self.fftDegree
+        sup['timeLength'] = self.timeLength
         return sup
 
     def pytta_save(self, dirname=time.ctime(time.time())):
@@ -368,7 +370,7 @@ class RecMeasure(_MeasurementBase):
         name = dirname + '.pytta'
         with zipfile.ZipFile(name, 'w') as zdir:
             with open('RecMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('RecMeasure.json')
         return name
 
@@ -584,7 +586,7 @@ class PlayRecMeasure(_MeasurementBase):
             zdir.write(excit)
             os.remove(excit)
             with open('PlayRecMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('PlayRecMeasure.json')
             os.remove('PlayRecMeasure.json')
         return name
@@ -751,7 +753,7 @@ class FRFMeasure(PlayRecMeasure):
             zdir.write(excit)
             os.remove(excit)
             with open('FRFMeasure.json', 'w') as f:
-                json.dump(dic, f, indent=4)
+                json.dump(dic, f, indent=4, default=lambda o: o.item())
             zdir.write('FRFMeasure.json')
             os.remove('FRFMeasure.json')
         return name

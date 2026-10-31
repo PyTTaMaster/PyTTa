@@ -722,7 +722,7 @@ def pytta_save(fileName: str = time.ctime(time.time()), *PyTTaObjs):
             zdir.write(sobj)
             os.remove(sobj)
         with open('Meta.json', 'w') as f:
-            json.dump(meta, f, indent=4)
+            json.dump(meta, f, indent=4, default=lambda o: o.item())
         zdir.write('Meta.json')
         os.remove('Meta.json')
     return fileName + '.pytta'
@@ -766,29 +766,42 @@ def __parse_load(className):
         os.remove(openJson['SignalAddress']['ir'])
 
     elif name == 'RecMeasure':
-        inch = list(np.arange(len(openJson['inChannels'])))
+        inch = list(1 + np.arange(len(openJson['inChannels'])))
         out = RecMeasure(device=openJson['device'], inChannels=inch,
-                         lengthDomain='samples',
-                         fftDegree=openJson['fftDegree'])
+                         lengthDomain=openJson['lengthDomain'],
+                         fftDegree=openJson['fftDegree'],
+                         timeLength=openJson['timeLength'],
+                         samplingRate=openJson['samplingRate'],
+                         freqMin=openJson['freqLims'][0],
+                         freqMax=openJson['freqLims'][1],
+                         comment=openJson['comment'])
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
 
     elif name == 'PlayRecMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
+        outch = list(1 + np.arange(len(openJson['outChannels'])))
         excit = pytta_load(openJson['excitationAddress'])
         out = PlayRecMeasure(excitation=excit,
-                             device=openJson['device'], inChannels=inch)
+                             device=openJson['device'], inChannels=inch,
+                             outChannels=outch, comment=openJson['comment'])
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
+        out.outChannels = __parse_channels(openJson['outChannels'],
+                                           out.outChannels)
         os.remove(openJson['excitationAddress'])
 
     elif name == 'FRFMeasure':
         inch = list(1 + np.arange(len(openJson['inChannels'])))
+        outch = list(1 + np.arange(len(openJson['outChannels'])))
         excit = pytta_load(openJson['excitationAddress'])
         out = FRFMeasure(excitation=excit, device=openJson['device'],
-                         inChannels=inch)
+                         inChannels=inch,
+                         outChannels=outch, comment=openJson['comment'])
         out.inChannels = __parse_channels(openJson['inChannels'],
                                           out.inChannels)
+        out.outChannels = __parse_channels(openJson['outChannels'],
+                                           out.outChannels)
         os.remove(openJson['excitationAddress'])
 
     elif name == 'Meta':
@@ -802,15 +815,14 @@ def __parse_load(className):
 
 
 def __parse_channels(chDict, chList):
-    ch = 1
-    for key in chDict.keys():
-        chList[ch].num = key
-        chList[ch].unit = chDict[key]['unit']
-        chList[ch].name = chDict[key]['name']
-        chList[ch].CF = chDict[key]['calib'][0]
-        chList[ch].calibCheck\
-            = chDict[key]['calib'][1]
-        ch += 1
+    # by position: renumbering a channel must not change which one is next
+    for channel, key in zip(chList._channels, chDict.keys()):
+        channel.num = key
+        channel.unit = chDict[key]['unit']
+        channel.name = chDict[key]['name']
+        channel.code = chDict[key].get('code', 'Ch' + str(key))
+        channel.CF = chDict[key]['calib'][0]
+        channel.calibCheck = chDict[key]['calib'][1]
     return chList
 
 

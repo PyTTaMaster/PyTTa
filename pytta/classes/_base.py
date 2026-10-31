@@ -549,6 +549,7 @@ class ChannelObj(object):
         out = {'calib': [self.CF, self.calibCheck],
                'unit': self.unit,
                'name': self.name,
+               'code': self.code,
                'coordinates': self.coordinates._to_dict(),
                'orientation': self.orientation._to_dict()}
         return out
@@ -578,11 +579,11 @@ class ChannelsList(object):
                 for memb in chList:
                     if type(memb) is ChannelObj:
                         self._channels.append(memb)
-                    elif (type(memb) is int) or (type(memb) is float):
+                    elif isinstance(memb, (int, float, np.number)):
                         self._channels.append(ChannelObj(int(memb)))
                     else:
                         raise TypeError("Could not resolve ChannelsList initialization parameters.")
-            elif type(chList) is int:
+            elif isinstance(chList, (int, np.integer)):
                 self._channels.append(ChannelObj(chList))
             elif type(chList) is ChannelObj:
                 self._channels.append(chList)
