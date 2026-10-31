@@ -26,4 +26,12 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.envelope
+.. autofunction:: pytta.start_ir
+.. autofunction:: pytta.time_shift
+.. autofunction:: pytta.append
+.. autofunction:: pytta.normalize
+.. autofunction:: pytta.amplify_to
+.. autofunction:: pytta.zero_phase
+.. autofunction:: pytta.randomize_phase
+.. autofunction:: pytta.quantize
