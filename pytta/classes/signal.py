@@ -1749,7 +1749,9 @@ class ImpulsiveResponse(_base.PyTTaObj):
         f0idx = np.where(freqVector >= f0)[0][0]
         f1idx = np.where(freqVector <= f1)[0][-1]
         totalSamples = a.shape[0]
-        xsamples = f1idx - f0idx
+        # A crossfade narrower than one frequency bin (a short signal)
+        # becomes a switch at the first bin from f0.
+        xsamples = max(f1idx - f0idx, 0)
         win = ss.windows.hann(2*xsamples)
 
         rightWin = win[xsamples-1:-1]
