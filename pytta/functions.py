@@ -23,6 +23,11 @@ Available functions:
     >>> pytta.plot_bars(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.save(fileName, obj1, ..., objN)
     >>> pytta.load(fileName)
+    >>> pytta.read_audio(fileName)
+    >>> pytta.write_audio(fileName, signalObj)
+    >>> pytta.read_blockwise(fileName, blockSize)
+    >>> pytta.write_txt(fileName, signalObj)
+    >>> pytta.read_txt(fileName)
 
 For further information, check the function specific documentation.
 
@@ -273,6 +278,98 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def _soundfile():
+    try:
+        import soundfile
+    except ImportError as err:          # pragma: no cover
+        raise ImportError('read_audio, write_audio and read_blockwise need the '
+                          'soundfile package (pip install soundfile).') from err
+    return soundfile
+
+
+def read_audio(fileName, dtype='float64'):
+    """
+    SignalObj from an audio file in any format that libsndfile reads (WAV,
+    FLAC, CAF, AU, AIFF, OGG, ...), as ita_read_flac, ita_read_caf and
+    ita_read_au; needs the soundfile package.
+
+    >>> sig = pytta.read_audio('take.flac')
+    """
+    sf = _soundfile()
+    data, fs = sf.read(fileName, dtype=dtype, always_2d=True)
+    return SignalObj(data, 'time', fs)
+
+
+def write_audio(fileName, signal, subtype=None):
+    """
+    signal to an audio file whose format follows the extension (WAV, FLAC,
+    CAF, AU, AIFF, ...), with the libsndfile subtype (e.g. 'PCM_24',
+    'FLOAT'; the default of the format if None); needs soundfile.
+
+    >>> pytta.write_audio('take.flac', sig, 'PCM_24')
+    """
+    sf = _soundfile()
+    sf.write(fileName, np.asarray(signal.timeSignal, dtype=float),
+             int(signal.samplingRate), subtype=subtype)
+
+
+def read_blockwise(fileName, block_size, overlap=0):
+    """
+    Generator of SignalObj blocks of block_size samples from an audio file,
+    consecutive blocks sharing overlap samples, as ita_read_blockwise; the
+    last block is shorter when the file ends. Needs soundfile.
+
+    >>> for block in pytta.read_blockwise('long.wav', 48000): ...
+    """
+    sf = _soundfile()
+    fs = sf.info(fileName).samplerate
+    for block in sf.blocks(fileName, blocksize=block_size, overlap=overlap,
+                           always_2d=True, dtype='float64'):
+        yield SignalObj(block, 'time', fs)
+
+
+def write_txt(fileName, signal, domain='time', delimiter=' '):
+    """
+    signal to a text file as ita_write_txt: the time (s) or frequency (Hz)
+    in the first column, then each channel, in the time domain its samples
+    and in the frequency domain the real and imaginary parts of its DFT
+    (numpy.fft.rfft of timeSignal).
+
+    >>> pytta.write_txt('response.txt', ir, domain='freq')
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    if domain == 'time':
+        cols = [np.arange(x.shape[0]) / signal.samplingRate] + [x[:, c] for c in range(x.shape[1])]
+    elif domain == 'freq':
+        X = np.fft.rfft(x, axis=0)
+        cols = [np.fft.rfftfreq(x.shape[0], 1 / signal.samplingRate)]
+        for c in range(x.shape[1]):
+            cols += [X[:, c].real, X[:, c].imag]
+    else:
+        raise ValueError("domain must be 'time' or 'freq'.")
+    np.savetxt(fileName, np.column_stack(cols), delimiter=delimiter, fmt='%.17g')
+
+
+def read_txt(fileName, domain='time', samplingRate=None, numSamples=None, delimiter=None):
+    """
+    SignalObj from a text file of write_txt or ita_write_txt. In the time
+    domain the sampling rate comes from the time column; in the frequency
+    domain it is the last frequency times 2 (numSamples even, 2 (bins - 1),
+    unless given).
+    """
+    data = np.loadtxt(fileName, delimiter=delimiter, ndmin=2)
+    if domain == 'time':
+        fs = samplingRate or round(1 / (data[1, 0] - data[0, 0]))
+        return SignalObj(data[:, 1:], 'time', fs)
+    if domain != 'freq':
+        raise ValueError("domain must be 'time' or 'freq'.")
+    f = data[:, 0]
+    n = numSamples or 2 * (f.size - 1)
+    fs = samplingRate or round(f[1] * n)
+    X = data[:, 1::2] + 1j * data[:, 2::2]
+    return SignalObj(np.fft.irfft(X, n, axis=0), 'time', fs)
+
 
 def fft_degree(*args,**kwargs):
     """

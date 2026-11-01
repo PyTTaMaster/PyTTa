@@ -26,4 +26,8 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.read_audio
+.. autofunction:: pytta.write_audio
+.. autofunction:: pytta.read_blockwise
+.. autofunction:: pytta.write_txt
+.. autofunction:: pytta.read_txt
