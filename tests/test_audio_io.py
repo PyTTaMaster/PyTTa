@@ -3,6 +3,7 @@ Tests for the file functions of pytta.functions that follow the ITA-Toolbox
 (ita_read_flac, ita_read_caf, ita_read_au, ita_read_blockwise, ita_write_txt).
 Each test pins a round trip through a temporary file.
 """
+import importlib.util
 import os
 import tempfile
 import unittest
@@ -14,6 +15,8 @@ os.environ.setdefault('MPLBACKEND', 'Agg')
 import pytta
 
 FS = 48000
+NEEDS_SOUNDFILE = unittest.skipUnless(importlib.util.find_spec('soundfile'),
+                                     'the audio file functions need soundfile')
 
 
 class TestAudioIO(unittest.TestCase):
@@ -32,6 +35,7 @@ class TestAudioIO(unittest.TestCase):
     def path(self, name):
         return os.path.join(self.tmp.name, name)
 
+    @NEEDS_SOUNDFILE
     def test_audio_formats_round_trip(self):
         # FLAC at 24 bits keeps the samples within half a step; CAF and AU
         # with float samples keep the float32 samples of SignalObj exactly.
@@ -44,6 +48,7 @@ class TestAudioIO(unittest.TestCase):
             self.assertEqual(back.samplingRate, FS)
             self.assertLessEqual(e, tol)
 
+    @NEEDS_SOUNDFILE
     def test_blockwise_reading_rebuilds_the_file(self):
         pytta.write_audio(self.path('b.wav'), self.sig, 'FLOAT')
         blocks = [b.timeSignal for b in pytta.read_blockwise(self.path('b.wav'), 1000)]
