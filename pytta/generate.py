@@ -19,6 +19,7 @@ User intended functions:
     >>> pytta.generate.sweep()
     >>> pytta.generate.random_noise()
     >>> pytta.generate.impulse()
+    >>> pytta.generate.mls()
     >>> pytta.generate.measurement()
 
 For further information see the specific function documentation
@@ -502,6 +503,38 @@ def impulse(samplingRate=None,
                               signalType='energy')
     impulseSignal.creation_name = creation_name
     return impulseSignal
+
+
+def mls(order=16, samplingRate=None):
+    """
+    One period of a symmetrical maximum length sequence, L = 2^order - 1
+    samples of +1 and -1.
+
+    The binary sequence is scipy.signal.max_len_seq(order), mapped from
+    (0, 1) to (+1, -1). Its periodic autocorrelation is (L + 1) delta - 1
+    (Rife and Vanderkooy 1989; Peltonen 2000, eq. 2.14). Play it
+    periodically and recover the impulse response with
+    pytta.mls_deconvolution(response, order).
+
+    Parameters
+    ----------
+    order : int, optional
+        Sequence order, 2 or more. The default is 16.
+    samplingRate : int, optional
+        The default is pytta.default.samplingRate.
+
+    Returns
+    -------
+    SignalObj
+
+    >>> excitation = pytta.generate.mls(16)
+    """
+    if samplingRate is None:
+        samplingRate = default.samplingRate
+    sequence = 1 - 2 * ss.max_len_seq(order)[0].astype(float)
+    return SignalObj(signalArray=sequence, domain='time',
+                     samplingRate=samplingRate,
+                     comment='MLS order {}'.format(order))
 
 
 def measurement(kind='playrec',
