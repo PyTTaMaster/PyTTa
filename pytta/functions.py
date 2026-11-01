@@ -274,6 +274,121 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def dither(signal, bits=24, kind='tri', quiet=False, seed=None):
+    """
+    signal (full scale 1) with dither noise added before it is quantized to
+    bits bits, so that the quantization error becomes noise independent of
+    the signal, as ita_dither (Lipshitz, Wannamaker and Vanderkooy,
+    Quantization and dither: a theoretical survey, J. Audio Eng. Soc.
+    40(5), 1992). kind 'rect' is uniform over one step, 'tri' (triangular,
+    two steps wide) makes the mean and the power of the error independent
+    of the signal, and 'gauss' has a standard deviation of half a step. With
+    quiet, samples equal to zero get no dither.
+    """
+    rng = np.random.default_rng(seed)
+    x = np.asarray(signal.timeSignal, dtype=float)
+    step = 2.0 ** (1 - bits)
+    if kind == 'rect':
+        d = rng.uniform(-step / 2, step / 2, x.shape)
+    elif kind == 'tri':
+        d = rng.uniform(-step / 2, step / 2, x.shape) + rng.uniform(-step / 2, step / 2, x.shape)
+    elif kind == 'gauss':
+        d = rng.normal(0, step / 2, x.shape)
+    else:
+        raise ValueError("kind must be 'rect', 'tri' or 'gauss'.")
+    if quiet:
+        d[x == 0] = 0
+    return SignalObj(x + d, 'time', signal.samplingRate)
+
+
+def impulsive_noise(ir, excitation, noise_start, threshold=20):
+    """
+    Detection of an impulsive event during a sweep measurement, as
+    ita_impulsiveNoiseDetection: the part of the impulse response ir after
+    noise_start seconds, where it holds only noise, is convolved again with
+    the excitation (circularly, at the length of ir) to rebuild the
+    background noise of the recording, and L_max_rms = 20 lg(max |n| /
+    rms(n)) of that noise is compared with threshold (dB). Stationary noise
+    gives 12 to 14 dB.
+
+    Returns (detected, L_max_rms, background noise SignalObj).
+    """
+    h = np.asarray(ir.timeSignal[:, 0], dtype=float).copy()
+    h[:int(round(noise_start * ir.samplingRate))] = 0
+    x = np.asarray(excitation.timeSignal[:, 0], dtype=float)
+    n = np.fft.irfft(np.fft.rfft(h) * np.fft.rfft(x, h.size), h.size)
+    level = 20 * np.log10(np.abs(n).max() / np.sqrt(np.mean(n ** 2)))
+    return level > threshold, level, SignalObj(n, 'time', ir.samplingRate)
+
+
+def _log_crossfade(f, f0, f1):
+    # 0 below f0, 1 above f1, raised cosine on a logarithmic axis between.
+    with np.errstate(divide='ignore'):
+        u = np.clip(np.log(f / f0) / np.log(f1 / f0), 0, 1)
+    return 0.5 - 0.5 * np.cos(np.pi * np.nan_to_num(u))
+
+
+def invert_spectrum(signal, freqRange, minimum_phase=False):
+    """
+    Regularized inverse of the spectrum of signal, C = conj(H) / (|H|^2 +
+    eps) (Kirkeby, Rubak, Nelson and Farina, Design of cross-talk
+    cancellation networks by using fast deconvolution, 1999), with eps
+    negligible inside freqRange = [fmin, fmax] and half the largest |H|^2
+    outside it, crossfaded over half an octave, the rule of the
+    regularization of ImpulsiveResponse. With minimum_phase, the inverse
+    gets the minimum phase of its magnitude, as
+    ita_invert_spk_minphase_regularization.
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    H = np.fft.rfft(x, axis=0)
+    f = np.fft.rfftfreq(n, 1 / signal.samplingRate)
+    fmin, fmax = freqRange
+    outside = 1 - _log_crossfade(f, fmin / np.sqrt(2), fmin) \
+        + _log_crossfade(f, fmax, fmax * np.sqrt(2))
+    eps = (1e-10 + outside[:, None]) * (np.abs(H) ** 2).max(axis=0) / 2
+    C = np.conj(H) / (np.abs(H) ** 2 + eps)
+    if minimum_phase:
+        # Homomorphic: fold the real cepstrum of log |C| onto positive times.
+        c = np.fft.irfft(np.log(np.abs(C)), n, axis=0)
+        fold = np.zeros(n)
+        fold[0] = 1
+        fold[1:(n + 1) // 2] = 2
+        if n % 2 == 0:
+            fold[n // 2] = 1
+        C = np.exp(np.fft.rfft(c * fold[:, None], axis=0))
+    return SignalObj(np.fft.irfft(C, n, axis=0), 'time', signal.samplingRate)
+
+
+def merge_near_far(near, far, crossover, order=4, port=None, port_ratio=1.):
+    """
+    Loudspeaker response from a near-field measurement below crossover (Hz)
+    and a far-field one above it, as
+    ita_add_nearfield_farfield_measurements (Keele, Low-frequency
+    loudspeaker assessment by nearfield sound-pressure measurement, J.
+    Audio Eng. Soc. 22(3), 1974). The near-field response, with the port
+    one times port_ratio (port radius over diaphragm radius) added for a
+    vented box, is delayed to the far-field one (find_delay) and scaled to
+    its level over the third octave around the crossover, and the two are
+    crossfaded with the power-complementary weights 1 / (1 + (f/fc)^(2
+    order)) and its complement, which add up to 1.
+    """
+    fs = far.samplingRate
+    m = np.asarray(near.timeSignal[:, 0], dtype=float)
+    if port is not None:
+        m = m + port_ratio * np.asarray(port.timeSignal[:, 0], dtype=float)
+    x = np.asarray(far.timeSignal[:, 0], dtype=float)
+    n = x.size
+    f = np.fft.rfftfreq(n, 1 / fs)
+    lag = np.argmax(ss.correlate(x, m, mode='full', method='fft')) - (m.size - 1)
+    M = np.fft.rfft(m, n) * np.exp(-2j * np.pi * f * lag / fs)
+    X = np.fft.rfft(x)
+    band = (f >= crossover * 2 ** (-1 / 6)) & (f <= crossover * 2 ** (1 / 6))
+    M *= np.sqrt(np.sum(np.abs(X[band]) ** 2) / np.sum(np.abs(M[band]) ** 2))
+    low = 1 / (1 + (f / crossover) ** (2 * order))
+    return SignalObj(np.fft.irfft(low * M + (1 - low) * X, n), 'time', fs)
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
