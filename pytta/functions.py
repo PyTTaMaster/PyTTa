@@ -482,6 +482,87 @@ def mls_deconvolution(response, order):
     return newSignal
 
 
+def plot_group_delay(*sigObjs, xLim=None, yLim=None, title=None):
+    """
+    Group delay of every channel of the SignalObjs, in ms, on a logarithmic
+    frequency axis, as ita_plot_groupdelay. Returns the Figure.
+
+    >>> pytta.plot_group_delay(ir1, ir2, xLim=[20, 20000])
+    """
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    for sig in sigObjs:
+        tau = group_delay(sig)
+        for c in range(tau.shape[1]):
+            ax.semilogx(sig.freqVector[1:], 1e3 * tau[1:, c])
+    ax.set(xlabel='Frequency [Hz]', ylabel='Group delay [ms]', xlim=xLim, ylim=yLim, title=title)
+    ax.grid(True, which='both')
+    return fig
+
+
+def plot_nyquist(*sigObjs, title=None):
+    """
+    Imaginary against real part of the spectrum of every channel of the
+    SignalObjs, as ita_plot_nyquist. Returns the Figure.
+    """
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    for sig in sigObjs:
+        X = np.asarray(sig.freqSignal)
+        for c in range(X.shape[1]):
+            ax.plot(X[:, c].real, X[:, c].imag)
+    ax.set(xlabel='Real part', ylabel='Imaginary part', title=title)
+    ax.set_aspect('equal', 'datalim')
+    ax.grid(True)
+    return fig
+
+
+def plot_zplane(zeros, poles, title=None):
+    """
+    Zeros (o) and poles (x) of a discrete-time system on the z plane, with the
+    unit circle, as ita_plot_zplane; scipy.signal.tf2zpk(b, a) gives them
+    from the coefficients. Returns the Figure.
+
+    >>> pytta.plot_zplane(*scipy.signal.tf2zpk(b, a)[:2])
+    """
+    import matplotlib.pyplot as plt
+    zeros, poles = np.atleast_1d(zeros), np.atleast_1d(poles)
+    fig, ax = plt.subplots()
+    w = np.linspace(0, 2 * np.pi, 361)
+    ax.plot(np.cos(w), np.sin(w), 'k:', lw=0.8)
+    ax.plot(zeros.real, zeros.imag, 'o', mfc='none', label='zeros')
+    ax.plot(poles.real, poles.imag, 'x', label='poles')
+    ax.set(xlabel='Real part', ylabel='Imaginary part', title=title)
+    ax.set_aspect('equal', 'datalim')
+    ax.grid(True)
+    ax.legend()
+    return fig
+
+
+def plot_polar(angles, levels, labels=None, rLim=None, title=None):
+    """
+    Directivity in a polar plot, as ita_plot_polar: levels (dB) at the
+    angles (degrees, 0 to the front, counterclockwise), one column per curve,
+    closed at the first angle. Returns the Figure.
+
+    >>> pytta.plot_polar(np.arange(0, 360, 15), L, labels=['1 kHz', '4 kHz'])
+    """
+    import matplotlib.pyplot as plt
+    theta = np.deg2rad(np.r_[angles, angles[0]])
+    levels = np.asarray(levels, dtype=float).reshape(len(angles), -1)
+    levels = np.vstack([levels, levels[:1]])
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    ax.set_theta_zero_location('N')
+    for c in range(levels.shape[1]):
+        ax.plot(theta, levels[:, c], label=None if labels is None else labels[c])
+    if rLim is not None:
+        ax.set_rlim(rLim)
+    if labels is not None:
+        ax.legend()
+    ax.set_title(title)
+    return fig
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
