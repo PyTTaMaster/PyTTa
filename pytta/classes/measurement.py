@@ -537,6 +537,18 @@ class PlayRecMeasure(_MeasurementBase):
                 f'comment={self.comment!r})')
 
 # PlayRec Methods
+    def _playrec(self, output):
+        """Play output (samples x output channels) and record the input
+        channels at the same time; SimulatedPlayRecMeasure replaces it."""
+        return sd.playrec(output,
+                          samplerate=self.samplingRate,
+                          input_mapping=self.inChannels.mapping,
+                          output_mapping=self.outChannels.mapping,
+                          device=self.device,
+                          blocking=self.blocking,
+                          latency='low',
+                          dtype='float32')
+
     def run(self):
         """
         Starts reproducing the excitation signal and recording at the same time
@@ -545,15 +557,8 @@ class PlayRecMeasure(_MeasurementBase):
         creation_name = caller_name()
 
         timeStamp = time.ctime(time.time())
-        recording = sd.playrec(self.excitation.timeSignal*
-                               self.outputLinearGain,
-                               samplerate=self.samplingRate,
-                               input_mapping=self.inChannels.mapping,
-                               output_mapping=self.outChannels.mapping,
-                               device=self.device,
-                               blocking=self.blocking,
-                               latency='low',
-                               dtype='float32')
+        recording = self._playrec(self.excitation.timeSignal *
+                                  self.outputLinearGain)
         recording = np.squeeze(recording)
         recording = SignalObj(signalArray=recording*self.inChannels.CFlist(),
                               domain='time',
@@ -792,6 +797,73 @@ class FRFMeasure(PlayRecMeasure):
         transferfunction.timeStamp = recording.timeStamp
         transferfunction.creation_name = creation_name
         return transferfunction
+
+
+class _Simulated:
+    """
+    Replaces the sound card of a play and record measurement by a simulated
+    measurement chain, as itaMSTFdummy of the ITA-Toolbox: each output
+    channel goes through the memoryless nonlinearity y = sum_k a_k x^k
+    (coefficients a_1, a_2, ...) and then through the impulse responses of
+    system to every input channel; background noise of rms level noise (dB
+    re full scale) is added and the result is clipped to +-1 and quantized
+    to bits bits. Only the samples of the excitation length are recorded,
+    as with a real sound card.
+
+    system is one array or SignalObj (samples x input channels) per output
+    channel, in a list when there are several outputs.
+    """
+
+    def __init__(self, system=None, nonlinear=(1.,), noise=-200., bits=24,
+                 seed=None, **kwargs):
+        super().__init__(**kwargs)
+        self.system = system
+        self.nonlinear = nonlinear
+        self.noise = noise
+        self.bits = bits
+        self._rng = np.random.default_rng(seed)
+
+    def _paths(self, numOut):
+        system = self.system if isinstance(self.system, (list, tuple)) \
+            else [self.system]
+        if len(system) != numOut:
+            raise ValueError('system needs one set of impulse responses per '
+                             'output channel.')
+        paths = []
+        for s in system:
+            h = np.asarray(s.timeSignal if isinstance(s, SignalObj) else s,
+                           dtype=float)
+            paths.append(h.reshape(h.shape[0], -1))
+        return paths
+
+    def _playrec(self, output):
+        output = np.asarray(output, dtype=float).reshape(len(output), -1)
+        n = output.shape[0]
+        recording = np.zeros((n, len(self.inChannels.mapping)))
+        for x, h in zip(output.T, self._paths(output.shape[1])):
+            y = sum(a * x ** (k + 1) for k, a in enumerate(self.nonlinear))
+            for c in range(recording.shape[1]):
+                recording[:, c] += np.convolve(y, h[:, c])[:n]
+        recording += 10 ** (self.noise / 20) * \
+            self._rng.standard_normal(recording.shape)
+        step = 2.0 ** (1 - self.bits)
+        return np.round(np.clip(recording, -1, 1) / step) * step
+
+
+class SimulatedPlayRecMeasure(_Simulated, PlayRecMeasure):
+    """PlayRecMeasure on a simulated measurement chain, for tests and
+    teaching without a sound card; see _Simulated for system, nonlinear,
+    noise, bits and seed.
+
+        >>> m = pytta.classes.SimulatedPlayRecMeasure(system=ir,
+        ...     excitation=sweep, inChannels=[1], outChannels=[1])
+        >>> recording = m.run()
+    """
+
+
+class SimulatedFRFMeasure(_Simulated, FRFMeasure):
+    """FRFMeasure on a simulated measurement chain, as itaMSTFdummy; run()
+    returns the measured ImpulsiveResponse. See _Simulated."""
 
 
 # Sub functions

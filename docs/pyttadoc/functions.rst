@@ -26,4 +26,6 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.multiple_sweep_excitation
+.. autofunction:: pytta.multiple_sweep_irs
+.. autofunction:: pytta.triggered_average
