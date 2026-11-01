@@ -482,6 +482,30 @@ def mls_deconvolution(response, order):
     return newSignal
 
 
+def lifter(signal, n=None, alpha=0.):
+    """
+    Low-pass lifter, as ita_lifter: the complex cepstrum of each channel
+    (cepstrum, which removes the integer delay) is multiplied by a Tukey
+    window of 2 n + 1 quefrencies centred on zero (alpha 0 rectangular,
+    1 Hann) and transformed back with the delay (icepstrum), which smooths
+    the log magnitude and the phase of the spectrum together. n defaults
+    to a quarter of the length; from half the length on nothing is done.
+
+    >>> smooth = pytta.lifter(ir, 64, 0.5)
+    """
+    N = signal.numSamples
+    n = int(np.ceil(N / 4)) if n is None else int(n)
+    if n >= np.ceil(N / 2):
+        warn('lifter: the window is too long, nothing is done.')
+        return _cepstrum_signal(signal, np.asarray(signal.timeSignal, dtype=float))
+    win = np.zeros(N)
+    win[:2 * n + 1] = ss.windows.tukey(2 * n + 1, alpha)
+    win = np.roll(win, -n)
+    c, delay = cepstrum(signal)
+    lifted = _cepstrum_signal(c, np.asarray(c.timeSignal, dtype=float) * win[:, None])
+    return icepstrum(lifted, delay)
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
