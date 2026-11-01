@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.absorbers:
+        surface impedance and absorption of layered absorbers;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   absorbers
    properties
