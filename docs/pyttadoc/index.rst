@@ -57,6 +57,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.analytic:
+        analytic sound fields of point sources, plane waves and a sphere;
+
 .. toctree::
    classes/index
    utils/index
@@ -64,4 +67,5 @@ Modules:
    functions
    generate
    rooms
+   analytic
    properties
