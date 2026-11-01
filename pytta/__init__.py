@@ -72,6 +72,9 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.iso3382_3:
+        open-plan offices (ISO 3382-3);
+
 
 You can find usage examples in the toolbox's examples folder.
 
@@ -108,6 +111,7 @@ from . import generate
 from . import utils
 from . import rooms
 from . import iso3741
+from . import iso3382_3
 
 from .functions import read_wav, write_wav, merge, split, \
     list_devices, print_devices, get_device_from_user,\
@@ -130,6 +134,7 @@ __all__ = [  # Apps
            'generate',
            'utils',
            'iso3741',
+           'iso3382_3',
            'rooms',
 
            # Functions

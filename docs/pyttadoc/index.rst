@@ -64,4 +64,5 @@ Modules:
    functions
    generate
    rooms
+   iso3382_3
    properties
