@@ -504,6 +504,29 @@ def impulse(samplingRate=None,
     return impulseSignal
 
 
+def multitone(freqs, amplitude=1, phase=0, samplingRate=None, fftDegree=None):
+    """
+    Sum of sines of peak amplitude amplitude and phase phase (radians, one
+    for all tones or one per tone) at the frequencies freqs rounded to the
+    nearest DFT bin of 2**fftDegree samples, so that every tone has a whole
+    number of periods, as ita_multitone. Logarithmic or fixed factor spacing
+    is freqs = numpy.geomspace(...).
+
+    >>> sig = pytta.generate.multitone(np.geomspace(100, 10000, 5))
+    """
+    if samplingRate is None:
+        samplingRate = default.samplingRate
+    if fftDegree is None:
+        fftDegree = default.fftDegree
+    n = 2**fftDegree
+    f = np.round(np.asarray(freqs, dtype=float) * n / samplingRate) * samplingRate / n
+    if f.max() > samplingRate / 2:
+        raise ValueError('The frequencies must not exceed samplingRate/2.')
+    t = np.arange(n)[:, None] / samplingRate
+    x = (amplitude * np.sin(2 * np.pi * f * t + np.broadcast_to(phase, f.shape))).sum(axis=1)
+    return SignalObj(x, 'time', samplingRate, signalType='power')
+
+
 def measurement(kind='playrec',
                 samplingRate=None,
                 freqMin=None,
