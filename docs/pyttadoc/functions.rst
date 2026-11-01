@@ -26,4 +26,6 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.pitch_detection
+.. autofunction:: pytta.wiener_hopf
+.. autofunction:: pytta.normxcorr2

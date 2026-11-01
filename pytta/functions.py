@@ -274,6 +274,118 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def pitch_detection(signal, fmin=10., fmax=None, blockSize=None, overlap=0.,
+                    overtones=5, maxPitches=1, minDistance=10.,
+                    minConfidence=0.1, fftDegree=16):
+    """
+    Pitch of every block of the first channel by the cepstrum biased
+    harmonic product spectrum of ita_pitch_detection: the magnitude
+    spectrum of the Hann windowed block (zero padded to 2**fftDegree) is
+    multiplied by itself decimated by 2 to overtones + 1 (the harmonic
+    product spectrum, Noll 1969) and by the magnitude of the real cepstrum
+    at the quefrency of each bin. The highest peak between fmin and fmax is
+    the pitch; with maxPitches > 1 the band of minDistance Hz around each
+    peak is cleared and the next is taken. The confidence of a pitch is the
+    share of the energy of the harmonic product spectrum within that band,
+    times the number of pitches found (at most 1); pitches below
+    minConfidence are nan.
+
+    Returns (pitch, confidence), arrays of shape (maxPitches, blocks), and
+    the time (s) of the start of each block.
+    """
+    fs = signal.samplingRate
+    x = np.asarray(signal.timeSignal[:, 0], dtype=float)
+    size = blockSize or x.size
+    hop = max(1, int(round(size * (1 - overlap))))
+    n = max(2 ** fftDegree, size)
+    f = np.fft.rfftfreq(n, 1 / fs)
+    band = np.flatnonzero((f > fmin) & (f < (fmax or fs / 2)))
+    half = max(1, int(np.ceil(minDistance / f[1] / 2)))
+    starts = np.arange(0, x.size, hop)
+    pitch = np.full((maxPitches, starts.size), np.nan)
+    confidence = np.zeros((maxPitches, starts.size))
+    for b, s in enumerate(starts):
+        block = x[s:s + size]
+        block = np.pad(block * np.hanning(block.size), (0, n - block.size))
+        X = np.abs(np.fft.rfft(block))
+        hps = X.copy()
+        for a in range(2, overtones + 2):
+            down = X[::a]
+            hps[:down.size] *= down
+            hps[down.size:] = 0
+        with np.errstate(divide='ignore'):
+            ceps = np.abs(np.fft.irfft(np.log(np.maximum(X, 1e-300)), n))
+        bias = np.zeros_like(hps)
+        bias[band] = ceps[np.minimum(n // band, n - 1)]
+        score, energy = hps * bias, hps.copy()
+        total = np.sum(energy[band] ** 2)
+        found = 0
+        for p in range(maxPitches):
+            k = band[np.argmax(score[band])]
+            if score[k] <= 0 or total == 0:
+                break
+            near = slice(max(band[0], k - half), min(band[-1], k + half) + 1)
+            pitch[p, b] = f[k]
+            confidence[p, b] = np.sum(energy[near] ** 2) / total
+            score[near] = 0
+            energy[near] = 0
+            found += 1
+        confidence[:, b] = np.minimum(confidence[:, b] * max(found, 1), 1)
+    pitch[confidence < minConfidence] = np.nan
+    confidence[confidence < minConfidence] = 0
+    return pitch, confidence, starts / fs
+
+
+def wiener_hopf(signal, invert=False):
+    """
+    Wiener-Hopf factorization of every channel into a causal and an
+    anticausal part whose spectra multiply to the spectrum of signal, by
+    splitting the complex cepstrum (log magnitude and unwrapped phase) at
+    quefrency zero, half of the zero and middle quefrencies to each, as
+    ita_wiener_hopf_factorization. With invert, the factors of the
+    inverse spectrum are returned. Returns (plus, minus).
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    m = n // 2
+    X = np.fft.fft(x, axis=0)
+    phase = np.unwrap(np.angle(X[:m + 1]), axis=0)
+    phase = np.vstack([phase, -phase[1:(n + 1) // 2][::-1]])
+    c = np.fft.ifft((-1 if invert else 1) * (np.log(np.abs(X)) + 1j * phase), axis=0)
+    plus, minus = np.zeros_like(c), np.zeros_like(c)
+    plus[0] = minus[0] = c[0] / 2
+    plus[1:m] = c[1:m]
+    minus[n - m + 1:] = c[n - m + 1:]
+    if n % 2 == 0:
+        plus[m] = minus[m] = c[m] / 2
+    out = [np.fft.ifft(np.exp(np.fft.fft(q, axis=0)), axis=0).real for q in (plus, minus)]
+    return tuple(SignalObj(o, 'time', signal.samplingRate) for o in out)
+
+
+def normxcorr2(template, image):
+    """
+    Normalized two-dimensional cross-correlation of template with image,
+    as MATLAB's normxcorr2 that ita_normxcorr2 applies to array data: at
+    every lag of the full correlation (shape image + template - 1), the
+    correlation of the zero-mean template with the part of image under it,
+    divided by both standard deviations (Lewis, Fast normalized
+    cross-correlation, Vision Interface 1995). Values lie in [-1, 1]; lags
+    where the image is constant give 0.
+    """
+    t = np.asarray(template, dtype=float)
+    a = np.asarray(image, dtype=float)
+    t = t - t.mean()
+    ones = np.ones_like(t)
+    num = ss.fftconvolve(a, t[::-1, ::-1])
+    s1 = ss.fftconvolve(a, ones)
+    s2 = ss.fftconvolve(a ** 2, ones)
+    var_a = np.maximum(s2 - s1 ** 2 / t.size, 0)
+    den = np.sqrt(var_a * np.sum(t ** 2))
+    with np.errstate(divide='ignore', invalid='ignore'):
+        r = np.where(den > 1e-12 * den.max(), num / den, 0)
+    return np.clip(r, -1, 1)
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
