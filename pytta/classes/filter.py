@@ -279,32 +279,37 @@ _categories = ['20', '25', '31.5', '40', '50', '63', '80', '100', '125', '160',
 
 def weighting(kind='A', nth=None, freqs=None):
     """
-    Level weighting curve.
+    Frequency weighting in dB, from the analytical expressions of IEC
+    61672-1:2013, Annex E ('A' and 'C'; 'B' and 'D' of the former
+    standards), normalized to 0 dB at 1 kHz.
 
     Parameters
     ----------
-    kind : TYPE, optional
-        DESCRIPTION. The default is 'A'.
-    nth : TYPE, optional
-        DESCRIPTION. The default is None.
-    freqs : TYPE, optional
-        DESCRIPTION. The default is None.
+    kind : str, optional
+        'A', 'B', 'C' or 'D'. The default is 'A'.
+    nth : int, optional
+        1 or 3: the weighting of the octave bands from 31.5 Hz to 16 kHz or
+        of the one-third octave bands from 20 Hz to 20 kHz, at the exact
+        frequencies 1000 * 10**(0.1 (n - 30)) at which IEC 61672-1, Table 3,
+        gives it for the nominal ones.
+    freqs : array_like, optional
+        Frequencies in Hz, used instead of nth.
 
     Returns
     -------
     np.ndarray
-        The weighting curve in dB.
+        The weighting in dB, one row per frequency, rounded to 0.01 dB.
 
     """
-    out = []
-    if freqs is not None:
-        for freq in freqs:
-            out.append(eval('__' + kind + '(' + freq + ')'))
-    elif nth is not None:
+    curves = {'A': __A, 'B': __B, 'C': __C, 'D': __D}
+    if kind not in curves:
+        raise ValueError("kind must be 'A', 'B', 'C' or 'D'.")
+    if freqs is None:
+        if nth not in (1, 3):
+            raise ValueError('Give freqs, or nth = 1 or 3.')
+        n = np.arange(13, 44)                    # 20 Hz to 20 kHz
+        freqs = 1000 * 10 ** (0.1 * (n - 30))
         if nth == 1:
-            for val in _categories[2::3]:
-                out.append(eval('__' + kind + '(' + val + ')'))
-        elif nth == 3:
-            for val in _categories:
-                out.append(eval(kind+'('+val+')'))
-    return np.asarray(out, ndmin=2).T
+            freqs = freqs[2::3]                  # 31.5 Hz to 16 kHz
+    out = [curves[kind](float(f)) for f in np.atleast_1d(freqs)]
+    return np.array(out, ndmin=2).T
