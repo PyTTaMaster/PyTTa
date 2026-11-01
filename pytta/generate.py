@@ -695,6 +695,39 @@ def measurement(kind='playrec',
         return frfObj
 
 
+def stochastic_ir(reverbTime, volume, distance=1, c=343, samplingRate=None,
+                  timeLength=None, seed=None):
+    """
+    Synthetic room impulse response of a diffuse room, after the statistical
+    model of Kuttruff, Room Acoustics, 6th ed. (2016), sec. 4.2, eq. 4.6 and
+    4.7, as ita_stochastic_room_impulse_response without an HRTF: the direct sound
+    1 / distance at distance / c, and reflections arriving as a Poisson
+    process of density 4 pi c^3 t^2 / volume, each of random sign and of
+    amplitude 10^(-3 t / reverbTime) / (c t), so that the energy decays by
+    60 dB in reverbTime. timeLength defaults to 1.2 reverbTime.
+
+    >>> ir = pytta.generate.stochastic_ir(0.8, 200, distance=3, seed=1)
+    """
+    if samplingRate is None:
+        samplingRate = default.samplingRate
+    if timeLength is None:
+        timeLength = 1.2 * reverbTime
+    rng = np.random.default_rng(seed)
+    n = int(round(timeLength * samplingRate))
+    t0 = distance / c
+    # Unit rate Poisson points mapped through the inverse of the integrated
+    # density, Lambda(t) = 4 pi c^3 (t^3 - t0^3) / (3 V).
+    k = 4 * np.pi * c**3 / (3 * volume)
+    total = k * (timeLength**3 - t0**3)
+    u = np.sort(rng.uniform(0, total, rng.poisson(total)))
+    t = np.cbrt(t0**3 + u / k)
+    x = np.zeros(n)
+    np.add.at(x, np.minimum((t * samplingRate).round().astype(int), n - 1),
+              rng.choice([-1, 1], t.size) * 10**(-3 * t / reverbTime) / (c * t))
+    x[int(round(t0 * samplingRate))] += 1 / distance
+    return SignalObj(x, 'time', samplingRate, signalType='energy')
+
+
 def stream(IO='IO',
            device=None,
            integration=None,
