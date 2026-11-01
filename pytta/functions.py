@@ -274,6 +274,75 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def multiple_sweep_excitation(sweep, numSources, delay, tail=0.):
+    """
+    Excitation of the multiple exponential sweep method (Majdak, Balazs and
+    Laback, Multiple exponential sweep method for fast measurement of
+    head-related transfer functions, J. Audio Eng. Soc. 55(7/8), 2007), the
+    interleaved and MIMO measurements of the ITA-Toolbox: channel k plays
+    sweep delayed by k delay seconds, with tail seconds of silence at the
+    end for the last responses. delay must exceed the length of the
+    impulse responses plus the advance of the harmonics that matter.
+    """
+    fs = sweep.samplingRate
+    s = np.asarray(sweep.timeSignal[:, 0], dtype=float)
+    d = int(round(delay * fs))
+    x = np.zeros((s.size + (numSources - 1) * d + int(round(tail * fs)), numSources))
+    for k in range(numSources):
+        x[k * d:k * d + s.size, k] = s
+    return SignalObj(x, 'time', fs, freqMin=sweep.freqMin, freqMax=sweep.freqMax)
+
+
+def multiple_sweep_irs(recording, sweep, numSources, delay, irLength,
+                       pretime=0.005, regularization=True):
+    """
+    Impulse responses of each source to every input channel from a
+    recording of multiple_sweep_excitation: the recording is deconvolved
+    with the single sweep by ImpulsiveResponse, regularized between the
+    freqMin and freqMax of sweep unless regularization is False, and the
+    response of source k is cut from pretime seconds before k delay,
+    irLength seconds long, so that the onset of the band-limited impulse is
+    kept. The regularization limits the band and so spreads each impulse
+    in time, and part of it falls in the windows of the other sources
+    (about 1 % with the default band); without it the division is exact
+    but raises the noise outside the band of the sweep. Returns one
+    SignalObj per source, with one channel per input channel.
+    """
+    fs = recording.samplingRate
+    n = recording.timeSignal.shape[0]
+    s = np.zeros(n)
+    s[:sweep.timeSignal.shape[0]] = sweep.timeSignal[:, 0]
+    excitation = SignalObj(s, 'time', fs, freqMin=sweep.freqMin, freqMax=sweep.freqMax)
+    ir = ImpulsiveResponse(excitation, recording, 'linear', regularization=regularization)
+    h = np.asarray(ir.IR.timeSignal, dtype=float)
+    d, m = int(round(delay * fs)), int(round(irLength * fs))
+    h = np.roll(h, int(round(pretime * fs)), axis=0)
+    return [SignalObj(h[k * d:k * d + m], 'time', fs) for k in range(numSources)]
+
+
+def triggered_average(recording, threshold, duration, pretime=0., channel=0):
+    """
+    Average of the events of a triggered measurement (e.g. impact hammer),
+    as ita_measurement_trigger: an event starts where the trigger channel
+    first exceeds threshold dB re full scale after the previous event, and
+    is cut from pretime seconds before that sample, duration seconds long,
+    in every channel. Returns (mean SignalObj, list of the events).
+    """
+    fs = recording.samplingRate
+    x = np.asarray(recording.timeSignal, dtype=float)
+    pre, m = int(round(pretime * fs)), int(round(duration * fs))
+    above = np.flatnonzero(np.abs(x[:, channel]) > 10 ** (threshold / 20))
+    runs, end = [], -1
+    for i in above:
+        if i >= end and i - pre >= 0 and i - pre + m <= x.shape[0]:
+            runs.append(SignalObj(x[i - pre:i - pre + m], 'time', fs))
+            end = i - pre + m
+    if not runs:
+        raise ValueError('No event above the threshold.')
+    mean = np.mean([r.timeSignal for r in runs], axis=0)
+    return SignalObj(mean, 'time', fs), runs
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED

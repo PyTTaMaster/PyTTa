@@ -37,7 +37,7 @@ from pytta import SignalObj, OctFilter, Analysis, ImpulsiveResponse
 from pytta.utils import fractional_octave_frequencies as FOF, freq_to_band
 from pytta.classes.analysis import _circular_time_shift, _filter, crop_IR, \
     cumulative_integration, reverberation_time
-import traceback
+from pytta.classes._instanceinfo import caller_name
 import copy as cp
 from warnings import warn
 
@@ -65,21 +65,7 @@ def G_Lpe(IR, nthOct, minFreq, maxFreq, IREndManualCut=None):
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
@@ -145,21 +131,7 @@ def G_Lps(IR, nthOct, minFreq, maxFreq):
     :return: Analysis object with the calculated parameter
     :rtype: Analysis
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-        # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
 
     # firstChNum = IR.systemSignal.channels.mapping[0]
     # if not IR.systemSignal.channels[firstChNum].calibCheck:
@@ -336,21 +308,7 @@ def analyse(obj, *params,
     For more tips check the examples folder.
 
     """
-    # Code snippet to guarantee that generated object name is
-    # the declared at global scope
-    # for frame, line in traceback.walk_stack(None):
-    for framenline in traceback.walk_stack(None):
-        # varnames = frame.f_code.co_varnames
-        varnames = framenline[0].f_code.co_varnames
-        if varnames == ():
-            break
-    # creation_file, creation_line, creation_function, \
-    #     creation_text = \
-    extracted_text = \
-        traceback.extract_stack(framenline[0], 1)[0]
-    # traceback.extract_stack(frame, 1)[0]
-    # creation_name = creation_text.split("=")[0].strip()
-    creation_name = extracted_text[3].split("=")[0].strip()
+    creation_name = caller_name()
     
     warn(DeprecationWarning("Function 'pytta.Analyse' is DEPRECATED and " +
                             "being replaced by the class pytta.RoomAnalysis" +
