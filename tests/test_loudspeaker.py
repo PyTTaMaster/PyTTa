@@ -232,3 +232,27 @@ class TestLoudspeakerTools(unittest.TestCase):
         # a = 1 is the exponential horn S = St e^(mx), m = 4 pi fc / c.
         x, S = loudspeaker.horn_profile(0.001, 300., 0.8)
         np.testing.assert_allclose(S, 0.001 * np.exp(4 * np.pi * 300. / 343.2 * x))
+
+    def test_fit_with_velocity_recovers_the_driver(self):
+        # Impedance and velocity of the lumped model with Le are fitted
+        # back exactly.
+        drv = dict(DRIVER, Le=0.5e-3)
+        f = np.geomspace(10, 2000, 200)
+        jw = 2j * np.pi * f
+        Ze = drv['Re'] + jw * drv['Le']
+        Zm = drv['Rms'] + jw * drv['Mms'] + 1 / (jw * drv['Cms'])
+        Z = Ze + drv['Bl']**2 / Zm
+        H = drv['Bl'] / (Ze * Zm + drv['Bl']**2)
+        fit = loudspeaker.fit_with_velocity(f, Z, H)
+        e = max(abs(fit[k] / drv[k] - 1) for k in ('Re', 'Le', 'Bl', 'Rms', 'Mms', 'Cms', 'fs'))
+        print(f'\n  fit with velocity: {e:.1e}', end='')
+        self.assertLess(e, 1e-9)
+
+    def test_voice_coil_models_are_fitted_back(self):
+        f = np.geomspace(100, 20000, 120)
+        for model, true in (('L2R2', {'Re': 6., 'Le': 0.3e-3, 'L2': 0.6e-3, 'R2': 4.}),
+                            ('Leach', {'Re': 6., 'K': 0.02, 'n': 0.7})):
+            fit = loudspeaker.fit_voice_coil(f, loudspeaker.voice_coil_model(true, f), model)
+            e = max(abs(fit[k] / true[k] - 1) for k in true)
+            print(f'\n  voice coil {model}: {e:.1e}', end='')
+            self.assertLess(e, 1e-6)

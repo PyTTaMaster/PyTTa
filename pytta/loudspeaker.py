@@ -22,6 +22,8 @@ Available functions:
     >>> pytta.loudspeaker.radiation_impedance(freq, radius)
     >>> pytta.loudspeaker.closed_box(params, Vb)
     >>> pytta.loudspeaker.horn_profile(throat_area, cutoff, length)
+    >>> pytta.loudspeaker.fit_with_velocity(freq, impedance, velocity)
+    >>> pytta.loudspeaker.fit_voice_coil(freq, blocked, 'L2R2')
 
 References:
 
@@ -369,3 +371,85 @@ def horn_profile(throat_area, cutoff, length, a=1., c=343.2, num=200):
     x = np.linspace(0, length, num)
     xT = c / (2 * np.pi * cutoff)
     return x, throat_area * (np.cosh(x / xT) + a * np.sinh(x / xT))**2
+
+
+def fit_with_velocity(freq, impedance, velocity, weights=None):
+    """
+    Thiele-Small parameters from the electrical impedance Z = U / i and the
+    diaphragm velocity per volt H = v / U measured together (e.g. with a
+    laser vibrometer), as ita_thiele_small_fit and, with weights per
+    frequency, ita_thiele_small_fit_weighted. With G = v / i = H Z, the
+    model gives two linear least squares problems:
+
+        Z = Re + j w Le + Bl G,
+        Bl / G = Rms + j w Mms + 1 / (j w Cms).
+
+    Returns a dict with 'Re', 'Le', 'Bl', 'Rms', 'Mms', 'Cms', 'fs', 'Qms',
+    'Qes' and 'Qts'.
+    """
+    w = 2 * np.pi * np.asarray(freq, dtype=float)
+    Z = np.asarray(impedance)
+    G = np.asarray(velocity) * Z
+    sw = np.sqrt(np.ones(w.size) if weights is None else np.asarray(weights))
+
+    def solve(columns, target):
+        M = np.column_stack(columns) * sw[:, None]
+        rhs = target * sw
+        return np.linalg.lstsq(np.vstack([M.real, M.imag]),
+                               np.r_[rhs.real, rhs.imag], rcond=None)[0]
+
+    Re, Le, Bl = solve([np.ones_like(w), 1j * w, G], Z)
+    Rms, Mms, K = solve([np.ones_like(w), 1j * w, 1 / (1j * w)], Bl / G)
+    ws = np.sqrt(K / Mms)
+    Qms, Qes = ws * Mms / Rms, ws * Mms * Re / Bl**2
+    return {'Re': Re, 'Le': Le, 'Bl': Bl, 'Rms': Rms, 'Mms': Mms,
+            'Cms': 1 / K, 'fs': ws / (2 * np.pi), 'Qms': Qms, 'Qes': Qes,
+            'Qts': Qms * Qes / (Qms + Qes)}
+
+
+def voice_coil_model(params, freq):
+    """
+    Blocked electrical impedance of the voice coil: Re + K (j w)^n when
+    params has 'K' and 'n' (Leach, Loudspeaker voice-coil inductance
+    losses, J. Audio Eng. Soc. 50(6), 2002), otherwise Re + j w Le plus,
+    with 'L2' and 'R2', the eddy current branch j w L2 R2 / (R2 + j w L2)
+    (the L2R2 model).
+    """
+    jw = 2j * np.pi * np.asarray(freq, dtype=float)
+    if 'K' in params:
+        return params['Re'] + params['K'] * jw ** params['n']
+    z = params['Re'] + jw * params.get('Le', 0.)
+    if 'L2' in params:
+        z = z + jw * params['L2'] * params['R2'] / (params['R2'] + jw * params['L2'])
+    return z
+
+
+def fit_voice_coil(freq, blocked, model='L2R2', Re=None):
+    """
+    Parameters of voice_coil_model fitted by least squares on the relative
+    complex error to a blocked impedance (for instance Z - Bl G from
+    fit_with_velocity, or a measurement with the diaphragm held), as
+    ita_inductance_fit and ita_curvefit_inductance. model is 'Le', 'L2R2'
+    or 'Leach'; Re is fitted unless given.
+    """
+    f = np.asarray(freq, dtype=float)
+    z = np.asarray(blocked)
+    names = {'Le': ['Le'], 'L2R2': ['Le', 'L2', 'R2'], 'Leach': ['K', 'n']}[model]
+    w = 2 * np.pi * f
+    Le0 = np.median(z.imag / w)
+    x0 = {'Le': Le0, 'L2': Le0, 'R2': z.real.max(), 'K': Le0, 'n': 0.9}
+    fit_re = Re is None
+    start = [x0[n] for n in names] + ([z.real.min()] if fit_re else [])
+
+    def params(x):
+        p = dict(zip(names, x))
+        p['Re'] = x[-1] if fit_re else Re
+        return p
+
+    def residual(x):
+        err = voice_coil_model(params(x), f) / z - 1
+        return np.concatenate([err.real, err.imag])
+
+    sol = least_squares(residual, start, bounds=(0, np.inf), x_scale='jac',
+                        xtol=1e-14, ftol=1e-14, gtol=1e-14)
+    return params(sol.x)
