@@ -338,6 +338,51 @@ def smooth_frequency(signalObj, nthOct=3):
     return newSignal
 
 
+def smooth_notches(signalObj, nthOct=3, threshold=3., squeeze=0.3):
+    """
+    Spectrum with its notches made shallower, for loudspeaker equalization,
+    by the "compare and squeeze" of ita_smooth_notches (after S. Mueller):
+    the magnitude is compared with its smoothing over 1 / nthOct octave
+    (smooth_frequency), every notch deeper than threshold dB below it is
+    taken from where the magnitude last crossed the smoothed one to where
+    it crosses it again, and there the ratio r of the two is raised to
+    squeeze, so that the notch keeps squeeze times its depth in dB. With
+    threshold 0 every bin below the smoothed curve is squeezed. The phase
+    is kept. Returns a SignalObj.
+    """
+    spectrum = np.array(signalObj.freqSignal, dtype=complex, ndmin=2)
+    smooth = np.array(smooth_frequency(signalObj, nthOct).freqSignal, dtype=complex, ndmin=2)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ratio = np.abs(spectrum) / np.abs(smooth)
+    window = np.ones_like(ratio)
+    for ch in range(ratio.shape[1]):
+        r = ratio[:, ch]
+        if not threshold:
+            window[:, ch] = np.minimum(r, 1)
+            continue
+        notch = r < 10 ** (-abs(threshold) / 20)
+        notch[0] = notch[1]
+        edges = np.diff(notch.astype(int))
+        for s, e in zip(np.flatnonzero(edges == 1) + 1, np.flatnonzero(edges == -1)):
+            above = np.flatnonzero(r[:s] > 1)
+            start = above[-1] + 1 if above.size else 0
+            above = np.flatnonzero(r[e:] > 1)
+            stop = e + above[0] if above.size else r.size
+            window[start:stop, ch] = r[start:stop]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        window = window ** -(1 - squeeze)
+    window[~np.isfinite(window)] = 1
+    newSignal = SignalObj(window * spectrum, 'freq',
+                          samplingRate=signalObj.samplingRate,
+                          numSamples=signalObj.numSamples,
+                          signalType=signalObj.signalType,
+                          freqMin=signalObj.freqMin,
+                          freqMax=signalObj.freqMax,
+                          comment=signalObj.comment)
+    newSignal.channels = cp.deepcopy(signalObj.channels)
+    return newSignal
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
