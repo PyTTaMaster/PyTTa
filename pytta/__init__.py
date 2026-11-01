@@ -113,7 +113,8 @@ from .functions import read_wav, write_wav, merge, split, \
     list_devices, print_devices, get_device_from_user,\
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, plot_time, plot_time_dB, plot_freq,\
-    plot_bars, plot_spectrogram, plot_waterfall, SPL
+    plot_bars, plot_spectrogram, plot_waterfall, SPL, smooth_frequency,\
+    smooth_notches
 
 # Must go on v0.1.0 (DEPRECATED)
 from .functions import fft_degree
@@ -146,6 +147,8 @@ __all__ = [  # Apps
            'resample',
            'corr_coef',
            'peak_time',
+           'smooth_frequency',
+           'smooth_notches',
            'save',
            'load',
            'weighting',

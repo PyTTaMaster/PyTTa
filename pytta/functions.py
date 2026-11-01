@@ -17,6 +17,7 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.smooth_frequency(signalObj, nthOct)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -37,6 +38,7 @@ import numpy as np
 import sounddevice as sd
 import scipy.signal as ss
 import scipy.fftpack as sfft
+from scipy.interpolate import CubicSpline
 import zipfile as zf
 import h5py
 from typing import Union, List
@@ -273,6 +275,113 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+def smooth_frequency(signalObj, nthOct=3):
+    """
+    Smooth the magnitude spectrum of a SignalObj over fractions of an octave
+    and return a new SignalObj. The phase is kept.
+
+    The magnitude of freqSignal is interpolated linearly onto a logarithmic
+    frequency grid of 1 cent that spans the 20 octaves below Nyquist, box
+    averaged over 1200 / nthOct cents (made odd; the box shrinks
+    symmetrically at both ends of the grid), and interpolated back onto the
+    frequency bins with a cubic spline. The DC bin is copied unchanged.
+
+    Parameters (default), (type):
+    -----------------------------
+        * signalObj (), (SignalObj):
+            signal whose spectrum is smoothed. It is not modified;
+        * nthOct (3), (int or float):
+            smoothing width of 1 / nthOct octave: 1 for one octave, 3 for a
+            third, 12 for a twelfth.
+
+    The smoothing acts on freqSignal as stored, so the DC and Nyquist bins,
+    which PyTTa scales differently from the others, take part with that
+    scale. This is the 'LogFreqOctave1' smoothing of ita_smooth in the
+    ITA-Toolbox (RWTH Aachen).
+
+    >>> smoothed = pytta.smooth_frequency(ir, nthOct=3)
+    """
+    if not isinstance(signalObj, SignalObj):
+        raise TypeError('signalObj must be a SignalObj.')
+    if isinstance(nthOct, bool) or not isinstance(nthOct, (int, float)) \
+            or nthOct <= 0:
+        raise ValueError('nthOct must be a positive number.')
+    samplingRate = signalObj.samplingRate
+    freq = signalObj.freqVector
+    spectrum = np.array(signalObj.freqSignal, dtype=complex, ndmin=2)
+    # logarithmic grid: 1 cent steps over the 20 octaves below Nyquist
+    gridFreq = (samplingRate / 2) * 2 ** (np.arange(24001) / 1200 - 20)
+    span = int(np.floor(1200 / nthOct + 0.5))
+    width = min(span - 1 + span % 2, gridFreq.size)
+    halfWidth = (width - 1) // 2
+    index = np.arange(gridFreq.size)
+    reach = np.minimum(halfWidth, np.minimum(index, index[::-1]))
+    smoothed = np.empty_like(spectrum)
+    for ch in range(spectrum.shape[1]):
+        magnitude = np.interp(gridFreq, freq, np.abs(spectrum[:, ch]))
+        summed = np.concatenate(([0.], np.cumsum(magnitude)))
+        average = (summed[index + reach + 1] - summed[index - reach]) \
+            / (2 * reach + 1)
+        spline = CubicSpline(gridFreq[1:], average[1:], bc_type='not-a-knot')
+        smoothed[0, ch] = spectrum[0, ch]
+        smoothed[1:, ch] = spline(freq[1:]) \
+            * np.exp(1j * np.angle(spectrum[1:, ch]))
+    newSignal = SignalObj(smoothed, 'freq',
+                          samplingRate=samplingRate,
+                          numSamples=signalObj.numSamples,
+                          signalType=signalObj.signalType,
+                          freqMin=signalObj.freqMin,
+                          freqMax=signalObj.freqMax,
+                          comment=signalObj.comment)
+    newSignal.channels = cp.deepcopy(signalObj.channels)
+    return newSignal
+
+
+def smooth_notches(signalObj, nthOct=3, threshold=3., squeeze=0.3):
+    """
+    Spectrum with its notches made shallower, for loudspeaker equalization,
+    by the "compare and squeeze" of ita_smooth_notches (after S. Mueller):
+    the magnitude is compared with its smoothing over 1 / nthOct octave
+    (smooth_frequency), every notch deeper than threshold dB below it is
+    taken from where the magnitude last crossed the smoothed one to where
+    it crosses it again, and there the ratio r of the two is raised to
+    squeeze, so that the notch keeps squeeze times its depth in dB. With
+    threshold 0 every bin below the smoothed curve is squeezed. The phase
+    is kept. Returns a SignalObj.
+    """
+    spectrum = np.array(signalObj.freqSignal, dtype=complex, ndmin=2)
+    smooth = np.array(smooth_frequency(signalObj, nthOct).freqSignal, dtype=complex, ndmin=2)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        ratio = np.abs(spectrum) / np.abs(smooth)
+    window = np.ones_like(ratio)
+    for ch in range(ratio.shape[1]):
+        r = ratio[:, ch]
+        if not threshold:
+            window[:, ch] = np.minimum(r, 1)
+            continue
+        notch = r < 10 ** (-abs(threshold) / 20)
+        notch[0] = notch[1]
+        edges = np.diff(notch.astype(int))
+        for s, e in zip(np.flatnonzero(edges == 1) + 1, np.flatnonzero(edges == -1)):
+            above = np.flatnonzero(r[:s] > 1)
+            start = above[-1] + 1 if above.size else 0
+            above = np.flatnonzero(r[e:] > 1)
+            stop = e + above[0] if above.size else r.size
+            window[start:stop, ch] = r[start:stop]
+    with np.errstate(divide='ignore', invalid='ignore'):
+        window = window ** -(1 - squeeze)
+    window[~np.isfinite(window)] = 1
+    newSignal = SignalObj(window * spectrum, 'freq',
+                          samplingRate=signalObj.samplingRate,
+                          numSamples=signalObj.numSamples,
+                          signalType=signalObj.signalType,
+                          freqMin=signalObj.freqMin,
+                          freqMax=signalObj.freqMax,
+                          comment=signalObj.comment)
+    newSignal.channels = cp.deepcopy(signalObj.channels)
+    return newSignal
+
 
 def fft_degree(*args,**kwargs):
     """
