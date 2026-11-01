@@ -65,3 +65,4 @@ Modules:
    generate
    rooms
    properties
+   ita_migration
