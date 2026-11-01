@@ -1564,7 +1564,10 @@ def windowed_band_energy(ir, start, stop=None, compensation=None, **kwargs):
     compensation is the list of (Lundeby truncation index, tail correction
     C) of each band that cumulative_integration fills; with it, the filtered
     window is cut at the truncation index of each band and C is added, as
-    the energy decay curve does for the late part of the response.
+    the energy decay curve does for the late part of the response. A third
+    element, the noise energy per sample, is subtracted from every sample
+    of the window up to the truncation, for a decay curve computed by noise
+    subtraction.
 
     Returns an array with one energy per band.
     """
@@ -1579,8 +1582,13 @@ def windowed_band_energy(ir, start, stop=None, compensation=None, **kwargs):
     y = y.reshape(y.shape[0], -1)
     if compensation is None:
         return np.sum(y**2, axis=0)
-    return np.array([np.sum(y[:cut, band]**2) + C
-                     for band, (cut, C) in enumerate(compensation)])
+    energy = []
+    for band, comp in enumerate(compensation):
+        cut, C = comp[:2]
+        noise = comp[2] if len(comp) > 2 else 0.
+        end = x.size - 1 if cut < 0 else cut
+        energy.append(np.sum(y[:cut, band]**2) + C - noise * max(end - i0, 0))
+    return np.array(energy)
 
 
 def definition(listEDC: list, fs: int, t: int = 50) -> np.ndarray:
