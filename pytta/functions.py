@@ -274,6 +274,46 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def prony(h, nb, na):
+    """
+    Coefficients b (nb + 1) and a (na + 1, a[0] = 1) of the IIR filter whose
+    impulse response best matches h, by Prony's method (Parks and Burrus,
+    Digital Filter Design, 1987), as the time domain of ita_prony_analysis:
+    the denominator fits the samples after nb by least squares, and the
+    numerator then matches the first nb + 1 samples exactly.
+    scipy.signal.tf2zpk(b, a) gives the zeros and poles.
+
+    >>> b, a = pytta.prony(ir.timeSignal[:, 0], 8, 8)
+    """
+    from scipy.linalg import toeplitz
+    h = np.asarray(h)
+    if h.size <= max(nb, na):
+        h = np.pad(h, (0, max(nb, na) + 1 - h.size))
+    H = toeplitz(h, np.r_[h[0], np.zeros(na)])
+    a = np.r_[1, -np.linalg.lstsq(H[nb + 1:, 1:], H[nb + 1:, 0], rcond=None)[0]]
+    return H[:nb + 1] @ a, a
+
+
+def invfreqz(H, w, nb, na, weights=None):
+    """
+    Real coefficients b (nb + 1) and a (na + 1, a[0] = 1) of the IIR filter
+    whose frequency response fits H at the normalized frequencies w (rad per
+    sample), by the linear equation error method of Levi (Complex curve
+    fitting, IRE Trans. Automatic Control 4(1), 1959), minimizing
+    sum weights |B(w) - H(w) A(w)|^2, as MATLAB's invfreqz without
+    iterations and the frequency domain of ita_prony_analysis.
+
+    >>> b, a = pytta.invfreqz(H, 2 * np.pi * f / fs, 8, 8)
+    """
+    H, w = np.asarray(H), np.asarray(w)
+    E = np.exp(-1j * np.outer(w, np.arange(max(nb, na) + 1)))
+    M = np.hstack([E[:, :nb + 1], -H[:, None] * E[:, 1:na + 1]])
+    sw = np.sqrt(np.ones(w.size) if weights is None else np.asarray(weights))[:, None]
+    x = np.linalg.lstsq(np.vstack([(sw * M).real, (sw * M).imag]),
+                        np.r_[(sw[:, 0] * H).real, (sw[:, 0] * H).imag], rcond=None)[0]
+    return x[:nb + 1], np.r_[1, x[nb + 1:]]
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
