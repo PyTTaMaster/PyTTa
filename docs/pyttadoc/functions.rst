@@ -26,4 +26,6 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.crossfade_spectra
+.. autofunction:: pytta.cut_impulse_train
+.. autofunction:: pytta.velocity_from_pressure_gradient

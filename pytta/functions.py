@@ -274,6 +274,92 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def crossfade_spectra(signal_low, signal_high, freqs):
+    """
+    Spectrum of signal_low below freqs[0] Hz and of signal_high above
+    freqs[1] Hz, with a raised cosine crossfade between them, as
+    ita_xfade_spk; a single frequency takes half of each at that bin.
+    Both signals need the same sampling rate and number of samples.
+
+    >>> combined = pytta.crossfade_spectra(ir_simulated, ir_measured, [200, 400])
+    """
+    fs = signal_low.samplingRate
+    if fs != signal_high.samplingRate:
+        raise ValueError('The signals must have the same sampling rate.')
+    f0, f1 = np.broadcast_to(np.asarray(freqs, dtype=float), (2,))
+    n = signal_low.timeSignal.shape[0]
+    A = np.fft.rfft(signal_low.timeSignal, axis=0)
+    if f0 >= fs / 2:
+        return SignalObj(np.fft.irfft(A, n, axis=0), 'time', fs)
+    B = np.fft.rfft(signal_high.timeSignal, axis=0)
+    b0, b1 = (int(round(f * n / fs)) for f in (f0, min(f1, fs / 2)))
+    if b1 > b0:
+        rise = 0.5 - 0.5 * np.cos(np.pi * np.arange(b1 - b0 + 1) / (b1 - b0))
+    else:
+        rise = np.array([0.5])
+    gain_low = np.zeros(A.shape[0])
+    gain_low[:b0] = 1
+    gain_low[b0:b1 + 1] = 1 - rise
+    gain_high = np.zeros(A.shape[0])
+    gain_high[b1 + 1:] = 1
+    gain_high[b0:b1 + 1] = rise
+    X = A * gain_low[:, None] + B * gain_high[:, None]
+    return SignalObj(np.fft.irfft(X, n, axis=0), 'time', fs)
+
+
+def cut_impulse_train(signal, threshold=0.7, length=1, start_before=0.004, ref_channel=0):
+    """
+    Impulses of an impulse train cut out of signal, as ita_cutImpulseTrain.
+    A sample of ref_channel above the threshold, threshold * L_max +
+    (1 - threshold) * L_rms dB, begins an impulse when it comes length
+    seconds or more after the previous sample above it; each impulse is
+    length seconds from start_before seconds before that sample, cut at the
+    same samples in every channel.
+
+    Returns a list with one SignalObj per channel, whose channels are the
+    impulses, and the 0-based start samples.
+
+    >>> impulses, starts = pytta.cut_impulse_train(take, length=0.5)
+    """
+    fs = signal.samplingRate
+    x = np.asarray(signal.timeSignal)
+    n = x.shape[0]
+    nlen, nbefore = round(length * fs), round(start_before * fs)
+    ref = x[:, ref_channel]
+    with np.errstate(divide='ignore'):
+        level = 20 * np.log10(np.abs(ref))
+    thr = threshold * level.max() + (1 - threshold) * 10 * np.log10(np.mean(ref ** 2))
+    idx = np.flatnonzero(level > thr)
+    idx = idx[idx <= n - nlen + nbefore]
+    idx = idx[np.r_[True, np.diff(idx) >= nlen]] if idx.size else idx
+    starts = idx[idx >= nbefore] - nbefore
+    take = starts[:, None] + np.arange(nlen)
+    return [SignalObj(x[take, c].T, 'time', fs) for c in range(x.shape[1])], starts
+
+
+def velocity_from_pressure_gradient(signal, distance, rho=1.2, c=343, normalized=False):
+    """
+    Particle velocity (m/s) midway between two microphones distance m apart
+    from the pressures of channels 0 and 1 (Pa), by Euler's equation,
+    v = (p0 - p1) / (j omega rho distance), as
+    ita_velocity_from_pressure_gradient; times rho c if normalized. The DC
+    bin is set to zero.
+
+    >>> v = pytta.velocity_from_pressure_gradient(pp_probe, 0.012)
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    if x.shape[1] != 2:
+        raise ValueError('The signal must have two channels.')
+    n = x.shape[0]
+    P = np.fft.rfft(x[:, 0] - x[:, 1])
+    omega = 2 * np.pi * np.fft.rfftfreq(n, 1 / signal.samplingRate)
+    V = np.zeros_like(P)
+    V[1:] = P[1:] / (1j * omega[1:] * rho * distance)
+    if normalized:
+        V *= rho * c
+    return SignalObj(np.fft.irfft(V, n), 'time', signal.samplingRate)
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
