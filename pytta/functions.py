@@ -17,6 +17,11 @@ Available functions:
     >>> pytta.corr_coef(signalObj1, signalObj2)
     >>> pytta.resample(signalObj, newSamplingRate)
     >>> pytta.peak_time(signalObj1, signalObj2, ..., signalObjN)
+    >>> pytta.group_delay(signalObj)
+    >>> pytta.coherence(signalObj1, signalObj2)
+    >>> pytta.cepstrum(signalObj)
+    >>> pytta.icepstrum(cepstrumObj, delay)
+    >>> pytta.mls_deconvolution(signalObj, order)
     >>> pytta.plot_time(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_time_dB(signalObj1, signalObj2, ..., signalObjN)
     >>> pytta.plot_freq(signalObj1, signalObj2, ..., signalObjN)
@@ -44,7 +49,7 @@ from pytta.classes import SignalObj, ImpulsiveResponse, \
                     RecMeasure, PlayRecMeasure, FRFMeasure, \
                     Analysis, OctFilter
 from pytta.classes._base import ChannelsList, ChannelObj
-from pytta.generate import measurement  # TODO: Change to class instantiation.
+from pytta.generate import measurement, mls  # TODO: Change to class instantiation.
 from pytta import _h5utils as _h5
 import copy as cp
 from warnings import warn
@@ -273,6 +278,233 @@ def peak_time(signal):
         return peaks_time
     else:
         return peaks_time[0]
+
+
+def group_delay(signal):
+    """
+    Group delay of each channel, -d(phase)/d(omega), in seconds.
+
+    Computed with the derivative of the spectrum, which needs no phase
+    unwrapping (Oppenheim and Schafer, Discrete Time Signal Processing,
+    ch. 5 and 13):
+
+        tau = Re{ DFT(n x[n]) / DFT(x[n]) } / fs
+
+    The DFT is circular, so the signal should decay within its length.
+    Bins where the spectrum is zero give NaN.
+
+    Parameters
+    ----------
+    signal : SignalObj
+
+    Returns
+    -------
+    numpy.ndarray
+        Group delay with shape (numBins, numChannels), at signal.freqVector.
+
+    >>> tau = pytta.group_delay(ir)
+    """
+    if not isinstance(signal, SignalObj):
+        raise TypeError('signal must be a SignalObj.')
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = np.arange(signal.numSamples)[:, None]
+    X = np.fft.rfft(x, axis=0)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        tau = np.real(np.fft.rfft(n * x, axis=0) / X)
+    tau[X == 0] = np.nan
+    return tau / signal.samplingRate
+
+
+def coherence(x, y, winSize=1024):
+    """
+    Magnitude squared coherence |Sxy|^2 / (Sxx Syy) between two SignalObj.
+
+    Welch estimate from scipy.signal.coherence, Hann window of winSize
+    samples with 50 % overlap. Channels are paired one to one; a signal
+    with one channel is paired with every channel of the other.
+
+    Parameters
+    ----------
+    x, y : SignalObj
+        Same sampling rate and number of samples.
+    winSize : int, optional
+        Welch segment length in samples. The default is 1024.
+
+    Returns
+    -------
+    freq : numpy.ndarray
+        Frequencies in Hz, winSize // 2 + 1 bins.
+    gamma2 : numpy.ndarray
+        Coherence with shape (numBins, numChannels), between 0 and 1.
+
+    >>> freq, gamma2 = pytta.coherence(excitation, response)
+    """
+    if not isinstance(x, SignalObj) or not isinstance(y, SignalObj):
+        raise TypeError('x and y must be SignalObj.')
+    if x.samplingRate != y.samplingRate or x.numSamples != y.numSamples:
+        raise ValueError('x and y must have the same sampling rate and '
+                         'number of samples.')
+    return ss.coherence(np.asarray(x.timeSignal, dtype=float),
+                        np.asarray(y.timeSignal, dtype=float),
+                        fs=x.samplingRate, window='hann', nperseg=winSize,
+                        axis=0)
+
+
+def cepstrum(signal, kind='complex'):
+    """
+    Real or complex cepstrum of each channel (Oppenheim and Schafer,
+    Discrete Time Signal Processing, ch. 13).
+
+    The real cepstrum is IDFT(log|X|). The complex cepstrum is
+    IDFT(log|X| + j arg X), with arg X unwrapped and its linear part, an
+    integer delay in samples, removed first and returned so icepstrum can
+    put it back. As in Oppenheim and Schafer, the sign of the gain is not
+    represented: the input should have a positive gain at 0 Hz.
+
+    Both are computed on the signal length, so they are time aliased;
+    zero padding the signal before the call reduces it. Spectral zeros are
+    floored at -200 dB re the peak so the logarithm is finite, as in
+    minimum_phase.
+
+    Parameters
+    ----------
+    signal : SignalObj
+    kind : str, optional
+        'complex' (default) or 'real'.
+
+    Returns
+    -------
+    SignalObj
+        The cepstrum, for kind='real'.
+    (SignalObj, numpy.ndarray)
+        The cepstrum and the delay removed from each channel, in samples,
+        for kind='complex'.
+
+    >>> c = pytta.cepstrum(ir, 'real')
+    >>> chat, delay = pytta.cepstrum(ir)
+    >>> ir2 = pytta.icepstrum(chat, delay)
+    """
+    if not isinstance(signal, SignalObj):
+        raise TypeError('signal must be a SignalObj.')
+    if kind not in ('complex', 'real'):
+        raise ValueError("kind must be 'complex' or 'real'.")
+    N = signal.numSamples
+    X = np.fft.rfft(np.asarray(signal.timeSignal, dtype=float), axis=0)
+    magnitude = np.abs(X)
+    magnitude = np.maximum(magnitude, 1e-10 * magnitude.max(axis=0))
+    if kind == 'real':
+        return _cepstrum_signal(signal, np.fft.irfft(np.log(magnitude), n=N,
+                                                     axis=0))
+    w = 2 * np.pi * np.arange(X.shape[0])[:, None] / N
+    phase = np.unwrap(np.angle(X), axis=0)
+    delay = np.round(-phase[-1] / w[-1]).astype(int)
+    logX = np.log(magnitude) + 1j * (phase + w * delay)
+    return _cepstrum_signal(signal, np.fft.irfft(logX, n=N, axis=0)), delay
+
+
+def icepstrum(cepstrumObj, delay=0):
+    """
+    Inverse complex cepstrum: the signal whose cepstrum and delay, from
+    cepstrum(signal), are given.
+
+    Parameters
+    ----------
+    cepstrumObj : SignalObj
+        Complex cepstrum.
+    delay : int or array_like, optional
+        Delay in samples to put back, one per channel or one for all.
+        The default is 0.
+
+    Returns
+    -------
+    SignalObj
+
+    >>> ir2 = pytta.icepstrum(*pytta.cepstrum(ir))
+    """
+    if not isinstance(cepstrumObj, SignalObj):
+        raise TypeError('cepstrumObj must be a SignalObj.')
+    N = cepstrumObj.numSamples
+    logX = np.fft.rfft(np.asarray(cepstrumObj.timeSignal, dtype=float),
+                       axis=0)
+    w = 2 * np.pi * np.arange(logX.shape[0])[:, None] / N
+    X = np.exp(logX - 1j * w * np.asarray(delay))
+    return _cepstrum_signal(cepstrumObj, np.fft.irfft(X, n=N, axis=0))
+
+
+def _cepstrum_signal(signal, data):
+    newSignal = SignalObj(data, 'time', samplingRate=signal.samplingRate,
+                          signalType='energy')
+    newSignal.channels = cp.deepcopy(signal.channels)
+    return newSignal
+
+
+def mls_deconvolution(response, order):
+    """
+    Impulse response from the response to a periodic MLS, by periodic
+    cross-correlation with the sequence of pytta.generate.mls(order).
+
+    The response must start with the excitation. With two or more periods,
+    the first one (the transient) is dropped and the others are averaged;
+    a single period is taken as already periodic. The correlation is
+    normalized by L + 1, L = 2^order - 1, which returns
+    h - sum(h) / (L + 1): the impulse response plus a constant of order
+    1 / L (Rife and Vanderkooy 1989; Peltonen 2000, eq. 2.22).
+
+    Parameters
+    ----------
+    response : SignalObj
+        Recorded response, at least L samples per channel.
+    order : int
+        MLS order used for the excitation.
+
+    Returns
+    -------
+    SignalObj
+        Impulse response, L samples per channel.
+
+    >>> ir = pytta.mls_deconvolution(recording, 16)
+    """
+    if not isinstance(response, SignalObj):
+        raise TypeError('response must be a SignalObj.')
+    L = 2**order - 1
+    periods = response.numSamples // L
+    if periods < 1:
+        raise ValueError('response is shorter than one MLS period.')
+    y = np.asarray(response.timeSignal[:periods * L], dtype=float)
+    y = y.reshape(periods, L, -1)[1 if periods > 1 else 0:].mean(axis=0)
+    z = mls(order).timeSignal[:, :1].astype(float)
+    ir = np.fft.irfft(np.fft.rfft(y, axis=0)
+                      * np.conj(np.fft.rfft(z, axis=0)), n=L, axis=0)
+    newSignal = SignalObj(ir / (L + 1), 'time',
+                          samplingRate=response.samplingRate,
+                          signalType='energy')
+    newSignal.channels = cp.deepcopy(response.channels)
+    return newSignal
+
+
+def lifter(signal, n=None, alpha=0.):
+    """
+    Low-pass lifter, as ita_lifter: the complex cepstrum of each channel
+    (cepstrum, which removes the integer delay) is multiplied by a Tukey
+    window of 2 n + 1 quefrencies centred on zero (alpha 0 rectangular,
+    1 Hann) and transformed back with the delay (icepstrum), which smooths
+    the log magnitude and the phase of the spectrum together. n defaults
+    to a quarter of the length; from half the length on nothing is done.
+
+    >>> smooth = pytta.lifter(ir, 64, 0.5)
+    """
+    N = signal.numSamples
+    n = int(np.ceil(N / 4)) if n is None else int(n)
+    if n >= np.ceil(N / 2):
+        warn('lifter: the window is too long, nothing is done.')
+        return _cepstrum_signal(signal, np.asarray(signal.timeSignal, dtype=float))
+    win = np.zeros(N)
+    win[:2 * n + 1] = ss.windows.tukey(2 * n + 1, alpha)
+    win = np.roll(win, -n)
+    c, delay = cepstrum(signal)
+    lifted = _cepstrum_signal(c, np.asarray(c.timeSignal, dtype=float) * win[:, None])
+    return icepstrum(lifted, delay)
+
 
 def fft_degree(*args,**kwargs):
     """

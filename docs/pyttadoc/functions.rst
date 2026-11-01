@@ -16,6 +16,11 @@ Functions
 .. autofunction:: pytta.resample
 .. autofunction:: pytta.corr_coef
 .. autofunction:: pytta.peak_time
+.. autofunction:: pytta.group_delay
+.. autofunction:: pytta.coherence
+.. autofunction:: pytta.cepstrum
+.. autofunction:: pytta.icepstrum
+.. autofunction:: pytta.mls_deconvolution
 .. autofunction:: pytta.save
 .. autofunction:: pytta.load
 .. autofunction:: pytta.weighting
@@ -26,4 +31,4 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.lifter
