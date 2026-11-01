@@ -1206,9 +1206,10 @@ def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
         print("noiseLevelCheck: The SNR too bad or this is not an " +
               "impulse response.")
         return 0
-    # find the first sample that lies under the given threshold
+    # find the first sample that lies under the given threshold; indices
+    # are 0-based, so a response that starts at its first sample starts at 0
     threshold = abs(threshold)
-    startSample = 1
+    startSample = 0
 #    # TODO - envelope mar/pdi - check!
 #    if idxNoShift:
 #        print("Something wrong!")
@@ -1230,10 +1231,7 @@ def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
         if thresholdShift > 0:
             print("_start_sample_ISO3382: 20 dB threshold too high. " +
                   "Decreasing it.")
-        if lastBelowThreshold > 0:
-            startSample = lastBelowThreshold
-        else:
-            startSample = 1
+        startSample = lastBelowThreshold
     return startSample
 
 
