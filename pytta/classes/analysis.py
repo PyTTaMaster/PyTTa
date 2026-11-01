@@ -1217,8 +1217,9 @@ def _start_sample_ISO3382(timeSignal, threshold) -> np.ndarray:
     # if maximum lies on the first point, then there is no point in searching
     # for the beginning of the IR. Just return this position.
     if max_idx > 0:
-        abs_dat = 10*np.log10(squaredIR[:max_idx]) \
-                  - 10.*np.log10(max_val)
+        with np.errstate(divide='ignore'):     # silence before the peak
+            abs_dat = 10*np.log10(squaredIR[:max_idx]) \
+                      - 10.*np.log10(max_val)
         thresholdNotOk = True
         thresholdShift = 0
         while thresholdNotOk:
