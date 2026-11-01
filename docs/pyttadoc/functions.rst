@@ -26,4 +26,5 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.power_to_harmonic_series
+.. autofunction:: pytta.harmonic_to_power_series

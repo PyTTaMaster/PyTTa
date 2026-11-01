@@ -274,6 +274,46 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def _harmonic_matrix(order, gain, phase):
+    # Column k - 1: amplitudes of the harmonics 1 to order that x**k gives for
+    # x = gain cos(wt), divided by gain as the sweep deconvolution does, with
+    # harmonic m turned by (m - 1) phase (Dietrich 2013, sec. 3.3).
+    T = np.zeros((order, order), dtype=complex)
+    for k in range(1, order + 1):
+        T[:k, k - 1] = np.polynomial.chebyshev.poly2cheb(np.eye(k + 1)[k])[1:] * gain ** (k - 1)
+    return T * np.exp(1j * phase * np.arange(order))[:, None]
+
+
+def power_to_harmonic_series(coefficients, gain=1, phase=0):
+    """
+    Harmonic series of a power series, as
+    ita_nonlinear_power_to_harmonic_series: the amplitudes of the harmonics
+    1 to N that y = sum_k a_k x**k gives for a cosine of amplitude gain,
+    divided by gain, from the coefficients a_1 to a_N along the first axis
+    (scalars, or arrays converted entry by entry). Harmonic m is turned by
+    (m - 1) phase, the phase offset of an exponential sweep. The DC term is
+    left out.
+
+    >>> pytta.power_to_harmonic_series([1, 1, 1, 1], gain=0.5)  # 1.1875, 0.3125, 0.0625, 0.015625
+    """
+    a = np.asarray(coefficients)
+    T = _harmonic_matrix(a.shape[0], gain, phase)
+    h = np.tensordot(T, a, axes=1)
+    return h.real if np.isrealobj(a) and phase == 0 else h
+
+
+def harmonic_to_power_series(harmonics, gain=1, phase=0):
+    """
+    Power series coefficients a_1 to a_N of the harmonic series 1 to N, the
+    inverse of power_to_harmonic_series, as
+    ita_nonlinear_harmonic_to_power_series.
+    """
+    h = np.asarray(harmonics)
+    T = _harmonic_matrix(h.shape[0], gain, phase)
+    a = np.tensordot(np.linalg.inv(T), h, axes=1)
+    return a.real if np.isrealobj(h) and phase == 0 else a
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
