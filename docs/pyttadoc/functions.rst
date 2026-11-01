@@ -26,4 +26,7 @@ Functions
 .. autofunction:: pytta.plot_bars
 .. autofunction:: pytta.plot_spectrogram
 .. autofunction:: pytta.plot_waterfall
-
+.. autofunction:: pytta.dither
+.. autofunction:: pytta.impulsive_noise
+.. autofunction:: pytta.invert_spectrum
+.. autofunction:: pytta.merge_near_far
