@@ -274,6 +274,57 @@ def peak_time(signal):
     else:
         return peaks_time[0]
 
+def bark_warping(samplingRate):
+    """
+    Warping coefficient that makes the frequency axis approach the Bark
+    scale, 0.8517 sqrt(arctan(0.06583 fs / 1000)) - 0.1916 (Smith and Abel,
+    Bark and ERB bilinear transforms, IEEE Trans. Speech Audio Process. 7(6),
+    1999), as the barkwarp of the ITA-Toolbox.
+    """
+    return 0.8517 * np.sqrt(np.arctan(0.06583 * samplingRate / 1000)) - 0.1916
+
+
+def warp(signal, lam, numSamples=None):
+    """
+    Frequency warped signal, as ita_audio_warp: every delay z^-1 of the
+    signal, taken as an FIR filter, is replaced by the allpass
+    (z^-1 - lam) / (1 - lam z^-1), so that the new spectrum at omega is the
+    old one at omega + 2 arctan(lam sin(omega) / (1 - lam cos(omega))).
+    Positive lam stretches the low frequencies; warp with -lam undoes it.
+    The result has numSamples samples (those of signal if None).
+
+    >>> w = pytta.warp(ir, pytta.bark_warping(ir.samplingRate))
+    """
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = numSamples or x.shape[0]
+    y = np.zeros((n, x.shape[1]))
+    g = np.zeros(n)
+    g[0] = 1
+    for k in range(x.shape[0]):
+        y += g[:, None] * x[k]
+        g = ss.lfilter([-lam, 1], [1, -lam], g)
+    return SignalObj(y, 'time', signal.samplingRate)
+
+
+def warp_zpk(z, p, k, lam):
+    """
+    Zeros, poles and gain of the filter H(D(z)) with z^-1 replaced by the
+    allpass D(z) = (z^-1 - lam) / (1 - lam z^-1), as ita_zpk_warp: each root
+    r moves to (r + lam) / (1 + lam r), and the difference between the
+    numbers of zeros and poles leaves roots at lam. warp_zpk with -lam undoes
+    it.
+    """
+    z, p = np.atleast_1d(z).astype(complex), np.atleast_1d(p).astype(complex)
+    k = k * np.prod(1 + lam * z) / np.prod(1 + lam * p)
+    extra = np.full(abs(z.size - p.size), lam, dtype=complex)
+    zw, pw = (z + lam) / (1 + lam * z), (p + lam) / (1 + lam * p)
+    if z.size > p.size:
+        pw = np.r_[pw, extra]
+    else:
+        zw = np.r_[zw, extra]
+    return zw, pw, k.real if abs(k.imag) <= 1e-12 * abs(k) else k
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
