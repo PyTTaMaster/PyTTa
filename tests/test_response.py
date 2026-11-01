@@ -105,3 +105,43 @@ class TestBifurcation(unittest.TestCase):
         self.assertAlmostEqual(result['extinction'], 0.6)
         self.assertAlmostEqual(result['hysteresis'], 0.4)
         self.assertEqual(len(result['amplitude']), params.size)
+
+
+class TestResponseMore(unittest.TestCase):
+
+    def test_envelope_slope_of_an_exponential_decay(self):
+        # exp(-t / tau) falls by 20 log10(e) / tau dB per second.
+        label = 'x'
+        tau, t = 0.05, np.arange(FS // 2) / FS
+        x = np.exp(-t / tau) * np.sin(2 * np.pi * 1000 * t)
+        slope = response.envelope_slope(pytta.SignalObj(x, 'time', FS))
+        expected = -20 * np.log10(np.e) / tau
+        print(f'\n  envelope slope {slope:.2f} dB/s for {expected:.2f}', end='')
+        self.assertLess(abs(slope / expected - 1), 1e-3)
+
+    def test_inharmonicity_of_a_stiff_string(self):
+        # Twelve partials at n f0 sqrt(1 + B n^2) with B = 4e-4.
+        label = 'x'
+        f0, B, t = 110., 4e-4, np.arange(2 * FS) / FS
+        n = np.arange(1, 13)
+        fn = n * f0 * np.sqrt(1 + B * n ** 2)
+        x = (np.sin(2 * np.pi * np.outer(t, fn)) / n).sum(axis=1)
+        result = response.inharmonicity(pytta.SignalObj(x, 'time', FS), 110, 12)
+        print(f"\n  inharmonicity: B {result['B']:.4e}, f0 {result['f0']:.4f}, "
+              f"partials {np.abs(result['partials'] - fn).max():.1e} Hz", end='')
+        self.assertLess(abs(result['B'] / B - 1), 0.01)
+        self.assertLess(abs(result['f0'] - f0), 0.01)
+        np.testing.assert_allclose(result['cents'], 1200 * np.log2(np.sqrt(1 + B * n ** 2)), atol=0.1)
+
+    def test_phase_plane_of_a_harmonic_oscillator(self):
+        # x = cos(wt) gives the ellipse x^2 + (v / w)^2 = 1, from the
+        # position or from the acceleration (float32 samples of SignalObj,
+        # whose rounding the integration raises at low frequencies).
+        label = 'x'
+        w, t = 2 * np.pi * 50, np.arange(FS // 10) / FS
+        for quantity, x in (('position', np.cos(w * t)), ('acceleration', -w ** 2 * np.cos(w * t))):
+            ax = response.plot_phase_plane(pytta.SignalObj(x, 'time', FS), quantity).axes[0]
+            p, v = ax.lines[0].get_xdata(), ax.lines[0].get_ydata()
+            e = np.abs(p ** 2 + (v / w) ** 2 - 1).max()
+            print(f'\n  phase plane from {quantity}: {e:.1e}', end='')
+            self.assertLess(e, 1e-4)
