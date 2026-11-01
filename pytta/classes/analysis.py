@@ -993,15 +993,29 @@ class RoomAnalysis(Analysis):
             A dict with parameters by name.
 
         """
-        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings, **kwargs)
+        compensation = []
+        listEDC, fhSignal = cumulative_integration(ir, bypassLundeby, plotLundeby, suppressWarnings,
+                                                   compensation=compensation, **kwargs)
         params = {}
         params['rms'] = fhSignal.rms()
         params['SPL'] = fhSignal.spl()
         params['Ts'] = central_time(fhSignal.timeSignal**2, fhSignal.timeVector)
-        params['D50'] = definition(listEDC, ir.samplingRate)
-        params['C80'] = clarity(listEDC, ir.samplingRate)
-        params['STearly'] = st_early(listEDC, ir.samplingRate)
-        params['STlate'] = st_late(listEDC, ir.samplingRate)
+        # The parameters with time windows window the broadband response and
+        # filter each window afterwards (ISO 3382-1:2009, A.3.4), so that the
+        # delay of the band filters does not move energy across the limits;
+        # the late windows keep the Lundeby truncation and tail correction.
+        early50 = windowed_band_energy(ir, 0, 0.05, **kwargs)
+        late50 = windowed_band_energy(ir, 0.05, None, compensation, **kwargs)
+        early80 = windowed_band_energy(ir, 0, 0.08, **kwargs)
+        late80 = windowed_band_energy(ir, 0.08, None, compensation, **kwargs)
+        first10 = windowed_band_energy(ir, 0, 0.01, **kwargs)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            params['D50'] = np.round(100 * early50 / (early50 + late50), 2)
+            params['C80'] = np.round(10 * np.log10(early80 / late80), 2)
+            params['STearly'] = np.round(10 * np.log10(
+                windowed_band_energy(ir, 0.02, 0.1, **kwargs) / first10), 4)
+            params['STlate'] = np.round(10 * np.log10(
+                windowed_band_energy(ir, 0.1, 1.0, **kwargs) / first10), 4)
         params['EDT'] = reverberation_time('EDT', listEDC)
         params['T20'] = reverberation_time(20, listEDC)
         params['T30'] = reverberation_time(30, listEDC)
@@ -1417,6 +1431,7 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
     else:
         interIdx = 0
         lateRT = 1
+        lundebyParams = None
 
     if interIdx == 0:
         interIdx = -1
@@ -1437,15 +1452,19 @@ def energy_decay_calculation(band, timeSignal, timeVector, samplingRate,
             print(band, "[Hz] band: could not estimate C factor")
         C = 0
         energyDecay = np.zeros(truncatedTimeVector.size)
-    return (energyDecay, truncatedTimeVector, lundebyParams)
+    return (energyDecay, truncatedTimeVector, lundebyParams, (interIdx, C))
 
 
 def cumulative_integration(inputSignal,
                            bypassLundeby,
                            plotLundebyResults,
                            suppressWarnings=True,
+                           compensation=None,
                            **kwargs):
-    """Cumulative integration with proper corrections."""
+    """Cumulative integration with proper corrections.
+
+    If a list is given as compensation, the Lundeby truncation index and the
+    tail energy correction C of each band are appended to it."""
 
     def plot_lundeby():
         c0, c1, interIdx, BGL = lundebyParams
@@ -1476,7 +1495,7 @@ def cumulative_integration(inputSignal,
     for ch in range(hSignal.numChannels):
         signal = hSignal[ch]
         band = bands[ch]
-        energyDecay, energyVector, lundebyParams = \
+        energyDecay, energyVector, lundebyParams, bandCompensation = \
             energy_decay_calculation(band,
                                      signal.timeSignal,
                                      signal.timeVector,
@@ -1487,6 +1506,8 @@ def cumulative_integration(inputSignal,
                                      bypassLundeby,
                                      suppressWarnings=suppressWarnings)
         listEDC.append((energyDecay, energyVector))
+        if compensation is not None:
+            compensation.append(bandCompensation)
         if plotLundebyResults:  # Placed here because Numba can't handle plots.
             # plot_lundeby(band, timeVector, timeSignal,  samplingRate,
             #             lundebyParams)
@@ -1528,6 +1549,46 @@ def reverberation_time(decay, listEDC):
         edc, edv = ED
         RT.append(reverb_time_regression(edc, edv, y1, y2))
     return np.array(RT, dtype='float32')
+
+
+def windowed_band_energy(ir, start, stop=None, compensation=None, **kwargs):
+    """
+    Energy in each band of the part of a broadband impulse response between
+    start and stop seconds (stop None for the end), windowed before the band
+    filtering, as ISO 3382-1:2009, A.3.4, recommends for the early and late
+    energy of C80, D50 and the support parameters. The window is filtered
+    with the filters of _filter (kwargs nthOct, minFreq, maxFreq) after one
+    second of zeros is appended, so that the energy the filters delay past
+    the end of the response is kept.
+
+    compensation is the list of (Lundeby truncation index, tail correction
+    C) of each band that cumulative_integration fills; with it, the filtered
+    window is cut at the truncation index of each band and C is added, as
+    the energy decay curve does for the late part of the response. A third
+    element, the noise energy per sample, is subtracted from every sample
+    of the window up to the truncation, for a decay curve computed by noise
+    subtraction.
+
+    Returns an array with one energy per band.
+    """
+    fs = ir.samplingRate
+    x = np.asarray(ir.timeSignal, dtype=float)[:, 0]
+    i0 = int(round(start * fs))
+    i1 = x.size if stop is None else min(int(round(stop * fs)), x.size)
+    window = np.zeros(x.size + fs)
+    window[i0:i1] = x[i0:i1]
+    y = np.asarray(_filter(SignalObj(window, 'time', fs, signalType='energy'),
+                           **kwargs).timeSignal, dtype=float)
+    y = y.reshape(y.shape[0], -1)
+    if compensation is None:
+        return np.sum(y**2, axis=0)
+    energy = []
+    for band, comp in enumerate(compensation):
+        cut, C = comp[:2]
+        noise = comp[2] if len(comp) > 2 else 0.
+        end = x.size - 1 if cut < 0 else cut
+        energy.append(np.sum(y[:cut, band]**2) + C - noise * max(end - i0, 0))
+    return np.array(energy)
 
 
 def definition(listEDC: list, fs: int, t: int = 50) -> np.ndarray:

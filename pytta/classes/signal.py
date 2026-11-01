@@ -1750,7 +1750,7 @@ class ImpulsiveResponse(_base.PyTTaObj):
         f1idx = np.where(freqVector <= f1)[0][-1]
         totalSamples = a.shape[0]
         xsamples = f1idx - f0idx
-        win = ss.hann(2*xsamples)
+        win = ss.windows.hann(2*xsamples)
 
         rightWin = win[xsamples-1:-1]
         fullRightWin = np.concatenate((np.ones(f0idx),
