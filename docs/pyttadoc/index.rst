@@ -64,4 +64,5 @@ Modules:
    functions
    generate
    rooms
+   fourpole
    properties
