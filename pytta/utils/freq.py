@@ -29,7 +29,7 @@ from typing import Tuple
 
 # Cálculo de bandas de oitava a partir de 1 kHz utilizando base 10 ou 2
 __nominal_frequencies = np.array([
-    0.1, 0.125, 0.16, 0.2, 0.25, 0.315, 0.4, 0.5, 0.6, 3., 0.8,
+    0.1, 0.125, 0.16, 0.2, 0.25, 0.315, 0.4, 0.5, 0.63, 0.8,
     1., 1.25, 1.6, 2., 2.5, 3.15, 4., 5., 6.3, 8., 10., 12.5, 16.,
     20., 25., 31.5, 40., 50., 63., 80., 100., 125., 160., 200., 250.,
     315., 400., 500., 630., 800., 1000., 1250., 1600., 2000., 2500.,
@@ -116,11 +116,12 @@ def fractional_octave_frequencies(nthOct: int = 3,
             nominal_frequencies.sort(kind='mergesort')
     nthOct = 1 / nthOct
     for k, band in enumerate(bands):
-        dummy = refFreq * base ** (band * nthOct * factor)
-        dummy = np.sqrt((nominal_frequencies - dummy) ** 2)
-        center = nominal_frequencies[np.argmin(dummy)]
-        lower = center / base ** (nthOct * factor / 2)
-        upper = center * base ** (nthOct * factor / 2)
+        # The band edges follow from the exact mid-band frequency (IEC
+        # 61260-1:2014, Eq. 2, 4 and 5); the nominal one only labels the band.
+        exact = refFreq * base ** (band * nthOct * factor)
+        center = nominal_frequencies[np.argmin(np.abs(nominal_frequencies - exact))]
+        lower = exact / base ** (nthOct * factor / 2)
+        upper = exact * base ** (nthOct * factor / 2)
         freqs[k, :] = [lower, center, upper]
     return freqs
 
