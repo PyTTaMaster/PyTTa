@@ -72,6 +72,10 @@ Modules:
     * pytta.iso3741:
         calculations according to the standard;
 
+    * pytta.e2611:
+        normal incidence sound transmission in a four-microphone tube
+        (ASTM E2611);
+
 
 You can find usage examples in the toolbox's examples folder.
 
@@ -108,6 +112,7 @@ from . import generate
 from . import utils
 from . import rooms
 from . import iso3741
+from . import e2611
 
 from .functions import read_wav, write_wav, merge, split, \
     list_devices, print_devices, get_device_from_user,\
@@ -130,6 +135,7 @@ __all__ = [  # Apps
            'generate',
            'utils',
            'iso3741',
+           'e2611',
            'rooms',
 
            # Functions
