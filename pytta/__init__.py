@@ -114,7 +114,7 @@ from .functions import read_wav, write_wav, merge, split, \
     fft_convolve, find_delay, corr_coef, resample,\
     peak_time, save, load, plot_time, plot_time_dB, plot_freq,\
     plot_bars, plot_spectrogram, plot_waterfall, SPL,\
-    prony, invfreqz
+    prony, invfreqz, extrapolate
 
 # Must go on v0.1.0 (DEPRECATED)
 from .functions import fft_degree
@@ -149,6 +149,7 @@ __all__ = [  # Apps
            'peak_time',
            'prony',
            'invfreqz',
+           'extrapolate',
            'save',
            'load',
            'weighting',

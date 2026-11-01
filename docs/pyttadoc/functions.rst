@@ -28,3 +28,4 @@ Functions
 .. autofunction:: pytta.plot_waterfall
 .. autofunction:: pytta.prony
 .. autofunction:: pytta.invfreqz
+.. autofunction:: pytta.extrapolate

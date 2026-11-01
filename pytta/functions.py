@@ -314,6 +314,32 @@ def invfreqz(H, w, nb, na, weights=None):
     return x[:nb + 1], np.r_[1, x[nb + 1:]]
 
 
+def extrapolate(signal, freqRange, order=4):
+    """
+    Spectrum outside freqRange = [f1, f2] (Hz) replaced by IIR models of
+    order order fitted with invfreqz near each end, as ita_extrapolate:
+    the low model on f1 + (0.01 to 0.2)(f2 - f1), used below f1, and the
+    high model on f1 + (0.9 to 0.99)(f2 - f1), used above f2, the bands
+    of the ITA-Toolbox. A pure delay should be removed first (time_shift),
+    since it is not a low-order model.
+    """
+    fs = signal.samplingRate
+    x = np.asarray(signal.timeSignal, dtype=float)
+    n = x.shape[0]
+    H = np.fft.rfft(x, axis=0)
+    f = np.fft.rfftfreq(n, 1 / fs)
+    w = 2 * np.pi * f / fs
+    f1, f2 = freqRange
+    out = H.copy()
+    for edge, (lo, hi) in (('low', (0.01, 0.2)), ('high', (0.9, 0.99))):
+        band = (f >= f1 + lo * (f2 - f1)) & (f <= f1 + hi * (f2 - f1))
+        outside = f < f1 if edge == 'low' else f > f2
+        for c in range(H.shape[1]):
+            b, a = invfreqz(H[band, c], w[band], order, order)
+            out[outside, c] = ss.freqz(b, a, w[outside])[1]
+    return SignalObj(np.fft.irfft(out, n, axis=0), 'time', fs)
+
+
 def fft_degree(*args,**kwargs):
     """
     DEPRECATED
