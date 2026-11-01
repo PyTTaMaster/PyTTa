@@ -10,7 +10,7 @@ from pytta.classes import _base
 from pytta.classes.streaming import Monitor, Streaming
 from pytta.classes.signal import SignalObj, ImpulsiveResponse
 from pytta import _h5utils as _h5
-import traceback
+from pytta.classes._instanceinfo import caller_name
 
 
 # Measurement class
@@ -418,21 +418,7 @@ class RecMeasure(_MeasurementBase):
         Run method: starts recording during Tmax seconds
         Outputs a signalObj with the recording content
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(frame, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         # Record
         recording = sd.rec(frames=self.numSamples,
@@ -556,21 +542,7 @@ class PlayRecMeasure(_MeasurementBase):
         Starts reproducing the excitation signal and recording at the same time
         Outputs a signalObj with the recording content
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(framenline, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         timeStamp = time.ctime(time.time())
         recording = sd.playrec(self.excitation.timeSignal*
@@ -807,21 +779,7 @@ class FRFMeasure(PlayRecMeasure):
         Starts reproducing the excitation signal and recording at the same time
         Outputs the transferfunction ImpulsiveResponse
         """
-        # Code snippet to guarantee that generated object name is
-        # the declared at global scope
-        # for frame, line in traceback.walk_stack(None):
-        for framenline in traceback.walk_stack(None):
-            # varnames = frame.f_code.co_varnames
-            varnames = framenline[0].f_code.co_varnames
-            if varnames == ():
-                break
-        # creation_file, creation_line, creation_function, \
-        #     creation_text = \
-        extracted_text = \
-            traceback.extract_stack(framenline[0], 1)[0]
-            # traceback.extract_stack(frame, 1)[0]
-        # creation_name = creation_text.split("=")[0].strip()
-        creation_name = extracted_text[3].split("=")[0].strip()
+        creation_name = caller_name()
 
         recording = super().run()
         transferfunction = ImpulsiveResponse(self.excitation,
