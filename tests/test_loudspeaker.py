@@ -182,3 +182,53 @@ class TestThieleSmall(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+DRIVER = {'Re': 6.0, 'Le': 0.0, 'Bl': 7.5, 'Mms': 0.02, 'Cms': 8e-4,
+          'Rms': 1.5, 'fs': 1 / (2 * np.pi * np.sqrt(0.02 * 8e-4))}
+SD = 0.022
+
+
+class TestLoudspeakerTools(unittest.TestCase):
+
+    def test_reference_efficiency(self):
+        # In the mid band, where the mass dominates the mechanical
+        # impedance and ka is small (here 0.15), the efficiency is
+        # rho Bl^2 Sd^2 / (2 pi c Re Mms^2) (Beranek and Mellow 2012,
+        # eq. 6.47).
+        small = dict(DRIVER, Bl=3., Mms=0.05)
+        sd = np.pi * 0.02**2
+        eta = loudspeaker.response(small, [400.], sd)['efficiency'][0]
+        expected = 1.204 * 3.**2 * sd**2 / (2 * np.pi * 343.2 * 6.0 * 0.05**2)
+        print(f'\n  efficiency {eta:.4e} for {expected:.4e}', end='')
+        self.assertLess(abs(eta / expected - 1), 0.01)
+
+    def test_radiation_impedance_limits(self):
+        # Low frequencies: R = S rho c (ka)^2 / 2 and X = S rho c 8 ka /
+        # (3 pi); high frequencies: R -> S rho c.
+        a, c, rho = 0.1, 343.2, 1.204
+        S = np.pi * a**2
+        ka = 0.01
+        z = loudspeaker.radiation_impedance(ka * c / (2 * np.pi * a), a) / (S * rho * c)
+        self.assertLess(abs(z.real / (ka**2 / 2) - 1), 1e-4)
+        self.assertLess(abs(z.imag / (8 * ka / (3 * np.pi)) - 1), 1e-4)
+        high = loudspeaker.radiation_impedance(200 * c / (2 * np.pi * a), a) / (S * rho * c)
+        self.assertLess(abs(high.real - 1), 0.01)
+
+    def test_max_spl_meets_both_limits(self):
+        f = np.array([20., 40., 1000.])
+        spl, u, limit = loudspeaker.max_spl(DRIVER, f, SD, 0.004, 50.)
+        r = loudspeaker.response(DRIVER, f, SD, 1.)
+        x = np.sqrt(2) * np.abs(r['displacement']) * u
+        power = np.abs(r['current'] * u)**2 * DRIVER['Re']
+        self.assertEqual(list(limit), ['excursion', 'excursion', 'thermal'])
+        np.testing.assert_allclose(x[:2], 0.004)
+        np.testing.assert_allclose(power[2], 50.)
+
+    def test_closed_box_and_horn(self):
+        fc, Qtc = loudspeaker.closed_box({'fs': 30., 'Qts': 0.35, 'Vas': 0.06}, 0.02)
+        self.assertAlmostEqual(fc, 60.)
+        self.assertAlmostEqual(Qtc, 0.7)
+        # a = 1 is the exponential horn S = St e^(mx), m = 4 pi fc / c.
+        x, S = loudspeaker.horn_profile(0.001, 300., 0.8)
+        np.testing.assert_allclose(S, 0.001 * np.exp(4 * np.pi * 300. / 343.2 * x))

@@ -17,6 +17,11 @@ Available functions:
 
     >>> pytta.loudspeaker.thiele_small(impedance)
     >>> pytta.loudspeaker.impedance_model(params, freq)
+    >>> pytta.loudspeaker.response(params, freq, area)
+    >>> pytta.loudspeaker.max_spl(params, freq, area, xmax, power_max)
+    >>> pytta.loudspeaker.radiation_impedance(freq, radius)
+    >>> pytta.loudspeaker.closed_box(params, Vb)
+    >>> pytta.loudspeaker.horn_profile(throat_area, cutoff, length)
 
 References:
 
@@ -277,3 +282,90 @@ def _fit(freq, z, ts, fit_re):
     sol = least_squares(residual, x0, bounds=(0, np.inf), x_scale='jac',
                         xtol=1e-12, ftol=1e-12, gtol=1e-12)
     return dict(ts, **dict(zip(names, sol.x)))
+
+
+def radiation_impedance(freq, radius, c=343.2, rho=1.204):
+    """
+    Mechanical radiation impedance in N s/m on one side of a rigid piston of
+    the given radius (m) in an infinite baffle, S rho c (1 - J1(2ka) / (ka)
+    + j H1(2ka) / (ka)), with J1 and H1 the Bessel and Struve functions
+    (Beranek and Mellow 2012, eqs. 13.117 and 13.118).
+    """
+    from scipy.special import j1, struve
+    x = 2 * 2 * np.pi * np.asarray(freq, dtype=float) / c * radius
+    with np.errstate(invalid='ignore', divide='ignore'):
+        z = 1 - 2 * j1(x) / x + 2j * struve(1, x) / x
+    z = np.where(x == 0, 0, z)
+    return np.pi * radius**2 * rho * c * z
+
+
+def response(params, freq, area, voltage=2.83, distance=1., c=343.2,
+             rho=1.204):
+    """
+    Small signal response of a driver in an infinite baffle to an rms
+    voltage, from its Thiele-Small parameters ('Re', 'Bl', 'Mms', 'Cms',
+    'Rms' and optionally 'Le', as thiele_small returns them with a second
+    curve) and its effective area Sd (m^2), as ita_thielesmall2velocity.
+
+    The diaphragm velocity is v = Bl U / ((Re + j w Le) Zm + Bl^2) with
+    Zm = Rms + j w Mms + 1 / (j w Cms) (Mms includes the air load), the
+    pressure on axis at distance r in the far field of the baffled piston is
+    j w rho Sd v e^(-jkr) / (2 pi r), and the radiated power is
+    |v|^2 Re(Zr) with Zr from radiation_impedance.
+
+    Returns a dict with 'velocity' (m/s), 'displacement' (m), 'current'
+    (A), 'pressure' (Pa), all rms and complex, 'SPL' (dB re 20 uPa),
+    'power' (W) and 'efficiency', the power over voltage^2 / Re (Beranek
+    and Mellow 2012, eq. 6.47 in the mid band).
+    """
+    f = np.asarray(freq, dtype=float)
+    jw = 2j * np.pi * f
+    Ze = params['Re'] + jw * params.get('Le', 0.0)
+    Zm = params['Rms'] + jw * params['Mms'] + 1 / (jw * params['Cms'])
+    Bl = params['Bl']
+    v = Bl * voltage / (Ze * Zm + Bl**2)
+    p = jw * rho * area * v * np.exp(-jw / c * distance) / (2 * np.pi * distance)
+    power = np.abs(v)**2 * radiation_impedance(f, np.sqrt(area / np.pi), c, rho).real
+    return {'velocity': v, 'displacement': v / jw,
+            'current': voltage * Zm / (Ze * Zm + Bl**2), 'pressure': p,
+            'SPL': 20 * np.log10(np.abs(p) / 2e-5), 'power': power,
+            'efficiency': power / (voltage**2 / params['Re'])}
+
+
+def max_spl(params, freq, area, xmax, power_max, distance=1., c=343.2,
+            rho=1.204):
+    """
+    Largest SPL at each frequency limited by the peak excursion xmax (m) and
+    by the electrical power power_max (W) in Re, as
+    ita_loudspeakertools_maxSPL. Returns (SPL, rms voltage, limit), limit
+    being 'excursion' or 'thermal' at each frequency.
+    """
+    one = response(params, freq, area, 1., distance, c, rho)
+    u_x = xmax / (np.sqrt(2) * np.abs(one['displacement']))
+    u_t = np.sqrt(power_max / (np.abs(one['current'])**2 * params['Re']))
+    u = np.minimum(u_x, u_t)
+    return one['SPL'] + 20 * np.log10(u), u, np.where(u_x < u_t, 'excursion', 'thermal')
+
+
+def closed_box(params, Vb):
+    """
+    Resonance frequency and total Q of the driver in a closed box of net
+    volume Vb (m^3), fc = fs sqrt(1 + Vas / Vb) and Qtc = Qts sqrt(1 +
+    Vas / Vb), without box losses (Small 1972, closed box; Beranek and
+    Mellow 2012, eq. 7.28).
+    """
+    k = np.sqrt(1 + params['Vas'] / Vb)
+    return params['fs'] * k, params['Qts'] * k
+
+
+def horn_profile(throat_area, cutoff, length, a=1., c=343.2, num=200):
+    """
+    Cross-sectional area along a hyperbolic-exponential (hypex) horn,
+    S = St (cosh(x / xT) + a sinh(x / xT))^2 with xT = c / (2 pi fc), from
+    hyperbolic (a = 0) to exponential (a = 1, S = St e^(mx), m = 4 pi fc /
+    c) (Beranek and Mellow 2012, eqs. 9.39, 9.51 and 9.58). Returns
+    (x, S) at num points from the throat to length (m).
+    """
+    x = np.linspace(0, length, num)
+    xT = c / (2 * np.pi * cutoff)
+    return x, throat_area * (np.cosh(x / xT) + a * np.sinh(x / xT))**2
