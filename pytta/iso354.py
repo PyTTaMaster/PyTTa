@@ -3,7 +3,8 @@ PyTTa ISO 354 sound absorption in a reverberation room:
 ------------------------------------------------------
 Equivalent sound absorption area and sound absorption coefficient of
 ISO 354:2003 (Equations 5 to 9), with the power attenuation of air from
-ISO 9613-1, and the Sabine and Eyring reverberation formulas.
+ISO 9613-1, the Sabine and Eyring reverberation formulas, and the limits
+of 6.1.4 and 6.2.1.1 on the room and the specimen.
 
     >>> alpha = pytta.iso354.absorption_coefficient(T1, T2, V, S, t1, t2)
 
@@ -59,3 +60,34 @@ def eyring(V, S, alpha, c, m=0.):
     absorption coefficient alpha: T = 55.3 V / (c (-S ln(1 - alpha) +
     4 V m))."""
     return 55.3 * V / (c * (-S * np.log(1 - np.asarray(alpha)) + 4 * V * m))
+
+
+BANDS = np.array([100, 125, 160, 200, 250, 315, 400, 500, 630, 800, 1000,
+                  1250, 1600, 2000, 2500, 3150, 4000, 5000])
+_MAX_AREA_200 = np.array([6.5] * 10 + [7.0, 7.5, 8.0, 9.5, 10.5, 12.0, 13.0,
+                                       14.0])
+
+
+def max_room_absorption(V):
+    """Largest equivalent sound absorption area in m2 that the empty room of
+    volume V (m3) may have in each third octave band of BANDS: Table 1,
+    for 200 m3, times (V / 200)^(2/3) (6.1.4)."""
+    return _MAX_AREA_200 * (V / 200) ** (2 / 3)
+
+
+def specimen_area(V):
+    """Range of the area in m2 of a plane test specimen: 10 to 12 m2, the
+    upper limit times (V / 200)^(2/3) for V above 200 m3 (6.2.1.1)."""
+    return 10., 12. * max(1., (V / 200) ** (2 / 3))
+
+
+def room_qualifies(A, V):
+    """Whether the absorption area A of the empty room, one value per band of
+    BANDS, meets 6.1.4: not above Table 1 scaled to V, and no band more
+    than 15 % from the mean of its two neighbours. Returns one bool per
+    band (the outer bands are checked against Table 1 only)."""
+    A = np.asarray(A, dtype=float)
+    ok = A <= max_room_absorption(V)
+    mean = (A[:-2] + A[2:]) / 2
+    ok[1:-1] &= np.abs(A[1:-1] - mean) <= 0.15 * mean
+    return ok

@@ -63,3 +63,26 @@ class TestISO354(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestISO354Limits(unittest.TestCase):
+
+    def test_table_1_scales_with_volume(self):
+        # Table 1 for 200 m3, times (V / 200)^(2/3).
+        np.testing.assert_allclose(iso354.max_room_absorption(200)[[0, 9, 10, 13, 17]],
+                                   [6.5, 6.5, 7.0, 9.5, 14.0])
+        np.testing.assert_allclose(iso354.max_room_absorption(1600), 4 * iso354.max_room_absorption(200))
+        np.testing.assert_allclose(iso354.specimen_area(1600), (10., 48.))
+        np.testing.assert_allclose(iso354.specimen_area(150), (10., 12.))
+
+    def test_room_qualification(self):
+        # A smooth curve 1 m2 below Table 1 qualifies; a dip of 20 % from
+        # the mean of its neighbours does not, nor a band above Table 1.
+        A = iso354.max_room_absorption(200) - 1
+        self.assertTrue(iso354.room_qualifies(A, 200).all())
+        dip = A.copy()
+        dip[5] *= 0.8
+        self.assertEqual(list(np.flatnonzero(~iso354.room_qualifies(dip, 200))), [5])
+        high = A.copy()
+        high[17] += 2
+        self.assertEqual(list(np.flatnonzero(~iso354.room_qualifies(high, 200))), [17])
